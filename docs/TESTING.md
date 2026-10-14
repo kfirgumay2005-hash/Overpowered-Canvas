@@ -253,6 +253,12 @@ Automated runtime checks of every item below were run in an isolated Obsidian 1.
    switches to the fast renderer (cards as simple boxes, group labels readable); panning and
    zooming are smooth. Click a card → it gets selected; drag it → it moves; zoom in past 25 % →
    normal cards return. Diagnostics → *Measure pan and zoom performance* gives the fps.
-5. **Mobile:** open the vault on a phone/tablet → the plugin loads; drawing works with a finger
+5. **Commands:** command palette → type "Overpowered Canvas": *Add text card / note card / web
+   page card*, *Group the selected cards*, *Select everything*, *Duplicate selection*, *Move
+   selection up/down/left/right* (one grid step, one undo each), *Zoom in/out/to 100%/to fit/to
+   selection*, *Toggle read-only*, and *Selection: …* for every toolbar picker (shape, border,
+   alignment, edge style, route, arrowheads, sticky color, crop…) as a searchable list. Assign
+   hotkeys to any of them in Settings → Hotkeys.
+6. **Mobile:** open the vault on a phone/tablet → the plugin loads; drawing works with a finger
    (pen-only mode off) and with a stylus; image export saves into the attachment folder.
 

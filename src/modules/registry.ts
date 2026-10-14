@@ -4,6 +4,7 @@ import { autoEdgesModule } from "./auto-edges";
 import { canvasMetadataModule } from "./canvas-metadata";
 import { canvasPropertiesModule } from "./canvas-properties";
 import { canvasSearchModule } from "./canvas-search";
+import { canvasCommandsModule } from "./canvas-commands";
 import { collapsibleGroupsModule } from "./collapsible-groups";
 import { encapsulateModule } from "./encapsulate";
 import { eventsApiModule } from "./events-api";
@@ -74,6 +75,7 @@ export const MODULES: readonly AnyModule[] = [
 	canvasSearchModule,
 	readonlyPlusModule,
 	imageExportModule,
+	canvasCommandsModule,
 	presentationModule,
 	portalsModule,
 	collapsibleGroupsModule,
