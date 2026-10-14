@@ -15,7 +15,6 @@
 	},
 	"author": "kfirg",
 	"devDependencies": {
-		"@types/node": "^26.6.5",
 		"esbuild": "^0.28.2",
 		"obsidian": "^1.14.4",
 		"typescript": "^7.0.2",
