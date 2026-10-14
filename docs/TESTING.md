@@ -180,3 +180,18 @@ Automated runtime checks of every item below were run in an isolated Obsidian 1.
 11. **Footprint:** disable all Phase 5 modules in settings → no `data-opc-kind`, handles,
     badges or overlays remain; ink cards show ✏️ and lines/shapes/stickies show as plain cards.
 
+## Manual — Phase 6 (navigation)
+
+1. **Minimap:** open a canvas with content → a map in the top-start corner shows cards, groups,
+   shapes, lines, strokes and the current view (accent rectangle). Click a spot → the view jumps
+   there; drag the rectangle → the view follows. Press **M** (or the map button in the canvas
+   controls) to hide/show it. Settings → *Minimap* → change the corner and width. In an RTL
+   canvas "start" is the right side.
+2. **Frames panel:** canvas controls → frame button (or command *Open frames panel*) → the right
+   sidebar lists the groups in reading order. Type in the search box to filter. Click a frame →
+   the canvas zooms to it and selects it. Drag a frame up or down in the list → the order is
+   stored in the canvas (Ctrl+Z in the canvas restores it; reopen the file → order kept).
+3. **Present frames:** panel → presentation button (or command *Present frames*): full screen,
+   read-only; → / Space / PageDown next, ← / PageUp back, Home / End, Esc ends. Right-click a
+   frame in the panel to start from it.
+

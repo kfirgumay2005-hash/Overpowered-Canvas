@@ -31,6 +31,8 @@
 @import "./modules/image-crop/styles.css";
 @import "./modules/edge-editing/styles.css";
 @import "./modules/lock-items/styles.css";
+@import "./modules/minimap/styles.css";
+@import "./modules/frames/styles.css";
 
 .opc-settings .opc-setting-note {
 	color: var(--text-warning);

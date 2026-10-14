@@ -133,3 +133,12 @@ The same report is available from the **Diagnostics** module: command
 | `canvas.requestSave()` → `requestPushHistory` (250 ms debounce) | A gesture that writes with `{ history: false }` on every move and calls `requestSave()` once at the end is one undo step. | 🟢 runtime |
 | `view.scope` runs only the first matching handler | Our canvas keys share one handler per combo (`ModuleContext.addCanvasKey`), dispatched by priority: sticky notes (Tab, Ctrl+Arrows on stickies) before the mind map, which only acts when its own conditions hold. | 🟢 runtime |
 
+## Phase 6 additions
+
+| Member | What it does | Status |
+|---|---|---|
+| `canvas.markViewportChanged()` | Called by every pan/zoom (`setViewport`, `panTo`, `panBy`, `zoomBy`, wheel, touch). The minimap patches it to schedule a redraw. | 🟢 runtime |
+| `canvas.x`, `canvas.y` | World coordinates of the view's center; `panTo(x, y)` sets them. | 🟢 runtime |
+| `.canvas-controls > .canvas-control-group.mod-raised > .canvas-control-item` | The right-side control bar; we append our own groups (minimap, frames) and remove them on disable. | 🟢 runtime |
+| `app.viewRegistry.unregisterView(type)` | Lets a module register a workspace view and remove it again when disabled (`ModuleContext.registerView`). | 🟢 runtime |
+

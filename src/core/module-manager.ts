@@ -252,6 +252,14 @@ export class ModuleManager {
 				return el;
 			},
 			addCanvasKey: (spec) => component.register(host.ui.addCanvasKey(spec)),
+			registerView: (type, factory) => {
+				const app = host.plugin.app;
+				host.plugin.registerView(type, factory);
+				component.register(() => {
+					app.workspace.detachLeavesOfType(type);
+					(app as unknown as { viewRegistry: { unregisterView(type: string): void } }).viewRegistry.unregisterView(type);
+				});
+			},
 			registerEvent: (ref) => component.registerEvent(ref),
 			registerDomEvent: (el: HTMLElement | Window, type: string, cb: (ev: Event) => unknown, options?: boolean | AddEventListenerOptions) =>
 				component.registerDomEvent(el as HTMLElement, type as keyof HTMLElementEventMap, cb, options),

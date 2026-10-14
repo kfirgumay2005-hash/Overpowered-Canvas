@@ -1,4 +1,4 @@
-import type { App, Command, EventRef, Menu } from "obsidian";
+import type { App, Command, EventRef, Menu, ViewCreator } from "obsidian";
 import type { CanvasDataApi } from "../data/access";
 import type { I18nKey, Translate } from "../i18n";
 import type { CanvasEdgeLike, CanvasLike, CanvasNodeLike, CanvasViewLike } from "../internals/types";
@@ -111,6 +111,8 @@ export interface ModuleContext<S extends object> {
 	addCardMenuButton(spec: CardMenuButtonSpec): () => void;
 	/** A canvas-local key (shared dispatch by priority; see CanvasUi.addCanvasKey). */
 	addCanvasKey(spec: CanvasKeySpec): void;
+	/** A workspace view type; its leaves are closed and the type unregistered on disable. */
+	registerView(type: string, factory: ViewCreator): void;
 	/** Context menus of nodes / edges / multi-selections (public workspace events). */
 	onNodeMenu(cb: (menu: Menu, node: CanvasNodeLike) => void): void;
 	onEdgeMenu(cb: (menu: Menu, edge: CanvasEdgeLike) => void): void;

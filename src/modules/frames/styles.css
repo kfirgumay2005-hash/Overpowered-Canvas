@@ -1,0 +1,74 @@
+body.opc-mod-frames .opc-frames-view {
+	padding: 0;
+	display: flex;
+	flex-direction: column;
+}
+body.opc-mod-frames .opc-frames-header {
+	display: flex;
+	align-items: center;
+	gap: var(--size-2-2);
+	padding: var(--size-4-2);
+	border-bottom: 1px solid var(--background-modifier-border);
+}
+body.opc-mod-frames .opc-frames-search {
+	flex: 1;
+	min-width: 0;
+}
+body.opc-mod-frames .opc-frames-list {
+	flex: 1;
+	overflow-y: auto;
+	padding: var(--size-2-2) var(--size-4-1);
+}
+body.opc-mod-frames .opc-frames-item {
+	display: flex;
+	align-items: center;
+	gap: var(--size-4-2);
+	padding: var(--size-2-3) var(--size-4-2);
+	border-radius: var(--radius-s);
+	cursor: pointer;
+	border-block: 2px solid transparent;
+}
+body.opc-mod-frames .opc-frames-item:hover {
+	background: var(--background-modifier-hover);
+}
+body.opc-mod-frames .opc-frames-item.is-active {
+	background: var(--background-modifier-active-hover);
+}
+body.opc-mod-frames .opc-frames-item.is-dragging {
+	opacity: 0.5;
+}
+body.opc-mod-frames .opc-frames-item.drop-before {
+	border-top-color: var(--interactive-accent);
+}
+body.opc-mod-frames .opc-frames-item.drop-after {
+	border-bottom-color: var(--interactive-accent);
+}
+body.opc-mod-frames .opc-frames-index {
+	min-width: 1.6em;
+	text-align: center;
+	font-size: var(--font-ui-smaller);
+	color: var(--text-faint);
+	font-variant-numeric: tabular-nums;
+}
+body.opc-mod-frames .opc-frames-label {
+	flex: 1;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+body.opc-mod-frames .canvas-wrapper.opc-frames-presenting :is(.canvas-controls, .canvas-card-menu, .canvas-menu-container, .opc-search-bar) {
+	display: none !important;
+}
+body.opc-mod-frames .opc-frames-counter {
+	position: absolute;
+	bottom: var(--size-4-3);
+	inset-inline-end: var(--size-4-4);
+	z-index: var(--layer-popover);
+	font-size: var(--font-ui-small);
+	color: var(--text-muted);
+	background-color: var(--background-primary);
+	border-radius: var(--radius-s);
+	padding: var(--size-2-1) var(--size-4-2);
+	opacity: 0.8;
+}

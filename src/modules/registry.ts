@@ -30,6 +30,8 @@ import { stickyNotesModule } from "./sticky-notes";
 import { imageCropModule } from "./image-crop";
 import { edgeEditingModule } from "./edge-editing";
 import { lockItemsModule } from "./lock-items";
+import { minimapModule } from "./minimap";
+import { framesModule } from "./frames";
 import { edgeRoutingModule } from "./edge-routing";
 import { edgeStylesModule } from "./edge-styles";
 import { edgeToolsModule } from "./edge-tools";
@@ -83,5 +85,7 @@ export const MODULES: readonly AnyModule[] = [
 	imageCropModule,
 	edgeEditingModule,
 	lockItemsModule,
+	minimapModule,
+	framesModule,
 	diagnosticsModule,
 ];

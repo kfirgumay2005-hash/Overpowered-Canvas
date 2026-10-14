@@ -1,0 +1,40 @@
+body.opc-mod-minimap .opc-minimap {
+	position: absolute;
+	z-index: 5;
+	box-sizing: content-box;
+	background: color-mix(in srgb, var(--background-primary) 88%, transparent);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-m);
+	box-shadow: var(--shadow-s);
+	overflow: hidden;
+	cursor: pointer;
+	touch-action: none;
+}
+body.opc-mod-minimap .opc-minimap > canvas {
+	display: block;
+}
+/* Bottom corners clear the card bar. */
+body.opc-mod-minimap .opc-minimap[data-corner="bottom-end"] {
+	bottom: 72px;
+	inset-inline-end: var(--size-4-3);
+}
+body.opc-mod-minimap .opc-minimap[data-corner="bottom-start"] {
+	bottom: 72px;
+	inset-inline-start: var(--size-4-3);
+}
+/* Top-end sits beside the canvas controls. */
+body.opc-mod-minimap .opc-minimap[data-corner="top-end"] {
+	top: var(--size-4-3);
+	inset-inline-end: 64px;
+}
+body.opc-mod-minimap .opc-minimap[data-corner="top-start"] {
+	top: var(--size-4-3);
+	inset-inline-start: var(--size-4-3);
+}
+body.opc-mod-minimap .opc-minimap-control .canvas-control-item.is-active {
+	color: var(--interactive-accent);
+}
+/* Hidden while presenting. */
+body.opc-mod-minimap .canvas-wrapper:is(.opc-presenting, .opc-frames-presenting) .opc-minimap {
+	display: none;
+}
