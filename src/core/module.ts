@@ -104,8 +104,9 @@ export interface ModuleContext<S extends object> {
 	intercept<K extends InterceptorName>(name: K, fn: (...args: InterceptorMap[K]) => unknown): void;
 	decorateNodes(decorator: NodeDecorator): void;
 	decorateEdges(decorator: EdgeDecorator): void;
-	addMenuButton(spec: MenuButtonSpec): void;
-	addCardMenuButton(spec: CardMenuButtonSpec): void;
+	/** Returns a function that removes the button early; it is removed on disable anyway. */
+	addMenuButton(spec: MenuButtonSpec): () => void;
+	addCardMenuButton(spec: CardMenuButtonSpec): () => void;
 	/** Context menus of nodes / edges / multi-selections (public workspace events). */
 	onNodeMenu(cb: (menu: Menu, node: CanvasNodeLike) => void): void;
 	onEdgeMenu(cb: (menu: Menu, edge: CanvasEdgeLike) => void): void;

@@ -1,0 +1,14 @@
+/*
+ * Reading mode laid out like the editor (measured against Obsidian 1.14): no block margins,
+ * one empty line between blocks (as the blank source line shows in the editor), and the
+ * editor's heading padding. Text cards only.
+ */
+body.opc-mod-alt-text-rendering .canvas-node-content.markdown-embed .markdown-preview-sizer > div > :is(p, ul, ol, blockquote, pre, table, hr, .callout, h1, h2, h3, h4, h5, h6) {
+	margin-block: 0;
+}
+body.opc-mod-alt-text-rendering .canvas-node-content.markdown-embed .markdown-preview-sizer > div:not(.markdown-preview-pusher) + div > :first-child {
+	margin-top: calc(var(--font-text-size) * var(--line-height-normal));
+}
+body.opc-mod-alt-text-rendering .canvas-node-content.markdown-embed .markdown-preview-sizer > div > :is(h1, h2, h3, h4, h5, h6) {
+	padding-top: var(--p-spacing);
+}

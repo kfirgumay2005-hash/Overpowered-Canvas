@@ -126,6 +126,7 @@ export interface CanvasEdgeLike {
 	update(from: CanvasEdgeEndLike, to: CanvasEdgeEndLike): void;
 	getBBox(): BBox;
 	getCenter(): Point;
+	setColor(color: string, render?: boolean): void;
 }
 
 export type CanvasItemLike = CanvasNodeLike | CanvasEdgeLike;
@@ -152,6 +153,12 @@ export interface CanvasOptionsLike {
 	snapToObjects?: boolean;
 	zoomBreakpoint?: number;
 	[key: string]: unknown;
+}
+
+export interface EdgeIndexLike {
+	add(node: CanvasNodeLike, edge: CanvasEdgeLike): void;
+	delete(node: CanvasNodeLike, edge: CanvasEdgeLike): void;
+	getArray(node: CanvasNodeLike): CanvasEdgeLike[];
 }
 
 export interface CanvasLike {
@@ -188,8 +195,9 @@ export interface CanvasLike {
 	edgeContainerEl: SVGSVGElement;
 	edgeEndContainerEl: SVGSVGElement;
 	menu: CanvasMenuLike;
-	edgeFrom: { getArray(node: CanvasNodeLike): CanvasEdgeLike[] };
-	edgeTo: { getArray(node: CanvasNodeLike): CanvasEdgeLike[] };
+	/** Multimaps node → edges starting / ending there (used by getEdgesForNode). */
+	edgeFrom: EdgeIndexLike;
+	edgeTo: EdgeIndexLike;
 
 	getData(): CanvasFileData;
 	setData(data: CanvasFileData): void;

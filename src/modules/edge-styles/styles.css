@@ -1,0 +1,34 @@
+body.opc-mod-edge-styles .canvas-edges g[data-opc-path="dotted"] path.canvas-display-path {
+	stroke-dasharray: 0.01 calc(7px * var(--zoom-multiplier));
+	stroke-linecap: round;
+}
+body.opc-mod-edge-styles .canvas-edges g[data-opc-path="short-dashed"] path.canvas-display-path {
+	stroke-dasharray: calc(6px * var(--zoom-multiplier)) calc(6px * var(--zoom-multiplier));
+}
+body.opc-mod-edge-styles .canvas-edges g[data-opc-path="long-dashed"] path.canvas-display-path {
+	stroke-dasharray: calc(16px * var(--zoom-multiplier)) calc(8px * var(--zoom-multiplier));
+}
+
+/* Custom arrowheads replace the core triangle. */
+body.opc-mod-edge-styles .canvas-edges g[data-opc-arrow] > polygon.canvas-path-end {
+	display: none;
+}
+body.opc-mod-edge-styles .canvas-edges path.opc-arrow {
+	pointer-events: none;
+	stroke: var(--canvas-color);
+	fill: var(--canvas-color);
+	stroke-linecap: round;
+	stroke-linejoin: round;
+	stroke-width: 1px;
+	transform-box: fill-box;
+	transform: scale(var(--zoom-multiplier));
+	transform-origin: center top;
+}
+body.opc-mod-edge-styles .canvas-edges path.opc-arrow.is-outline {
+	fill: var(--canvas-background);
+	stroke-width: 1.6px;
+}
+body.opc-mod-edge-styles .canvas-edges g[data-opc-arrow="thin-triangle"] > path.opc-arrow {
+	fill: none;
+	stroke-width: 2px;
+}

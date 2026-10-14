@@ -25,6 +25,8 @@ export interface HookMap {
 	"node-removed": [node: CanvasNodeLike];
 	/** After node.moveAndResize(). */
 	"node-moved": [node: CanvasNodeLike];
+	/** After a node entered or left edit mode. */
+	"node-editing": [node: CanvasNodeLike, editing: boolean];
 	"edge-render": [edge: CanvasEdgeLike];
 	/** After edge.updatePath(). */
 	"edge-path": [edge: CanvasEdgeLike];
@@ -318,6 +320,19 @@ export class CanvasHooks {
 			},
 			{
 				kind: "node",
+				needs: ["node-editing"],
+				install: (proto) =>
+					this.patch<CanvasNodeLike & { setIsEditing(editing: boolean): void }>("node.setIsEditing", proto, {
+						setIsEditing: (next) =>
+							function (this: CanvasNodeLike, editing: boolean) {
+								const before = this.isEditing;
+								next.call(this, editing);
+								if (before !== this.isEditing) hub.emit("node-editing", this, this.isEditing);
+							},
+					}),
+			},
+			{
+				kind: "node",
 				needs: ["node-pointerdown"],
 				install: (proto) =>
 					this.patch<CanvasNodeLike & { onPointerdown(evt: PointerEvent): void }>("node.onPointerdown", proto, {
@@ -366,7 +381,20 @@ export class CanvasHooks {
 					this.patch<CanvasEdgeLike>("edge.setData", proto, {
 						setData: (next) =>
 							function (this: CanvasEdgeLike, data) {
+								const fromBefore = this.from.node;
+								const toBefore = this.to.node;
 								next.call(this, data);
+								// Undo/redo re-attaches ends through setData, which doesn't update the
+								// canvas's edge indexes (getEdgesForNode would go stale). Repair them.
+								const canvas = this.canvas;
+								if (fromBefore !== this.from.node) {
+									canvas.edgeFrom.delete(fromBefore, this);
+									canvas.edgeFrom.add(this.from.node, this);
+								}
+								if (toBefore !== this.to.node) {
+									canvas.edgeTo.delete(toBefore, this);
+									canvas.edgeTo.add(this.to.node, this);
+								}
 								hub.emit("edge-set-data", this);
 							},
 					}),

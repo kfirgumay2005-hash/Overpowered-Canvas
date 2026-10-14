@@ -1,0 +1,4 @@
+/* Constant label/edge sizes regardless of zoom. */
+body.opc-mod-better-defaults.opc-no-font-scaling .canvas-wrapper {
+	--zoom-multiplier: 1 !important;
+}

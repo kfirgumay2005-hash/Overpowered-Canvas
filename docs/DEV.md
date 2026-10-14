@@ -72,3 +72,18 @@ patches` shows what is installed right now.
 ## Commits
 
 One commit per completed feature, English messages, imperative mood.
+
+## Runtime harness (how the plugin was verified without touching your vault)
+
+An isolated Obsidian instance can be started with its own user-data folder and a throw-away
+vault, then driven over the Chrome DevTools protocol:
+
+```bash
+"%LOCALAPPDATA%/Programs/Obsidian/Obsidian.exe" --user-data-dir=<empty dir> --remote-debugging-port=9333
+```
+
+Put `obsidian.json` (`{"vaults":{"<16 hex id>":{"path":"<test vault>","ts":0,"open":true}},"updateDisabled":true}`)
+and a copy of `obsidian-<version>.asar` in the user-data folder first. Copy `main.js`,
+`manifest.json` and `styles.css` into the test vault's plugin folder, then evaluate code in the
+page (`Runtime.evaluate`) or take screenshots (`Page.captureScreenshot`). Reload the plugin with
+`app.plugins.disablePlugin(id)` / `enablePlugin(id)`.

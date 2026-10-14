@@ -1,0 +1,12 @@
+/* Edges connected to the selected cards. Themes and snippets can restyle .is-opc-highlighted. */
+body.opc-mod-edge-tools .canvas-edges g.is-opc-highlighted path.canvas-display-path {
+	stroke: var(--color-accent);
+	stroke-width: calc(3.5px * var(--zoom-multiplier));
+}
+body.opc-mod-edge-tools .canvas-edges g.is-opc-highlighted :is(polygon.canvas-path-end, path.opc-arrow) {
+	stroke: var(--color-accent);
+	fill: var(--color-accent);
+}
+body.opc-mod-edge-tools .canvas-edges g.is-opc-highlighted path.opc-arrow.is-outline {
+	fill: var(--canvas-background);
+}

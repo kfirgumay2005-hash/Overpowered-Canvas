@@ -52,3 +52,44 @@ a fake canvas that mirrors Obsidian 1.14's behavior), benchmark statistics, and 
 2. Enable **Diagnostics**, press Shift+1 (zoom to fit), run *Run pan/zoom benchmark*; don't touch
    anything until the notice appears. Paste the copied JSON into `docs/BENCHMARKS.md`.
 3. Run it once with Advanced Canvas off and once with it on, for comparison.
+
+## Manual — Phase 1 (nodes & edges)
+
+Automated runtime checks of every item below were run in an isolated Obsidian 1.14.4 instance
+(see DEV.md → "Runtime harness"). Repeat them by hand in your vault:
+
+### Nodes
+1. **Shapes:** select a text card → toolbar "Shape" → pick *Decision*. The card becomes a diamond,
+   text stays centered. Pick *No shape* → back to a card. Ctrl+Z / Ctrl+Shift+Z step through it.
+2. **Borders:** toolbar "Border style" → Dashed / Dotted / Invisible (also on shapes and groups).
+3. **Text alignment:** toolbar "Text alignment" → Center. Double-click to edit: the editor is
+   centered too. In an RTL note "Align to start" aligns right.
+4. **Auto-resize:** toolbar "Auto-resize" on a text card, type several lines → the card grows;
+   delete lines → it shrinks. The toggle shows as active.
+5. **Z-order:** overlap two cards, right-click → *Send to back* / *Bring to front*; reopen the file:
+   the order is kept.
+6. **Custom colors:** add a CSS snippet with `body { --canvas-color-7: #ff0080; }` → the color
+   picker gets an extra swatch; pick it → reopen the file → still colored.
+7. **Card templates:** right-click a card → *Save card as template* → name + icon → a new button
+   appears in the bottom bar; click it (adds at center) or drag it; right-click it → remove.
+8. **Empty group:** bottom bar → group button (click or drag).
+9. **Better defaults:** create a card by double-click → it lands on the grid and uses the default
+   size from settings. Toggle *Disable label scaling* and zoom out: labels keep their size.
+10. **Variable breakpoints:** right-click a card → *Set content zoom breakpoint…* → `0`; zoom out
+    below 100%: only that card shows its placeholder.
+11. **Stable text rendering** (off by default): enable it; double-click a card with a heading and
+    paragraphs: the text no longer jumps between reading and editing.
+
+### Edges
+12. **Line style / arrowheads:** select an edge → toolbar "Line style" (dotted/dashed) and
+    "Arrowheads" (start/end: diamond, circle, outline…).
+13. **Route:** toolbar "Route" → Straight / Right angles / Around cards (A*). Put a card between
+    the two ends: the A* edge goes around it. Settings → default route for all edges.
+14. **Floating edges:** drag from a card's connection dot and drop on the dashed zone in the middle
+    of another card. Move the cards around: the edge always attaches to the facing sides.
+15. **Flip / highlight / select:** select an edge → "Flip edge direction". Select a card → its edges
+    are highlighted; right-click → *Select incoming edges*.
+
+### Footprint
+16. Settings → turn every module off → console: `app.plugins.plugins["overpowered-canvas"].patcher.list()`
+    is `[]`, no `opc-` classes on `<body>`, canvases look exactly like vanilla.

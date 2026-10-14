@@ -1,0 +1,79 @@
+/* .mod-canvas-color-N for the custom palette entries --canvas-color-7 … --canvas-color-32. */
+body.opc-mod-custom-colors .mod-canvas-color-7 {
+	--canvas-color: var(--canvas-color-7);
+}
+body.opc-mod-custom-colors .mod-canvas-color-8 {
+	--canvas-color: var(--canvas-color-8);
+}
+body.opc-mod-custom-colors .mod-canvas-color-9 {
+	--canvas-color: var(--canvas-color-9);
+}
+body.opc-mod-custom-colors .mod-canvas-color-10 {
+	--canvas-color: var(--canvas-color-10);
+}
+body.opc-mod-custom-colors .mod-canvas-color-11 {
+	--canvas-color: var(--canvas-color-11);
+}
+body.opc-mod-custom-colors .mod-canvas-color-12 {
+	--canvas-color: var(--canvas-color-12);
+}
+body.opc-mod-custom-colors .mod-canvas-color-13 {
+	--canvas-color: var(--canvas-color-13);
+}
+body.opc-mod-custom-colors .mod-canvas-color-14 {
+	--canvas-color: var(--canvas-color-14);
+}
+body.opc-mod-custom-colors .mod-canvas-color-15 {
+	--canvas-color: var(--canvas-color-15);
+}
+body.opc-mod-custom-colors .mod-canvas-color-16 {
+	--canvas-color: var(--canvas-color-16);
+}
+body.opc-mod-custom-colors .mod-canvas-color-17 {
+	--canvas-color: var(--canvas-color-17);
+}
+body.opc-mod-custom-colors .mod-canvas-color-18 {
+	--canvas-color: var(--canvas-color-18);
+}
+body.opc-mod-custom-colors .mod-canvas-color-19 {
+	--canvas-color: var(--canvas-color-19);
+}
+body.opc-mod-custom-colors .mod-canvas-color-20 {
+	--canvas-color: var(--canvas-color-20);
+}
+body.opc-mod-custom-colors .mod-canvas-color-21 {
+	--canvas-color: var(--canvas-color-21);
+}
+body.opc-mod-custom-colors .mod-canvas-color-22 {
+	--canvas-color: var(--canvas-color-22);
+}
+body.opc-mod-custom-colors .mod-canvas-color-23 {
+	--canvas-color: var(--canvas-color-23);
+}
+body.opc-mod-custom-colors .mod-canvas-color-24 {
+	--canvas-color: var(--canvas-color-24);
+}
+body.opc-mod-custom-colors .mod-canvas-color-25 {
+	--canvas-color: var(--canvas-color-25);
+}
+body.opc-mod-custom-colors .mod-canvas-color-26 {
+	--canvas-color: var(--canvas-color-26);
+}
+body.opc-mod-custom-colors .mod-canvas-color-27 {
+	--canvas-color: var(--canvas-color-27);
+}
+body.opc-mod-custom-colors .mod-canvas-color-28 {
+	--canvas-color: var(--canvas-color-28);
+}
+body.opc-mod-custom-colors .mod-canvas-color-29 {
+	--canvas-color: var(--canvas-color-29);
+}
+body.opc-mod-custom-colors .mod-canvas-color-30 {
+	--canvas-color: var(--canvas-color-30);
+}
+body.opc-mod-custom-colors .mod-canvas-color-31 {
+	--canvas-color: var(--canvas-color-31);
+}
+body.opc-mod-custom-colors .mod-canvas-color-32 {
+	--canvas-color: var(--canvas-color-32);
+}

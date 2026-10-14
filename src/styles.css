@@ -7,6 +7,13 @@
 @import "./ui/shapes.css";
 @import "./modules/node-borders/styles.css";
 @import "./modules/text-align/styles.css";
+@import "./modules/better-defaults/styles.css";
+@import "./modules/custom-colors/styles.css";
+@import "./modules/alt-text-rendering/styles.css";
+@import "./ui/icon-picker.css";
+@import "./modules/edge-styles/styles.css";
+@import "./modules/floating-edges/styles.css";
+@import "./modules/edge-tools/styles.css";
 
 .opc-settings .opc-setting-note {
 	color: var(--text-warning);

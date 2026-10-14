@@ -264,8 +264,16 @@ export class ModuleManager {
 			intercept: (name, fn) => component.register(host.hooks.intercept(name, fn)),
 			decorateNodes: (decorator) => component.register(host.ui.decorateNodes(decorator)),
 			decorateEdges: (decorator) => component.register(host.ui.decorateEdges(decorator)),
-			addMenuButton: (spec) => component.register(host.ui.addMenuButton(spec)),
-			addCardMenuButton: (spec) => component.register(host.ui.addCardMenuButton(spec)),
+			addMenuButton: (spec) => {
+				const off = host.ui.addMenuButton(spec);
+				component.register(off);
+				return off;
+			},
+			addCardMenuButton: (spec) => {
+				const off = host.ui.addCardMenuButton(spec);
+				component.register(off);
+				return off;
+			},
 			onNodeMenu: (cb) => component.registerEvent(workspaceOn(host.app, "canvas:node-menu", cb as (...a: unknown[]) => void)),
 			onEdgeMenu: (cb) => component.registerEvent(workspaceOn(host.app, "canvas:edge-menu", cb as (...a: unknown[]) => void)),
 			onSelectionMenu: (cb) => component.registerEvent(workspaceOn(host.app, "canvas:selection-menu", cb as (...a: unknown[]) => void)),

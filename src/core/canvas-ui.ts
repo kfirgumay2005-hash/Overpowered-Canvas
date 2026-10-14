@@ -38,6 +38,8 @@ export interface MenuButtonSpec {
 	/** Shown in read-only mode too (default: hidden). */
 	readonly?: boolean;
 	isVisible(selection: CanvasItemLike[], canvas: CanvasLike): boolean;
+	/** Toggle buttons: highlighted while true. */
+	isActive?(selection: CanvasItemLike[], canvas: CanvasLike): boolean;
 	onClick(ctx: MenuButtonContext): void;
 }
 
@@ -57,6 +59,18 @@ export interface CardMenuButtonSpec {
 export const isNode = (item: CanvasItemLike): item is CanvasNodeLike => "nodeEl" in item;
 export const isEdge = (item: CanvasItemLike): item is CanvasEdgeLike => "lineGroupEl" in item;
 
+/**
+ * Text cards edit inside an iframe. Our data-opc-* attributes (and dir) are mirrored onto that
+ * iframe's <body>, so CSS keyed on them also styles the editor.
+ */
+export function mirrorToFrame(node: CanvasNodeLike): void {
+	const frame = node.contentEl?.querySelector<HTMLIFrameElement>("iframe.embed-iframe");
+	const body = frame?.contentDocument?.body;
+	if (!body) return;
+	for (const attr of [...body.attributes]) if (attr.name.startsWith("data-opc-") && !node.nodeEl.hasAttribute(attr.name)) body.removeAttribute(attr.name);
+	for (const attr of [...node.nodeEl.attributes]) if (attr.name.startsWith("data-opc-") || attr.name === "dir") body.setAttribute(attr.name, attr.value);
+}
+
 export class CanvasUi {
 	private readonly menuButtons = new Set<MenuButtonSpec>();
 	private menuHookOff: (() => void) | null = null;
@@ -72,15 +86,38 @@ export class CanvasUi {
 		const run = (node: CanvasNodeLike) => {
 			try {
 				decorator.apply(node, readNode(node.unknownData[SCHEMA_KEY]));
+				if (node.isEditing) mirrorToFrame(node);
 			} catch (error) {
 				console.error("[overpowered-canvas] node decorator failed", error);
 			}
 		};
-		const offs = [this.hooks.on("node-render", run), this.hooks.on("node-set-data", run), this.hooks.on("node-extra-change", run)];
+		// The editor iframe is created asynchronously after edit mode starts.
+		const onEditing = (node: CanvasNodeLike, editing: boolean) => {
+			if (!editing) return;
+			let tries = 0;
+			const attempt = () => {
+				mirrorToFrame(node);
+				if (!node.contentEl?.querySelector("iframe.embed-iframe")?.getAttribute("data-opc-synced") && tries++ < 10) {
+					const frame = node.contentEl?.querySelector<HTMLIFrameElement>("iframe.embed-iframe");
+					if (frame?.contentDocument?.body) frame.setAttribute("data-opc-synced", "1");
+					else window.setTimeout(attempt, 50);
+				}
+			};
+			attempt();
+		};
+		const offs = [
+			this.hooks.on("node-render", run),
+			this.hooks.on("node-set-data", run),
+			this.hooks.on("node-extra-change", run),
+			this.hooks.on("node-editing", onEditing),
+		];
 		this.hooks.forEachNode(run);
 		return () => {
 			for (const off of offs) off();
-			this.hooks.forEachNode((node) => decorator.clear(node));
+			this.hooks.forEachNode((node) => {
+				decorator.clear(node);
+				mirrorToFrame(node);
+			});
 			// Nodes of canvases closed meanwhile are gone with their views.
 		};
 	}
@@ -102,11 +139,12 @@ export class CanvasUi {
 	}
 
 	addMenuButton(spec: MenuButtonSpec): () => void {
+		if (this.menuButtons.has(spec)) return () => {};
 		this.menuButtons.add(spec);
 		if (!this.menuHookOff) this.menuHookOff = this.hooks.on("menu-render", (menu) => this.renderMenuButtons(menu));
 		this.rerenderMenus();
 		return () => {
-			this.menuButtons.delete(spec);
+			if (!this.menuButtons.delete(spec)) return;
 			if (this.menuButtons.size === 0) {
 				this.menuHookOff?.();
 				this.menuHookOff = null;
@@ -130,7 +168,8 @@ export class CanvasUi {
 		} else for (const view of this.tracker.openCanvases()) this.mountCardButton(spec, view.canvas);
 		return () => {
 			const map = this.cardButtons.get(spec);
-			if (map) for (const el of map.values()) el.remove();
+			if (!map) return;
+			for (const el of map.values()) el.remove();
 			this.cardButtons.delete(spec);
 			if (this.cardButtons.size === 0) {
 				this.cardTrackOff?.();
@@ -179,6 +218,10 @@ export class CanvasUi {
 			const button = menu.menuEl.createEl("button", { cls: `clickable-icon opc-menu-button opc-menu-${spec.id}` });
 			setIcon(button, typeof spec.icon === "function" ? spec.icon(selection) : spec.icon);
 			setTooltip(button, typeof spec.tooltip === "function" ? spec.tooltip() : spec.tooltip, { placement: "top" });
+			if (spec.isActive?.(selection, canvas)) {
+				button.addClass("is-active");
+				button.setAttribute("aria-pressed", "true");
+			}
 			button.addEventListener("click", (evt) => {
 				try {
 					spec.onClick({ canvas, selection: [...canvas.selection], buttonEl: button, evt });

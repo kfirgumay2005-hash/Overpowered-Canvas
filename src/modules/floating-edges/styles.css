@@ -1,0 +1,11 @@
+/* While connecting, show where to drop for a floating (auto-side) attachment. */
+body.opc-mod-floating-edges .canvas.is-connecting .canvas-node:not(.is-dummy):not(.canvas-node-group) > .canvas-node-container::after {
+	content: "";
+	position: absolute;
+	inset: 25%;
+	border: 2px dashed color-mix(in oklch, var(--color-accent) 60%, transparent);
+	border-radius: var(--radius-m);
+	background-color: color-mix(in oklch, var(--color-accent) 8%, transparent);
+	pointer-events: none;
+	z-index: 2;
+}
