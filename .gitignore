@@ -1,0 +1,14 @@
+# Dependencies
+node_modules/
+
+# Build output (generated from src/)
+main.js
+styles.css
+*.map
+
+# Obsidian per-vault plugin settings
+data.json
+
+# Local tooling
+.vscode/
+.DS_Store

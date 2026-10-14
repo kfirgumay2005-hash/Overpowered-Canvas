@@ -1,0 +1,27 @@
+{
+	"name": "overpowered-canvas",
+	"version": "0.0.1",
+	"private": true,
+	"description": "Turns Obsidian Canvas into a Miro-level whiteboard.",
+	"main": "main.js",
+	"type": "module",
+	"scripts": {
+		"dev": "node esbuild.config.mjs",
+		"build": "tsc --noEmit && node esbuild.config.mjs production",
+		"typecheck": "tsc --noEmit",
+		"test": "vitest run",
+		"test:watch": "vitest",
+		"stress": "node scripts/gen-stress-canvas.mjs"
+	},
+	"author": "kfirg",
+	"devDependencies": {
+		"@types/node": "^26.6.5",
+		"esbuild": "^0.28.2",
+		"obsidian": "^1.14.4",
+		"typescript": "^7.0.2",
+		"vitest": "^5.0.4"
+	},
+	"dependencies": {
+		"monkey-around": "^3.0.0"
+	}
+}
