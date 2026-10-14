@@ -1,0 +1,32 @@
+body.opc-mod-node-links .opc-node-embed {
+	border: 1px solid var(--background-modifier-border);
+	border-inline-start: 3px solid var(--opc-embed-color, var(--interactive-accent));
+	border-radius: var(--radius-s);
+	padding: var(--size-4-2) var(--size-4-3);
+	margin: var(--size-4-2) 0;
+}
+body.opc-mod-node-links .opc-node-embed-header {
+	display: flex;
+	align-items: center;
+	gap: var(--size-2-2);
+	font-size: var(--font-ui-small);
+	color: var(--text-muted);
+	cursor: pointer;
+	margin-bottom: var(--size-2-3);
+}
+body.opc-mod-node-links .opc-node-embed-header:hover {
+	color: var(--text-normal);
+}
+body.opc-mod-node-links .opc-node-embed-icon svg {
+	width: var(--icon-xs);
+	height: var(--icon-xs);
+}
+body.opc-mod-node-links .opc-node-embed-missing {
+	color: var(--text-faint);
+	font-style: italic;
+}
+body.opc-mod-node-links .opc-node-embed-child + .opc-node-embed-child {
+	border-top: 1px dashed var(--background-modifier-border);
+	margin-top: var(--size-4-2);
+	padding-top: var(--size-4-2);
+}

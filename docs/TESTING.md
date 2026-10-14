@@ -93,3 +93,23 @@ Automated runtime checks of every item below were run in an isolated Obsidian 1.
 ### Footprint
 16. Settings → turn every module off → console: `app.plugins.plugins["overpowered-canvas"].patcher.list()`
     is `[]`, no `opc-` classes on `<body>`, canvases look exactly like vanilla.
+
+## Manual — Phase 2 (vault integration)
+
+1. **Metadata:** open a canvas with a card linking `[[Some note]]` and a `#tag`. The outgoing-links
+   pane lists the link, the tag pane lists the tag; Some note's backlinks show the canvas (core).
+2. **Properties:** click the ⓘ button in the canvas header → add `tags: project`, `aliases: Board`,
+   `cssclasses: wide-board` → Save. Ctrl+Z undoes it. The quick switcher finds the canvas by
+   "Board"; search `tag:#project` finds it; a snippet `.wide-board .canvas-wrapper { … }` applies.
+   The core *File properties* pane shows and edits the same properties.
+3. **Auto edges:** in note A add `canvas-edges: ["[[B]]"]`; put note cards A and B on a canvas → an
+   edge appears. Remove the line from A → the edge disappears. Manual edges are never removed.
+4. **Card links/embeds:** right-click a card → *Copy link to card*. Paste into a note: clicking it
+   opens the canvas zoomed to the card. `![[file.canvas#<id>]]` renders the card in the note.
+5. **Search:** in a canvas press Ctrl/Cmd+F → type → matches are outlined, Enter / Shift+Enter jump,
+   Esc closes. Hebrew with or without niqqud matches.
+6. **Read-only:** settings → lock panning/zooming → toggle the canvas read-only (lock button):
+   scrolling and Ctrl+scroll don't move it, the toolbar over selections is hidden, Shift+1 still
+   zooms to fit.
+7. **Export:** Command palette → *Export canvas as image…* → PNG/SVG, whole canvas or selection,
+   transparent background, privacy mode, watermark. Open the file: it matches the canvas.

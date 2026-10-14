@@ -238,6 +238,7 @@ export const EDGE_SHAPE: Shape<OpcEdge> = {
 		{ required: ["end", "nodeId"] },
 	),
 	styles: recordOf(str),
+	auto: bool,
 };
 
 export const readRoot: Sanitizer<OpcRoot> = objectOf(ROOT_SHAPE, { required: ["v"] });

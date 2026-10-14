@@ -1,0 +1,32 @@
+body.opc-mod-canvas-search .opc-search-bar {
+	position: absolute;
+	top: var(--size-4-3);
+	inset-inline-end: calc(var(--size-4-3) + 48px);
+	z-index: calc(var(--layer-popover) - 1);
+	width: min(420px, calc(100% - 100px));
+	margin: 0;
+}
+body.opc-mod-canvas-search .opc-search-bar .document-search {
+	background-color: var(--background-primary);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-m);
+	box-shadow: var(--shadow-s);
+	padding: var(--size-2-2) var(--size-4-2);
+}
+body.opc-mod-canvas-search .canvas-node.opc-search-match > .canvas-node-container {
+	box-shadow: 0 0 0 3px color-mix(in oklch, var(--text-highlight-bg, #ffd43b) 70%, transparent);
+}
+body.opc-mod-canvas-search .canvas-node.opc-search-current > .canvas-node-container {
+	box-shadow: 0 0 0 5px var(--text-highlight-bg-active, #ff9f1a);
+}
+body.opc-mod-canvas-search .canvas-node.opc-search-match > svg.opc-shape path {
+	stroke: var(--text-highlight-bg, #ffd43b);
+	stroke-width: 3px;
+}
+body.opc-mod-canvas-search .canvas-node.opc-search-current > svg.opc-shape path {
+	stroke: var(--text-highlight-bg-active, #ff9f1a);
+	stroke-width: 5px;
+}
+body.opc-mod-canvas-search .canvas-edges g.opc-search-match path.canvas-display-path {
+	stroke: var(--text-highlight-bg-active, #ff9f1a);
+}

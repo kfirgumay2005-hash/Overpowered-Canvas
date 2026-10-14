@@ -14,6 +14,10 @@
 @import "./modules/edge-styles/styles.css";
 @import "./modules/floating-edges/styles.css";
 @import "./modules/edge-tools/styles.css";
+@import "./modules/readonly-plus/styles.css";
+@import "./modules/canvas-search/styles.css";
+@import "./modules/node-links/styles.css";
+@import "./modules/canvas-properties/styles.css";
 
 .opc-settings .opc-setting-note {
 	color: var(--text-warning);

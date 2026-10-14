@@ -1,0 +1,15 @@
+.opc-properties-modal .opc-property-row {
+	display: grid;
+	grid-template-columns: minmax(80px, 1fr) auto minmax(120px, 2fr) auto;
+	gap: var(--size-2-3);
+	align-items: center;
+	margin-bottom: var(--size-2-3);
+}
+.opc-properties-modal .opc-property-value input[type="text"],
+.opc-properties-modal .opc-property-value input[type="number"] {
+	width: 100%;
+}
+.opc-properties-modal .opc-properties-empty {
+	color: var(--text-muted);
+	padding: var(--size-4-2) 0;
+}

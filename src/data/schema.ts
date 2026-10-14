@@ -196,6 +196,8 @@ export interface OpcEdge {
 	order?: number;
 	portalTarget?: { end: "from" | "to"; nodeId: string };
 	styles?: Record<string, string>;
+	/** Created by the auto-edges module from a frontmatter property; removed with the property. */
+	auto?: boolean;
 }
 
 /** Values equal to these are not stored, which keeps files small. */
@@ -212,6 +214,7 @@ export const NODE_DEFAULTS: Readonly<Partial<OpcNode>> = {
 export const EDGE_DEFAULTS: Readonly<Partial<OpcEdge>> = {
 	path: "solid",
 	route: "bezier",
+	auto: false,
 };
 
 export const ROOT_DEFAULTS: Readonly<Partial<OpcRoot>> = {};

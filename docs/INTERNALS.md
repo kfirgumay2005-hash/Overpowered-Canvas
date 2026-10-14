@@ -96,3 +96,28 @@ Verified against: **Obsidian 1.14.4 (desktop, Windows)**.
 
 The same report is available from the **Diagnostics** module: command
 “Copy canvas internals report”.
+
+## Phase 1–2 additions (verified at runtime in Obsidian 1.14.4 unless noted)
+
+| Member | What it does | Status |
+|---|---|---|
+| `canvas.menu.render(rebuild)` / `menu.menuEl` | Selection toolbar; `rebuild=false` only repositions. We append buttons after a rebuild and re-run positioning. | 🟢 runtime |
+| `canvas.cardMenuEl`, `canvas.dragTempNode(evt, size, cb)` | Bottom card bar and its drag-to-place helper (cb gets the top-left). | 🟢 runtime |
+| `canvas.config.{defaultTextNodeDimensions, defaultFileNodeDimensions, minContainerDimension}` | Per-canvas defaults read by `createTextNode`/`createFileNode` and resizing. | 🟢 runtime |
+| `canvas.getEdgesForNode`, `edgeFrom`/`edgeTo` (`add`/`delete`/`getArray`) | Node → edges index. **`edge.setData()` swaps nodes without updating it** (undo/redo of a re-attached end); repaired in the edge setData hook. | 🟢 runtime |
+| `node.setIsEditing(bool)` | Edit mode toggle. Text cards edit inside an `iframe.embed-iframe` whose `<body>` carries our body classes and stylesheet but not node attributes → `data-opc-*` are mirrored to it. | 🟢 runtime |
+| `node.updateBreakpoint(show)` (base and content subclasses), `node.isContentMounted` | Mounts/unmounts content when crossing the zoom breakpoint; called every frame for attached nodes. | 🟢 runtime |
+| `node.zIndex`, `renderZIndex()`, `canvas.zIndexCounter` | Stacking; `getData()` sorts nodes by zIndex, so changes persist. Groups compute zIndex from area. | 🟢 runtime |
+| `edge.updatePath()`, `edge.path.{display,interaction}`, `edge.fromLineEnd/toLineEnd.el`, `edge.bezier` | Path drawing; line ends are recreated when the end type changes; `bezier` is only read by `getCenter()` (label and toolbar position). | 🟢 runtime |
+| `canvas.setReadonly(bool)`, `canvas.options.defaultWheelBehavior` | Read-only mode; wheel meaning (pan/zoom). | 🟢 runtime |
+| workspace events `canvas:node-menu`, `canvas:edge-menu`, `canvas:selection-menu` | Context menus `(menu, item)` / `(menu, canvas)`. | 🟢 runtime |
+| `view.scope` | The canvas view's keymap scope (Mod+Z etc.); we register Mod+F there. | 🟢 runtime |
+| `view.setEphemeralState({subpath})` | Receives `#subpath` when a link opens the canvas. | 🟢 runtime |
+| `app.metadataCache.getCache(path)` / `iterateFileCache(cb)` | Returns `{}` for non-markdown files; we answer for `.canvas` from our in-memory index. | 🟢 runtime |
+| `app.metadataCache.getBacklinksForFile`, `resolvedLinks`, `linkUpdaters.canvas` | Already include canvas references (core canvas index). | 🟢 runtime |
+| `app.internalPlugins.plugins.canvas.instance.index.getForPath(path)` | Core canvas index: `{ embeds: [{file, subpath}], caches: {nodeId: CachedMetadata} }`. | 🟢 runtime |
+| `app.embedRegistry.embedByExtension.canvas(ctx, file, subpath)` | Embed factory for `![[x.canvas…]]`; returns a Component with `loadFile()`. | 🟢 runtime |
+| `file-properties` view: `isSupportedFile`, `readSupportedFile`, `saveFrontmatter(fm)`, `updateFrontmatter`, `update` | Core File properties pane; only writes markdown (safe for canvases). We extend it to canvases. | 🟢 runtime |
+| `app.fileManager.processFrontMatter(canvasFile)` | No-op on `.canvas` files (verified: file unchanged). | 🟢 runtime |
+| `window.electron.remote.dialog.showSaveDialog` | Desktop save dialog used by image export. | 🟢 runtime |
+| SVG `<foreignObject>` → `<img>` → `<canvas>` | Not tainted with a `data:` URL; **tainted with a `blob:` URL**. | 🟢 runtime |

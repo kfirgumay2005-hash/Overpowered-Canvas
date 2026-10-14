@@ -1,5 +1,12 @@
 import type { AnyModule } from "../core/module";
 import { altTextRenderingModule } from "./alt-text-rendering";
+import { autoEdgesModule } from "./auto-edges";
+import { canvasMetadataModule } from "./canvas-metadata";
+import { canvasPropertiesModule } from "./canvas-properties";
+import { canvasSearchModule } from "./canvas-search";
+import { imageExportModule } from "./image-export";
+import { nodeLinksModule } from "./node-links";
+import { readonlyPlusModule } from "./readonly-plus";
 import { autoResizeModule } from "./auto-resize";
 import { betterDefaultsModule } from "./better-defaults";
 import { createGroupModule } from "./create-group";
@@ -33,5 +40,12 @@ export const MODULES: readonly AnyModule[] = [
 	edgeRoutingModule,
 	floatingEdgesModule,
 	edgeToolsModule,
+	canvasMetadataModule,
+	canvasPropertiesModule,
+	autoEdgesModule,
+	nodeLinksModule,
+	canvasSearchModule,
+	readonlyPlusModule,
+	imageExportModule,
 	diagnosticsModule,
 ];

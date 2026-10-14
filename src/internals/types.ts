@@ -6,7 +6,7 @@
  * Nothing outside src/internals/, src/core/canvas-hooks.ts and the modules' patches.ts files
  * should reach past these types into the raw objects.
  */
-import type { App, Debouncer, TFile, View } from "obsidian";
+import type { App, Debouncer, ItemView, TFile } from "obsidian";
 import type { CanvasFileData, CanvasEdgeData, CanvasNodeData, EdgeSide } from "../data/json-canvas";
 
 export interface BBox {
@@ -249,7 +249,7 @@ export interface CanvasLike {
 	rerenderViewport(): void;
 }
 
-export interface CanvasViewLike extends View {
+export interface CanvasViewLike extends ItemView {
 	canvas: CanvasLike;
 	file: TFile | null;
 	requestSave(): void;
