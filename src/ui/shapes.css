@@ -1,0 +1,84 @@
+/*
+ * Shape outlines drawn by ui/shape-renderer.ts. These rules only match while a module has drawn
+ * a shape (the svg and data-opc-shape exist only then), so they need no module scope.
+ */
+.canvas-node > svg.opc-shape {
+	position: absolute;
+	left: 0;
+	top: 0;
+	overflow: visible;
+	pointer-events: none;
+}
+
+.canvas-node > svg.opc-shape path {
+	stroke: color-mix(in oklch, var(--canvas-color) 100%, transparent);
+	stroke-width: 1.5px;
+	stroke-linejoin: round;
+	transition: stroke-width 100ms ease-out;
+}
+
+.canvas-node > svg.opc-shape .opc-shape-body {
+	fill: var(--background-primary);
+	filter: drop-shadow(0 0.5px 1px rgba(0, 0, 0, 0.12));
+}
+
+.canvas-node > svg.opc-shape .opc-shape-decoration {
+	fill: none;
+}
+
+.canvas-node.is-themed > svg.opc-shape .opc-shape-body {
+	fill: color-mix(in oklch, var(--canvas-color) 7%, var(--background-primary));
+}
+
+.canvas-node.is-themed > svg.opc-shape path {
+	stroke: color-mix(in oklch, var(--canvas-color) 70%, transparent);
+}
+
+.canvas-node:is(.is-selected, .is-focused) > svg.opc-shape path {
+	stroke: var(--color-accent);
+	stroke-width: 3px;
+}
+
+.canvas-node.is-themed:is(.is-selected, .is-focused) > svg.opc-shape path {
+	stroke: var(--canvas-color);
+}
+
+.canvas-node.is-dragging > svg.opc-shape .opc-shape-body {
+	filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.18));
+}
+
+.canvas-node[data-opc-shape] > .canvas-node-container {
+	background-color: transparent;
+	border-color: transparent !important;
+	box-shadow: none !important;
+	border-radius: 0;
+}
+
+.canvas-node[data-opc-shape] > .canvas-node-container > .canvas-node-content {
+	background-color: transparent;
+	box-sizing: border-box;
+	padding: calc(var(--canvas-node-height) * var(--opc-inset-top, 0)) calc(var(--canvas-node-width) * var(--opc-inset-right, 0))
+		calc(var(--canvas-node-height) * var(--opc-inset-bottom, 0)) calc(var(--canvas-node-width) * var(--opc-inset-left, 0));
+}
+
+/* Text in shapes is centered vertically and horizontally by default, without scrollbars. */
+.canvas-node[data-opc-shape] .markdown-embed-content > .markdown-preview-view {
+	justify-content: center;
+	scrollbar-width: none;
+	padding-inline: var(--size-4-2);
+}
+.canvas-node[data-opc-shape] .markdown-embed-content > .markdown-preview-view::-webkit-scrollbar {
+	display: none;
+}
+.canvas-node[data-opc-shape] .markdown-embed-content > .markdown-preview-view > .markdown-preview-sizer {
+	flex: 0 0 auto;
+}
+.canvas-node[data-opc-shape] .markdown-embed-content > .markdown-preview-view::before,
+.canvas-node[data-opc-shape] .markdown-embed-content > .markdown-preview-view::after {
+	max-height: none;
+	min-height: 0;
+}
+.canvas-node[data-opc-shape]:not([data-opc-align]) .markdown-preview-view,
+.canvas-node[data-opc-shape]:not([data-opc-align]) .cm-content {
+	text-align: center;
+}

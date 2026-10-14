@@ -1,0 +1,37 @@
+body.opc-mod-node-borders .canvas-node[data-opc-border="dashed"] > .canvas-node-container {
+	border-style: dashed;
+	border-width: 2px;
+}
+body.opc-mod-node-borders .canvas-node[data-opc-border="dotted"] > .canvas-node-container {
+	border-style: dotted;
+	border-width: 2px;
+}
+/* The themed inset shadow would draw a solid line over a dashed border. */
+body.opc-mod-node-borders .canvas-node:is([data-opc-border="dashed"], [data-opc-border="dotted"]):not(.is-selected, .is-focused) > .canvas-node-container {
+	box-shadow: var(--shadow-stationary);
+}
+body.opc-mod-node-borders .canvas-node:is([data-opc-border="dashed"], [data-opc-border="dotted"]):is(.is-selected, .is-focused) > .canvas-node-container {
+	box-shadow: var(--shadow-border-accent);
+}
+body.opc-mod-node-borders .canvas-node.is-themed:is([data-opc-border="dashed"], [data-opc-border="dotted"]):is(.is-selected, .is-focused) > .canvas-node-container {
+	box-shadow: var(--shadow-border-themed);
+}
+body.opc-mod-node-borders .canvas-node[data-opc-border="none"]:not(.is-selected, .is-focused) > .canvas-node-container {
+	border-color: transparent;
+	box-shadow: none;
+}
+body.opc-mod-node-borders .canvas-node[data-opc-border="none"]:not(.is-selected, .is-focused) > .canvas-node-container > .canvas-node-content {
+	background-color: transparent;
+}
+
+/* Shapes: the outline is the svg path. */
+body.opc-mod-node-borders .canvas-node[data-opc-border="dashed"] > svg.opc-shape path {
+	stroke-dasharray: 8 5;
+}
+body.opc-mod-node-borders .canvas-node[data-opc-border="dotted"] > svg.opc-shape path {
+	stroke-dasharray: 1.5 4;
+	stroke-linecap: round;
+}
+body.opc-mod-node-borders .canvas-node[data-opc-border="none"]:not(.is-selected, .is-focused) > svg.opc-shape path {
+	stroke: transparent;
+}

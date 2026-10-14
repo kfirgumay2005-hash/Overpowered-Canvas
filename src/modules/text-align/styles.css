@@ -1,0 +1,9 @@
+body.opc-mod-text-align .canvas-node[data-opc-align="start"] :is(.markdown-preview-view, .cm-content) {
+	text-align: start;
+}
+body.opc-mod-text-align .canvas-node[data-opc-align="center"] :is(.markdown-preview-view, .cm-content) {
+	text-align: center;
+}
+body.opc-mod-text-align .canvas-node[data-opc-align="end"] :is(.markdown-preview-view, .cm-content) {
+	text-align: end;
+}

@@ -35,7 +35,13 @@ export class ReadOnlyExtraDataError extends Error {
 	}
 }
 
-export function createCanvasDataApi(history: HistoryApi, onReadOnly: (canvas: CanvasLike, found: number | string) => void): CanvasDataApi {
+export type ExtraChange = { node: CanvasNodeLike } | { edge: CanvasEdgeLike } | { root: CanvasLike };
+
+export function createCanvasDataApi(
+	history: HistoryApi,
+	onReadOnly: (canvas: CanvasLike, found: number | string) => void,
+	onChange: (change: ExtraChange) => void = () => {},
+): CanvasDataApi {
 	const isWritable = (canvas: CanvasLike): boolean => {
 		const v = readSchemaVersion(canvas.data);
 		return typeof v === "number" && v <= SCHEMA_VERSION;
@@ -58,6 +64,7 @@ export function createCanvasDataApi(history: HistoryApi, onReadOnly: (canvas: Ca
 		read: (raw: unknown) => T,
 		shape: Shape<T>,
 		defaults: Readonly<Partial<T>>,
+		change: ExtraChange,
 	): ExtraHandle<T> {
 		return {
 			get: () => read(item.unknownData[SCHEMA_KEY]),
@@ -67,14 +74,15 @@ export function createCanvasDataApi(history: HistoryApi, onReadOnly: (canvas: Ca
 				const { [SCHEMA_KEY]: _old, ...rest } = item.unknownData;
 				item.unknownData = next ? { ...rest, [SCHEMA_KEY]: next } : rest;
 				afterWrite(item.canvas);
+				onChange(change);
 			},
 		};
 	}
 
 	return {
 		isWritable,
-		node: (node) => itemHandle(node, readNode, NODE_SHAPE, NODE_DEFAULTS),
-		edge: (edge) => itemHandle(edge, readEdge, EDGE_SHAPE, EDGE_DEFAULTS),
+		node: (node) => itemHandle(node, readNode, NODE_SHAPE, NODE_DEFAULTS, { node }),
+		edge: (edge) => itemHandle(edge, readEdge, EDGE_SHAPE, EDGE_DEFAULTS, { edge }),
 		root: (canvas) => ({
 			get: () => {
 				const { v: _v, ...rest } = readRoot(canvas.data[SCHEMA_KEY]) ?? { v: SCHEMA_VERSION };
@@ -88,6 +96,7 @@ export function createCanvasDataApi(history: HistoryApi, onReadOnly: (canvas: Ca
 				const { v: _ignored, ...content } = next ?? {};
 				canvas.data = Object.keys(content).length > 0 ? { ...rest, [SCHEMA_KEY]: { ...content, v: SCHEMA_VERSION } } : rest;
 				afterWrite(canvas);
+				onChange({ root: canvas });
 			},
 		}),
 	};

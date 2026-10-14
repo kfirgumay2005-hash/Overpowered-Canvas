@@ -3,6 +3,10 @@
  * Core styles live here. Every module's styles.css is @imported below and must scope all of its
  * rules under body.opc-mod-<module-id>, so a disabled module leaves no styling behind.
  */
+@import "./ui/picker.css";
+@import "./ui/shapes.css";
+@import "./modules/node-borders/styles.css";
+@import "./modules/text-align/styles.css";
 
 .opc-settings .opc-setting-note {
 	color: var(--text-warning);

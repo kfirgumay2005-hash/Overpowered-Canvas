@@ -156,6 +156,7 @@
     let proto = Object.getPrototypeOf(obj);
     while (proto && proto !== Object.prototype) {
       for (const n of Object.getOwnPropertyNames(proto)) {
+        if (n === "constructor") continue;
         const fn = Object.getOwnPropertyDescriptor(proto, n)?.value;
         if (typeof fn === "function" && Object.getPrototypeOf(fn) !== Function.prototype) out.push(`${prefix}.${n}`);
       }
@@ -176,7 +177,8 @@
     const enabled = a.plugins?.enabledPlugins;
     const report2 = {
       probeVersion: 1,
-      obsidianVersion: /obsidian\/([\d.]+)/i.exec(ua)?.[1] ?? null,
+      // The window title carries the app package version; the user agent only has the installer's.
+      obsidianVersion: /Obsidian v?(\d+\.\d+\.\d+)/.exec(typeof document !== "undefined" ? document.title : "")?.[1] ?? /obsidian\/([\d.]+)/i.exec(ua)?.[1] ?? null,
       isMobile: typeof a.isMobile === "boolean" ? a.isMobile : null,
       enabledPlugins: enabled instanceof Set ? [...enabled].sort() : [],
       canvasFound: false,

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { checkCanvasFile, hasErrors } from "./validate-file";
+import { checkCanvasFile, hasErrors, stripInvalidExtra } from "./validate-file";
 
 const node = (id: string, extra: Record<string, unknown> = {}) => ({ id, type: "text", text: "", x: 0, y: 0, width: 10, height: 10, ...extra });
 
@@ -37,5 +37,26 @@ describe("checkCanvasFile", () => {
 	it("rejects non-object files", () => {
 		expect(hasErrors(checkCanvasFile(null))).toBe(true);
 		expect(hasErrors(checkCanvasFile([]))).toBe(true);
+	});
+});
+
+describe("stripInvalidExtra", () => {
+	it("removes only the broken extra data", () => {
+		const file = {
+			nodes: [node("a", { "x-opc": { bad: Number.NaN } }), node("b", { "x-opc": { kind: "sticky" } })],
+			edges: [{ id: "e", fromNode: "a", toNode: "b", "x-opc": "nope" }],
+			"x-opc": { v: 1 },
+		};
+		const out = stripInvalidExtra(file, checkCanvasFile(file));
+		expect(out.nodes?.[0]).not.toHaveProperty("x-opc");
+		expect(out.nodes?.[1]?.["x-opc"]).toEqual({ kind: "sticky" });
+		expect(out.edges?.[0]).not.toHaveProperty("x-opc");
+		expect(out["x-opc"]).toEqual({ v: 1 });
+		expect(file.nodes[0]).toHaveProperty("x-opc"); // input untouched
+	});
+
+	it("returns the same object when all is well", () => {
+		const file = { nodes: [node("a")] };
+		expect(stripInvalidExtra(file, checkCanvasFile(file))).toBe(file);
 	});
 });

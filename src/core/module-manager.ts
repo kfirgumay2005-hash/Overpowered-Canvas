@@ -2,7 +2,10 @@ import { Component, Notice, Platform, type App, type Command, type Plugin } from
 import type { CanvasDataApi } from "../data/access";
 import type { Translate } from "../i18n";
 import { mergeWithDefaults, type ModuleState, type PluginSettings } from "../settings/settings";
+import { getActiveCanvas } from "../internals/guards";
+import type { CanvasHooks } from "./canvas-hooks";
 import type { CanvasTracker } from "./canvas-tracker";
+import type { CanvasUi } from "./canvas-ui";
 import type { PublicEvents } from "./events";
 import type { HistoryApi } from "./history";
 import type { AnyModule, ModuleContext, PluginInspector } from "./module";
@@ -14,12 +17,16 @@ export interface ModuleHost {
 	readonly plugin: Plugin;
 	readonly patcher: Patcher;
 	readonly tracker: CanvasTracker;
+	readonly hooks: CanvasHooks;
+	readonly ui: CanvasUi;
 	readonly data: CanvasDataApi;
 	readonly history: HistoryApi;
 	readonly events: PublicEvents;
 	readonly settings: PluginSettings;
 	t(): Translate;
 	saveSettings(): Promise<void>;
+	/** Called whenever the number of enabled modules changes. */
+	onActiveModulesChange?(count: number): void;
 }
 
 export type ModuleStatus = "enabled" | "disabled" | "failed" | "unavailable";
@@ -253,6 +260,17 @@ export class ModuleManager {
 			history: host.history,
 			events: host.events,
 			inspect,
+			on: (name, listener) => component.register(host.hooks.on(name, listener)),
+			intercept: (name, fn) => component.register(host.hooks.intercept(name, fn)),
+			decorateNodes: (decorator) => component.register(host.ui.decorateNodes(decorator)),
+			decorateEdges: (decorator) => component.register(host.ui.decorateEdges(decorator)),
+			addMenuButton: (spec) => component.register(host.ui.addMenuButton(spec)),
+			addCardMenuButton: (spec) => component.register(host.ui.addCardMenuButton(spec)),
+			onNodeMenu: (cb) => component.registerEvent(workspaceOn(host.app, "canvas:node-menu", cb as (...a: unknown[]) => void)),
+			onEdgeMenu: (cb) => component.registerEvent(workspaceOn(host.app, "canvas:edge-menu", cb as (...a: unknown[]) => void)),
+			onSelectionMenu: (cb) => component.registerEvent(workspaceOn(host.app, "canvas:selection-menu", cb as (...a: unknown[]) => void)),
+			canvases: () => host.tracker.openCanvases().map((v) => v.canvas),
+			activeCanvas: () => getActiveCanvas(host.app),
 		};
 		(mod as { ctx: ModuleContext<object> }).ctx = ctx;
 
@@ -267,6 +285,7 @@ export class ModuleManager {
 		}
 		this.failed.delete(def.id);
 		this.active.set(def.id, mod);
+		host.onActiveModulesChange?.(this.active.size);
 		host.events.emit("module-enabled", def.id);
 		return true;
 	}
@@ -276,6 +295,7 @@ export class ModuleManager {
 		if (!mod) return;
 		this.active.delete(id);
 		this.teardown(mod);
+		this.host.onActiveModulesChange?.(this.active.size);
 		this.host.events.emit("module-disabled", id);
 	}
 
@@ -291,4 +311,15 @@ export class ModuleManager {
 			console.error(`[overpowered-canvas] cleanup of "${mod.def.id}" failed`, error);
 		}
 	}
+}
+
+/** Workspace events Obsidian fires for canvas context menus are not in the public typings. */
+function workspaceOn(app: App, name: string, cb: (...args: unknown[]) => void) {
+	return (app.workspace as unknown as { on(name: string, cb: (...args: unknown[]) => void): import("obsidian").EventRef }).on(name, (...args: unknown[]) => {
+		try {
+			cb(...args);
+		} catch (error) {
+			console.error(`[overpowered-canvas] ${name} handler failed`, error);
+		}
+	});
 }

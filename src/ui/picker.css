@@ -1,0 +1,43 @@
+.opc-picker {
+	position: fixed;
+	z-index: var(--layer-menu);
+	transform: translateX(-50%);
+	background-color: var(--background-primary);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-m);
+	box-shadow: var(--shadow-s);
+	padding: var(--size-4-1);
+	max-height: 70vh;
+	overflow-y: auto;
+}
+.opc-picker-title {
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+	padding: var(--size-4-1) var(--size-4-1) var(--size-2-1);
+}
+.opc-picker-grid {
+	display: grid;
+	grid-template-columns: repeat(var(--opc-picker-columns, 6), auto);
+	gap: 2px;
+}
+.opc-picker-item {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: var(--size-2-3);
+	min-width: 32px;
+	min-height: 28px;
+}
+.opc-picker-item.is-active {
+	background-color: var(--interactive-accent);
+	color: var(--text-on-accent);
+}
+.opc-picker-item:focus-visible {
+	box-shadow: 0 0 0 2px var(--background-modifier-border-focus);
+}
+.opc-picker-item svg.opc-shape-preview path {
+	fill: none;
+	stroke: currentColor;
+	stroke-width: 1.4;
+	stroke-linejoin: round;
+}

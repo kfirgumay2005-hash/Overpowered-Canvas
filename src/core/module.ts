@@ -1,7 +1,9 @@
-import type { App, Command, EventRef } from "obsidian";
+import type { App, Command, EventRef, Menu } from "obsidian";
 import type { CanvasDataApi } from "../data/access";
 import type { I18nKey, Translate } from "../i18n";
-import type { CanvasLike, CanvasViewLike } from "../internals/types";
+import type { CanvasEdgeLike, CanvasLike, CanvasNodeLike, CanvasViewLike } from "../internals/types";
+import type { HookMap, HookName, InterceptorMap, InterceptorName } from "./canvas-hooks";
+import type { CardMenuButtonSpec, EdgeDecorator, MenuButtonSpec, NodeDecorator } from "./canvas-ui";
 import type { PublicEvents } from "./events";
 import type { HistoryApi } from "./history";
 import type { PatchFactories, PatchRecord } from "./patcher";
@@ -96,6 +98,22 @@ export interface ModuleContext<S extends object> {
 	readonly events: PublicEvents;
 	/** Read-only view of the plugin's own state, for diagnostics. */
 	readonly inspect: PluginInspector;
+
+	/** Canvas hooks (see core/canvas-hooks.ts); unsubscribed on disable. */
+	on<K extends HookName>(name: K, listener: (...args: HookMap[K]) => void): void;
+	intercept<K extends InterceptorName>(name: K, fn: (...args: InterceptorMap[K]) => unknown): void;
+	decorateNodes(decorator: NodeDecorator): void;
+	decorateEdges(decorator: EdgeDecorator): void;
+	addMenuButton(spec: MenuButtonSpec): void;
+	addCardMenuButton(spec: CardMenuButtonSpec): void;
+	/** Context menus of nodes / edges / multi-selections (public workspace events). */
+	onNodeMenu(cb: (menu: Menu, node: CanvasNodeLike) => void): void;
+	onEdgeMenu(cb: (menu: Menu, edge: CanvasEdgeLike) => void): void;
+	onSelectionMenu(cb: (menu: Menu, canvas: CanvasLike) => void): void;
+	/** Open canvases right now. */
+	canvases(): CanvasLike[];
+	/** The canvas of the most recent canvas leaf, if it is the active view. */
+	activeCanvas(): CanvasLike | null;
 }
 
 export interface PluginInspector {

@@ -70,3 +70,32 @@ function checkExtra(value: unknown, path: string, error: (path: string, message:
 export function hasErrors(problems: readonly FileProblem[]): boolean {
 	return problems.some((p) => p.level === "error");
 }
+
+/**
+ * Returns a copy of `data` without the "x-opc" objects that checkCanvasFile reported as errors.
+ * Core canvas data is never changed. Returns the input itself when nothing needs stripping.
+ */
+export function stripInvalidExtra(data: CanvasFileData, problems: readonly FileProblem[]): CanvasFileData {
+	const bad = problems.filter((p) => p.level === "error" && (p.path.endsWith(`.${SCHEMA_KEY}`) || p.path === SCHEMA_KEY));
+	if (bad.length === 0) return data;
+	const out: CanvasFileData = { ...data };
+	const strip = <T extends Record<string, unknown>>(item: T): T => {
+		const { [SCHEMA_KEY]: _removed, ...rest } = item;
+		return rest as T;
+	};
+	for (const p of bad) {
+		if (p.path === SCHEMA_KEY) {
+			delete out[SCHEMA_KEY];
+			continue;
+		}
+		const m = /^(nodes|edges)\[(\d+)\]\./.exec(p.path);
+		if (!m) continue;
+		const key = m[1] as "nodes" | "edges";
+		const index = Number(m[2]);
+		const list = [...((out[key] as Record<string, unknown>[] | undefined) ?? [])];
+		const item = list[index];
+		if (item) list[index] = strip(item);
+		(out as Record<string, unknown>)[key] = list;
+	}
+	return out;
+}

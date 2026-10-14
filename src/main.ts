@@ -1,10 +1,13 @@
 import { getLanguage, Notice, Plugin } from "obsidian";
+import { CanvasHooks } from "./core/canvas-hooks";
 import { CanvasTracker } from "./core/canvas-tracker";
+import { CanvasUi } from "./core/canvas-ui";
 import { checkCoexistence } from "./core/coexistence";
 import { PublicEvents } from "./core/events";
 import { createHistoryApi } from "./core/history";
 import { ModuleManager } from "./core/module-manager";
 import { Patcher } from "./core/patcher";
+import { SaveGuard } from "./core/save-guard";
 import { createCanvasDataApi, type CanvasDataApi } from "./data/access";
 import { SCHEMA_VERSION } from "./data/schema";
 import { createTranslator, resolveLocale, type LanguageSetting, type Translate } from "./i18n";
@@ -18,6 +21,7 @@ export default class OverpoweredCanvasPlugin extends Plugin {
 	modules!: ModuleManager;
 	/** Exposed for the developer console and diagnostics; not a stable API. */
 	patcher = new Patcher();
+	hooks!: CanvasHooks;
 	private translate!: Translate;
 	private readOnlyWarned = new WeakSet<CanvasLike>();
 
@@ -26,10 +30,22 @@ export default class OverpoweredCanvasPlugin extends Plugin {
 		this.setLanguage(this.settings.language);
 
 		const history = createHistoryApi();
-		const data: CanvasDataApi = createCanvasDataApi(history, (canvas, found) => this.warnReadOnly(canvas, found));
 		const tracker = new CanvasTracker(this.app, (problems) => {
 			console.error("[overpowered-canvas] Canvas internals changed; this canvas is left untouched.", problems);
 		});
+		const hooks = (this.hooks = new CanvasHooks(this.patcher, tracker));
+		const saveGuard = new SaveGuard(this.patcher, tracker);
+		this.register(() => saveGuard.setActive(false));
+		const ui = new CanvasUi(hooks, tracker);
+		const data: CanvasDataApi = createCanvasDataApi(
+			history,
+			(canvas, found) => this.warnReadOnly(canvas, found),
+			(change) => {
+				if ("node" in change) hooks.emit("node-extra-change", change.node);
+				else if ("edge" in change) hooks.emit("edge-extra-change", change.edge);
+				else hooks.emit("root-extra-change", change.root);
+			},
+		);
 
 		this.modules = new ModuleManager(
 			{
@@ -37,12 +53,15 @@ export default class OverpoweredCanvasPlugin extends Plugin {
 				plugin: this,
 				patcher: this.patcher,
 				tracker,
+				hooks,
+				ui,
 				data,
 				history,
 				events: new PublicEvents(this.app.workspace),
 				settings: this.settings,
 				t: () => this.translate,
 				saveSettings: () => this.saveSettings(),
+				onActiveModulesChange: (count) => saveGuard.setActive(count > 0),
 			},
 			MODULES,
 		);
