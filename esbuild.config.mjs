@@ -1,5 +1,17 @@
 import esbuild from "esbuild";
-import { builtinModules } from "node:module";
+import { readFile } from "node:fs/promises";
+import { builtinModules, createRequire } from "node:module";
+
+const require = createRequire(import.meta.url);
+
+/** `import source from "elk-worker-source"` → the elkjs worker script as a string (run as a Blob worker). */
+const elkWorkerText = {
+	name: "elk-worker-source",
+	setup(build) {
+		build.onResolve({ filter: /^elk-worker-source$/ }, () => ({ path: require.resolve("elkjs/lib/elk-worker.min.js"), namespace: "elk-text" }));
+		build.onLoad({ filter: /.*/, namespace: "elk-text" }, async (args) => ({ contents: await readFile(args.path, "utf8"), loader: "text" }));
+	},
+};
 
 const production = process.argv[2] === "production";
 
@@ -28,6 +40,7 @@ const jsContext = await esbuild.context({
 	banner: { js: banner },
 	entryPoints: ["src/main.ts"],
 	bundle: true,
+	plugins: [elkWorkerText],
 	external,
 	format: "cjs",
 	target: "es2022",

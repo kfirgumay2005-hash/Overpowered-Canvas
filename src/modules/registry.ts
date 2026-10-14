@@ -15,7 +15,10 @@ import { styleAttributesModule } from "./style-attributes";
 import { imageExportModule } from "./image-export";
 import { nodeLinksModule } from "./node-links";
 import { readonlyPlusModule } from "./readonly-plus";
+import { autoLayoutModule } from "./auto-layout";
 import { autoResizeModule } from "./auto-resize";
+import { branchCollapseModule } from "./branch-collapse";
+import { mindmapModule } from "./mindmap";
 import { betterDefaultsModule } from "./better-defaults";
 import { createGroupModule } from "./create-group";
 import { customColorsModule } from "./custom-colors";
@@ -63,5 +66,8 @@ export const MODULES: readonly AnyModule[] = [
 	pdfAnnotationModule,
 	styleAttributesModule,
 	eventsApiModule,
+	mindmapModule,
+	branchCollapseModule,
+	autoLayoutModule,
 	diagnosticsModule,
 ];

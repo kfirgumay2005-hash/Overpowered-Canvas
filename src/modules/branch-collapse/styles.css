@@ -1,0 +1,38 @@
+body.opc-mod-branch-collapse :is(.canvas-node, .canvas-edges g, .canvas-path-label-wrapper).opc-hidden-by-branch {
+	display: none;
+}
+body.opc-mod-branch-collapse .canvas-node > .opc-branch-toggle {
+	position: absolute;
+	z-index: 3;
+	min-width: calc(20px * var(--zoom-multiplier));
+	height: calc(20px * var(--zoom-multiplier));
+	padding: 0 calc(4px * var(--zoom-multiplier));
+	border-radius: 999px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: calc(11px * var(--zoom-multiplier));
+	font-weight: 600;
+	color: var(--text-muted);
+	background-color: var(--background-primary);
+	border: 1px solid var(--background-modifier-border);
+	cursor: pointer;
+	opacity: 0;
+	transition: opacity 120ms ease;
+	--icon-size: calc(12px * var(--zoom-multiplier));
+}
+body.opc-mod-branch-collapse .canvas-node:hover > .opc-branch-toggle,
+body.opc-mod-branch-collapse .canvas-node.is-focused > .opc-branch-toggle,
+body.opc-mod-branch-collapse .canvas-node > .opc-branch-toggle.is-collapsed,
+body.opc-mod-branch-collapse .canvas-node > .opc-branch-toggle:focus-visible {
+	opacity: 1;
+}
+body.opc-mod-branch-collapse .canvas-node > .opc-branch-toggle.is-collapsed {
+	color: var(--text-on-accent);
+	background-color: var(--interactive-accent);
+	border-color: var(--interactive-accent);
+}
+body.opc-mod-branch-collapse .opc-branch-toggle[data-side="right"] { left: 100%; top: 50%; transform: translate(6px, -50%); }
+body.opc-mod-branch-collapse .opc-branch-toggle[data-side="left"] { right: 100%; top: 50%; transform: translate(-6px, -50%); }
+body.opc-mod-branch-collapse .opc-branch-toggle[data-side="down"] { top: 100%; left: 50%; transform: translate(-50%, 6px); }
+body.opc-mod-branch-collapse .opc-branch-toggle[data-side="up"] { bottom: 100%; left: 50%; transform: translate(-50%, -6px); }

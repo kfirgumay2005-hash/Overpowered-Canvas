@@ -83,6 +83,8 @@ export interface CanvasNodeLike {
 	updateZIndex(): void;
 	renderZIndex(): void;
 	updateBreakpoint(show: boolean): void;
+	/** Adds nodeEl to the canvas DOM (virtualization). */
+	attach(): void;
 	startEditing(): void;
 	focus(): void;
 	blur(): void;

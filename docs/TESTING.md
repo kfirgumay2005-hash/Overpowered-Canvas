@@ -134,3 +134,15 @@ Automated runtime checks of every item below were run in an isolated Obsidian 1.
    description) and enable it → a new toolbar button sets `data-<key>` on the card.
 8. **Events:** see docs/EVENTS.md; in the console:
    `app.workspace.on("overpowered-canvas:node-created", (c, n) => console.log(n.id))`, then add a card.
+
+## Manual — Phase 4 (mind map)
+
+1. Select a card → **Tab** adds a child to the right (left in an RTL canvas) and opens it for
+   typing; **Esc**, then **Enter** adds a sibling under it. **Alt+Arrows** move between cards;
+   **Ctrl/Cmd+Arrows** add a floating card; **Ctrl/Cmd+Shift+Arrows** add a child in that direction.
+2. Right-click a card with children → *Select subtree*, *Color outgoing edges like the card*.
+3. Hover a parent card: a small badge appears on the children's side; click it → the branch folds
+   and the badge shows the number of hidden cards; Ctrl+Z unfolds.
+4. Select the root → command *Auto layout: balanced mind map*, or *Auto layout…* for direction
+   (forward/backward/down/up/radial/balanced), flowchart (layered) or grid; whole canvas or
+   selection. The cards animate into place; one Ctrl+Z restores the previous arrangement.

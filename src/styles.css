@@ -23,6 +23,7 @@
 @import "./modules/presentation/styles.css";
 @import "./modules/portals/styles.css";
 @import "./modules/pdf-annotation/styles.css";
+@import "./modules/branch-collapse/styles.css";
 
 .opc-settings .opc-setting-note {
 	color: var(--text-warning);
