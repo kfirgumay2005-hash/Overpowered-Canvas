@@ -1,0 +1,37 @@
+/*
+ * The transformed layer must stay LTR: cards are absolutely positioned with no left/right, and
+ * in RTL their static position would jump to the other side. Direction applies to card content.
+ */
+body.opc-mod-direction .canvas-wrapper[dir] > .canvas {
+	direction: ltr;
+}
+body.opc-mod-direction .canvas-wrapper[dir="rtl"] .canvas-node:not([dir]) .canvas-node-content,
+body.opc-mod-direction .canvas-wrapper[dir="rtl"] .canvas-edges,
+body.opc-mod-direction .canvas-node[dir="rtl"] .canvas-node-content {
+	direction: rtl;
+}
+body.opc-mod-direction .canvas-node[dir="ltr"] .canvas-node-content {
+	direction: ltr;
+}
+
+/*
+ * Lists follow the direction of their first item (the core marks each item dir="auto" but
+ * not the list), so bullets, numbers, checkboxes and indentation sit on the reading side.
+ */
+body.opc-mod-direction .canvas-node :is(ul, ol):has(> li:first-child:dir(rtl)),
+body.opc-mod-direction .canvas-node :is(ul, ol):has(> li:first-child:dir(rtl)) > li {
+	direction: rtl;
+}
+body.opc-mod-direction .canvas-node[dir="rtl"] .markdown-preview-view :is(p, li, h1, h2, h3, h4, h5, h6, blockquote) {
+	direction: rtl;
+}
+body.opc-mod-direction .canvas-node[dir="ltr"] .markdown-preview-view :is(p, li, h1, h2, h3, h4, h5, h6, blockquote) {
+	direction: ltr;
+}
+/* The card editor (an iframe whose body mirrors the card's dir). */
+body.opc-mod-direction[dir="rtl"] .cm-content {
+	direction: rtl;
+}
+body.opc-mod-direction[dir="ltr"] .cm-content {
+	direction: ltr;
+}

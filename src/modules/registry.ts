@@ -20,6 +20,7 @@ import { autoResizeModule } from "./auto-resize";
 import { branchCollapseModule } from "./branch-collapse";
 import { mindmapModule } from "./mindmap";
 import { betterDefaultsModule } from "./better-defaults";
+import { directionModule } from "./direction";
 import { createGroupModule } from "./create-group";
 import { customColorsModule } from "./custom-colors";
 import { diagnosticsModule } from "./diagnostics";
@@ -49,6 +50,7 @@ import { zOrderModule } from "./z-order";
 /** Every feature module, in display order within its settings group. */
 export const MODULES: readonly AnyModule[] = [
 	betterDefaultsModule,
+	directionModule,
 	nodeShapesModule,
 	nodeBordersModule,
 	textAlignModule,

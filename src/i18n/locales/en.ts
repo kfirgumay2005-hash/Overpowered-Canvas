@@ -578,6 +578,20 @@ export const en = {
 	"query.limited": "Only the first {count} matching notes were added.",
 	"query.cardSize": "Card size (width, height)",
 	"query.max": "Most notes per group",
+	"direction.name": "Right-to-left support",
+	"direction.desc": "Canvas layout direction (global or per canvas) for mirrored mind maps, templates, menus and panels, and the text direction of cards (detected per paragraph, or fixed per card).",
+	"direction.card": "Text direction",
+	"direction.auto": "Automatic",
+	"direction.ltr": "Left to right",
+	"direction.rtl": "Right to left",
+	"direction.ui": "Follow Obsidian's language",
+	"direction.canvas.auto": "Canvas direction: follow settings",
+	"direction.canvas.ltr": "Canvas direction: left to right",
+	"direction.canvas.rtl": "Canvas direction: right to left",
+	"direction.global.name": "Canvas direction",
+	"direction.global.desc": "Which way mind maps grow, templates and frames run, and menus face. A canvas can override this (command \"Canvas direction\").",
+	"direction.cards.name": "Text direction in cards",
+	"direction.cards.desc": "Automatic detects it for each paragraph, so Hebrew and English can mix.",
 } as const;
 
 export type I18nKey = keyof typeof en;
