@@ -1,0 +1,12 @@
+body.opc-mod-pdf-annotation .canvas-node.opc-pdf-pinned .canvas-node-content {
+	display: flex;
+	align-items: stretch;
+	justify-content: stretch;
+	background-color: white;
+}
+body.opc-mod-pdf-annotation .canvas-node.opc-pdf-pinned canvas.opc-pdf-page {
+	width: 100%;
+	height: 100%;
+	display: block;
+	object-fit: contain;
+}

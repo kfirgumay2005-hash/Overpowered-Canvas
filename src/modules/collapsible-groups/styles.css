@@ -1,0 +1,24 @@
+body.opc-mod-collapsible-groups :is(.canvas-node, .canvas-edges g, .canvas-path-label-wrapper).opc-hidden-by-collapse {
+	display: none;
+}
+body.opc-mod-collapsible-groups .canvas-node-group.opc-collapsed > .canvas-node-container {
+	height: calc(44px * var(--zoom-multiplier));
+	border-style: dashed;
+}
+body.opc-mod-collapsible-groups .canvas-node-group > .opc-collapse-toggle {
+	position: absolute;
+	top: 6px;
+	inset-inline-start: 6px;
+	z-index: 2;
+	padding: 2px;
+	transform: scale(var(--zoom-multiplier));
+	transform-origin: top left;
+	color: var(--text-muted);
+	background-color: var(--background-primary);
+	border-radius: var(--radius-s);
+	opacity: 0.85;
+}
+body.opc-mod-collapsible-groups .canvas-node-group > .opc-collapse-toggle:hover {
+	opacity: 1;
+	color: var(--text-normal);
+}

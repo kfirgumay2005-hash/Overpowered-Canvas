@@ -30,7 +30,8 @@ export const autoEdgesModule = defineModule<AutoEdgesSettings>({
 		const sync = (canvas: CanvasLike) => {
 			const key = ctx.settings.property.trim();
 			if (!key || canvas.readonly || !ctx.data.isWritable(canvas)) return;
-			const fileNodes = [...canvas.nodes.values()].filter((n) => nodeType(n) === "file" && n.file instanceof TFile) as (CanvasNodeLike & { file: TFile })[];
+			// Portal contents ("<portal>~<id>") belong to another canvas.
+			const fileNodes = [...canvas.nodes.values()].filter((n) => !n.id.includes("~") && nodeType(n) === "file" && n.file instanceof TFile) as (CanvasNodeLike & { file: TFile })[];
 			const desired = desiredAutoEdges(
 				fileNodes.map((n) => ({ id: n.id, path: n.file.path, property: mc.getFileCache(n.file)?.frontmatter?.[key] })),
 				(link, source) => mc.getFirstLinkpathDest(link, source)?.path ?? null,

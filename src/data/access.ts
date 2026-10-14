@@ -14,8 +14,11 @@ import { applyPatch, EDGE_SHAPE, NODE_SHAPE, readEdge, readNode, readRoot, ROOT_
 export interface ExtraHandle<T> {
 	/** Sanitized snapshot. Treat as read-only. */
 	get(): Readonly<T>;
-	/** Applies a patch (`undefined` removes a field). Joins the current transaction, or saves on its own. */
-	set(patch: Partial<T>): void;
+	/**
+	 * Applies a patch (`undefined` removes a field). Joins the current transaction, or saves on
+	 * its own. `history: false` saves without an undo step (view state such as the last slide).
+	 */
+	set(patch: Partial<T>, options?: { history?: boolean }): void;
 }
 
 export type RootExtra = Omit<OpcRoot, "v">;
@@ -55,8 +58,8 @@ export function createCanvasDataApi(
 		throw new ReadOnlyExtraDataError(found);
 	};
 
-	const afterWrite = (canvas: CanvasLike): void => {
-		if (!history.isInTransaction(canvas)) canvas.requestSave();
+	const afterWrite = (canvas: CanvasLike, options?: { history?: boolean }): void => {
+		if (!history.isInTransaction(canvas)) canvas.requestSave(options?.history !== false);
 	};
 
 	function itemHandle<T extends object>(
@@ -68,12 +71,12 @@ export function createCanvasDataApi(
 	): ExtraHandle<T> {
 		return {
 			get: () => read(item.unknownData[SCHEMA_KEY]),
-			set(patch) {
+			set(patch, options) {
 				guardWrite(item.canvas);
 				const next = applyPatch(item.unknownData[SCHEMA_KEY], patch, shape, defaults);
 				const { [SCHEMA_KEY]: _old, ...rest } = item.unknownData;
 				item.unknownData = next ? { ...rest, [SCHEMA_KEY]: next } : rest;
-				afterWrite(item.canvas);
+				afterWrite(item.canvas, options);
 				onChange(change);
 			},
 		};
@@ -88,14 +91,14 @@ export function createCanvasDataApi(
 				const { v: _v, ...rest } = readRoot(canvas.data[SCHEMA_KEY]) ?? { v: SCHEMA_VERSION };
 				return rest;
 			},
-			set(patch) {
+			set(patch, options) {
 				guardWrite(canvas);
 				const { v: _v, ...rootShape } = ROOT_SHAPE;
 				const next = applyPatch<RootExtra>(canvas.data[SCHEMA_KEY], patch, rootShape as Shape<RootExtra>, ROOT_DEFAULTS);
 				const { [SCHEMA_KEY]: _old, ...rest } = canvas.data;
 				const { v: _ignored, ...content } = next ?? {};
 				canvas.data = Object.keys(content).length > 0 ? { ...rest, [SCHEMA_KEY]: { ...content, v: SCHEMA_VERSION } } : rest;
-				afterWrite(canvas);
+				afterWrite(canvas, options);
 				onChange({ root: canvas });
 			},
 		}),

@@ -284,6 +284,62 @@ export const en = {
 	"imageExport.empty": "Nothing to export.",
 	"imageExport.saved": "Saved to {path}",
 	"imageExport.failed": "Export failed — see the developer console.",
+
+	"focusMode.name": "Focus mode",
+	"focusMode.desc": "Blur everything except the selected cards (their connected edges stay sharp when edge highlighting is on).",
+	"focusMode.command": "Toggle focus mode",
+
+	"collapsibleGroups.name": "Collapsible groups",
+	"collapsibleGroups.desc": "A toggle on each group hides its contents and folds it to the title bar. The state is saved in the canvas.",
+	"collapsibleGroups.collapse": "Collapse group",
+	"collapsibleGroups.expand": "Expand group",
+	"collapsibleGroups.command": "Collapse or expand selected groups",
+
+	"presentation.name": "Presentations",
+	"presentation.desc": "Present a canvas along its edges: mark a start slide, then use the arrow keys, PageUp/PageDown or a presentation remote. Numbered edges set the order. Esc ends the presentation.",
+	"presentation.start": "Start presentation",
+	"presentation.continue": "Continue presentation",
+	"presentation.startHere": "Start presentation from selected card",
+	"presentation.next": "Next slide",
+	"presentation.previous": "Previous slide",
+	"presentation.end": "End presentation",
+	"presentation.setStart": "Set as start slide",
+	"presentation.noStart": "No start slide yet: right-click a card or group → “Set as start slide”.",
+	"presentation.edgeOrder": "Presentation order of this edge…",
+	"presentation.edgeOrderHelp": "When a slide has several outgoing edges, lower numbers are presented first. A numeric edge label works too.",
+	"presentation.addSlide": "Add slide",
+	"presentation.slideLabel": "Slide {n}",
+	"presentation.slideSize.name": "Slide size",
+	"presentation.slideSize.desc": "Width and height of slides created with “Add slide”.",
+	"presentation.fullscreen.name": "Present in full screen",
+
+	"portals.name": "Portals",
+	"portals.desc": "Open a card that links to another canvas to see that canvas inline and draw edges to its cards. The portal contents are never copied into this canvas.",
+	"portals.toggle": "Open / close portal",
+
+	"encapsulate.name": "Encapsulate selection",
+	"encapsulate.desc": "Move the selected cards to a new canvas and leave a card linking to it in their place; edges from outside are re-attached to that card.",
+	"encapsulate.command": "Move selection to new canvas",
+	"encapsulate.fileName": "Name of the new canvas",
+	"encapsulate.defaultName": "part",
+	"encapsulate.create": "Create",
+	"encapsulate.done": "Moved to “{name}”.",
+	"encapsulate.failed": "Could not create the new canvas.",
+
+	"pdfAnnotation.name": "PDF annotation",
+	"pdfAnnotation.desc": "Pin a PDF card to one page (shown as a page with a locked aspect ratio) and insert whole PDFs as one pinned card per page, to annotate around them.",
+	"pdfAnnotation.insert": "Insert PDF for annotation…",
+	"pdfAnnotation.pick": "Choose a PDF…",
+	"pdfAnnotation.pin": "Pin PDF page",
+	"pdfAnnotation.unpin": "Unpin PDF page",
+	"pdfAnnotation.failed": "Could not read this PDF.",
+	"pdfAnnotation.width.name": "Page width when inserting",
+
+	"styleAttributes.name": "Custom style attributes",
+	"styleAttributes.desc": "Style options declared in CSS snippets (/* @opc-node-style … */ or /* @opc-edge-style … */) appear in the selection toolbar and set data-* attributes the snippet can style.",
+
+	"eventsApi.name": "Events API",
+	"eventsApi.desc": "Public events for other plugins and scripts (overpowered-canvas:node-created, …:undo, …:before-save and more). See docs/EVENTS.md.",
 } as const;
 
 export type I18nKey = keyof typeof en;

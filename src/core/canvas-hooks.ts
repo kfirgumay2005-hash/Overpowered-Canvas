@@ -10,6 +10,7 @@
  * canvas has no nodes yet, a temporary addNode/addEdge patch captures them on creation.
  * Every member touched here is documented in docs/INTERNALS.md.
  */
+import type { CanvasFileData } from "../data/json-canvas";
 import type { CanvasEdgeLike, CanvasLike, CanvasMenuLike, CanvasNodeLike, CanvasViewLike } from "../internals/types";
 import type { CanvasTracker } from "./canvas-tracker";
 import type { PatchFactories, Patcher } from "./patcher";
@@ -46,6 +47,11 @@ export interface HookMap {
 	"root-extra-change": [canvas: CanvasLike];
 	/** After canvas.setReadonly(). */
 	"readonly-change": [canvas: CanvasLike];
+	/** Before / after the view writes the file. */
+	"save-before": [canvas: CanvasLike];
+	"save-after": [canvas: CanvasLike];
+	/** A node or edge element was clicked / double-clicked / right-clicked (DOM events). */
+	"node-interaction": [node: CanvasNodeLike, type: "click" | "dblclick" | "contextmenu", evt: MouseEvent];
 }
 
 export type HookName = keyof HookMap;
@@ -63,7 +69,15 @@ export interface InterceptorMap {
 	"edge-update-path": [edge: CanvasEdgeLike];
 	/** Before node.moveAndResize(rect). Return true to block the move (locked items). */
 	"node-move": [node: CanvasNodeLike, rect: { x: number; y: number; width: number; height: number }];
+	/** Before node.startEditing(). Return true to block editing (read-only items). */
+	"node-start-editing": [node: CanvasNodeLike];
 }
+
+/**
+ * Transformers rewrite what canvas.getData() returns (used for saving, history and copy).
+ * They run in registration order and must return a new object, never mutate their input.
+ */
+export type DataTransformer = (data: CanvasFileData, canvas: CanvasLike) => CanvasFileData;
 export type InterceptorName = keyof InterceptorMap;
 type Interceptor<K extends InterceptorName> = (...args: InterceptorMap[K]) => unknown;
 
@@ -130,6 +144,11 @@ export class CanvasHooks {
 			}
 		}
 		return undefined;
+	}
+
+	/** Registers a getData() transformer; returns the unregister function. */
+	transformData(fn: DataTransformer): () => void {
+		return this.add("transform:data", fn as unknown as (...args: never[]) => unknown);
 	}
 
 	/** Open canvases (only while the hub is active). */
@@ -491,6 +510,44 @@ export class CanvasHooks {
 					}),
 			},
 			{
+				kind: "canvas",
+				needs: ["transform:data"],
+				install: (proto) =>
+					this.patch<CanvasLike>("canvas.getData", proto, {
+						getData: (next) =>
+							function (this: CanvasLike) {
+								let data = next.call(this);
+								for (const fn of [...(hub.listeners.get("transform:data") ?? [])]) {
+									try {
+										data = (fn as unknown as DataTransformer)(data, this);
+									} catch (error) {
+										console.error("[overpowered-canvas] data transformer failed", error);
+									}
+								}
+								return data;
+							},
+					}),
+			},
+			{
+				kind: "view",
+				needs: ["save-before", "save-after"],
+				install: (proto) =>
+					this.patch<CanvasViewLike>("view.save", proto, {
+						save: (next) =>
+							async function (this: CanvasViewLike, clear?: boolean) {
+								hub.emit("save-before", this.canvas);
+								const result = await next.call(this, clear);
+								hub.emit("save-after", this.canvas);
+								return result;
+							},
+					}),
+			},
+			{
+				kind: "node",
+				needs: ["node-start-editing"],
+				install: (proto) => this.installStartEditingPatch(proto),
+			},
+			{
 				kind: "menu",
 				needs: ["menu-render"],
 				install: (proto) =>
@@ -507,6 +564,40 @@ export class CanvasHooks {
 					}),
 			},
 		];
+	}
+
+	/** startEditing is overridden by text/file/group nodes; patch every class that defines it. */
+	private installStartEditingPatch(baseProto: object): () => void {
+		const hub = this;
+		const uninstallers: (() => void)[] = [];
+		const seen = new Set<object>();
+		const patchProto = (proto: object) => {
+			if (seen.has(proto) || !Object.prototype.hasOwnProperty.call(proto, "startEditing")) return;
+			seen.add(proto);
+			uninstallers.push(
+				this.patch<CanvasNodeLike>("node.startEditing", proto, {
+					startEditing: (next) =>
+						function (this: CanvasNodeLike, ...args: unknown[]) {
+							if (hub.ask("node-start-editing", this) === true) return;
+							return (next as (...a: unknown[]) => void).apply(this, args);
+						},
+				}),
+			);
+		};
+		const visit = (node: CanvasNodeLike) => {
+			let proto = Object.getPrototypeOf(node) as object | null;
+			while (proto && proto !== Object.prototype) {
+				patchProto(proto);
+				proto = Object.getPrototypeOf(proto) as object | null;
+			}
+		};
+		patchProto(baseProto);
+		this.forEachNode(visit);
+		const off = this.on("node-render", visit);
+		return () => {
+			off();
+			for (const u of uninstallers.reverse()) u();
+		};
 	}
 
 	private installBreakpointPatch(baseProto: object): () => void {

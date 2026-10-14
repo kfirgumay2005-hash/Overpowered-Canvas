@@ -60,15 +60,24 @@ export const isNode = (item: CanvasItemLike): item is CanvasNodeLike => "nodeEl"
 export const isEdge = (item: CanvasItemLike): item is CanvasEdgeLike => "lineGroupEl" in item;
 
 /**
- * Text cards edit inside an iframe. Our data-opc-* attributes (and dir) are mirrored onto that
- * iframe's <body>, so CSS keyed on them also styles the editor.
+ * Text cards edit inside an iframe. The node's data-* attributes (ours and custom style
+ * attributes) and dir are mirrored onto that iframe's <body>, so CSS keyed on them also
+ * styles the editor.
  */
 export function mirrorToFrame(node: CanvasNodeLike): void {
 	const frame = node.contentEl?.querySelector<HTMLIFrameElement>("iframe.embed-iframe");
 	const body = frame?.contentDocument?.body;
 	if (!body) return;
-	for (const attr of [...body.attributes]) if (attr.name.startsWith("data-opc-") && !node.nodeEl.hasAttribute(attr.name)) body.removeAttribute(attr.name);
-	for (const attr of [...node.nodeEl.attributes]) if (attr.name.startsWith("data-opc-") || attr.name === "dir") body.setAttribute(attr.name, attr.value);
+	// Remember which attributes we put there, so we only ever remove our own.
+	const mine = new Set((body.getAttribute("data-opc-mirrored") ?? "").split(" ").filter(Boolean));
+	for (const name of mine) if (!node.nodeEl.hasAttribute(name)) body.removeAttribute(name);
+	const next: string[] = [];
+	for (const attr of [...node.nodeEl.attributes]) {
+		if (!attr.name.startsWith("data-") && attr.name !== "dir") continue;
+		body.setAttribute(attr.name, attr.value);
+		next.push(attr.name);
+	}
+	body.setAttribute("data-opc-mirrored", next.join(" "));
 }
 
 export class CanvasUi {

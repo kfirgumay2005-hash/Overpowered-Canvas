@@ -1,0 +1,26 @@
+body.opc-mod-presentation .canvas-wrapper.opc-presenting :is(.canvas-controls, .canvas-card-menu, .canvas-menu-container, .opc-search-bar) {
+	display: none !important;
+}
+body.opc-mod-presentation .canvas-wrapper.opc-presenting {
+	cursor: default;
+}
+body.opc-mod-presentation .opc-presentation-counter {
+	position: absolute;
+	bottom: var(--size-4-3);
+	inset-inline-end: var(--size-4-4);
+	z-index: var(--layer-popover);
+	font-size: var(--font-ui-small);
+	color: var(--text-muted);
+	background-color: var(--background-primary);
+	border-radius: var(--radius-s);
+	padding: var(--size-2-1) var(--size-4-2);
+	opacity: 0.8;
+}
+body.opc-mod-presentation .canvas-node.opc-start-slide::before {
+	content: "▶";
+	position: absolute;
+	top: calc(-28px * var(--zoom-multiplier));
+	inset-inline-end: 0;
+	font-size: calc(14px * var(--zoom-multiplier));
+	color: var(--color-accent);
+}

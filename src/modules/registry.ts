@@ -4,6 +4,14 @@ import { autoEdgesModule } from "./auto-edges";
 import { canvasMetadataModule } from "./canvas-metadata";
 import { canvasPropertiesModule } from "./canvas-properties";
 import { canvasSearchModule } from "./canvas-search";
+import { collapsibleGroupsModule } from "./collapsible-groups";
+import { encapsulateModule } from "./encapsulate";
+import { eventsApiModule } from "./events-api";
+import { focusModeModule } from "./focus-mode";
+import { pdfAnnotationModule } from "./pdf-annotation";
+import { portalsModule } from "./portals";
+import { presentationModule } from "./presentation";
+import { styleAttributesModule } from "./style-attributes";
 import { imageExportModule } from "./image-export";
 import { nodeLinksModule } from "./node-links";
 import { readonlyPlusModule } from "./readonly-plus";
@@ -47,5 +55,13 @@ export const MODULES: readonly AnyModule[] = [
 	canvasSearchModule,
 	readonlyPlusModule,
 	imageExportModule,
+	presentationModule,
+	portalsModule,
+	collapsibleGroupsModule,
+	focusModeModule,
+	encapsulateModule,
+	pdfAnnotationModule,
+	styleAttributesModule,
+	eventsApiModule,
 	diagnosticsModule,
 ];

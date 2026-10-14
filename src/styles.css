@@ -18,6 +18,11 @@
 @import "./modules/canvas-search/styles.css";
 @import "./modules/node-links/styles.css";
 @import "./modules/canvas-properties/styles.css";
+@import "./modules/focus-mode/styles.css";
+@import "./modules/collapsible-groups/styles.css";
+@import "./modules/presentation/styles.css";
+@import "./modules/portals/styles.css";
+@import "./modules/pdf-annotation/styles.css";
 
 .opc-settings .opc-setting-note {
 	color: var(--text-warning);

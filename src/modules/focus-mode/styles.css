@@ -1,0 +1,12 @@
+body.opc-mod-focus-mode .canvas-wrapper.opc-focus-mode .canvas-node:not(.is-selected):not(.is-focused) {
+	filter: blur(3px) saturate(0.6);
+	opacity: 0.45;
+	transition: filter 200ms ease, opacity 200ms ease;
+}
+body.opc-mod-focus-mode .canvas-wrapper.opc-focus-mode .canvas-edges g:not(.is-focused):not(.is-opc-highlighted) {
+	filter: blur(2px);
+	opacity: 0.35;
+}
+body.opc-mod-focus-mode .canvas-wrapper.opc-focus-mode .canvas-path-label-wrapper {
+	opacity: 0.4;
+}

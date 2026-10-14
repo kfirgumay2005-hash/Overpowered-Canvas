@@ -262,6 +262,7 @@ export class ModuleManager {
 			inspect,
 			on: (name, listener) => component.register(host.hooks.on(name, listener)),
 			intercept: (name, fn) => component.register(host.hooks.intercept(name, fn)),
+			transformData: (fn) => component.register(host.hooks.transformData(fn)),
 			decorateNodes: (decorator) => component.register(host.ui.decorateNodes(decorator)),
 			decorateEdges: (decorator) => component.register(host.ui.decorateEdges(decorator)),
 			addMenuButton: (spec) => {

@@ -1,0 +1,26 @@
+body.opc-mod-portals .canvas-node.opc-portal-open > .canvas-node-container > .canvas-node-content {
+	visibility: hidden;
+}
+body.opc-mod-portals .canvas-node.opc-portal-open > .canvas-node-container {
+	border-style: dashed;
+	border-width: 2px;
+	background-color: color-mix(in oklch, var(--background-primary) 60%, transparent);
+}
+body.opc-mod-portals .canvas-node.opc-portal-open > .canvas-node-container::before {
+	content: "⧉ " attr(data-portal-title);
+	position: absolute;
+	top: 0;
+	inset-inline-start: 0;
+	height: var(--opc-portal-header, 36px);
+	line-height: var(--opc-portal-header, 36px);
+	padding-inline: var(--size-4-3);
+	color: var(--text-muted);
+	font-size: var(--font-ui-small);
+}
+body.opc-mod-portals .canvas-node.opc-portal-ghost > .canvas-node-container {
+	box-shadow: none;
+	border-style: dotted;
+}
+body.opc-mod-portals .canvas-node.opc-portal-ghost {
+	cursor: default;
+}

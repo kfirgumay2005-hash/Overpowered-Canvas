@@ -2,7 +2,7 @@ import type { App, Command, EventRef, Menu } from "obsidian";
 import type { CanvasDataApi } from "../data/access";
 import type { I18nKey, Translate } from "../i18n";
 import type { CanvasEdgeLike, CanvasLike, CanvasNodeLike, CanvasViewLike } from "../internals/types";
-import type { HookMap, HookName, InterceptorMap, InterceptorName } from "./canvas-hooks";
+import type { DataTransformer, HookMap, HookName, InterceptorMap, InterceptorName } from "./canvas-hooks";
 import type { CardMenuButtonSpec, EdgeDecorator, MenuButtonSpec, NodeDecorator } from "./canvas-ui";
 import type { PublicEvents } from "./events";
 import type { HistoryApi } from "./history";
@@ -102,6 +102,8 @@ export interface ModuleContext<S extends object> {
 	/** Canvas hooks (see core/canvas-hooks.ts); unsubscribed on disable. */
 	on<K extends HookName>(name: K, listener: (...args: HookMap[K]) => void): void;
 	intercept<K extends InterceptorName>(name: K, fn: (...args: InterceptorMap[K]) => unknown): void;
+	/** Rewrites what canvas.getData() returns (saving, history, copy). Must not mutate its input. */
+	transformData(fn: DataTransformer): void;
 	decorateNodes(decorator: NodeDecorator): void;
 	decorateEdges(decorator: EdgeDecorator): void;
 	/** Returns a function that removes the button early; it is removed on disable anyway. */
