@@ -1,0 +1,294 @@
+import { Component, Notice, Platform, type App, type Command, type Plugin } from "obsidian";
+import type { CanvasDataApi } from "../data/access";
+import type { Translate } from "../i18n";
+import { mergeWithDefaults, type ModuleState, type PluginSettings } from "../settings/settings";
+import type { CanvasTracker } from "./canvas-tracker";
+import type { PublicEvents } from "./events";
+import type { HistoryApi } from "./history";
+import type { AnyModule, ModuleContext, PluginInspector } from "./module";
+import type { Patcher } from "./patcher";
+import { sortByDependencies } from "./dependencies";
+
+export interface ModuleHost {
+	readonly app: App;
+	readonly plugin: Plugin;
+	readonly patcher: Patcher;
+	readonly tracker: CanvasTracker;
+	readonly data: CanvasDataApi;
+	readonly history: HistoryApi;
+	readonly events: PublicEvents;
+	readonly settings: PluginSettings;
+	t(): Translate;
+	saveSettings(): Promise<void>;
+}
+
+export type ModuleStatus = "enabled" | "disabled" | "failed" | "unavailable";
+
+type SettingsListener = (next: Readonly<object>, prev: Readonly<object>) => void;
+
+interface ActiveModule {
+	readonly def: AnyModule;
+	readonly component: Component;
+	readonly ctx: ModuleContext<object>;
+	readonly listeners: Set<SettingsListener>;
+	current: object;
+}
+
+/** Owns the enable/disable lifecycle of every module, in dependency order, with error isolation. */
+export class ModuleManager {
+	private readonly byId = new Map<string, AnyModule>();
+	private readonly active = new Map<string, ActiveModule>();
+	private readonly failed = new Set<string>();
+	/** Topological order: dependencies before dependents. */
+	readonly ordered: readonly AnyModule[];
+
+	constructor(
+		private readonly host: ModuleHost,
+		modules: readonly AnyModule[],
+	) {
+		for (const def of modules) {
+			if (this.byId.has(def.id)) throw new Error(`Duplicate module id "${def.id}"`);
+			this.byId.set(def.id, def);
+		}
+		this.ordered = sortByDependencies(modules);
+	}
+
+	get(id: string): AnyModule | undefined {
+		return this.byId.get(id);
+	}
+
+	isAvailable(def: AnyModule): boolean {
+		return def.platforms !== "desktop-only" || !Platform.isMobile;
+	}
+
+	status(id: string): ModuleStatus {
+		const def = this.byId.get(id);
+		if (!def || !this.isAvailable(def)) return "unavailable";
+		if (this.active.has(id)) return "enabled";
+		if (this.failed.has(id)) return "failed";
+		return "disabled";
+	}
+
+	activeIds(): string[] {
+		return [...this.active.keys()];
+	}
+
+	/** The live context of an enabled module (for its settings UI). */
+	contextOf(id: string): ModuleContext<object> | undefined {
+		return this.active.get(id)?.ctx;
+	}
+
+	/** Stored settings of a module merged with its defaults. */
+	settingsOf(def: AnyModule): object {
+		return this.resolveSettings(def, this.state(def).settings);
+	}
+
+	async startAll(): Promise<void> {
+		for (const def of this.ordered) {
+			if (this.active.has(def.id) || !this.state(def).enabled || !this.isAvailable(def)) continue;
+			if (!(def.dependsOn ?? []).every((dep) => this.active.has(dep))) continue;
+			await this.activate(def);
+		}
+	}
+
+	/** Brings running modules in line with the stored settings (after an external change). */
+	async reconcile(): Promise<void> {
+		for (const def of [...this.ordered].reverse()) {
+			const shouldRun = this.state(def).enabled && this.isAvailable(def) && (def.dependsOn ?? []).every((dep) => this.state(this.byId.get(dep)!).enabled);
+			if (!shouldRun && this.active.has(def.id)) this.deactivate(def.id);
+		}
+		for (const mod of this.active.values()) this.applySettings(mod, this.settingsOf(mod.def));
+		await this.startAll();
+	}
+
+	async stopAll(): Promise<void> {
+		for (const def of [...this.ordered].reverse()) if (this.active.has(def.id)) this.deactivate(def.id);
+	}
+
+	/** Returns false when the change was refused (missing dependency or failed start). */
+	async setEnabled(id: string, enabled: boolean): Promise<boolean> {
+		const def = this.byId.get(id);
+		if (!def || !this.isAvailable(def)) return false;
+		const t = this.host.t();
+
+		if (enabled) {
+			const missing = (def.dependsOn ?? []).find((dep) => !this.active.has(dep));
+			if (missing) {
+				const dependency = this.byId.get(missing);
+				new Notice(t("module.enable.missingDependency", { dependency: dependency ? t(dependency.name) : missing, module: t(def.name) }));
+				return false;
+			}
+			this.state(def).enabled = true;
+			await this.host.saveSettings();
+			return this.active.has(id) || (await this.activate(def));
+		}
+
+		const dependents = this.dependentsOf(id).filter((d) => this.active.has(d.id));
+		for (const dep of [...dependents].reverse()) {
+			this.deactivate(dep.id);
+			this.state(dep).enabled = false;
+		}
+		if (dependents.length > 0)
+			new Notice(t("module.disable.cascade", { modules: dependents.map((d) => t(d.name)).join(", "), module: t(def.name) }));
+		this.deactivate(id);
+		this.failed.delete(id);
+		this.state(def).enabled = false;
+		await this.host.saveSettings();
+		return true;
+	}
+
+	async resetSettings(id: string): Promise<void> {
+		const def = this.byId.get(id);
+		if (!def) return;
+		this.state(def).settings = {};
+		await this.host.saveSettings();
+		const mod = this.active.get(id);
+		if (mod) this.applySettings(mod, this.resolveSettings(def, {}));
+	}
+
+	private state(def: AnyModule): ModuleState {
+		const all = this.host.settings.modules;
+		return (all[def.id] ??= { enabled: def.defaultEnabled, settings: {} });
+	}
+
+	private resolveSettings(def: AnyModule, stored: unknown): object {
+		const defaults = def.defaultSettings as object;
+		try {
+			return def.sanitizeSettings ? def.sanitizeSettings(stored, defaults) : mergeWithDefaults(stored, defaults);
+		} catch (error) {
+			console.error(`[overpowered-canvas] settings of "${def.id}" are invalid; using defaults`, error);
+			return { ...defaults };
+		}
+	}
+
+	private applySettings(mod: ActiveModule, next: object): void {
+		const prev = mod.current;
+		mod.current = Object.freeze({ ...next });
+		for (const listener of mod.listeners) {
+			try {
+				listener(mod.current, prev);
+			} catch (error) {
+				console.error(`[overpowered-canvas] settings listener of "${mod.def.id}" threw`, error);
+			}
+		}
+	}
+
+	private dependentsOf(id: string): AnyModule[] {
+		const result: AnyModule[] = [];
+		const visit = (target: string) => {
+			for (const def of this.ordered) {
+				if (def.dependsOn?.includes(target) && !result.includes(def)) {
+					result.push(def);
+					visit(def.id);
+				}
+			}
+		};
+		visit(id);
+		return result;
+	}
+
+	private async activate(def: AnyModule): Promise<boolean> {
+		const { host } = this;
+		const component = new Component();
+		component.load();
+		const bodyClass = `opc-mod-${def.id}`;
+		document.body.addClass(bodyClass);
+		component.register(() => document.body.removeClass(bodyClass));
+
+		const mod: ActiveModule = {
+			def,
+			component,
+			listeners: new Set(),
+			current: Object.freeze({ ...this.settingsOf(def) }),
+			ctx: undefined as unknown as ModuleContext<object>,
+		};
+		const inspect: PluginInspector = {
+			patches: () => host.patcher.list(),
+			activeModules: () => this.activeIds(),
+			openCanvasCount: () => host.tracker.openCanvases().length,
+		};
+		const ctx: ModuleContext<object> = {
+			moduleId: def.id,
+			app: host.app,
+			get t() {
+				return host.t();
+			},
+			get settings() {
+				return mod.current;
+			},
+			updateSettings: async (patch) => {
+				const next = this.resolveSettings(def, { ...mod.current, ...patch });
+				this.state(def).settings = { ...next };
+				await host.saveSettings();
+				this.applySettings(mod, next);
+			},
+			onSettingsChange: (cb) => {
+				const listener = cb as SettingsListener;
+				mod.listeners.add(listener);
+				component.register(() => mod.listeners.delete(listener));
+			},
+			patch: (label, target, factories) => {
+				component.register(host.patcher.apply(def.id, label, target, factories));
+			},
+			onCanvas: (cb) => {
+				component.register(host.tracker.subscribe(cb));
+			},
+			addCommand: (command: Command) => {
+				const id = `${def.id}:${command.id}`;
+				const added = host.plugin.addCommand({ ...command, id });
+				component.register(() => host.plugin.removeCommand(id));
+				return added;
+			},
+			addStatusBarItem: () => {
+				const el = host.plugin.addStatusBarItem();
+				component.register(() => el.remove());
+				return el;
+			},
+			registerEvent: (ref) => component.registerEvent(ref),
+			registerDomEvent: (el: HTMLElement | Window, type: string, cb: (ev: Event) => unknown, options?: boolean | AddEventListenerOptions) =>
+				component.registerDomEvent(el as HTMLElement, type as keyof HTMLElementEventMap, cb, options),
+			registerInterval: (id) => component.registerInterval(id),
+			register: (cleanup) => component.register(cleanup),
+			data: host.data,
+			history: host.history,
+			events: host.events,
+			inspect,
+		};
+		(mod as { ctx: ModuleContext<object> }).ctx = ctx;
+
+		try {
+			await def.enable(ctx);
+		} catch (error) {
+			console.error(`[overpowered-canvas] module "${def.id}" failed to enable`, error);
+			this.teardown(mod);
+			this.failed.add(def.id);
+			new Notice(host.t()("module.enable.failed", { module: host.t()(def.name) }));
+			return false;
+		}
+		this.failed.delete(def.id);
+		this.active.set(def.id, mod);
+		host.events.emit("module-enabled", def.id);
+		return true;
+	}
+
+	private deactivate(id: string): void {
+		const mod = this.active.get(id);
+		if (!mod) return;
+		this.active.delete(id);
+		this.teardown(mod);
+		this.host.events.emit("module-disabled", id);
+	}
+
+	private teardown(mod: ActiveModule): void {
+		try {
+			mod.def.disable?.();
+		} catch (error) {
+			console.error(`[overpowered-canvas] module "${mod.def.id}" threw in disable()`, error);
+		}
+		try {
+			mod.component.unload();
+		} catch (error) {
+			console.error(`[overpowered-canvas] cleanup of "${mod.def.id}" failed`, error);
+		}
+	}
+}

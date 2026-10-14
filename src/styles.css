@@ -1,0 +1,16 @@
+/*
+ * Overpowered Canvas styles.
+ * Core styles live here. Every module's styles.css is @imported below and must scope all of its
+ * rules under body.opc-mod-<module-id>, so a disabled module leaves no styling behind.
+ */
+
+.opc-settings .opc-setting-note {
+	color: var(--text-warning);
+	font-size: var(--font-ui-smaller);
+}
+
+.opc-settings .opc-module-options {
+	padding-inline-start: var(--size-4-6);
+	border-inline-start: 2px solid var(--background-modifier-border);
+	margin-inline-start: var(--size-4-3);
+}
