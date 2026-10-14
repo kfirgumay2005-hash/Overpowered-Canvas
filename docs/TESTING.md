@@ -113,3 +113,24 @@ Automated runtime checks of every item below were run in an isolated Obsidian 1.
    zooms to fit.
 7. **Export:** Command palette → *Export canvas as image…* → PNG/SVG, whole canvas or selection,
    transparent background, privacy mode, watermark. Open the file: it matches the canvas.
+
+## Manual — Phase 3 (interaction)
+
+1. **Presentation:** right-click a card → *Set as start slide* (▶ badge). Connect slides with edges;
+   give a slide two outgoing edges labelled `1` and `2`. Command *Start presentation*: full screen,
+   read-only; → / PageDown / Space advance (following `1` first, then back to `2`), ← goes back,
+   Esc ends. *Continue presentation* resumes where you stopped. Bottom bar → *Add slide*.
+2. **Portals:** add a note card for another `.canvas` → select it → toolbar *Open portal*: its cards
+   appear inside (dotted, not movable or editable). Connect a card of this canvas to one inside.
+   Close and reopen the file: the edge still points into the portal. In vanilla Obsidian the edge
+   points at the portal card.
+3. **Collapsible groups:** chevron at a group's top corner → contents and their edges hide; Ctrl+Z.
+4. **Focus mode:** select a card → command *Toggle focus mode* → the rest blurs.
+5. **Encapsulate:** select cards → right-click → *Move selection to new canvas* → a card linking to
+   the new canvas takes their place; outside edges now attach to it; Ctrl+Z restores the cards.
+6. **PDF:** command *Insert PDF for annotation…* → one pinned card per page (aspect ratio locked).
+   Right-click a regular PDF card → *Pin PDF page* pins the page it shows.
+7. **Style attributes:** create a snippet with an `/* @opc-node-style … */` block (see the module
+   description) and enable it → a new toolbar button sets `data-<key>` on the card.
+8. **Events:** see docs/EVENTS.md; in the console:
+   `app.workspace.on("overpowered-canvas:node-created", (c, n) => console.log(n.id))`, then add a card.
