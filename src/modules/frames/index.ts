@@ -176,7 +176,7 @@ export const framesModule = defineModule<FramesSettings>({
 	id: "frames",
 	name: "frames.name",
 	description: "frames.desc",
-	group: "interaction",
+	group: "navigation",
 	defaultEnabled: true,
 	defaultSettings: { fullscreen: true, padding: 40 },
 	sanitizeSettings: (raw, defaults) => mergeWithDefaults(raw, defaults),

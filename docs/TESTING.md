@@ -195,3 +195,25 @@ Automated runtime checks of every item below were run in an isolated Obsidian 1.
    read-only; → / Space / PageDown next, ← / PageUp back, Home / End, Esc ends. Right-click a
    frame in the panel to start from it.
 
+## Manual — Phase 7 (data features)
+
+1. **Templates:** command *New canvas from template…* → choose *Kanban* → a new canvas with
+   To do / Doing / Done opens (in Hebrew UI: Hebrew labels; in an RTL UI the columns run right
+   to left). Try SWOT, Retrospective, Weekly plan (week starts on Sunday in Hebrew), Mind map,
+   Flowchart. In an existing canvas: bottom bar → template button (or *Insert template…*) →
+   the template lands in the middle of the view, selected; one Ctrl+Z removes it.
+2. **Your own templates:** select some cards → right-click → *Save selection as template*
+   (or *Save canvas as template*) → a canvas file appears in *Canvas templates*; it is listed
+   first in the template picker. Right-click a folder → *New canvas from template…* creates
+   the canvas there.
+3. **Kanban:** create notes with `status: todo`. In the Kanban board, drag them from the file
+   explorer into *To do*. Drag a card to *Doing* → the note's `status` becomes `doing`. Edit a
+   note's status to `done` in the note → the card moves to *Done*. Ctrl+Z in the canvas → the
+   card goes back and the note follows. Right-click a group → *Kanban: bind to property…* to
+   bind your own columns (any property). Rules: docs/KANBAN.md.
+4. **Query groups:** create a group → right-click → *Query group: set filter…* → tags
+   `project` → Apply → cards for every note tagged #project (or #project/…) appear in a grid,
+   and the group grows to fit. Remove the tag from a note → the refresh button on the group's
+   badge (or *Refresh all query groups*) removes its card; cards you add by hand stay. With
+   *Refresh automatically*, changes apply by themselves.
+

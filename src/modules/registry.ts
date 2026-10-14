@@ -32,6 +32,9 @@ import { edgeEditingModule } from "./edge-editing";
 import { lockItemsModule } from "./lock-items";
 import { minimapModule } from "./minimap";
 import { framesModule } from "./frames";
+import { boardTemplatesModule } from "./board-templates";
+import { kanbanModule } from "./kanban";
+import { queryGroupsModule } from "./query-groups";
 import { edgeRoutingModule } from "./edge-routing";
 import { edgeStylesModule } from "./edge-styles";
 import { edgeToolsModule } from "./edge-tools";
@@ -87,5 +90,8 @@ export const MODULES: readonly AnyModule[] = [
 	lockItemsModule,
 	minimapModule,
 	framesModule,
+	boardTemplatesModule,
+	kanbanModule,
+	queryGroupsModule,
 	diagnosticsModule,
 ];

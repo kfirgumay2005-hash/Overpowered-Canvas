@@ -228,7 +228,7 @@ export const minimapModule = defineModule<MinimapSettings>({
 	id: "minimap",
 	name: "minimap.name",
 	description: "minimap.desc",
-	group: "interaction",
+	group: "navigation",
 	defaultEnabled: true,
 	defaultSettings: DEFAULTS,
 	sanitizeSettings: (raw, defaults) => {

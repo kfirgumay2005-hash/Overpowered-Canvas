@@ -1,0 +1,15 @@
+/* "status: doing" under the group label. */
+body.opc-mod-kanban .opc-kanban-badge {
+	position: absolute;
+	top: 0;
+	inset-inline-end: 0;
+	transform: translateY(calc(-100% - 4px * var(--zoom-multiplier, 1)));
+	padding: 0 calc(6px * var(--zoom-multiplier, 1));
+	border-radius: var(--radius-s);
+	font-size: calc(var(--font-ui-smaller) * var(--zoom-multiplier, 1));
+	color: var(--text-muted);
+	background: var(--background-secondary);
+	border: 1px solid var(--background-modifier-border);
+	white-space: nowrap;
+	pointer-events: none;
+}
