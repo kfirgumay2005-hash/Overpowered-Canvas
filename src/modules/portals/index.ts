@@ -204,6 +204,7 @@ export const portalsModule = defineModule({
 		};
 		ctx.addMenuButton({
 			id: "portal",
+			command: false,
 			icon: "door-open",
 			tooltip: () => ctx.t("portals.toggle"),
 			order: 30,

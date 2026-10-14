@@ -81,6 +81,7 @@ export const edgeToolsModule = defineModule<EdgeToolsSettings>({
 			});
 		ctx.addMenuButton({
 			id: "edge-flip",
+			command: false,
 			icon: "arrow-left-right",
 			tooltip: () => ctx.t("edgeTools.flip"),
 			order: 23,

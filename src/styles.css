@@ -37,6 +37,7 @@
 @import "./modules/kanban/styles.css";
 @import "./modules/query-groups/styles.css";
 @import "./modules/direction/styles.css";
+@import "./modules/performance/styles.css";
 
 .opc-settings .opc-setting-note {
 	color: var(--text-warning);

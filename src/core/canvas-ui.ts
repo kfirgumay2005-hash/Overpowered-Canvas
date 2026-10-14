@@ -26,7 +26,8 @@ export interface MenuButtonContext {
 	canvas: CanvasLike;
 	selection: CanvasItemLike[];
 	buttonEl: HTMLElement;
-	evt: MouseEvent;
+	/** Absent when run from the command palette. */
+	evt?: MouseEvent;
 }
 
 export interface MenuButtonSpec {
@@ -37,6 +38,11 @@ export interface MenuButtonSpec {
 	order?: number;
 	/** Shown in read-only mode too (default: hidden). */
 	readonly?: boolean;
+	/**
+	 * Also offered as a command acting on the selection (default true); its picker opens as a
+	 * searchable list. Set false when the module has its own command for it.
+	 */
+	command?: boolean;
 	isVisible(selection: CanvasItemLike[], canvas: CanvasLike): boolean;
 	/** Toggle buttons: highlighted while true. */
 	isActive?(selection: CanvasItemLike[], canvas: CanvasLike): boolean;

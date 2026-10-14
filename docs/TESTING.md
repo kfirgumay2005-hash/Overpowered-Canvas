@@ -180,6 +180,26 @@ Automated runtime checks of every item below were run in an isolated Obsidian 1.
 11. **Footprint:** disable all Phase 5 modules in settings → no `data-opc-kind`, handles,
     badges or overlays remain; ink cards show ✏️ and lines/shapes/stickies show as plain cards.
 
+### Stylus
+
+**iPad + Apple Pencil** (Obsidian for iPadOS)
+1. Open a canvas, tap the pen button in the bottom bar. Draw with the Pencil: pressing harder
+   makes the line thicker; with the *Pencil* tool, tilting the Pencil widens the stroke.
+2. Rest your palm on the screen while drawing: no stray marks (touches are ignored while the
+   Pencil is active and for a moment after).
+3. *More options* → *Pen only*: the Pencil draws, one or two fingers pan and pinch-zoom.
+4. Hover the Pencil above the screen (M2 iPad and newer): a circle previews the brush.
+5. Double-tapping the Pencil (if set to *switch to eraser* in iPadOS) is not reported to web
+   apps; use the eraser button.
+
+**Windows / Android pen** (Surface Pen, Wacom, Samsung S Pen)
+1. Draw with pressure as above. Flip the pen to its eraser end (Surface/Wacom) → it erases
+   without changing tools; flip back → the previous tool continues.
+2. Hold the barrel button while drawing → it erases (where the hardware reports it as the
+   eraser button).
+3. With a finger on a touchscreen: *Pen only* off → the finger draws; on → the finger pans.
+4. Devices that don't report pressure or tilt (mouse, some pens) draw an even line.
+
 ## Manual — Phase 6 (navigation)
 
 1. **Minimap:** open a canvas with content → a map in the top-start corner shows cards, groups,
@@ -216,4 +236,23 @@ Automated runtime checks of every item below were run in an isolated Obsidian 1.
    and the group grows to fit. Remove the tag from a note → the refresh button on the group's
    badge (or *Refresh all query groups*) removes its card; cards you add by hand stay. With
    *Refresh automatically*, changes apply by themselves.
+
+## Manual — Phase 8 (hardening)
+
+1. **RTL canvas:** command *Canvas direction: right to left* → the controls and card bar move
+   to the left side, the minimap to the right, cards stay where they were. Select a card →
+   Tab: the mind map child appears on the left. Insert the *Kanban* template: columns run right
+   to left. Command *Canvas direction: follow settings* reverts (the setting is stored in the
+   file, `x-opc.dir`). Settings → *Right-to-left support* → *Canvas direction* applies to all.
+2. **Mixed text:** a card with `שלום world`, `Hello עולם`, a Hebrew bullet list and a task →
+   each paragraph takes its own direction; bullets, numbers and checkboxes sit on the right for
+   Hebrew lists. Toolbar → *Text direction* forces LTR/RTL for a card (also while editing).
+3. **Hebrew UI:** Settings → language → Hebrew → reload the plugin: every command, menu,
+   tooltip and setting is in Hebrew, consistent terms (קנבס, קשתות, כרטיס).
+4. **Large canvas:** `npm run stress` → open `stress-1000.canvas` → zoom to fit: the canvas
+   switches to the fast renderer (cards as simple boxes, group labels readable); panning and
+   zooming are smooth. Click a card → it gets selected; drag it → it moves; zoom in past 25 % →
+   normal cards return. Diagnostics → *Measure pan and zoom performance* gives the fps.
+5. **Mobile:** open the vault on a phone/tablet → the plugin loads; drawing works with a finger
+   (pen-only mode off) and with a stylus; image export saves into the attachment folder.
 

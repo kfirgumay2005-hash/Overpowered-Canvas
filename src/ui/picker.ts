@@ -23,11 +23,21 @@ export interface PickerSection {
 
 let current: { close(): void; anchor: HTMLElement } | null = null;
 
+/**
+ * An anchor that is not a toolbar button: menu actions run from the command palette pass one,
+ * and the picker opens as a searchable list instead of a popover.
+ */
+export interface ChoiceAnchor extends HTMLElement {
+	opcChoose?(sections: PickerSection[], onPick: (id: string) => void): void;
+}
+
 export function closePicker(): void {
 	current?.close();
 }
 
 export function showPicker(anchor: HTMLElement, sections: PickerSection[], onPick: (id: string) => void): void {
+	const choose = (anchor as ChoiceAnchor).opcChoose;
+	if (choose) return choose(sections, onPick);
 	if (current?.anchor === anchor) {
 		current.close();
 		return;

@@ -22,11 +22,25 @@ const PAD = 8;
 /** Above this many cards, strokes are drawn as boxes. */
 const DETAIL_LIMIT = 3000;
 
+/** The visible world rectangle, from the transform (getViewportBBox() measures the DOM). */
+function viewOf(canvas: CanvasLike, size: { w: number; h: number }): Box {
+	const w = size.w / 2 / canvas.scale;
+	const h = size.h / 2 / canvas.scale;
+	return { minX: canvas.x - w, minY: canvas.y - h, maxX: canvas.x + w, maxY: canvas.y + h };
+}
+
 class Minimap {
 	readonly el: HTMLElement;
 	private readonly cv: HTMLCanvasElement;
 	private transform: MapTransform | null = null;
 	private timer = 0;
+	/** Cards, edges and strokes, re-rendered only when the content changes (not on pan/zoom). */
+	private readonly layer = document.createElement("canvas");
+	private contentDirty = true;
+	private accent: string | null = null;
+	/** The canvas size, observed (reading clientWidth while panning forces a layout). */
+	private size = { w: 0, h: 0 };
+	private readonly resize: ResizeObserver;
 
 	constructor(
 		private readonly ctx: ModuleContext<MinimapSettings>,
@@ -36,11 +50,20 @@ class Minimap {
 		this.cv = this.el.createEl("canvas");
 		this.el.addEventListener("pointerdown", this.onDown);
 		this.el.addEventListener("wheel", (e) => e.stopPropagation(), { passive: true });
+		this.size = { w: canvas.wrapperEl.clientWidth, h: canvas.wrapperEl.clientHeight };
+		this.resize = new ResizeObserver(([entry]) => {
+			if (!entry) return;
+			this.size = { w: entry.contentRect.width, h: entry.contentRect.height };
+			this.schedule();
+		});
+		this.resize.observe(canvas.wrapperEl);
 		this.layout();
 		this.draw();
 	}
 
+
 	destroy(): void {
+		this.resize.disconnect();
 		window.clearTimeout(this.timer);
 		this.el.remove();
 	}
@@ -50,6 +73,13 @@ class Minimap {
 		this.el.dataset.corner = s.corner;
 		this.el.style.width = `${s.width}px`;
 		this.el.style.height = `${Math.round(s.width * 0.68)}px`;
+		this.schedule();
+	}
+
+	/** The content changed: re-render it on the next redraw. */
+	invalidate(): void {
+		this.contentDirty = true;
+		this.accent = null;
 		this.schedule();
 	}
 
@@ -73,16 +103,43 @@ class Minimap {
 			this.cv.style.width = `${width}px`;
 			this.cv.style.height = `${height}px`;
 		}
-		const g = this.cv.getContext("2d");
-		if (!g) return;
+		const out = this.cv.getContext("2d");
+		if (!out) return;
+		const view = viewOf(canvas, this.size);
+		if (this.contentDirty || this.layer.width !== this.cv.width || this.layer.height !== this.cv.height || canvas.nodes.size === 0) {
+			this.contentDirty = false;
+			this.layer.width = this.cv.width;
+			this.layer.height = this.cv.height;
+			this.renderContent(view, width, height, dpr);
+		}
+		out.setTransform(1, 0, 0, 1, 0, 0);
+		out.clearRect(0, 0, this.cv.width, this.cv.height);
+		out.drawImage(this.layer, 0, 0);
+		out.setTransform(dpr, 0, 0, dpr, 0, 0);
+		const t = this.transform!;
+		// Cached: reading styles on every pan frame forces a style pass over the whole canvas.
+		const accent = (this.accent ??= getComputedStyle(canvas.wrapperEl).getPropertyValue("--color-accent").trim() || "#7c3aed");
+		const v1 = toMap(t, view.minX, view.minY);
+		const v2 = toMap(t, view.maxX, view.maxY);
+		out.fillStyle = accent;
+		out.globalAlpha = 0.12;
+		out.fillRect(v1.x, v1.y, v2.x - v1.x, v2.y - v1.y);
+		out.globalAlpha = 1;
+		out.strokeStyle = accent;
+		out.lineWidth = 1.5;
+		out.strokeRect(v1.x, v1.y, v2.x - v1.x, v2.y - v1.y);
+	}
+
+	private renderContent(view: Box, width: number, height: number, dpr: number): void {
+		const canvas = this.canvas;
+		const g = this.layer.getContext("2d")!;
 		g.setTransform(dpr, 0, 0, dpr, 0, 0);
 		g.clearRect(0, 0, width, height);
-
-		const view = canvas.getViewportBBox();
 		const boxes: Box[] = [];
 		for (const n of canvas.nodes.values()) boxes.push({ minX: n.x, minY: n.y, maxX: n.x + n.width, maxY: n.y + n.height });
-		const content = unionBox(boxes);
-		const world = unionBox(content ? [content, view] : [view])!;
+		// The map frames the content (the view rectangle may run past its edge), so panning and
+		// zooming don't change the transform and the cached layer stays valid.
+		const world = unionBox(boxes) ?? view;
 		const t = (this.transform = fitTransform(world, width, height, PAD));
 
 		const style = getComputedStyle(canvas.wrapperEl);
@@ -91,7 +148,6 @@ class Minimap {
 		for (let i = 1; i <= 6; i++) presets[String(i)] = body.getPropertyValue(`--canvas-color-${i}`);
 		const text = style.getPropertyValue("--text-normal").trim() || "#888";
 		const faint = style.getPropertyValue("--text-faint").trim() || "#999";
-		const accent = style.getPropertyValue("--color-accent").trim() || "#7c3aed";
 		const dark = canvas.wrapperEl.doc.body.hasClass("theme-dark");
 		const ink = (c: string) => (dark && c.toLowerCase() === "#1e1e1e" ? "#e8e8e8" : c);
 		const detail = canvas.nodes.size <= DETAIL_LIMIT;
@@ -178,16 +234,6 @@ class Minimap {
 			g.globalAlpha = 1;
 		}
 
-		// The viewport.
-		const v1 = toMap(t, view.minX, view.minY);
-		const v2 = toMap(t, view.maxX, view.maxY);
-		g.fillStyle = accent;
-		g.globalAlpha = 0.12;
-		g.fillRect(v1.x, v1.y, v2.x - v1.x, v2.y - v1.y);
-		g.globalAlpha = 1;
-		g.strokeStyle = accent;
-		g.lineWidth = 1.5;
-		g.strokeRect(v1.x, v1.y, v2.x - v1.x, v2.y - v1.y);
 	}
 
 	private onDown = (evt: PointerEvent) => {
@@ -243,7 +289,6 @@ export const minimapModule = defineModule<MinimapSettings>({
 	enable(ctx) {
 		const maps = new Map<CanvasLike, Minimap>();
 		const buttons = new Map<CanvasLike, HTMLElement>();
-		let patched = false;
 
 		const sync = (canvas: CanvasLike) => {
 			const map = maps.get(canvas);
@@ -257,17 +302,6 @@ export const minimapModule = defineModule<MinimapSettings>({
 		const toggle = () => void ctx.updateSettings({ visible: !ctx.settings.visible });
 
 		ctx.onCanvas((canvas) => {
-			if (!patched) {
-				patched = true;
-				// Pan and zoom go through markViewportChanged.
-				ctx.patch("canvas.markViewportChanged", Object.getPrototypeOf(canvas) as CanvasLike & { markViewportChanged(): void }, {
-					markViewportChanged: (next) =>
-						function (this: CanvasLike) {
-							maps.get(this)?.schedule();
-							return next.call(this);
-						},
-				});
-			}
 			const controls = canvas.wrapperEl.querySelector(".canvas-controls");
 			const group = controls?.createDiv({ cls: "canvas-control-group mod-raised opc-minimap-control" });
 			if (group) {
@@ -292,7 +326,17 @@ export const minimapModule = defineModule<MinimapSettings>({
 			}
 		});
 
-		const redraw = (canvas: CanvasLike) => maps.get(canvas)?.schedule();
+		// Pan and zoom animate over several frames: follow the view every frame.
+		const lastView = new WeakMap<CanvasLike, string>();
+		ctx.on("canvas-frame", (canvas) => {
+			const map = maps.get(canvas);
+			if (!map) return;
+			const view = `${canvas.x},${canvas.y},${canvas.zoom}`;
+			if (lastView.get(canvas) === view) return;
+			lastView.set(canvas, view);
+			map.schedule();
+		});
+		const redraw = (canvas: CanvasLike) => maps.get(canvas)?.invalidate();
 		ctx.on("node-moved", (n) => redraw(n.canvas));
 		ctx.on("node-added", (n) => redraw(n.canvas));
 		ctx.on("node-removed", (n) => redraw(n.canvas));
@@ -302,7 +346,7 @@ export const minimapModule = defineModule<MinimapSettings>({
 		ctx.on("edge-removed", (e) => redraw(e.canvas));
 		ctx.on("data-load", redraw);
 		ctx.on("history-apply", redraw);
-		ctx.registerEvent(ctx.app.workspace.on("css-change", () => maps.forEach((m) => m.schedule())));
+		ctx.registerEvent(ctx.app.workspace.on("css-change", () => maps.forEach((m) => m.invalidate())));
 
 		ctx.addCanvasKey({ modifiers: [], key: "M", handle: () => (toggle(), true) });
 		ctx.addCommand({

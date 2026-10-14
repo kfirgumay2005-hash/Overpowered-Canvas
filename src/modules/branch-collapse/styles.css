@@ -36,3 +36,7 @@ body.opc-mod-branch-collapse .opc-branch-toggle[data-side="right"] { left: 100%;
 body.opc-mod-branch-collapse .opc-branch-toggle[data-side="left"] { right: 100%; top: 50%; transform: translate(-6px, -50%); }
 body.opc-mod-branch-collapse .opc-branch-toggle[data-side="down"] { top: 100%; left: 50%; transform: translate(-50%, 6px); }
 body.opc-mod-branch-collapse .opc-branch-toggle[data-side="up"] { bottom: 100%; left: 50%; transform: translate(-50%, -6px); }
+/* Zoomed far out the hover toggles can't be used anyway; leaving them out of the layout keeps panning fast. */
+body.opc-mod-branch-collapse .canvas-wrapper.mod-zoomed-out .canvas-node > .opc-branch-toggle:not(.is-collapsed) {
+	display: none;
+}

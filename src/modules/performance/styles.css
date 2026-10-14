@@ -1,0 +1,29 @@
+/*
+ * Level-of-detail mode. Cards stay in the DOM so clicking, selecting and dragging still work,
+ * but nothing inside them is styled, laid out or painted; edges and labels are hidden (the LOD
+ * layer draws them).
+ */
+body.opc-mod-performance .canvas-wrapper.opc-lod > .canvas > .canvas-node {
+	opacity: 0;
+}
+body.opc-mod-performance .canvas-wrapper.opc-lod > .canvas > .canvas-node > .canvas-node-container {
+	content-visibility: hidden;
+}
+body.opc-mod-performance .canvas-wrapper.opc-lod > .canvas > .canvas-node > :not(.canvas-node-container),
+body.opc-mod-performance .canvas-wrapper.opc-lod > .canvas > :is(.canvas-edges, .canvas-path-label-wrapper) {
+	display: none;
+}
+/* While the view moves, cards leave the layout (see LodLayer.moved). */
+body.opc-mod-performance .canvas-wrapper.opc-lod.opc-lod-moving > .canvas > .canvas-node {
+	display: none;
+}
+body.opc-mod-performance .opc-lod-layer {
+	position: absolute;
+	left: 0;
+	top: 0;
+	pointer-events: none;
+	display: none;
+}
+body.opc-mod-performance .canvas-wrapper.opc-lod > .opc-lod-layer {
+	display: block;
+}

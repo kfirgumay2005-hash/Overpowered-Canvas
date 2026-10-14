@@ -21,6 +21,7 @@ import { branchCollapseModule } from "./branch-collapse";
 import { mindmapModule } from "./mindmap";
 import { betterDefaultsModule } from "./better-defaults";
 import { directionModule } from "./direction";
+import { performanceModule } from "./performance";
 import { createGroupModule } from "./create-group";
 import { customColorsModule } from "./custom-colors";
 import { diagnosticsModule } from "./diagnostics";
@@ -51,6 +52,7 @@ import { zOrderModule } from "./z-order";
 export const MODULES: readonly AnyModule[] = [
 	betterDefaultsModule,
 	directionModule,
+	performanceModule,
 	nodeShapesModule,
 	nodeBordersModule,
 	textAlignModule,

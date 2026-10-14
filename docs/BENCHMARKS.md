@@ -12,7 +12,26 @@ benchmark logic). "slow" = frames slower than 18.3 ms.
 |---|---|---|---|---|---|
 | 2026-10-14 | Phase 1 | all modules off (vanilla canvas) | 8.9 | 215 | 298 / 300 |
 | 2026-10-14 | Phase 1 | Phase 1 modules on | 8.8 | 201 | 298 / 300 |
+| 2026-10-14 | Phase 8 | all modules off (vanilla canvas) | 8.6 | 222 | 297 / 300 |
+| 2026-10-14 | Phase 8 | **all modules on (level-of-detail renderer)** | **92.8** | **20.9** | 34 / 300 |
+| 2026-10-14 | Phase 8 | all modules on, *Fast rendering* module off | 7.2 | 250 | 298 / 300 |
 
-**Reading:** with everything zoomed out, vanilla Obsidian keeps all 1,120 cards as DOM nodes and
-reaches ~9 fps; our modules add no measurable cost. Reaching 60 fps at this size needs a
-level-of-detail renderer for zoomed-out views (planned for the performance pass, Phase 8).
+**Reading:** zoomed out, vanilla Obsidian keeps every card as a DOM element and reaches ~9 fps.
+The *Fast rendering for large canvases* module (Phase 8) takes over below zoom −1.7 on canvases
+with 300+ cards and reaches ~90 fps (60+ fps target met), with the cards still clickable.
+
+What it took (each step measured with the CPU profiler over the same path):
+
+| Step | avg fps |
+|---|---|
+| All modules on, no LOD | 7.5 |
+| LOD bitmap, cards `opacity: 0` (still styled and laid out every frame) | 5.3 |
+| + `content-visibility: hidden` on card contents, edges/labels `display: none` | 24 |
+| + theme colors and canvas size cached (no `getComputedStyle`/`clientWidth` per frame) | 26.7 |
+| + whole scene cached as one bitmap, redrawn sharp 150 ms after the view settles | 28.6 |
+| + `ctx.font` set only when it changes (setting it forces a style pass) | 29.5 |
+| + core `virtualize()` deferred while the view moves | 27.7 (p95 better) |
+| + cards `display: none` while the view moves, back (clickable) when it settles | **110** |
+
+Without LOD our modules cost ~15 % on this extreme canvas (7.2 vs 8.6 fps), mostly per-card
+elements (branch toggles, now left out of the layout when zoomed out) and styles.

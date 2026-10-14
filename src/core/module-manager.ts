@@ -1,3 +1,5 @@
+import { ChoiceModal } from "../ui/choice-modal";
+import type { ChoiceAnchor } from "../ui/picker";
 import { Component, Notice, Platform, type App, type Command, type Plugin } from "obsidian";
 import type { CanvasDataApi } from "../data/access";
 import type { Translate } from "../i18n";
@@ -275,7 +277,40 @@ export class ModuleManager {
 			decorateNodes: (decorator) => component.register(host.ui.decorateNodes(decorator)),
 			decorateEdges: (decorator) => component.register(host.ui.decorateEdges(decorator)),
 			addMenuButton: (spec) => {
-				const off = host.ui.addMenuButton(spec);
+				const offButton = host.ui.addMenuButton(spec);
+				let offCommand = () => {};
+				if (spec.command !== false) {
+					// Every toolbar action is also a command on the current selection.
+					const id = `${def.id}:selection-${spec.id}`;
+					const label = typeof spec.tooltip === "function" ? spec.tooltip() : spec.tooltip;
+					host.plugin.addCommand({
+						id,
+						name: host.t()("common.selectionCommand", { name: label }),
+						checkCallback: (checking) => {
+							const canvas = getActiveCanvas(host.app);
+							if (!canvas) return false;
+							const selection = [...canvas.selection];
+							if (selection.length === 0 || (canvas.readonly && !spec.readonly) || !spec.isVisible(selection, canvas)) return false;
+							if (!checking) {
+								const anchor = createDiv() as ChoiceAnchor;
+								anchor.opcChoose = (sections, onPick) =>
+									new ChoiceModal(
+										host.app,
+										label,
+										sections.flatMap((s) => s.items.map((i) => ({ ...i, id: i.id, label: s.title ? `${s.title}: ${i.label}` : i.label, svg: typeof i.svg === "string" ? i.svg : undefined }))),
+										onPick,
+									).open();
+								spec.onClick({ canvas, selection, buttonEl: anchor });
+							}
+							return true;
+						},
+					});
+					offCommand = () => host.plugin.removeCommand(id);
+				}
+				const off = () => {
+					offButton();
+					offCommand();
+				};
 				component.register(off);
 				return off;
 			},

@@ -592,6 +592,12 @@ export const en = {
 	"direction.global.desc": "Which way mind maps grow, templates and frames run, and menus face. A canvas can override this (command \"Canvas direction\").",
 	"direction.cards.name": "Text direction in cards",
 	"direction.cards.desc": "Automatic detects it for each paragraph, so Hebrew and English can mix.",
+	"performance.name": "Fast rendering for large canvases",
+	"performance.desc": "When a large canvas is zoomed far out, cards, edges and drawings are drawn as simple shapes on one image instead of thousands of elements. Clicking, selecting and dragging keep working.",
+	"performance.zoom.name": "Switch below zoom level",
+	"performance.zoom.desc": "0 = 100%, -1 = 50%, -2 = 25%. Obsidian hides card contents below -1.7.",
+	"performance.minNodes.name": "Only for canvases with at least this many cards",
+	"common.selectionCommand": "Selection: {name}…",
 } as const;
 
 export type I18nKey = keyof typeof en;

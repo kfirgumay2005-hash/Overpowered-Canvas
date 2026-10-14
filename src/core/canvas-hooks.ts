@@ -50,6 +50,11 @@ export interface HookMap {
 	/** Before / after the view writes the file. */
 	"save-before": [canvas: CanvasLike];
 	"save-after": [canvas: CanvasLike];
+	/**
+	 * Once per rendered canvas frame, after the view transform of that frame was applied (pan and
+	 * zoom animate over several frames; markViewportChanged() only starts them).
+	 */
+	"canvas-frame": [canvas: CanvasLike];
 	/** A node or edge element was clicked / double-clicked / right-clicked (DOM events). */
 	"node-interaction": [node: CanvasNodeLike, type: "click" | "dblclick" | "contextmenu", evt: MouseEvent];
 }
@@ -71,6 +76,8 @@ export interface InterceptorMap {
 	"node-move": [node: CanvasNodeLike, rect: { x: number; y: number; width: number; height: number }];
 	/** Before node.startEditing(). Return true to block editing (read-only items). */
 	"node-start-editing": [node: CanvasNodeLike];
+	/** Before canvas.virtualize() (every frame). Return true to skip it for this frame. */
+	"canvas-virtualize": [canvas: CanvasLike];
 }
 
 /**
@@ -451,6 +458,19 @@ export class CanvasHooks {
 								const had = this.edges.has(edge.id);
 								next.call(this, edge);
 								if (had) hub.emit("edge-removed", edge);
+							},
+					}),
+			},
+			{
+				kind: "canvas",
+				needs: ["canvas-frame", "canvas-virtualize"],
+				install: (proto) =>
+					this.patch<CanvasLike & { virtualize(): void }>("canvas.virtualize", proto as CanvasLike & { virtualize(): void }, {
+						virtualize: (next) =>
+							function (this: CanvasLike & { virtualize(): void }) {
+								hub.emit("canvas-frame", this);
+								if (hub.ask("canvas-virtualize", this) === true) return;
+								next.call(this);
 							},
 					}),
 			},

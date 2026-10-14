@@ -142,3 +142,16 @@ The same report is available from the **Diagnostics** module: command
 | `.canvas-controls > .canvas-control-group.mod-raised > .canvas-control-item` | The right-side control bar; we append our own groups (minimap, frames) and remove them on disable. | 🟢 runtime |
 | `app.viewRegistry.unregisterView(type)` | Lets a module register a workspace view and remove it again when disabled (`ModuleContext.registerView`). | 🟢 runtime |
 
+## Phase 8 additions (performance and RTL)
+
+| Member | What it does | Status |
+|---|---|---|
+| Canvas frame loop (`requestFrame` → rAF) | Animates `x`/`y`/`zoom` toward `tx`/`ty`/`tZoom` over several frames, applies the transform, then calls `virtualize()` **every frame**. `markViewportChanged()` only starts an animation, so per-frame work hooks `virtualize` (`canvas-frame` hook, `canvas-virtualize` interceptor). | 🟢 runtime |
+| `canvas.virtualize()` | Attaches/detaches cards entering/leaving the view (≤ 10 new per frame) and measures the viewport (`getViewportBBox()` → DOM read). The LOD renderer defers it while the view moves. | 🟢 runtime |
+| `canvas.getViewportBBox()` | Measures the wrapper (forced layout). Compute the view from `x`, `y`, `scale` and an observed size instead in per-frame code. | 🟢 runtime |
+| `menu.render()` | Called every frame while something is selected; positions the toolbar with `getBoundingClientRect` (forced layout) — a core cost, not ours. | 🟢 runtime |
+| `wrapperEl.mod-zoomed-out` | Core class when zoomed far out; we drop hover-only elements from the layout with it. | 🟢 runtime |
+| Cards in `direction: rtl` | Cards are absolutely positioned without left/right; in an RTL container their static position flips. The transformed `.canvas` layer must stay LTR (direction module); text direction is applied to card content. | 🟢 runtime |
+| `p[dir=auto]`, `li[dir=auto]` | The core marks each paragraph and list item for per-paragraph direction, but not the list; `:dir()` + `:has()` mirror lists. | 🟢 runtime |
+| 2D canvas `font` setter / `fillText` | Resolve the font against computed style: inside a frame with pending DOM changes this forces a full style pass. Set the font once per context state. | 🟢 runtime |
+

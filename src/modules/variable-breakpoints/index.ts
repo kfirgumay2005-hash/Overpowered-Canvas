@@ -25,8 +25,23 @@ export const variableBreakpointsModule = defineModule({
 		/** Parsed variable per node; null = not set. Cleared whenever the node's data changes. */
 		const cache = new WeakMap<CanvasNodeLike, number | null>();
 
+		/** Whether any loaded stylesheet mentions the variable (else only stored breakpoints count). */
+		const scanCss = () => {
+			for (const sheet of Array.from(activeDocument.styleSheets)) {
+				try {
+					for (const rule of Array.from(sheet.cssRules)) if (rule.cssText.includes(VAR)) return true;
+				} catch {
+					// Cross-origin sheets can't be read; they can't be user snippets either.
+				}
+			}
+			return false;
+		};
+		let cssUsesVar = scanCss();
+
 		const breakpointOf = (node: CanvasNodeLike): number | null => {
 			if (cache.has(node)) return cache.get(node)!;
+			// Reading a computed style forces a style pass over the canvas: skip it when nothing sets the variable.
+			if (!cssUsesVar && !node.nodeEl.style.getPropertyValue(VAR)) return null;
 			let value: number | null = null;
 			if (node.nodeEl.isConnected) {
 				const raw = getComputedStyle(node.nodeEl).getPropertyValue(VAR).trim();
@@ -49,7 +64,12 @@ export const variableBreakpointsModule = defineModule({
 			},
 		});
 		// CSS snippets or style attributes may change the variable at any time.
-		ctx.registerEvent(ctx.app.workspace.on("css-change", () => ctx.canvases().forEach((c) => c.nodes.forEach((n) => cache.delete(n)))));
+		ctx.registerEvent(
+			ctx.app.workspace.on("css-change", () => {
+				cssUsesVar = scanCss();
+				ctx.canvases().forEach((c) => c.nodes.forEach((n) => cache.delete(n)));
+			}),
+		);
 
 		ctx.intercept("node-breakpoint", (node) => {
 			const bp = breakpointOf(node);

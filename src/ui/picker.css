@@ -41,3 +41,18 @@
 	stroke-width: 1.4;
 	stroke-linejoin: round;
 }
+
+/* The same choices as a searchable list (command palette). */
+.opc-choice {
+	display: flex;
+	align-items: center;
+	gap: var(--size-4-2);
+}
+.opc-choice-icon {
+	display: flex;
+	color: var(--text-muted);
+}
+.opc-choice-active {
+	margin-inline-start: auto;
+	color: var(--text-accent);
+}

@@ -52,6 +52,7 @@ export const lockItemsModule = defineModule({
 
 		ctx.addMenuButton({
 			id: "lock",
+			command: false,
 			icon: (selection) => ((onlyNodes(selection) ?? []).every(isLocked) ? "lock" : "lock-open"),
 			tooltip: () => ctx.t("lockItems.toggle"),
 			order: 90,
