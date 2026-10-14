@@ -121,3 +121,15 @@ The same report is available from the **Diagnostics** module: command
 | `app.fileManager.processFrontMatter(canvasFile)` | No-op on `.canvas` files (verified: file unchanged). | 🟢 runtime |
 | `window.electron.remote.dialog.showSaveDialog` | Desktop save dialog used by image export. | 🟢 runtime |
 | SVG `<foreignObject>` → `<img>` → `<canvas>` | Not tainted with a `data:` URL; **tainted with a `blob:` URL**. | 🟢 runtime |
+
+## Phase 5 additions
+
+| Member | What it does | Status |
+|---|---|---|
+| `node.onPointerdown(evt)` on `containerEl` | Starts the drag (mouse only); selection happens on `click` on `nodeEl`. Our ink/line SVGs sit beside `containerEl`, so their `pointerdown` is forwarded to it; the click bubbles to `nodeEl` by itself. | 🟢 runtime |
+| `canvas.onPointerdown` on `wrapperEl` | Starts drag-to-select only when the target is the wrapper itself, so overlays and handles need no special care. | 🟢 source |
+| `node.aspectRatio` | Kept during resize when non-zero. On image load the core sets it to the image's own ratio and refits the card (`resize` + `overrideHistory`). Image crop intercepts that first `moveAndResize`, switches to the cropped ratio and keeps the stored size. | 🟢 runtime |
+| `canvas.markDirty(item)` → next animation frame → `item.render()` | `edge.render()` calls `updatePath()`. Frames don't run while the window is hidden (seen in automated runs), so drags call `edge.updatePath()` directly. | 🟢 runtime |
+| `canvas.requestSave()` → `requestPushHistory` (250 ms debounce) | A gesture that writes with `{ history: false }` on every move and calls `requestSave()` once at the end is one undo step. | 🟢 runtime |
+| `view.scope` runs only the first matching handler | Our canvas keys share one handler per combo (`ModuleContext.addCanvasKey`), dispatched by priority: sticky notes (Tab, Ctrl+Arrows on stickies) before the mind map, which only acts when its own conditions hold. | 🟢 runtime |
+

@@ -3,7 +3,7 @@ import type { CanvasDataApi } from "../data/access";
 import type { I18nKey, Translate } from "../i18n";
 import type { CanvasEdgeLike, CanvasLike, CanvasNodeLike, CanvasViewLike } from "../internals/types";
 import type { DataTransformer, HookMap, HookName, InterceptorMap, InterceptorName } from "./canvas-hooks";
-import type { CardMenuButtonSpec, EdgeDecorator, MenuButtonSpec, NodeDecorator } from "./canvas-ui";
+import type { CanvasKeySpec, CardMenuButtonSpec, EdgeDecorator, MenuButtonSpec, NodeDecorator } from "./canvas-ui";
 import type { PublicEvents } from "./events";
 import type { HistoryApi } from "./history";
 import type { PatchFactories, PatchRecord } from "./patcher";
@@ -109,6 +109,8 @@ export interface ModuleContext<S extends object> {
 	/** Returns a function that removes the button early; it is removed on disable anyway. */
 	addMenuButton(spec: MenuButtonSpec): () => void;
 	addCardMenuButton(spec: CardMenuButtonSpec): () => void;
+	/** A canvas-local key (shared dispatch by priority; see CanvasUi.addCanvasKey). */
+	addCanvasKey(spec: CanvasKeySpec): void;
 	/** Context menus of nodes / edges / multi-selections (public workspace events). */
 	onNodeMenu(cb: (menu: Menu, node: CanvasNodeLike) => void): void;
 	onEdgeMenu(cb: (menu: Menu, edge: CanvasEdgeLike) => void): void;

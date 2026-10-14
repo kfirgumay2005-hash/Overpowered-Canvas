@@ -1,0 +1,70 @@
+/* Cropped image cards: the image is scaled and shifted inside a clipping content box. */
+body.opc-mod-image-crop .canvas-node[data-opc-crop] > .canvas-node-container > .canvas-node-content {
+	position: relative;
+	overflow: hidden;
+}
+body.opc-mod-image-crop .canvas-node[data-opc-crop] > .canvas-node-container > .canvas-node-content > img {
+	position: absolute;
+	left: calc(-100% * var(--opc-crop-x) / var(--opc-crop-w));
+	top: calc(-100% * var(--opc-crop-y) / var(--opc-crop-h));
+	width: calc(100% / var(--opc-crop-w));
+	height: calc(100% / var(--opc-crop-h));
+	max-width: none;
+	max-height: none;
+	object-fit: fill;
+}
+
+/* Crop editor */
+body.opc-mod-image-crop .opc-crop-modal {
+	width: min(900px, 92vw);
+}
+body.opc-mod-image-crop .opc-crop-presets {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--size-2-2);
+	margin-bottom: var(--size-4-3);
+}
+body.opc-mod-image-crop .opc-crop-frame {
+	position: relative;
+	width: fit-content;
+	margin: 0 auto;
+	overflow: hidden;
+	user-select: none;
+	touch-action: none;
+}
+body.opc-mod-image-crop .opc-crop-frame > img {
+	display: block;
+	max-width: 100%;
+	max-height: 60vh;
+}
+body.opc-mod-image-crop .opc-crop-box {
+	position: absolute;
+	box-sizing: border-box;
+	border: 1px solid #fff;
+	box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.55);
+	cursor: move;
+}
+body.opc-mod-image-crop .opc-crop-handle {
+	position: absolute;
+	width: 14px;
+	height: 14px;
+	margin: -7px;
+	background: #fff;
+	border: 1px solid rgba(0, 0, 0, 0.4);
+	border-radius: 2px;
+}
+body.opc-mod-image-crop .opc-crop-handle.mod-nw { left: 0; top: 0; cursor: nwse-resize; }
+body.opc-mod-image-crop .opc-crop-handle.mod-n { left: 50%; top: 0; cursor: ns-resize; }
+body.opc-mod-image-crop .opc-crop-handle.mod-ne { left: 100%; top: 0; cursor: nesw-resize; }
+body.opc-mod-image-crop .opc-crop-handle.mod-e { left: 100%; top: 50%; cursor: ew-resize; }
+body.opc-mod-image-crop .opc-crop-handle.mod-se { left: 100%; top: 100%; cursor: nwse-resize; }
+body.opc-mod-image-crop .opc-crop-handle.mod-s { left: 50%; top: 100%; cursor: ns-resize; }
+body.opc-mod-image-crop .opc-crop-handle.mod-sw { left: 0; top: 100%; cursor: nesw-resize; }
+body.opc-mod-image-crop .opc-crop-handle.mod-w { left: 0; top: 50%; cursor: ew-resize; }
+@media (hover: none) {
+	body.opc-mod-image-crop .opc-crop-handle {
+		width: 24px;
+		height: 24px;
+		margin: -12px;
+	}
+}

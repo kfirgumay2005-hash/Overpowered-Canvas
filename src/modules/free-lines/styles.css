@@ -1,0 +1,69 @@
+/* Free lines: the card is invisible and click-through; the line itself takes pointer events. */
+body.opc-mod-free-lines .canvas-node[data-opc-kind="line"] {
+	pointer-events: none;
+	--opc-line-color: var(--text-normal);
+}
+body.opc-mod-free-lines .canvas-node[data-opc-kind="line"].is-themed {
+	--opc-line-color: color-mix(in oklch, var(--canvas-color) 100%, transparent);
+}
+body.opc-mod-free-lines .canvas-node[data-opc-kind="line"] > .canvas-node-container {
+	background: transparent;
+	border-color: transparent;
+	box-shadow: none;
+}
+body.opc-mod-free-lines .canvas-node[data-opc-kind="line"] > .canvas-node-container > .canvas-node-content,
+body.opc-mod-free-lines .canvas-node[data-opc-kind="line"] > .canvas-node-resizer,
+body.opc-mod-free-lines .canvas-node[data-opc-kind="line"] .canvas-node-connection-point {
+	display: none;
+}
+body.opc-mod-free-lines .canvas-node > svg.opc-line {
+	position: absolute;
+	left: 0;
+	top: 0;
+	overflow: visible;
+	pointer-events: none;
+}
+body.opc-mod-free-lines svg.opc-line .opc-line-path {
+	fill: none;
+	stroke: var(--opc-line-color);
+	stroke-width: var(--opc-line-width, 2px);
+	stroke-linecap: round;
+	stroke-linejoin: round;
+}
+body.opc-mod-free-lines svg.opc-line .opc-line-hit {
+	fill: none;
+	stroke: transparent;
+	stroke-width: calc(var(--opc-line-width, 2px) + 14px);
+	stroke-linecap: round;
+	pointer-events: stroke;
+	cursor: pointer;
+}
+body.opc-mod-free-lines svg.opc-line :is(.opc-line-arrow-start, .opc-line-arrow-end) {
+	fill: var(--opc-line-color);
+	stroke: var(--opc-line-color);
+	stroke-width: 1px;
+	stroke-linejoin: round;
+	vector-effect: non-scaling-stroke;
+}
+body.opc-mod-free-lines svg.opc-line :is(.opc-line-arrow-start, .opc-line-arrow-end).is-outline {
+	fill: var(--canvas-background);
+	stroke-width: 1.6px;
+}
+body.opc-mod-free-lines .canvas-node[data-opc-kind="line"]:is(.is-selected, .is-focused) svg.opc-line .opc-line-path {
+	filter: drop-shadow(0 0 2px var(--color-accent));
+}
+body.opc-mod-free-lines svg.opc-line .opc-line-handle {
+	display: none;
+	r: calc(6px * var(--zoom-multiplier, 1));
+	fill: var(--background-primary);
+	stroke: var(--color-accent);
+	stroke-width: calc(2px * var(--zoom-multiplier, 1));
+	pointer-events: all;
+	cursor: grab;
+}
+body.opc-mod-free-lines svg.opc-line .opc-line-handle.is-attached {
+	fill: var(--color-accent);
+}
+body.opc-mod-free-lines .canvas-node[data-opc-kind="line"].is-focused svg.opc-line .opc-line-handle {
+	display: block;
+}

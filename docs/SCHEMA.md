@@ -108,13 +108,24 @@ Arrow styles: `triangle`, `triangle-outline`, `halved-triangle`, `thin-triangle`
 }
 ```
 
-## Open decision: where strokes live (Phase 5)
+## Node kinds (Phase 5)
 
-Version 1 stores strokes on ink carrier nodes (`kind: "ink"`, a `text` node with empty text).
-Source reading showed that root data is also part of undo snapshots, so a root-level stroke
-layer is possible too. The trade-offs (vanilla Obsidian shows an empty card for a carrier;
-a `group` carrier would drag the cards inside it; culling and z-order) are decided in Phase 5,
-with a migration if the storage changes.
+All kinds are `text` nodes, so vanilla Obsidian and other JSON Canvas apps still load them.
+
+| kind | Stored | Without the plugin |
+|---|---|---|
+| `ink` | `strokes` (points relative to the node). Text is `✏️`. The node box always wraps its strokes (re-fitted after every edit). | A small card with ✏️ |
+| `line` | `line.points` relative to the node, `from`/`to` attachments, arrowheads; `strokeWidth`; color in the standard `color` field. | An empty card where the line was |
+| `shape` | `shape`, `fill` (`"solid"`, `"none"`, a hex color; absent = light tint), `strokeWidth`, `opacity`, `rotation`; color in `color`. | A card with the shape's text |
+| `sticky` | Pastel color in `color` (hex), optional `sticky: { author, created, footer }`. | A colored card |
+
+Other Phase 5 fields: `crop` on image file nodes (normalized rectangle; the image file is never
+changed) and `locked` on any node.
+
+**Decision on stroke storage:** strokes live on ink carrier nodes, not on the root. Carriers
+take part in z-order, culling, copy/paste, selection and undo like any card, and a drawing that
+spans a large area is split into nearby carriers (a new stroke joins the topmost unlocked
+carrier within 60 px, else gets its own), which keeps each node's data small.
 
 ## Existing Advanced Canvas data
 

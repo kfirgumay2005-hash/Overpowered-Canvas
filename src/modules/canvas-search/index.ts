@@ -1,6 +1,6 @@
-import { TFile, setIcon, setTooltip, type Scope } from "obsidian";
+import { TFile, setIcon, setTooltip } from "obsidian";
 import { defineModule, type ModuleContext } from "../../core/module";
-import type { CanvasLike, CanvasViewLike } from "../../internals/types";
+import type { CanvasLike } from "../../internals/types";
 import { canvasDirection, nodeType } from "../shared";
 import { search, type Searchable } from "./logic";
 
@@ -162,21 +162,11 @@ export const canvasSearchModule = defineModule({
 			bars.set(canvas, new CanvasSearchBar(ctx as ModuleContext<object>, canvas));
 		};
 
-		ctx.onCanvas((canvas, view) => {
-			// Registered in the view's own scope, like the core's Mod+Z: it only applies in canvases
-			// and does not compete with the global "Find" hotkey of markdown editors.
-			const scope = (view as CanvasViewLike & { scope: Scope | null }).scope;
-			const handler = scope?.register(["Mod"], "F", (evt) => {
-				if ((evt.target as HTMLElement | null)?.closest?.(".markdown-source-view, input, textarea, [contenteditable=true]")) return true;
-				evt.preventDefault();
-				open(canvas);
-				return false;
-			});
-			return () => {
-				if (handler) scope?.unregister(handler);
-				const bar = bars.get(canvas);
-				if (bar?.isOpen) bar.close();
-			};
+		// Canvas-local Mod+F: only in canvases, no conflict with the editor's global "Find".
+		ctx.addCanvasKey({ modifiers: ["Mod"], key: "F", handle: (canvas) => (open(canvas), true) });
+		ctx.onCanvas((canvas) => () => {
+			const bar = bars.get(canvas);
+			if (bar?.isOpen) bar.close();
 		});
 
 		ctx.addCommand({

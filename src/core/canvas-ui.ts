@@ -3,10 +3,10 @@
  * and card-menu (bottom bar) buttons. Every registration returns a disposer that removes all
  * DOM it created, so a disabled module leaves nothing behind.
  */
-import { Menu, setIcon, setTooltip } from "obsidian";
+import { Menu, setIcon, setTooltip, type Modifier, type Scope } from "obsidian";
 import { readEdge, readNode } from "../data/validate";
 import { SCHEMA_KEY, type OpcEdge, type OpcNode } from "../data/schema";
-import type { CanvasEdgeLike, CanvasItemLike, CanvasLike, CanvasMenuLike, CanvasNodeLike, Point } from "../internals/types";
+import type { CanvasEdgeLike, CanvasItemLike, CanvasLike, CanvasMenuLike, CanvasNodeLike, CanvasViewLike, Point } from "../internals/types";
 import type { CanvasHooks } from "./canvas-hooks";
 import type { CanvasTracker } from "./canvas-tracker";
 
@@ -56,6 +56,23 @@ export interface CardMenuButtonSpec {
 	onContextMenu?(canvas: CanvasLike, evt: MouseEvent): void;
 }
 
+export interface CanvasKeySpec {
+	modifiers: Modifier[];
+	key: string;
+	/** Higher runs first. */
+	priority?: number;
+	/** Return true when handled (stops other handlers and the default). */
+	handle(canvas: CanvasLike, evt: KeyboardEvent): boolean;
+	/** Run even while the user types in a card or input (default false). */
+	whileTyping?: boolean;
+}
+
+/** True while the user is typing somewhere (card editor, label, input). */
+export function isTyping(evt: KeyboardEvent): boolean {
+	const t = evt.target as HTMLElement | null;
+	return !!t?.closest?.("input, textarea, select, [contenteditable=true], .markdown-source-view, iframe");
+}
+
 export const isNode = (item: CanvasItemLike): item is CanvasNodeLike => "nodeEl" in item;
 export const isEdge = (item: CanvasItemLike): item is CanvasEdgeLike => "lineGroupEl" in item;
 
@@ -85,6 +102,10 @@ export class CanvasUi {
 	private menuHookOff: (() => void) | null = null;
 	private readonly cardButtons = new Map<CardMenuButtonSpec, Map<CanvasLike, HTMLElement>>();
 	private cardTrackOff: (() => void) | null = null;
+	private readonly keySpecs = new Set<CanvasKeySpec>();
+	private keyTrackOff: (() => void) | null = null;
+	/** Per view: combo → registered scope handler. */
+	private readonly keyHandlers = new Map<CanvasViewLike, Map<string, unknown>>();
 
 	constructor(
 		private readonly hooks: CanvasHooks,
@@ -187,6 +208,65 @@ export class CanvasUi {
 		};
 	}
 
+	/**
+	 * Canvas-local keys, shared between modules: Obsidian's Scope only runs the first handler of a
+	 * key, so one scope handler per key dispatches to every registered spec by priority.
+	 */
+	addCanvasKey(spec: CanvasKeySpec): () => void {
+		this.keySpecs.add(spec);
+		if (!this.keyTrackOff) {
+			this.keyTrackOff = this.tracker.subscribe((canvas, view) => {
+				this.bindKeys(canvas, view);
+				return () => this.unbindKeys(view);
+			});
+		} else for (const view of this.tracker.openCanvases()) this.bindKeys(view.canvas, view);
+		return () => {
+			if (!this.keySpecs.delete(spec)) return;
+			const combo = comboOf(spec);
+			if (![...this.keySpecs].some((s) => comboOf(s) === combo))
+				for (const [view, map] of this.keyHandlers) {
+					const h = map.get(combo);
+					if (h) (view as CanvasViewLike & { scope: Scope }).scope?.unregister(h as never);
+					map.delete(combo);
+				}
+			if (this.keySpecs.size === 0) {
+				this.keyTrackOff?.();
+				this.keyTrackOff = null;
+			}
+		};
+	}
+
+	private bindKeys(canvas: CanvasLike, view: CanvasViewLike): void {
+		const scope = (view as CanvasViewLike & { scope: Scope | null }).scope;
+		if (!scope) return;
+		let map = this.keyHandlers.get(view);
+		if (!map) this.keyHandlers.set(view, (map = new Map()));
+		for (const spec of this.keySpecs) {
+			const combo = comboOf(spec);
+			if (map.has(combo)) continue;
+			const handler = scope.register(spec.modifiers, spec.key, (evt) => {
+				const typing = isTyping(evt);
+				const specs = [...this.keySpecs].filter((s) => comboOf(s) === combo && (!typing || s.whileTyping)).sort((a, b) => (b.priority ?? 0) - (a.priority ?? 0));
+				for (const s of specs) {
+					try {
+						if (s.handle(canvas, evt)) return false;
+					} catch (error) {
+						console.error("[overpowered-canvas] key handler failed", error);
+					}
+				}
+				return true;
+			});
+			map.set(combo, handler);
+		}
+	}
+
+	private unbindKeys(view: CanvasViewLike): void {
+		const map = this.keyHandlers.get(view);
+		const scope = (view as CanvasViewLike & { scope: Scope | null }).scope;
+		if (map && scope) for (const h of map.values()) scope.unregister(h as never);
+		this.keyHandlers.delete(view);
+	}
+
 	/** Shows an Obsidian menu anchored under a toolbar button, like the core align menu. */
 	static menuUnder(buttonEl: HTMLElement, build: (menu: Menu) => void): void {
 		if (buttonEl.hasClass("has-active-menu")) return;
@@ -270,4 +350,8 @@ export class CanvasUi {
 		else canvas.cardMenuEl.appendChild(el);
 		map.set(canvas, el);
 	}
+}
+
+function comboOf(spec: { modifiers: string[]; key: string }): string {
+	return `${[...spec.modifiers].sort().join("+")}|${spec.key.toLowerCase()}`;
 }

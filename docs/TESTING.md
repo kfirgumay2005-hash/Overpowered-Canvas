@@ -146,3 +146,37 @@ Automated runtime checks of every item below were run in an isolated Obsidian 1.
 4. Select the root → command *Auto layout: balanced mind map*, or *Auto layout…* for direction
    (forward/backward/down/up/radial/balanced), flowchart (layered) or grid; whole canvas or
    selection. The cards animate into place; one Ctrl+Z restores the previous arrangement.
+
+## Manual — Phase 5 (drawing, shapes, stickies)
+
+1. **Drawing:** open a canvas, press **P** (or the pen button in the bottom bar). Draw with the
+   pen, pencil, marker and highlighter; change color and size. With a stylus, pressure changes
+   the width; touch while the pen is down is ignored. Esc or ✕ leaves drawing mode.
+2. **Shape recognition:** draw a rough rectangle / ellipse / triangle / line and **hold still**
+   at the end for half a second: a dashed preview appears; release → a clean shape (or line).
+3. **Eraser:** whole-stroke mode removes touched strokes; *More options → Eraser → Partial*
+   cuts them. The pen's eraser end erases too. Each erase gesture is one Ctrl+Z.
+4. **Lasso:** select tool → circle some strokes → drag inside the box to move, drag the corner
+   to scale, Delete removes, the lock button locks them (the eraser skips locked strokes).
+5. **Lines and arrows:** arrow tool → drag from one card to another: the arrow attaches to both
+   and follows them when they move. Select it → drag an end handle onto a third card (or into
+   empty space to detach). Toolbar → line style (arrowheads, width) and *Reverse direction*;
+   the regular color button recolors it.
+6. **Shapes:** bottom bar → shapes button → pick a star. Select it → *Shape style*: change the
+   shape, fill (light / solid / none), outline width, opacity and rotation. Type text into it:
+   the text stays upright when rotated.
+7. **Sticky notes:** bottom bar → sticky button (right-click for a color). Type a short word —
+   big text; a long paragraph — the text shrinks. Esc, then **Tab** → the next sticky appears
+   beside it (to the left in an RTL canvas); **Ctrl/Cmd+Arrows** add one in that direction.
+   Settings → *Sticky notes* → enable the author and date footer, set your name, add a note.
+8. **Image crop:** select an image card → *Crop image* → drag the box or its handles, try 1:1;
+   Apply. Resize the card: it keeps the cropped proportions. Close and reopen the file: still
+   cropped. Right-click → *Reset crop*.
+9. **Edge editing:** select an edge → drag the small dot in its middle to add a bend; drag
+   the new bend; double-click it to remove it. With a label, drag the diamond above the label to
+   slide it along the edge (double-click centers it).
+10. **Lock:** select cards → toolbar lock button (or right-click → *Lock*): they can't be dragged,
+    resized or edited; a lock badge shows on hover. Unlock the same way.
+11. **Footprint:** disable all Phase 5 modules in settings → no `data-opc-kind`, handles,
+    badges or overlays remain; ink cards show ✏️ and lines/shapes/stickies show as plain cards.
+

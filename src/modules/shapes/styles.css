@@ -1,0 +1,38 @@
+/* Standalone shapes: fill mode, stroke width, opacity and rotation from CSS variables. */
+body.opc-mod-shapes .canvas-node[data-opc-kind="shape"] {
+	opacity: var(--opc-opacity, 1);
+}
+body.opc-mod-shapes .canvas-node[data-opc-kind="shape"] > svg.opc-shape {
+	transform: rotate(var(--opc-rotation, 0deg));
+	transform-origin: center;
+	transform-box: fill-box;
+}
+body.opc-mod-shapes .canvas-node[data-opc-kind="shape"] > svg.opc-shape path {
+	stroke-width: var(--opc-stroke-width, 1.5px);
+}
+body.opc-mod-shapes .canvas-node[data-opc-kind="shape"]:is(.is-selected, .is-focused) > svg.opc-shape path {
+	stroke-width: calc(var(--opc-stroke-width, 1.5px) + 1.5px);
+}
+body.opc-mod-shapes .canvas-node[data-opc-kind="shape"]:not(.is-themed) > svg.opc-shape path {
+	stroke: var(--text-normal);
+}
+body.opc-mod-shapes .canvas-node[data-opc-kind="shape"][data-opc-fill="none"] > svg.opc-shape .opc-shape-body {
+	fill: transparent;
+	filter: none;
+}
+body.opc-mod-shapes .canvas-node[data-opc-kind="shape"][data-opc-fill="solid"] > svg.opc-shape .opc-shape-body {
+	fill: var(--text-faint);
+}
+body.opc-mod-shapes .canvas-node[data-opc-kind="shape"].is-themed[data-opc-fill="solid"] > svg.opc-shape .opc-shape-body {
+	fill: color-mix(in oklch, var(--canvas-color) 100%, transparent);
+}
+body.opc-mod-shapes .canvas-node[data-opc-kind="shape"].is-themed[data-opc-fill="solid"] .markdown-preview-view {
+	color: var(--text-on-accent);
+}
+body.opc-mod-shapes .canvas-node[data-opc-kind="shape"][data-opc-fill="color"] > svg.opc-shape .opc-shape-body {
+	fill: var(--opc-fill);
+}
+/* The empty-card placeholder text would sit in the middle of every new shape. */
+body.opc-mod-shapes .canvas-node[data-opc-kind="shape"] .canvas-node-placeholder {
+	display: none;
+}

@@ -67,3 +67,12 @@ export function randomId(length = 16): string {
 	crypto.getRandomValues(bytes);
 	return [...bytes].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
+
+/** Pointer capture that tolerates pointers the browser no longer tracks (synthetic or ended). */
+export function capturePointer(el: Element, pointerId: number): void {
+	try {
+		el.setPointerCapture(pointerId);
+	} catch {
+		// The gesture still works without capture while the pointer stays over the element.
+	}
+}

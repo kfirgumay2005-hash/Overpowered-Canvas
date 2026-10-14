@@ -17,6 +17,9 @@ const ARROW_GAP = 7;
 
 const ROUTE_ICONS: Record<EdgeRoute, string> = { bezier: "spline", straight: "minus", orthogonal: "corner-down-right", astar: "route" };
 
+/** The live default route, for modules that build on routing (edge editing). */
+export const routingState: { defaultRoute: EdgeRoute } = { defaultRoute: "bezier" };
+
 export interface RoutedPath {
 	points: P[];
 	d: string;
@@ -57,7 +60,7 @@ function obstaclesFor(canvas: CanvasLike, a: Box, b: Box): Box[] {
 	return canvas.getIntersectingNodes(area).filter((n) => nodeType(n) !== "group").map((n) => n.getBBox());
 }
 
-function cubicAt(t: number, bz: NonNullable<CanvasEdgeLike["bezier"]>): P {
+export function cubicAt(t: number, bz: NonNullable<CanvasEdgeLike["bezier"]>): P {
 	const u = 1 - t;
 	return {
 		x: u * u * u * bz.from.x + 3 * t * u * u * bz.cp1.x + 3 * t * t * u * bz.cp2.x + t * t * t * bz.to.x,
@@ -112,8 +115,13 @@ export const edgeRoutingModule = defineModule<RoutingSettings>({
 		const rerouteAll = () => {
 			for (const canvas of ctx.canvases()) for (const edge of canvas.edges.values()) canvas.markDirty(edge);
 		};
+		routingState.defaultRoute = ctx.settings.defaultRoute;
 		rerouteAll();
-		ctx.onSettingsChange(rerouteAll);
+		ctx.onSettingsChange(() => {
+			routingState.defaultRoute = ctx.settings.defaultRoute;
+			rerouteAll();
+		});
+		ctx.register(() => (routingState.defaultRoute = "bezier"));
 		// After the hooks are gone, let the core redraw its own paths.
 		ctx.register(() => window.setTimeout(rerouteAll));
 

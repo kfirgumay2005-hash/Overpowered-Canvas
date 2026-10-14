@@ -20,7 +20,10 @@ export const nodeShapesModule = defineModule({
 
 	enable(ctx) {
 		ctx.decorateNodes({
-			apply: (node, extra) => renderNodeShape(node, extra.kind === undefined && extra.shape && nodeType(node) !== "group" ? extra.shape : null),
+			apply: (node, extra) => {
+				// Standalone shapes (kind "shape") are drawn by the shapes module.
+				if (extra.kind !== "shape") renderNodeShape(node, extra.kind === undefined && extra.shape && nodeType(node) !== "group" ? extra.shape : null);
+			},
 			clear: (node) => {
 				if (readNode(node.unknownData[SCHEMA_KEY]).kind === undefined) renderNodeShape(node, null);
 			},

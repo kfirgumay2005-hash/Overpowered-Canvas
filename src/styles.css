@@ -24,6 +24,13 @@
 @import "./modules/portals/styles.css";
 @import "./modules/pdf-annotation/styles.css";
 @import "./modules/branch-collapse/styles.css";
+@import "./modules/drawing/styles.css";
+@import "./modules/free-lines/styles.css";
+@import "./modules/shapes/styles.css";
+@import "./modules/sticky-notes/styles.css";
+@import "./modules/image-crop/styles.css";
+@import "./modules/edge-editing/styles.css";
+@import "./modules/lock-items/styles.css";
 
 .opc-settings .opc-setting-note {
 	color: var(--text-warning);

@@ -1,0 +1,31 @@
+body.opc-mod-lock-items .canvas-node[data-opc-locked] > .canvas-node-resizer {
+	display: none;
+}
+body.opc-mod-lock-items .canvas-node[data-opc-locked] > .canvas-node-container {
+	cursor: default;
+}
+body.opc-mod-lock-items .opc-lock-badge {
+	position: absolute;
+	top: calc(-10px * var(--zoom-multiplier, 1));
+	inset-inline-end: calc(-10px * var(--zoom-multiplier, 1));
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: calc(20px * var(--zoom-multiplier, 1));
+	height: calc(20px * var(--zoom-multiplier, 1));
+	border-radius: 50%;
+	background: var(--background-primary);
+	border: 1px solid var(--background-modifier-border);
+	color: var(--text-muted);
+	pointer-events: none;
+	opacity: 0;
+	transition: opacity 120ms ease-out;
+	z-index: 1;
+}
+body.opc-mod-lock-items .opc-lock-badge svg {
+	width: 60%;
+	height: 60%;
+}
+body.opc-mod-lock-items .canvas-node[data-opc-locked]:is(:hover, .is-selected, .is-focused) > .opc-lock-badge {
+	opacity: 1;
+}

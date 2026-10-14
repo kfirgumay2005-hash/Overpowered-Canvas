@@ -251,6 +251,7 @@ export class ModuleManager {
 				component.register(() => el.remove());
 				return el;
 			},
+			addCanvasKey: (spec) => component.register(host.ui.addCanvasKey(spec)),
 			registerEvent: (ref) => component.registerEvent(ref),
 			registerDomEvent: (el: HTMLElement | Window, type: string, cb: (ev: Event) => unknown, options?: boolean | AddEventListenerOptions) =>
 				component.registerDomEvent(el as HTMLElement, type as keyof HTMLElementEventMap, cb, options),

@@ -1,7 +1,7 @@
-import { Setting, type Scope } from "obsidian";
+import { Setting } from "obsidian";
 import { defineModule, type ModuleContext } from "../../core/module";
 import type { EdgeSide } from "../../data/json-canvas";
-import type { CanvasItemLike, CanvasLike, CanvasNodeLike, CanvasViewLike } from "../../internals/types";
+import type { CanvasItemLike, CanvasLike, CanvasNodeLike } from "../../internals/types";
 import { canvasDirection, mutate, nodeType, randomId, selectedNodes } from "../shared";
 import { childPosition, childrenOf, descendants, directionBetween, logical, neighbor, parentOf, type Dir, type TEdge } from "./tree";
 
@@ -17,12 +17,6 @@ const ARROW: Record<string, Dir> = { ArrowRight: "right", ArrowLeft: "left", Arr
 
 function edgesOf(canvas: CanvasLike): TEdge[] {
 	return [...canvas.edges.values()].map((e) => ({ from: e.from.node.id, to: e.to.node.id }));
-}
-
-/** True while the user is typing somewhere (card editor, label, input). */
-function typing(evt: KeyboardEvent): boolean {
-	const t = evt.target as HTMLElement | null;
-	return !!t?.closest?.("input, textarea, [contenteditable=true], .markdown-source-view, iframe");
 }
 
 function visible(n: CanvasNodeLike): boolean {
@@ -114,51 +108,27 @@ export const mindmapModule = defineModule<MindmapSettings>({
 				for (const node of nodes) for (const e of canvas.getEdgesForNode(node)) if (e.from.node === node) e.setColor(node.color);
 			});
 
-		// Keys live in the canvas view's own scope: they only apply in canvases.
-		ctx.onCanvas((canvas, view) => {
-			const scope = (view as CanvasViewLike & { scope: Scope | null }).scope;
-			if (!scope) return;
-			const handlers: unknown[] = [];
-			const on = (mods: ("Mod" | "Shift" | "Alt")[], key: string, fn: (evt: KeyboardEvent) => boolean | void) =>
-				handlers.push(
-					scope.register(mods, key, (evt) => {
-						if (typing(evt) || canvas.readonly) return true;
-						return fn(evt) === true ? true : false;
-					}),
-				);
-			on([], "Tab", () => {
-				const node = single(canvas);
-				if (!node) return true;
-				addChild(canvas, node);
+		// Canvas-local keys (shared keymap: sticky notes take Tab / Ctrl+Arrows on stickies first).
+		const key = (modifiers: ("Mod" | "Shift" | "Alt")[], k: string, fn: (canvas: CanvasLike, node: CanvasNodeLike) => void) =>
+			ctx.addCanvasKey({
+				modifiers,
+				key: k,
+				handle: (canvas) => {
+					const node = single(canvas);
+					if (!node || canvas.readonly) return false;
+					fn(canvas, node);
+					return true;
+				},
 			});
-			for (const shift of [false, true]) {
-				on(shift ? ["Shift"] : [], "Enter", () => {
-					const node = single(canvas);
-					if (!node || (ctx.settings.siblingKey === "Shift+Enter") !== shift) return true;
-					addSibling(canvas, node);
-				});
-			}
-			for (const [key, dir] of Object.entries(ARROW)) {
-				on(["Alt"], key, () => {
-					const node = single(canvas);
-					if (!node) return true;
-					navigate(canvas, node, dir);
-				});
-				on(["Mod"], key, () => {
-					const node = single(canvas);
-					if (!node) return true;
-					addFloating(canvas, node, dir);
-				});
-				on(["Mod", "Shift"], key, () => {
-					const node = single(canvas);
-					if (!node) return true;
-					addChild(canvas, node, dir);
-				});
-			}
-			return () => {
-				for (const h of handlers) scope.unregister(h as never);
-			};
-		});
+		key([], "Tab", (c, n) => addChild(c, n));
+		key([], "Enter", (c, n) => ctx.settings.siblingKey === "Enter" && addSibling(c, n));
+		key(["Shift"], "Enter", (c, n) => ctx.settings.siblingKey === "Shift+Enter" && addSibling(c, n));
+		for (const [k, dir] of Object.entries(ARROW)) {
+			key(["Alt"], k, (c, n) => navigate(c, n, dir));
+			key(["Mod"], k, (c, n) => addFloating(c, n, dir));
+			key(["Mod", "Shift"], k, (c, n) => addChild(c, n, dir));
+		}
+
 		const command = (id: string, name: string, icon: string, fn: (c: CanvasLike, n: CanvasNodeLike) => void, needsWrite = true) =>
 			ctx.addCommand({
 				id,

@@ -23,6 +23,13 @@ import { betterDefaultsModule } from "./better-defaults";
 import { createGroupModule } from "./create-group";
 import { customColorsModule } from "./custom-colors";
 import { diagnosticsModule } from "./diagnostics";
+import { drawingModule } from "./drawing";
+import { freeLinesModule } from "./free-lines";
+import { shapesModule } from "./shapes";
+import { stickyNotesModule } from "./sticky-notes";
+import { imageCropModule } from "./image-crop";
+import { edgeEditingModule } from "./edge-editing";
+import { lockItemsModule } from "./lock-items";
 import { edgeRoutingModule } from "./edge-routing";
 import { edgeStylesModule } from "./edge-styles";
 import { edgeToolsModule } from "./edge-tools";
@@ -69,5 +76,12 @@ export const MODULES: readonly AnyModule[] = [
 	mindmapModule,
 	branchCollapseModule,
 	autoLayoutModule,
+	drawingModule,
+	freeLinesModule,
+	shapesModule,
+	stickyNotesModule,
+	imageCropModule,
+	edgeEditingModule,
+	lockItemsModule,
 	diagnosticsModule,
 ];

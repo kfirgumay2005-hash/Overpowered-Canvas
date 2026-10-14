@@ -1,0 +1,46 @@
+/* Handles on the selected edge, positioned in canvas coordinates inside the transformed canvas. */
+body.opc-mod-edge-editing .opc-edge-handles {
+	position: absolute;
+	left: 0;
+	top: 0;
+	width: 0;
+	height: 0;
+	z-index: 50;
+}
+body.opc-mod-edge-editing .opc-edge-handle {
+	position: absolute;
+	width: calc(12px * var(--zoom-multiplier, 1));
+	height: calc(12px * var(--zoom-multiplier, 1));
+	transform: translate(-50%, -50%);
+	border-radius: 50%;
+	box-sizing: border-box;
+	background: var(--background-primary);
+	border: calc(2px * var(--zoom-multiplier, 1)) solid var(--color-accent);
+	cursor: grab;
+	touch-action: none;
+}
+body.opc-mod-edge-editing .opc-edge-handle:active {
+	cursor: grabbing;
+}
+body.opc-mod-edge-editing .opc-edge-handle.opc-edge-add {
+	width: calc(9px * var(--zoom-multiplier, 1));
+	height: calc(9px * var(--zoom-multiplier, 1));
+	opacity: 0.6;
+}
+body.opc-mod-edge-editing .opc-edge-handle.opc-edge-add:hover {
+	opacity: 1;
+}
+body.opc-mod-edge-editing .opc-edge-handle.opc-edge-bend {
+	background: var(--color-accent);
+}
+body.opc-mod-edge-editing .opc-edge-handle.opc-edge-label-handle {
+	border-radius: 2px;
+	transform: translate(-50%, -50%) rotate(45deg);
+	margin-top: calc(-18px * var(--zoom-multiplier, 1));
+}
+@media (hover: none) {
+	body.opc-mod-edge-editing .opc-edge-handle {
+		width: calc(20px * var(--zoom-multiplier, 1));
+		height: calc(20px * var(--zoom-multiplier, 1));
+	}
+}
