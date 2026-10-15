@@ -8,6 +8,10 @@ import { mergeWithDefaults } from "../../settings/settings";
 import { canvasDirection, mutate, nodeType, randomId } from "../shared";
 import { diffMembers, formatProperties, isEmptyQuery, matchesQuery, parseList, parseProperties, type NoteMeta } from "./logic";
 
+/** Examples of what the query fields take (data, not prose). */
+const EXAMPLE_TAGS = "project, work";
+const EXAMPLE_PROPERTIES = "status: doing\nowner";
+
 interface QuerySettings {
 	cardWidth: number;
 	cardHeight: number;
@@ -15,7 +19,6 @@ interface QuerySettings {
 	maxNotes: number;
 }
 
-type Ctx = ModuleContext<QuerySettings>;
 
 const boxOf = (n: CanvasNodeLike) => ({ x: n.x, y: n.y, width: n.width, height: n.height });
 
@@ -38,12 +41,12 @@ class QueryModal extends Modal {
 		let props = formatProperties(this.initial.properties);
 		let links = (this.initial.linksTo ?? []).join(", ");
 		let auto = !!this.initial.auto;
-		new Setting(this.contentEl).setName(t("query.tags")).setDesc(t("query.tags.desc")).addText((x) => x.setPlaceholder("project, work").setValue(tags).onChange((v) => (tags = v)));
+		new Setting(this.contentEl).setName(t("query.tags")).setDesc(t("query.tags.desc")).addText((x) => x.setPlaceholder(EXAMPLE_TAGS).setValue(tags).onChange((v) => (tags = v)));
 		new Setting(this.contentEl).setName(t("query.folder")).addText((x) => x.setPlaceholder("Projects").setValue(folder).onChange((v) => (folder = v)));
 		new Setting(this.contentEl)
 			.setName(t("query.properties"))
 			.setDesc(t("query.properties.desc"))
-			.addTextArea((x) => x.setPlaceholder("status: doing\nowner").setValue(props).onChange((v) => (props = v)));
+			.addTextArea((x) => x.setPlaceholder(EXAMPLE_PROPERTIES).setValue(props).onChange((v) => (props = v)));
 		new Setting(this.contentEl).setName(t("query.links")).setDesc(t("query.links.desc")).addText((x) => x.setValue(links).onChange((v) => (links = v)));
 		new Setting(this.contentEl).setName(t("query.auto")).setDesc(t("query.auto.desc")).addToggle((x) => x.setValue(auto).onChange((v) => (auto = v)));
 		new Setting(this.contentEl)
@@ -100,7 +103,7 @@ export const queryGroupsModule = defineModule<QuerySettings>({
 				return {
 					path: file.path,
 					tags: (cache ? (getAllTags(cache) ?? []) : []).map((t) => t.replace(/^#/, "")),
-					frontmatter: (cache?.frontmatter ?? {}) as Record<string, unknown>,
+					frontmatter: (cache?.frontmatter ?? {}),
 					links: Object.keys(app.metadataCache.resolvedLinks[file.path] ?? {}),
 				};
 			});
@@ -114,18 +117,18 @@ export const queryGroupsModule = defineModule<QuerySettings>({
 			const matching = all.filter((n) => matchesQuery(n, q)).map((n) => n.path);
 			const limited = matching.slice(0, ctx.settings.maxNotes);
 			if (matching.length > limited.length) new Notice(ctx.t("query.limited", { count: ctx.settings.maxNotes }));
-			const fileNodes = [...canvas.nodes.values()].filter((n) => nodeType(n) === "file" && n.file instanceof TFile);
+			const fileNodes = [...canvas.nodes.values()].filter((n): n is CanvasNodeLike & { file: TFile } => nodeType(n) === "file" && n.file instanceof TFile);
 			const owned = fileNodes.filter((n) => (n.unknownData[SCHEMA_KEY] as { queryOwner?: string } | undefined)?.queryOwner === group.id);
-			const inGroup = new Set(fileNodes.filter((n) => owned.includes(n) || contains(boxOf(group), center(boxOf(n)))).map((n) => (n.file as TFile).path));
+			const inGroup = new Set(fileNodes.filter((n) => owned.includes(n) || contains(boxOf(group), center(boxOf(n)))).map((n) => n.file.path));
 			const { add, remove } = diffMembers(
-				owned.map((n) => (n.file as TFile).path),
+				owned.map((n) => n.file.path),
 				limited,
 				inGroup,
 			);
 			if (add.length === 0 && remove.length === 0) return null;
 			const rtl = canvasDirection(canvas) === "rtl";
-			mutate(ctx as ModuleContext<object>, canvas, () => {
-				for (const n of owned) if (remove.includes((n.file as TFile).path)) canvas.removeNode(n);
+			mutate(ctx, canvas, () => {
+				for (const n of owned) if (remove.includes(n.file.path)) canvas.removeNode(n);
 				const box = boxOf(group);
 				const occupied = [...canvas.nodes.values()].filter((n) => n !== group && nodeType(n) !== "group" && contains(box, center(boxOf(n)))).map(boxOf);
 				let grow = 0;
@@ -199,7 +202,7 @@ export const queryGroupsModule = defineModule<QuerySettings>({
 
 		const edit = (canvas: CanvasLike, group: CanvasNodeLike) =>
 			new QueryModal(app, ctx.t, queryOf(group) ?? {}, (query) => {
-				mutate(ctx as ModuleContext<object>, canvas, () => ctx.data.node(group).set({ query }));
+				mutate(ctx, canvas, () => ctx.data.node(group).set({ query }));
 				refresh(canvas, group);
 			}).open();
 
@@ -214,7 +217,7 @@ export const queryGroupsModule = defineModule<QuerySettings>({
 					.setTitle(ctx.t("query.remove"))
 					.setIcon("search-x")
 					.onClick(() =>
-						mutate(ctx as ModuleContext<object>, node.canvas, () => {
+						mutate(ctx, node.canvas, () => {
 							ctx.data.node(node).set({ query: undefined });
 							// Cards it added stay, as ordinary cards.
 							for (const n of node.canvas.nodes.values())
@@ -243,6 +246,6 @@ export const queryGroupsModule = defineModule<QuerySettings>({
 			.addText((x) => x.setValue(String(ctx.settings.cardHeight)).onChange((v) => Number(v) >= 60 && ctx.updateSettings({ cardHeight: Math.round(Number(v)) })));
 		new Setting(el)
 			.setName(ctx.t("query.max"))
-			.addSlider((s) => s.setLimits(10, 1000, 10).setValue(ctx.settings.maxNotes).setDynamicTooltip().onChange((v) => ctx.updateSettings({ maxNotes: v })));
+			.addSlider((s) => s.setLimits(10, 1000, 10).setValue(ctx.settings.maxNotes).onChange((v) => ctx.updateSettings({ maxNotes: v })));
 	},
 });

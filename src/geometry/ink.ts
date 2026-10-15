@@ -84,11 +84,11 @@ export function strokePath(points: InkPoint[], tool: StrokeTool, size: number, s
 		},
 	);
 	if (outline.length < 2) return "";
-	let d = `M${round(outline[0]![0]!)} ${round(outline[0]![1]!)}`;
+	let d = `M${round(outline[0]![0])} ${round(outline[0]![1])}`;
 	for (let i = 1; i < outline.length; i++) {
 		const [x0, y0] = outline[i - 1]!;
 		const [x1, y1] = outline[i]!;
-		d += ` Q${round(x0!)} ${round(y0!)} ${round((x0! + x1!) / 2)} ${round((y0! + y1!) / 2)}`;
+		d += ` Q${round(x0)} ${round(y0)} ${round((x0 + x1) / 2)} ${round((y0 + y1) / 2)}`;
 	}
 	return `${d} Z`;
 }

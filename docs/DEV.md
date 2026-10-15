@@ -14,7 +14,7 @@ The source lives directly in the plugin folder of the main vault:
 
 ```bash
 npm install
-npm run build        # typecheck + production build → main.js, styles.css, scripts/console/probe-internals.js
+npm run build        # typecheck + production build → main.js, styles.css
 ```
 
 Then enable **Overpowered Canvas** in *Settings → Community plugins*.
@@ -44,7 +44,6 @@ npm run typecheck
 |---|---|
 | `npm run stress` | Writes `OPC Tests/stress-1000.canvas`: 1,000 cards, 2,000 ink strokes, ~1,500 edges, 20 groups. Options: `-- --nodes 3000 --strokes 5000 --edges 4000 --groups 40 --seed 7 --out <file>`. |
 | `node scripts/roundtrip.mjs create` / `check` | Unknown-property preservation test — see TESTING.md, Phase 0. |
-| `scripts/console/probe-internals.js` | Paste into the developer console with a canvas open; prints and copies a report of the canvas internals. See INTERNALS.md. |
 | *Diagnostics* module (Settings → Developer) | Commands: copy internals report, copy list of active patches, run pan/zoom benchmark. |
 
 ## Benchmarks

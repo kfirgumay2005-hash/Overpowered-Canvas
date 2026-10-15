@@ -43,9 +43,9 @@ function neededHeight(node: CanvasNodeLike): number | null {
 	const preview = content.querySelector<HTMLElement>(".markdown-embed-content > .markdown-preview-view");
 	if (!preview || !preview.isShown()) return null;
 	const available = preview.clientHeight;
-	preview.style.height = "1px";
+	preview.setCssStyles({ height: "1px" });
 	const needed = preview.scrollHeight;
-	preview.style.height = "";
+	preview.setCssStyles({ height: "" });
 	return node.height + (needed - available) + 1;
 }
 
@@ -77,9 +77,9 @@ function neededWidth(node: CanvasNodeLike): number | null {
 	const sizer = content.querySelector<HTMLElement>(".markdown-embed-content > .markdown-preview-view > .markdown-preview-sizer");
 	if (!sizer || !sizer.isShown()) return null;
 	const available = sizer.offsetWidth;
-	sizer.style.width = "max-content";
+	sizer.setCssStyles({ width: "max-content" });
 	const needed = sizer.offsetWidth;
-	sizer.style.width = "";
+	sizer.setCssStyles({ width: "" });
 	return node.width + (needed - available) + 1;
 }
 
@@ -120,7 +120,7 @@ export const autoResizeModule = defineModule({
 		const schedule = (node: CanvasNodeLike) => {
 			const w = watches.get(node);
 			if (!w || w.frame) return;
-			w.frame = requestAnimationFrame(() => {
+			w.frame = window.requestAnimationFrame(() => {
 				w.frame = 0;
 				observeTargets(node, w);
 				fit(node);

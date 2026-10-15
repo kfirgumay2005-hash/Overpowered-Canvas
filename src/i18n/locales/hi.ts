@@ -17,6 +17,7 @@ export const hi: Record<I18nKey, string> = {
 	"settings.module.desktopOnly": "मोबाइल पर उपलब्ध नहीं।",
 	"settings.module.failed": "शुरू नहीं हो सका — विवरण के लिए डेवलपर कंसोल देखें।",
 	"settings.module.requires": "आवश्यक: {modules}।",
+	"saveGuard.dropped": "Overpowered Canvas: सहेजने से पहले कुछ अमान्य प्लगइन डेटा हटा दिया गया। विवरण डेवलपर कंसोल में देखें।",
 	"settings.coexistence.name": "ओवरलैप सूचना",
 	"settings.coexistence.desc": "मिलती-जुलती सुविधाओं वाले प्लगइन (Advanced Canvas, Canvas Mindmap) के बारे में सूचना अगली बार शुरू होने पर फिर दिखाएँ।",
 	"settings.coexistence.button": "फिर से दिखाएँ",
@@ -680,8 +681,6 @@ export const hi: Record<I18nKey, string> = {
 	"direction.scope.full": "पूरा कैनवास",
 	"direction.scope.text": "केवल टेक्स्ट",
 
-	"settings.search.placeholder": "सेटिंग्स खोजें…",
-	"settings.search.empty": "कोई सेटिंग मेल नहीं खाती।",
 
 	"tour.open": "Overpowered Canvas टूर",
 	"tour.count": "चरण {n} / {total}",

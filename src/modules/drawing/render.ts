@@ -3,7 +3,6 @@ import type { Stroke } from "../../data/schema";
 import { strokePath, unpack } from "../../geometry/ink";
 import type { CanvasNodeLike } from "../../internals/types";
 
-const SVG_NS = "http://www.w3.org/2000/svg";
 const pathCache = new WeakMap<Stroke, string>();
 
 export function strokeD(s: Stroke): string {
@@ -24,7 +23,7 @@ export function renderInk(node: CanvasNodeLike, strokes: Stroke[] | undefined, s
 	}
 	node.nodeEl.setAttribute("data-opc-kind", "ink");
 	if (!svg) {
-		svg = document.createElementNS(SVG_NS, "svg") as SVGSVGElement;
+		svg = createSvg("svg");
 		svg.classList.add("opc-ink");
 		svg.addEventListener("pointerdown", onPointerDown);
 		node.nodeEl.insertBefore(svg, node.nodeEl.firstChild);
@@ -39,11 +38,11 @@ export function renderInk(node: CanvasNodeLike, strokes: Stroke[] | undefined, s
 		keep.add(s.id);
 		let path = existing.get(s.id);
 		if (!path) {
-			path = document.createElementNS(SVG_NS, "path") as SVGPathElement;
+			path = createSvg("path");
 			path.dataset.id = s.id;
 		}
 		// Keep document order = stroke order.
-		if (svg!.children[i] !== path) svg!.insertBefore(path, svg!.children[i] ?? null);
+		if (svg.children[i] !== path) svg.insertBefore(path, svg.children[i] ?? null);
 		const d = strokeD(s);
 		if (path.getAttribute("d") !== d) path.setAttribute("d", d);
 		path.setAttribute("fill", s.color);

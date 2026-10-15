@@ -34,7 +34,7 @@ export class NumberPromptModal extends Modal {
 			if (options.step) text.inputEl.step = String(options.step);
 			text.setValue(input).onChange((v) => (input = v));
 			text.inputEl.addEventListener("keydown", (e) => e.key === "Enter" && submit());
-			setTimeout(() => text.inputEl.focus());
+			window.setTimeout(() => text.inputEl.focus());
 		});
 		new Setting(this.contentEl)
 			.addButton((b) =>

@@ -149,7 +149,7 @@ class FramesView extends ItemView {
 				item.removeClasses(["drop-before", "drop-after"]);
 				if (!Number.isInteger(from) || from === to || from + 1 === to) return;
 				const frameOrder = move(all.map((f) => f.id), from, to);
-				mutate(this.ctx as ModuleContext<object>, canvas, () => this.ctx.data.root(canvas).set({ frameOrder }));
+				mutate(this.ctx, canvas, () => this.ctx.data.root(canvas).set({ frameOrder }));
 				this.render();
 			});
 		});
@@ -306,6 +306,6 @@ export const framesModule = defineModule<FramesSettings>({
 
 	renderSettings(el, ctx: ModuleContext<FramesSettings>) {
 		new Setting(el).setName(ctx.t("frames.fullscreen")).addToggle((t) => t.setValue(ctx.settings.fullscreen).onChange((v) => ctx.updateSettings({ fullscreen: v })));
-		new Setting(el).setName(ctx.t("frames.padding")).addSlider((s) => s.setLimits(0, 200, 10).setValue(ctx.settings.padding).setDynamicTooltip().onChange((v) => ctx.updateSettings({ padding: v })));
+		new Setting(el).setName(ctx.t("frames.padding")).addSlider((s) => s.setLimits(0, 200, 10).setValue(ctx.settings.padding).onChange((v) => ctx.updateSettings({ padding: v })));
 	},
 });

@@ -3,6 +3,7 @@
  * edges is cloned into an SVG <foreignObject> together with the CSS rules it uses. Images and
  * the privacy font are inlined as data URLs so the SVG is self-contained.
  */
+import { arrayBufferToBase64, requestUrl } from "obsidian";
 import type { CanvasEdgeLike, CanvasLike, CanvasNodeLike } from "../../internals/types";
 
 export interface ExportOptions {
@@ -42,12 +43,18 @@ async function mountContent(nodes: CanvasNodeLike[]): Promise<void> {
 	// Markdown renders asynchronously; give it a moment, then wait for images.
 	await sleep(400);
 	const images = nodes.flatMap((n) => [...n.nodeEl.querySelectorAll("img")]);
-	await Promise.all(images.map((img) => (img.complete ? null : new Promise((r) => { img.onload = img.onerror = r; setTimeout(r, 3000); }))));
+	await Promise.all(images.filter((img) => !img.complete).map((img) => new Promise((r) => { img.onload = img.onerror = r; window.setTimeout(r, 3000); })));
 }
 
 async function toDataUrl(url: string): Promise<string | null> {
 	try {
-		const blob = await (await fetch(url)).blob();
+		if (/^https?:/i.test(url)) {
+			const res = await requestUrl({ url });
+			const type = res.headers["content-type"] ?? "application/octet-stream";
+			return `data:${type};base64,${arrayBufferToBase64(res.arrayBuffer)}`;
+		}
+		// Local resources (vault files, app fonts, blob: URLs) are not network requests.
+		const blob = await (await activeWindow.fetch(url)).blob();
 		return await new Promise((resolve) => {
 			const reader = new FileReader();
 			reader.onload = () => resolve(reader.result as string);
@@ -62,16 +69,14 @@ async function toDataUrl(url: string): Promise<string | null> {
 /** Replaces things a foreignObject cannot show (iframes, webviews, canvases) and inlines images. */
 async function sanitizeClone(root: HTMLElement, originals: HTMLElement[]): Promise<void> {
 	for (const el of [...root.querySelectorAll("iframe, webview, video, audio, object, embed")]) {
-		const box = el.ownerDocument.createElement("div");
-		box.className = "opc-export-placeholder";
-		box.textContent = (el.getAttribute("src") ?? "").replace(/^app:\/\/[^/]+/, "") || "⧉";
+		const box = createDiv({ cls: "opc-export-placeholder", text: (el.getAttribute("src") ?? "").replace(/^app:\/\/[^/]+/, "") || "⧉" });
 		el.replaceWith(box);
 	}
 	// <canvas> (PDF pages, charts): copy pixels from the original element.
 	const liveCanvases = originals.flatMap((o) => [...o.querySelectorAll("canvas")]);
 	[...root.querySelectorAll("canvas")].forEach((el, i) => {
 		const live = liveCanvases[i];
-		const img = el.ownerDocument.createElement("img");
+		const img = createEl("img");
 		try {
 			if (live) img.src = live.toDataURL();
 		} catch {
@@ -195,13 +200,13 @@ export async function exportCanvasSvg(canvas: CanvasLike, opts: ExportOptions, w
 	for (const e of edges) e.render();
 
 	// Build the clone tree.
-	const body = doc.createElementNS(XHTML, "div") as HTMLElement;
+	const body = doc.createElementNS(XHTML, "div");
 	body.className = `${doc.body.className} opc-export-root`;
 	body.setAttribute("style", `${doc.body.getAttribute("style") ?? ""};margin:0;width:${width}px;height:${height}px;position:relative;overflow:hidden;background:transparent;`);
-	const wrapper = body.appendChild(doc.createElementNS(XHTML, "div")) as HTMLElement;
+	const wrapper = body.appendChild(doc.createElementNS(XHTML, "div"));
 	wrapper.className = `canvas-wrapper${opts.privacy ? " is-text-garbled" : ""}`;
 	wrapper.setAttribute("style", `position:absolute;left:0;top:0;width:${width}px;height:${height}px;--zoom-multiplier:1;contain:none;overflow:visible;background-color:${opts.transparent ? "transparent" : "var(--canvas-background)"};`);
-	const canvasEl = wrapper.appendChild(doc.createElementNS(XHTML, "div")) as HTMLElement;
+	const canvasEl = wrapper.appendChild(doc.createElementNS(XHTML, "div"));
 	canvasEl.className = "canvas";
 	canvasEl.setAttribute("style", `position:absolute;left:0;top:0;transform:translate(${-minX}px, ${-minY}px);transform-origin:0 0;`);
 
@@ -223,7 +228,7 @@ export async function exportCanvasSvg(canvas: CanvasLike, opts: ExportOptions, w
 	for (const e of edges) if (e.labelElement) canvasEl.appendChild(e.labelElement.wrapperEl.cloneNode(true));
 
 	if (opts.watermark) {
-		const mark = body.appendChild(doc.createElementNS(XHTML, "div")) as HTMLElement;
+		const mark = body.appendChild(doc.createElementNS(XHTML, "div"));
 		mark.className = "opc-export-watermark";
 		mark.textContent = watermarkText;
 	}
@@ -257,7 +262,7 @@ export async function svgToPng(result: ExportResult, scale: number): Promise<Blo
 	img.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(result.svg)}`;
 	{
 		await img.decode();
-		const canvas = document.createElement("canvas");
+		const canvas = createEl("canvas");
 		canvas.width = Math.round(result.width * s);
 		canvas.height = Math.round(result.height * s);
 		const g = canvas.getContext("2d");
@@ -269,5 +274,5 @@ export async function svgToPng(result: ExportResult, scale: number): Promise<Blo
 }
 
 function sleep(ms: number) {
-	return new Promise((r) => setTimeout(r, ms));
+	return new Promise((r) => window.setTimeout(r, ms));
 }

@@ -61,18 +61,7 @@ const cssContext = await esbuild.context({
 	outfile: "styles.css",
 });
 
-// Paste-into-console probe of the canvas internals (see docs/INTERNALS.md). Not part of the plugin.
-const probeContext = await esbuild.context({
-	banner: { js: "/* Overpowered Canvas — canvas internals probe. Paste into Obsidian's developer console with a canvas open. Generated from src/internals/probe.ts. */" },
-	entryPoints: ["src/internals/probe-console.ts"],
-	bundle: true,
-	format: "iife",
-	target: "es2022",
-	logLevel: "info",
-	outfile: "scripts/console/probe-internals.js",
-});
-
-const contexts = [jsContext, cssContext, probeContext];
+const contexts = [jsContext, cssContext];
 if (production) {
 	await Promise.all(contexts.map((c) => c.rebuild()));
 	process.exit(0);

@@ -44,7 +44,7 @@ cards for annotation, custom style attributes from CSS snippets, a public events
 a frames panel to search, reorder and present the groups of a canvas, a line grid behind the
 content (a line every N dots), an adjustable selection toolbar size (separately for computers
 and phones), and a guided tour of every feature (ribbon or canvas controls; it remembers where
-you stopped). The settings tab has a search box.
+you stopped). Every module and option shows up in Obsidian's settings search.
 
 **Data features** — board templates (your own, plus Kanban, SWOT, Retrospective, Weekly plan,
 Mind map and Flowchart), kanban columns bound to a frontmatter property with two-way sync

@@ -1,4 +1,4 @@
-import { Setting } from "obsidian";
+import { MarkdownPreviewRenderer, Setting, type MarkdownPostProcessor } from "obsidian";
 import { defineModule, type ModuleContext } from "../../core/module";
 import { DIRECTIONS, type Direction } from "../../data/schema";
 import type { I18nKey } from "../../i18n";
@@ -84,6 +84,16 @@ export const directionModule = defineModule<DirectionSettings>({
 			apply: (node, extra) => applyNode(node, extra.dir),
 			clear: (node) => node.nodeEl.removeAttribute("dir"),
 		});
+		// Lists follow the direction of their first item.
+		const markLists: MarkdownPostProcessor = (el) => markRtlLists(el);
+		MarkdownPreviewRenderer.registerPostProcessor(markLists);
+		ctx.register(() => {
+			MarkdownPreviewRenderer.unregisterPostProcessor(markLists);
+			for (const list of activeDocument.querySelectorAll(".opc-list-rtl")) list.removeClass("opc-list-rtl");
+		});
+		ctx.onCanvas((canvas) => {
+			for (const node of canvas.nodes.values()) if (node.contentEl) markRtlLists(node.contentEl);
+		});
 		ctx.onSettingsChange(() => {
 			for (const canvas of ctx.canvases()) {
 				applyCanvas(canvas);
@@ -92,7 +102,7 @@ export const directionModule = defineModule<DirectionSettings>({
 		});
 
 		// Per-card text direction.
-		const textNodes = (selection: Parameters<typeof onlyNodes>[0]) => onlyTextBoxes(ctx as ModuleContext<object>, selection);
+		const textNodes = (selection: Parameters<typeof onlyNodes>[0]) => onlyTextBoxes(ctx, selection);
 		ctx.addMenuButton({
 			id: "text-direction",
 			icon: (selection) => ICONS[common(textNodes(selection) ?? [], (n) => ctx.data.node(n).get().dir) ?? "auto"],
@@ -106,7 +116,7 @@ export const directionModule = defineModule<DirectionSettings>({
 					buttonEl,
 					[{ columns: 3, items: DIRECTIONS.map((d) => ({ id: d, label: ctx.t(`direction.${d}` as I18nKey), icon: ICONS[d], active: (current ?? "auto") === d })) }],
 					(id) =>
-						mutate(ctx as ModuleContext<object>, canvas, () => {
+						mutate(ctx, canvas, () => {
 							for (const n of nodes) ctx.data.node(n).set({ dir: id === "auto" ? undefined : (id as Direction) });
 						}),
 				);
@@ -114,7 +124,7 @@ export const directionModule = defineModule<DirectionSettings>({
 		});
 
 		// Per-canvas layout direction, stored in the file.
-		const setCanvasDir = (canvas: CanvasLike, dir: Direction) => mutate(ctx as ModuleContext<object>, canvas, () => ctx.data.root(canvas).set({ dir: dir === "auto" ? undefined : dir }));
+		const setCanvasDir = (canvas: CanvasLike, dir: Direction) => mutate(ctx, canvas, () => ctx.data.root(canvas).set({ dir: dir === "auto" ? undefined : dir }));
 		for (const dir of DIRECTIONS)
 			ctx.addCommand({
 				id: `canvas-${dir}`,
@@ -159,3 +169,19 @@ export const directionModule = defineModule<DirectionSettings>({
 			);
 	},
 });
+
+const RTL_LETTER = /[\p{Script=Hebrew}\p{Script=Arabic}\p{Script=Syriac}\p{Script=Thaana}\p{Script=Nko}]/u;
+const FIRST_LETTER = /\p{L}/u;
+
+/**
+ * Marks lists whose first item starts with a right-to-left letter (the core marks each item
+ * dir="auto" but not the list), so bullets, numbers, checkboxes and indentation sit on the
+ * reading side. Only canvas cards are styled by it.
+ */
+function markRtlLists(el: HTMLElement): void {
+	for (const list of el.querySelectorAll<HTMLElement>("ul, ol")) {
+		const first = list.querySelector(":scope > li");
+		const letter = FIRST_LETTER.exec(first?.textContent ?? "")?.[0];
+		list.toggleClass("opc-list-rtl", !!letter && RTL_LETTER.test(letter));
+	}
+}

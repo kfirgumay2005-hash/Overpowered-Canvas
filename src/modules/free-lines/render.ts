@@ -3,7 +3,6 @@ import type { ArrowStyle, LineData } from "../../data/schema";
 import type { CanvasNodeLike } from "../../internals/types";
 import { ARROW_GEOMETRY } from "../edge-styles/geometry";
 
-const SVG_NS = "http://www.w3.org/2000/svg";
 const ARROW_LENGTH = 10.4;
 
 export interface LineHandlers {
@@ -16,7 +15,7 @@ export interface LineHandlers {
 function child<K extends keyof SVGElementTagNameMap>(svg: SVGSVGElement, tag: K, cls: string): SVGElementTagNameMap[K] {
 	let el = svg.querySelector<SVGElementTagNameMap[K]>(`:scope > .${cls}`);
 	if (!el) {
-		el = document.createElementNS(SVG_NS, tag) as SVGElementTagNameMap[K];
+		el = createSvg(tag);
 		el.classList.add(cls);
 		svg.appendChild(el);
 	}
@@ -66,7 +65,7 @@ export function renderLine(node: CanvasNodeLike, line: LineData | null, strokeWi
 	}
 	node.nodeEl.setAttribute("data-opc-kind", "line");
 	if (!svg) {
-		svg = document.createElementNS(SVG_NS, "svg") as SVGSVGElement;
+		svg = createSvg("svg");
 		svg.classList.add("opc-line");
 		node.nodeEl.insertBefore(svg, node.nodeEl.firstChild);
 		const hit = child(svg, "path", "opc-line-hit");

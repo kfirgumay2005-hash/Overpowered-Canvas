@@ -1,5 +1,5 @@
 body.opc-mod-presentation .canvas-wrapper.opc-presenting :is(.canvas-controls, .canvas-card-menu, .canvas-menu-container, .opc-search-bar) {
-	display: none !important;
+	display: none;
 }
 body.opc-mod-presentation .canvas-wrapper.opc-presenting {
 	cursor: default;

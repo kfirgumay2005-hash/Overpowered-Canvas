@@ -49,9 +49,12 @@
 
 .canvas-node[data-opc-shape] > .canvas-node-container {
 	background-color: transparent;
-	border-color: transparent !important;
-	box-shadow: none !important;
 	border-radius: 0;
+}
+/* The shape draws its own outline; outweighs the core's selected/focused/themed/dragging states (0,5,0). */
+.canvas-wrapper .canvas .canvas-node.canvas-node[data-opc-shape][data-opc-shape] > .canvas-node-container {
+	border-color: transparent;
+	box-shadow: none;
 }
 
 .canvas-node[data-opc-shape] > .canvas-node-container > .canvas-node-content {

@@ -96,7 +96,7 @@ export const toolbarSizeModule = defineModule<ToolbarSizeSettings>({
 					s
 						.setLimits(MIN, MAX, 5)
 						.setValue(ctx.settings[key])
-						.setDynamicTooltip()
+
 						.onChange((v) => ctx.updateSettings({ [key]: v })),
 				);
 		new Setting(el).setName(ctx.t("toolbarSize.menu.heading")).setHeading();

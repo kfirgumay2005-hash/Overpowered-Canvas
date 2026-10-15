@@ -160,7 +160,7 @@ export const gridModule = defineModule<GridSettings>({
 				s
 					.setLimits(1, 20, 1)
 					.setValue(Math.min(20, ctx.settings.every))
-					.setDynamicTooltip()
+
 					.onChange((v) => ctx.updateSettings({ every: v })),
 			);
 		new Setting(el)

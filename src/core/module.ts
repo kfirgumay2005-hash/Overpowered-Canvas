@@ -54,7 +54,7 @@ export interface ModuleDefinition<S extends object = Record<string, never>> {
 	readonly overlapsWith?: readonly OverlappingPlugin[];
 	readonly platforms?: "all" | "desktop-only";
 	/** Pure; turns stored settings (possibly from an older version) into valid settings. */
-	readonly sanitizeSettings?: (raw: unknown, defaults: S) => S;
+	sanitizeSettings?(raw: unknown, defaults: S): S;
 
 	enable(ctx: ModuleContext<S>): void | Promise<void>;
 	/** Only for cleanup the context cannot track. */
@@ -130,7 +130,7 @@ export interface PluginInspector {
 }
 
 /** Type-erased definition for the registry. */
-export type AnyModule = ModuleDefinition<any>;
+export type AnyModule = ModuleDefinition<object>;
 
 /** Identity helper that keeps the settings type inferred. */
 export function defineModule<S extends object>(definition: ModuleDefinition<S>): ModuleDefinition<S> {

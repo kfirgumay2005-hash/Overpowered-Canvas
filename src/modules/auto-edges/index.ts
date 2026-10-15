@@ -5,6 +5,9 @@ import type { CanvasLike, CanvasNodeLike } from "../../internals/types";
 import { nodeType, randomId } from "../shared";
 import { desiredAutoEdges } from "./logic";
 
+/** A property name, shown as an example (data, not prose). */
+const EXAMPLE_PROPERTY = "canvas-edges";
+
 interface AutoEdgesSettings {
 	property: string;
 }
@@ -33,7 +36,7 @@ export const autoEdgesModule = defineModule<AutoEdgesSettings>({
 			// Portal contents ("<portal>~<id>") belong to another canvas.
 			const fileNodes = [...canvas.nodes.values()].filter((n) => !n.id.includes("~") && nodeType(n) === "file" && n.file instanceof TFile) as (CanvasNodeLike & { file: TFile })[];
 			const desired = desiredAutoEdges(
-				fileNodes.map((n) => ({ id: n.id, path: n.file.path, property: mc.getFileCache(n.file)?.frontmatter?.[key] })),
+				fileNodes.map((n) => ({ id: n.id, path: n.file.path, property: mc.getFileCache(n.file)?.frontmatter?.[key] as unknown })),
 				(link, source) => mc.getFirstLinkpathDest(link, source)?.path ?? null,
 			);
 			let changed = false;
@@ -84,6 +87,6 @@ export const autoEdgesModule = defineModule<AutoEdgesSettings>({
 		new Setting(el)
 			.setName(ctx.t("autoEdges.property.name"))
 			.setDesc(ctx.t("autoEdges.property.desc"))
-			.addText((t) => t.setPlaceholder("canvas-edges").setValue(ctx.settings.property).onChange((v) => ctx.updateSettings({ property: v })));
+			.addText((t) => t.setPlaceholder(EXAMPLE_PROPERTY).setValue(ctx.settings.property).onChange((v) => ctx.updateSettings({ property: v })));
 	},
 });

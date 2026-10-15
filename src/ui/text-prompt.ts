@@ -27,7 +27,7 @@ export class TextPromptModal extends Modal {
 			if (options.placeholder) text.setPlaceholder(options.placeholder);
 			text.setValue(value).onChange((v) => (value = v));
 			text.inputEl.addEventListener("keydown", (e) => e.key === "Enter" && submit());
-			setTimeout(() => {
+			window.setTimeout(() => {
 				text.inputEl.focus();
 				text.inputEl.select();
 			});

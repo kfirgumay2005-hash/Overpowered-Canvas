@@ -4,7 +4,7 @@ body.opc-mod-auto-resize .canvas-node[data-opc-auto-width] .markdown-embed-conte
 }
 body.opc-mod-auto-resize[data-opc-auto-width] .markdown-source-view.mod-cm6 .cm-content,
 body.opc-mod-auto-resize[data-opc-auto-width] .markdown-source-view.mod-cm6 .cm-line {
-	white-space: pre !important;
+	white-space: pre;
 }
 /* Fitted cards never show a scrollbar while they catch up with the text. */
 body.opc-mod-auto-resize .canvas-node[data-opc-auto-resize] .markdown-embed-content > .markdown-preview-view {

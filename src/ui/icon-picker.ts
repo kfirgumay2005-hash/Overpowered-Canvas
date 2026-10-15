@@ -32,7 +32,7 @@ export class IconPickerModal extends Modal {
 		if (this.options.askName !== false)
 			new Setting(contentEl).setName(t("iconPicker.name")).addText((text) => {
 				text.setValue(this.name).onChange((v) => (this.name = v));
-				setTimeout(() => text.inputEl.select());
+				window.setTimeout(() => text.inputEl.select());
 			});
 		let query = "";
 		new Setting(contentEl).setName(t("iconPicker.icon")).addSearch((search) =>

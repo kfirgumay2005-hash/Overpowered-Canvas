@@ -1,5 +1,4 @@
 import { defineModule, type ModuleContext } from "../../core/module";
-import type { Point } from "../../data/schema";
 import type { CanvasEdgeLike, CanvasLike } from "../../internals/types";
 import { capturePointer, mutate, selectedEdges } from "../shared";
 import { cubicAt, routeEdge, routingState } from "../edge-routing";
@@ -125,7 +124,7 @@ class EdgeHandles {
 
 	private removeBend(index: number): void {
 		const wps = (this.ctx.data.edge(this.edge).get().waypoints ?? []).filter((_, i) => i !== index);
-		mutate(this.ctx, this.canvas, () => this.ctx.data.edge(this.edge).set({ waypoints: wps.length ? (wps as Point[]) : undefined }));
+		mutate(this.ctx, this.canvas, () => this.ctx.data.edge(this.edge).set({ waypoints: wps.length ? wps : undefined }));
 		this.edge.updatePath();
 		this.render();
 	}

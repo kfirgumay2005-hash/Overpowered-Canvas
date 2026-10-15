@@ -125,7 +125,7 @@ class BreakpointModal extends Modal {
 			text.inputEl.addEventListener("keydown", (e) => {
 				if (e.key === "Enter") submit();
 			});
-			setTimeout(() => text.inputEl.focus());
+			window.setTimeout(() => text.inputEl.focus());
 		});
 		const submit = () => {
 			const trimmed = input.trim();

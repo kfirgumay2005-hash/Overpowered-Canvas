@@ -19,6 +19,7 @@ export const en = {
 	"settings.module.desktopOnly": "Not available on mobile.",
 	"settings.module.failed": "Failed to start — see the developer console for details.",
 	"settings.module.requires": "Requires: {modules}.",
+	"saveGuard.dropped": "Overpowered Canvas: some invalid plugin data was dropped before saving. See the developer console.",
 	"settings.coexistence.name": "Overlap notice",
 	"settings.coexistence.desc": "Show the notice about overlapping plugins (Advanced Canvas, Canvas Mindmap) again on next start.",
 	"settings.coexistence.button": "Show again",
@@ -682,8 +683,6 @@ export const en = {
 	"direction.scope.full": "Whole canvas",
 	"direction.scope.text": "Text only",
 
-	"settings.search.placeholder": "Search settings…",
-	"settings.search.empty": "No settings match.",
 
 	"tour.open": "Overpowered Canvas tour",
 	"tour.count": "Step {n} of {total}",

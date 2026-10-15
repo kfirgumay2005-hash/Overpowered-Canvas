@@ -1,5 +1,5 @@
 import { FuzzySuggestModal, TFile, type App } from "obsidian";
-import { defineModule, type ModuleContext } from "../../core/module";
+import { defineModule } from "../../core/module";
 import type { Translate } from "../../i18n";
 import type { CanvasItemLike, CanvasLike, CanvasNodeLike } from "../../internals/types";
 import { TextPromptModal } from "../../ui/text-prompt";
@@ -29,7 +29,6 @@ class FilePicker extends FuzzySuggestModal<TFile> {
 	}
 }
 
-type Ctx = ModuleContext<object>;
 
 /** The point at the middle of the view, offset so a card of `size` is centered there. */
 function centered(canvas: CanvasLike, size: { width: number; height: number }) {
@@ -73,7 +72,7 @@ export const canvasCommandsModule = defineModule({
 		// ---------- create ----------
 		const addData = (canvas: CanvasLike, node: Record<string, unknown> & { width: number; height: number }, edit = false) => {
 			const id = randomId();
-			mutate(ctx as Ctx, canvas, () => {
+			mutate(ctx, canvas, () => {
 				canvas.importData({ nodes: [{ id, ...centered(canvas, node), ...node } as never], edges: [] }, false);
 			});
 			const created = canvas.nodes.get(id);
@@ -98,7 +97,7 @@ export const canvasCommandsModule = defineModule({
 			const maxX = Math.max(...nodes.map((n) => n.x + n.width)) + pad;
 			const maxY = Math.max(...nodes.map((n) => n.y + n.height)) + pad;
 			const id = randomId();
-			mutate(ctx as Ctx, c, () => {
+			mutate(ctx, c, () => {
 				c.importData({ nodes: [{ id, type: "group", label: "", x: minX, y: minY, width: maxX - minX, height: maxY - minY }], edges: [] }, false);
 			});
 			const group = c.nodes.get(id);
@@ -119,14 +118,14 @@ export const canvasCommandsModule = defineModule({
 			const offset = c.gridSpacing * 2 || 40;
 			const copy = instantiate({ nodes, edges: data.edges }, { x: minX + offset, y: minY + offset }, () => randomId());
 			let added: Set<CanvasNodeLike> | undefined;
-			mutate(ctx as Ctx, c, () => {
+			mutate(ctx, c, () => {
 				added = c.importData({ nodes: copy.nodes, edges: copy.edges }, false);
 			});
 			if (added?.size) select(c, added);
 		});
 		const nudge = (dx: number, dy: number) => (c: CanvasLike) => {
 			const step = c.gridSpacing || 20;
-			mutate(ctx as Ctx, c, () => {
+			mutate(ctx, c, () => {
 				for (const n of selectedNodes(c)) n.moveAndResize({ x: n.x + dx * step, y: n.y + dy * step, width: n.width, height: n.height });
 			});
 		};

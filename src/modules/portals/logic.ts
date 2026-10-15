@@ -21,7 +21,7 @@ export function parseGhostId(id: string): { portalId: string; targetId: string }
 }
 
 function withExtra(edge: CanvasEdgeData, patch: Record<string, unknown> | undefined): CanvasEdgeData {
-	const extra = isPlainObject(edge[SCHEMA_KEY]) ? { ...(edge[SCHEMA_KEY] as Record<string, unknown>) } : {};
+	const extra = isPlainObject(edge[SCHEMA_KEY]) ? { ...(edge[SCHEMA_KEY]) } : {};
 	if (patch) Object.assign(extra, patch);
 	else delete extra.portalTarget;
 	const out: CanvasEdgeData = { ...edge };

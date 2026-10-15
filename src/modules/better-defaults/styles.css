@@ -1,4 +1,5 @@
 /* Constant label/edge sizes regardless of zoom. */
-body.opc-mod-better-defaults.opc-no-font-scaling .canvas-wrapper {
-	--zoom-multiplier: 1 !important;
+/* The core sets the multiplier inline on the wrapper; its children override it for everything inside. */
+body.opc-mod-better-defaults.opc-no-font-scaling .canvas-wrapper > * {
+	--zoom-multiplier: 1;
 }

@@ -35,7 +35,7 @@ export default class OverpoweredCanvasPlugin extends Plugin {
 			console.error("[overpowered-canvas] Canvas internals changed; this canvas is left untouched.", problems);
 		});
 		const hooks = (this.hooks = new CanvasHooks(this.patcher, tracker));
-		const saveGuard = new SaveGuard(this.patcher, tracker);
+		const saveGuard = new SaveGuard(this.patcher, tracker, () => this.translate("saveGuard.dropped"));
 		this.register(() => saveGuard.setActive(false));
 		const ui = new CanvasUi(hooks, tracker);
 		const data: CanvasDataApi = createCanvasDataApi(
@@ -85,8 +85,8 @@ export default class OverpoweredCanvasPlugin extends Plugin {
 		});
 	}
 
-	override async onunload(): Promise<void> {
-		await this.modules?.stopAll();
+	override onunload(): void {
+		void this.modules?.stopAll();
 	}
 
 	/** The guided tour: a ribbon button, a button in every canvas' side controls and a command. */

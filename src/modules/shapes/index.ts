@@ -29,7 +29,7 @@ function apply(node: CanvasNodeLike, extra: OpcNode | null): void {
 		return;
 	}
 	el.setAttribute("data-opc-kind", "shape");
-	renderNodeShape(node, (extra.shape && SHAPES.includes(extra.shape) ? extra.shape : "rectangle") as ShapeName);
+	renderNodeShape(node, (extra.shape && SHAPES.includes(extra.shape) ? extra.shape : "rectangle"));
 	const fill = extra.fill ?? "tint";
 	el.setAttribute("data-opc-fill", (FILLS as readonly string[]).includes(fill) ? fill : "color");
 	if (fill.startsWith("#")) el.style.setProperty("--opc-fill", fill);
@@ -108,7 +108,7 @@ export const shapesModule = defineModule({
 				showPicker(
 					buttonEl,
 					[
-						{ title: ctx.t("shapes.shape"), items: shapeItems(get("shape") as ShapeName | undefined).map((i) => ({ ...i, id: `shape:${i.id}` })) },
+						{ title: ctx.t("shapes.shape"), items: shapeItems(get("shape")).map((i) => ({ ...i, id: `shape:${i.id}` })) },
 						{
 							title: ctx.t("shapes.fill"),
 							columns: 3,

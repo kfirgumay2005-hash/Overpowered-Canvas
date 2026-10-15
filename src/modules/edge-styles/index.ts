@@ -6,7 +6,6 @@ import { showPicker } from "../../ui/picker";
 import { ARROW_GEOMETRY, arrowPreview } from "./geometry";
 import { common, mutate, onlyEdges } from "../shared";
 
-const SVG_NS = "http://www.w3.org/2000/svg";
 
 function pathPreview(style: EdgePathStyle): string {
 	const dash = { solid: "", dotted: "0.1 4", "short-dashed": "4 3", "long-dashed": "9 4" }[style];
@@ -23,7 +22,7 @@ function renderArrow(end: { el: SVGGElement } | null | undefined, style: ArrowSt
 		return;
 	}
 	if (!path) {
-		path = document.createElementNS(SVG_NS, "path") as SVGPathElement;
+		path = createSvg("path");
 		path.classList.add("opc-arrow");
 		end.el.appendChild(path);
 	}

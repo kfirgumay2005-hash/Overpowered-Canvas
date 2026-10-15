@@ -48,7 +48,9 @@ export function validateAttribute(raw: unknown, target: "node" | "edge"): StyleA
 	for (const o of r.options) {
 		if (!o || typeof o !== "object") return null;
 		const opt = o as Record<string, unknown>;
-		const value = opt.value === null || opt.value === undefined ? null : String(opt.value);
+		const raw = opt.value;
+		// Anything but a short word (objects included) fails the check below.
+		const value = raw === null || raw === undefined ? null : typeof raw === "string" || typeof raw === "number" ? String(raw) : "";
 		if (value !== null && !/^[\w-]{1,60}$/.test(value)) return null;
 		options.push({ label: typeof opt.label === "string" ? opt.label : String(value ?? "—"), value, ...(typeof opt.icon === "string" ? { icon: opt.icon } : {}) });
 	}

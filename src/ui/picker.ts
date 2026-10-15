@@ -3,7 +3,7 @@
  * Keyboard accessible: arrow keys move focus, Enter/Space pick, Esc closes. Closes on outside
  * click. Only one picker is open at a time.
  */
-import { setIcon, setTooltip } from "obsidian";
+import { sanitizeHTMLToDom, setIcon, setTooltip } from "obsidian";
 
 export interface PickerItem {
 	id: string;
@@ -36,8 +36,8 @@ export function closePicker(): void {
 }
 
 export function showPicker(anchor: HTMLElement, sections: PickerSection[], onPick: (id: string) => void): void {
-	const choose = (anchor as ChoiceAnchor).opcChoose;
-	if (choose) return choose(sections, onPick);
+	const target = anchor as ChoiceAnchor;
+	if (target.opcChoose) return target.opcChoose(sections, onPick);
 	if (current?.anchor === anchor) {
 		current.close();
 		return;
@@ -54,7 +54,7 @@ export function showPicker(anchor: HTMLElement, sections: PickerSection[], onPic
 			const b = grid.createEl("button", { cls: "opc-picker-item clickable-icon", attr: { role: "menuitemradio", "aria-label": item.label, "aria-checked": String(!!item.active), "data-id": item.id } });
 			if (item.active) b.addClass("is-active");
 			if (item.svg) {
-				if (typeof item.svg === "string") b.innerHTML = item.svg;
+				if (typeof item.svg === "string") b.appendChild(sanitizeHTMLToDom(item.svg));
 				else b.appendChild(item.svg);
 			} else if (item.icon) setIcon(b, item.icon);
 			setTooltip(b, item.label, { placement: "top" });

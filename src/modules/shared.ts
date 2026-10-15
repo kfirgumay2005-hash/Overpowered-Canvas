@@ -40,11 +40,11 @@ export function selectedEdges(canvas: CanvasLike): CanvasEdgeLike[] {
 }
 
 export function onlyNodes(selection: CanvasItemLike[]): CanvasNodeLike[] | null {
-	return selection.length > 0 && selection.every(isNode) ? (selection as CanvasNodeLike[]) : null;
+	return selection.length > 0 && selection.every(isNode) ? (selection) : null;
 }
 
 export function onlyEdges(selection: CanvasItemLike[]): CanvasEdgeLike[] | null {
-	return selection.length > 0 && selection.every(isEdge) ? (selection as CanvasEdgeLike[]) : null;
+	return selection.length > 0 && selection.every(isEdge) ? (selection) : null;
 }
 
 /** The value shared by all items, or undefined when they differ. */

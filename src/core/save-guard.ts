@@ -5,6 +5,7 @@
  * - on load, files from an older schema version are migrated in memory.
  */
 import { Notice } from "obsidian";
+import type { CanvasFileData } from "../data/json-canvas";
 import { migrateFile } from "../data/migrations";
 import { checkCanvasFile, hasErrors, stripInvalidExtra } from "../data/validate-file";
 import type { CanvasViewLike } from "../internals/types";
@@ -19,6 +20,8 @@ export class SaveGuard {
 	constructor(
 		private readonly patcher: Patcher,
 		private readonly tracker: CanvasTracker,
+		/** Text of the notice shown when invalid plugin data was dropped (translated). */
+		private readonly droppedMessage: () => string,
 	) {}
 
 	setActive(active: boolean): void {
@@ -35,7 +38,7 @@ export class SaveGuard {
 	}
 
 	private install(proto: CanvasViewLike): void {
-		const guard = this;
+		const warnOnce = () => this.warnOnce();
 		this.uninstall = this.patcher.apply<CanvasViewLike>("core:save-guard", "view.getViewData/setViewData", proto, {
 			getViewData: (next) =>
 				function (this: CanvasViewLike) {
@@ -47,7 +50,7 @@ export class SaveGuard {
 							if (cleaned !== canvas.data) {
 								console.error("[overpowered-canvas] Removed invalid extra data before saving", this.file?.path, problems);
 								canvas.data = cleaned;
-								guard.warnOnce();
+								warnOnce();
 							}
 						}
 					} catch (error) {
@@ -60,7 +63,7 @@ export class SaveGuard {
 					let out = text;
 					try {
 						if (text) {
-							const result = migrateFile(JSON.parse(text));
+							const result = migrateFile(JSON.parse(text) as CanvasFileData);
 							if (result.status.kind === "migrated") out = JSON.stringify(result.file);
 						}
 					} catch {
@@ -74,6 +77,6 @@ export class SaveGuard {
 	private warnOnce(): void {
 		if (this.warned) return;
 		this.warned = true;
-		new Notice("Overpowered Canvas: some invalid plugin data was dropped before saving. See the developer console.", 10_000);
+		new Notice(this.droppedMessage(), 10_000);
 	}
 }

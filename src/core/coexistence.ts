@@ -51,7 +51,7 @@ class CoexistenceModal extends Modal {
 			.addButton((b) =>
 				b
 					.setButtonText(t("coexistence.disableOurs"))
-					.setWarning()
+					.setDestructive()
 					.onClick(async () => {
 						const ids = new Set(this.overlaps.flatMap((o) => o.modules));
 						for (const id of ids) await this.manager.setEnabled(id, false);

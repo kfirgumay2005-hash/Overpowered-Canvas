@@ -126,9 +126,9 @@ async function runLayout(ctx: ModuleContext<LayoutSettings>, canvas: CanvasLike,
 			const p = pos.get(n.id);
 			if (p) n.moveTo(p);
 		}
-		if (t < 1) requestAnimationFrame(frame);
+		if (t < 1) window.requestAnimationFrame(frame);
 	};
-	requestAnimationFrame(frame);
+	window.requestAnimationFrame(frame);
 }
 
 /** Auto layout (elkjs): mind map in any direction, radial or balanced; layered flowcharts; grid packing. */
@@ -189,10 +189,10 @@ export const autoLayoutModule = defineModule<LayoutSettings>({
 	renderSettings(el, ctx) {
 		new Setting(el)
 			.setName(ctx.t("autoLayout.spacing.name"))
-			.addSlider((s) => s.setLimits(10, 200, 5).setValue(ctx.settings.spacing).setDynamicTooltip().onChange((v) => ctx.updateSettings({ spacing: v })));
+			.addSlider((s) => s.setLimits(10, 200, 5).setValue(ctx.settings.spacing).onChange((v) => ctx.updateSettings({ spacing: v })));
 		new Setting(el)
 			.setName(ctx.t("autoLayout.levelSpacing.name"))
-			.addSlider((s) => s.setLimits(20, 400, 10).setValue(ctx.settings.levelSpacing).setDynamicTooltip().onChange((v) => ctx.updateSettings({ levelSpacing: v })));
+			.addSlider((s) => s.setLimits(20, 400, 10).setValue(ctx.settings.levelSpacing).onChange((v) => ctx.updateSettings({ levelSpacing: v })));
 		new Setting(el).setName(ctx.t("autoLayout.animate.name")).addToggle((t) => t.setValue(ctx.settings.animate).onChange((v) => ctx.updateSettings({ animate: v })));
 	},
 });

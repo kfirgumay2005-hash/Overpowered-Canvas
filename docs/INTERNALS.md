@@ -7,7 +7,7 @@ may change in any Obsidian release. Rules:
 - Code reaches internals only through `src/internals/` (types, guards, probe) and each
   module's `patches.ts`.
 - **Status:** 🟡 *source* = read from Obsidian's bundled `app.js` (used only to form hypotheses);
-  🟢 *runtime* = confirmed in the developer console with the probe (`scripts/console/probe-internals.js`).
+  🟢 *runtime* = confirmed at runtime with the probe (Diagnostics → “Copy canvas internals report”).
   A member is not relied on in a released phase until it is 🟢.
 - The core refuses to touch a canvas view whose shape doesn't match
   (`findCanvasShapeProblems` in `src/internals/guards.ts`) and logs the mismatch instead.
@@ -89,13 +89,9 @@ Verified against: **Obsidian 1.14.4 (desktop, Windows)**.
 
 1. Disable **Advanced Canvas** (it patches the same objects) and reload Obsidian (Ctrl+R).
 2. Open a canvas that contains a text card, a group and at least one edge; click into it.
-3. Open the developer console (Ctrl+Shift+I). Type `allow pasting` if Chrome asks.
-4. Paste the contents of `scripts/console/probe-internals.js` and press Enter. The report is
-   printed and copied to the clipboard.
-5. Paste the report back to Claude; every 🟡 row confirmed by it becomes 🟢 with the date.
-
-The same report is available from the **Diagnostics** module: command
-“Copy canvas internals report”.
+3. Enable the **Diagnostics** module and run the command “Copy canvas internals report”. The
+   report is copied to the clipboard.
+4. Paste the report back to Claude; every 🟡 row confirmed by it becomes 🟢 with the date.
 
 ## Phase 1–2 additions (verified at runtime in Obsidian 1.14.4 unless noted)
 

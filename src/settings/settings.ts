@@ -68,7 +68,7 @@ export function mergeWithDefaults<S extends object>(stored: unknown, defaults: S
 	for (const [key, def] of Object.entries(defaults)) {
 		const value = stored[key];
 		if (value === undefined || jsonType(value) !== jsonType(def)) continue;
-		out[key] = isPlainObject(def) ? mergeWithDefaults(value, def) : Array.isArray(value) ? [...value] : value;
+		out[key] = isPlainObject(def) ? mergeWithDefaults(value, def) : Array.isArray(value) ? [...(value as unknown[])] : value;
 	}
 	return out as S;
 }

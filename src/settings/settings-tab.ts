@@ -1,7 +1,8 @@
-import { Notice, PluginSettingTab, SearchComponent, Setting, SettingGroup, type App, type Plugin } from "obsidian";
+import { Notice, PluginSettingTab, Setting, type App, type Plugin, type SettingDefinitionItem } from "obsidian";
 import { SETTINGS_GROUP_ORDER, type AnyModule } from "../core/module";
 import type { ModuleManager } from "../core/module-manager";
-import type { LanguageSetting, Translate } from "../i18n";
+import type { I18nKey, LanguageSetting, Translate } from "../i18n";
+import { en } from "../i18n/locales/en";
 import type { PluginSettings } from "./settings";
 
 export interface SettingsTabHost {
@@ -12,11 +13,11 @@ export interface SettingsTabHost {
 	setLanguage(language: LanguageSetting): void;
 }
 
-/** Settings grouped by module group; each module has an enable toggle, its options and "reset to defaults". */
+/**
+ * Settings grouped by module group; each module has an enable toggle, its options and "reset to
+ * defaults". Declarative, so Obsidian's settings search finds modules and their options.
+ */
 export class OpcSettingTab extends PluginSettingTab {
-	/** The search text survives re-renders (toggling a module redraws the tab). */
-	private query = "";
-
 	constructor(
 		app: App,
 		plugin: Plugin,
@@ -25,100 +26,73 @@ export class OpcSettingTab extends PluginSettingTab {
 		super(app, plugin);
 	}
 
-	override display(): void {
-		const { containerEl, host } = this;
+	override getSettingDefinitions(): SettingDefinitionItem[] {
+		const { host } = this;
 		const t = host.t();
-		containerEl.empty();
-		containerEl.addClass("opc-settings");
-
-		const searchEl = containerEl.createDiv({ cls: "opc-settings-search" });
-		const search = new SearchComponent(searchEl).setPlaceholder(t("settings.search.placeholder")).setValue(this.query);
-		const emptyEl = containerEl.createDiv({ cls: "opc-settings-empty", text: t("settings.search.empty") });
-		search.onChange((value) => {
-			this.query = value;
-			this.filter(emptyEl);
-		});
-
-		new SettingGroup(containerEl).addSetting((s) =>
-			s
-				.setName(t("settings.language.name"))
-				.setDesc(t("settings.language.desc"))
-				.addDropdown((d) =>
-					d
-						.addOptions({
-							auto: t("settings.language.auto"),
-							en: t("settings.language.en"),
-							zh: t("settings.language.zh"),
-							ja: t("settings.language.ja"),
-							hi: t("settings.language.hi"),
-						})
-						.setValue(host.settings.language)
-						.onChange(async (value) => {
-							host.setLanguage(value as LanguageSetting);
-							await host.saveSettings();
-							new Notice(host.t()("settings.language.reload"));
-							this.display();
-						}),
-				),
-		);
+		const items: SettingDefinitionItem[] = [
+			{
+				name: t("settings.language.name"),
+				desc: t("settings.language.desc"),
+				render: (s) => {
+					s.addDropdown((d) =>
+						d
+							.addOptions({
+								auto: t("settings.language.auto"),
+								en: t("settings.language.en"),
+								zh: t("settings.language.zh"),
+								ja: t("settings.language.ja"),
+								hi: t("settings.language.hi"),
+							})
+							.setValue(host.settings.language)
+							.onChange(async (value) => {
+								host.setLanguage(value as LanguageSetting);
+								await host.saveSettings();
+								new Notice(host.t()("settings.language.reload"));
+								this.update();
+							}),
+					);
+				},
+			},
+		];
 
 		for (const group of SETTINGS_GROUP_ORDER) {
 			const modules = host.modules.ordered.filter((m) => m.group === group);
 			if (modules.length === 0) continue;
-			const settingGroup = new SettingGroup(containerEl).setHeading(t(`group.${group}`));
-			for (const def of modules) settingGroup.addSetting((s) => this.renderModule(s, def));
+			items.push({
+				type: "group",
+				heading: t(`group.${group}`),
+				items: modules.map((def) => ({
+					name: t(def.name),
+					desc: t(def.description),
+					aliases: optionNames(def, t),
+					render: (s) => this.renderModule(s, def),
+				})),
+			});
 		}
 
-		new SettingGroup(containerEl).addSetting((s) =>
-			s
-				.setName(t("settings.coexistence.name"))
-				.setDesc(t("settings.coexistence.desc"))
-				.addButton((b) =>
-					b.setButtonText(t("settings.coexistence.button")).onClick(async () => {
-						host.settings.coexistence.acknowledged = [];
-						await host.saveSettings();
-						new Notice(t("settings.coexistence.reset.done"));
-					}),
-				),
-		);
-
-		this.filter(emptyEl);
-		if (this.query) window.setTimeout(() => search.inputEl.focus(), 0);
+		items.push({
+			type: "group",
+			items: [
+				{
+					name: t("settings.coexistence.name"),
+					desc: t("settings.coexistence.desc"),
+					render: (s) => {
+						s.addButton((b) =>
+							b.setButtonText(t("settings.coexistence.button")).onClick(async () => {
+								host.settings.coexistence.acknowledged = [];
+								await host.saveSettings();
+								new Notice(t("settings.coexistence.reset.done"));
+							}),
+						);
+					},
+				},
+			],
+		});
+		return items;
 	}
 
-	/**
-	 * Shows only settings whose name or description contains every word of the query. A module
-	 * row and its options count as one entry; groups with nothing left are hidden.
-	 */
-	private filter(emptyEl: HTMLElement): void {
-		const words = this.query.toLowerCase().split(/\s+/).filter(Boolean);
-		const matches = (el: HTMLElement) => {
-			const text = (el.textContent ?? "").toLowerCase();
-			return words.every((w) => text.includes(w));
-		};
-		let any = false;
-		for (const group of this.containerEl.querySelectorAll<HTMLElement>(":scope > .setting-group")) {
-			let groupVisible = false;
-			const items = group.querySelectorAll<HTMLElement>(".setting-items > .setting-item, .setting-items > .opc-module-options");
-			for (const item of items) {
-				if (item.hasClass("opc-module-options")) continue;
-				const options = item.nextElementSibling?.hasClass("opc-module-options") ? (item.nextElementSibling as HTMLElement) : null;
-				const optionRows = options ? [...options.querySelectorAll<HTMLElement>(".setting-item")] : [];
-				const own = words.length === 0 || matches(item.querySelector(".setting-item-info") ?? item);
-				const visibleOptions = optionRows.filter((row) => own || matches(row));
-				const show = own || visibleOptions.length > 0;
-				item.toggle(show);
-				for (const row of optionRows) row.toggle(own || visibleOptions.includes(row));
-				options?.toggle(show && (own || visibleOptions.length > 0));
-				if (show) groupVisible = true;
-			}
-			group.toggle(groupVisible);
-			if (groupVisible) any = true;
-		}
-		emptyEl.toggle(!any && words.length > 0);
-	}
-
-	private renderModule(setting: Setting, def: AnyModule): void {
+	/** The module row; returns the cleanup of its options block. */
+	private renderModule(setting: Setting, def: AnyModule): () => void {
 		const { host } = this;
 		const t = host.t();
 		const status = host.modules.status(def.id);
@@ -138,7 +112,7 @@ export class OpcSettingTab extends PluginSettingTab {
 		});
 		setting.setDesc(desc);
 
-		if (def.renderSettings || Object.keys(def.defaultSettings as object).length > 0) {
+		if (def.renderSettings || Object.keys(def.defaultSettings).length > 0) {
 			setting.addExtraButton((b) =>
 				b
 					.setIcon("rotate-ccw")
@@ -146,7 +120,7 @@ export class OpcSettingTab extends PluginSettingTab {
 					.onClick(async () => {
 						await host.modules.resetSettings(def.id);
 						new Notice(t("settings.module.reset.done", { module: t(def.name) }));
-						this.display();
+						this.update();
 					}),
 			);
 		}
@@ -157,16 +131,27 @@ export class OpcSettingTab extends PluginSettingTab {
 				.setDisabled(status === "unavailable")
 				.onChange(async (value) => {
 					await host.modules.setEnabled(def.id, value);
-					this.display();
+					this.update();
 				}),
 		);
 
 		const ctx = host.modules.contextOf(def.id);
 		if (status === "enabled" && ctx && def.renderSettings) {
+			// Inside the row (the settings framework owns the list of rows), wrapped onto its own line.
+			setting.settingEl.addClass("opc-has-options");
 			const optionsEl = setting.settingEl.createDiv({ cls: "opc-module-options" });
-			// Put the options right under the module row.
-			setting.settingEl.after(optionsEl);
 			def.renderSettings(optionsEl, ctx);
+			return () => {
+				optionsEl.remove();
+				setting.settingEl.removeClass("opc-has-options");
+			};
 		}
+		return () => {};
 	}
+}
+
+/** Names of a module's own settings (keys "<module>.….name"), so the settings search finds them. */
+function optionNames(def: AnyModule, t: Translate): string[] {
+	const prefix = def.name.replace(/name$/, "");
+	return (Object.keys(en) as I18nKey[]).filter((k) => k !== def.name && k.startsWith(prefix) && k.endsWith(".name")).map((k) => t(k));
 }

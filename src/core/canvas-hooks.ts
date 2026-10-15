@@ -100,6 +100,8 @@ interface PatchGroup {
 const OWNER = "core:hooks";
 
 export class CanvasHooks {
+	/** For patched methods, whose own `this` is the canvas object they run on. */
+	private readonly self = this;
 	private readonly listeners = new Map<string, Set<(...args: never[]) => unknown>>();
 	private readonly protos = new Map<ProtoKind, object>();
 	private readonly installed = new Map<PatchGroup, () => void>();
@@ -118,12 +120,12 @@ export class CanvasHooks {
 
 	/** Subscribe to a hook; returns the unsubscribe function. */
 	on<K extends HookName>(name: K, listener: Listener<K>): () => void {
-		return this.add(name, listener as (...args: never[]) => unknown);
+		return this.add(name, listener);
 	}
 
 	/** Register an interceptor; the first one returning a non-undefined value wins. */
 	intercept<K extends InterceptorName>(name: K, fn: Interceptor<K>): () => void {
-		return this.add(`intercept:${name}`, fn as (...args: never[]) => unknown);
+		return this.add(`intercept:${name}`, fn);
 	}
 
 	emit<K extends HookName>(name: K, ...args: HookMap[K]): void {
@@ -155,7 +157,7 @@ export class CanvasHooks {
 
 	/** Registers a getData() transformer; returns the unregister function. */
 	transformData(fn: DataTransformer): () => void {
-		return this.add("transform:data", fn as unknown as (...args: never[]) => unknown);
+		return this.add("transform:data", fn);
 	}
 
 	/** Open canvases (only while the hub is active). */
@@ -215,9 +217,9 @@ export class CanvasHooks {
 		if (!this.protos.has("canvas")) this.protos.set("canvas", Object.getPrototypeOf(canvas) as object);
 		if (!this.protos.has("menu") && canvas.menu) this.protos.set("menu", Object.getPrototypeOf(canvas.menu) as object);
 		if (!this.protos.has("view") && view) this.protos.set("view", Object.getPrototypeOf(view) as object);
-		const node = canvas.nodes.values().next().value as CanvasNodeLike | undefined;
+		const node = canvas.nodes.values().next().value;
 		if (node) this.learnNode(node);
-		const edge = canvas.edges.values().next().value as CanvasEdgeLike | undefined;
+		const edge = canvas.edges.values().next().value;
 		if (edge) this.learnEdge(edge);
 	}
 
@@ -279,7 +281,7 @@ export class CanvasHooks {
 
 	/** Learns node/edge prototypes from the first ones created on an empty canvas. */
 	private installCapture(): void {
-		const hub = this;
+		const hub = this.self;
 		this.uncapture = this.patcher.apply<CanvasLike>(OWNER, "capture prototypes", this.protos.get("canvas") as CanvasLike, {
 			addNode: (next) =>
 				function (this: CanvasLike, node: CanvasNodeLike) {
@@ -305,7 +307,7 @@ export class CanvasHooks {
 	}
 
 	private defineGroups(): PatchGroup[] {
-		const hub = this;
+		const hub = this.self;
 		return [
 			{
 				kind: "node",
@@ -465,7 +467,7 @@ export class CanvasHooks {
 				kind: "canvas",
 				needs: ["canvas-frame", "canvas-virtualize"],
 				install: (proto) =>
-					this.patch<CanvasLike & { virtualize(): void }>("canvas.virtualize", proto as CanvasLike & { virtualize(): void }, {
+					this.patch<CanvasLike & { virtualize(): void }>("canvas.virtualize", proto, {
 						virtualize: (next) =>
 							function (this: CanvasLike & { virtualize(): void }) {
 								hub.emit("canvas-frame", this);
@@ -589,7 +591,7 @@ export class CanvasHooks {
 
 	/** startEditing is overridden by text/file/group nodes; patch every class that defines it. */
 	private installStartEditingPatch(baseProto: object): () => void {
-		const hub = this;
+		const hub = this.self;
 		const uninstallers: (() => void)[] = [];
 		const seen = new Set<object>();
 		const patchProto = (proto: object) => {
@@ -600,7 +602,7 @@ export class CanvasHooks {
 					startEditing: (next) =>
 						function (this: CanvasNodeLike, ...args: unknown[]) {
 							if (hub.ask("node-start-editing", this) === true) return;
-							return (next as (...a: unknown[]) => void).apply(this, args);
+							return Reflect.apply(next, this, args) as void;
 						},
 				}),
 			);
@@ -622,7 +624,7 @@ export class CanvasHooks {
 	}
 
 	private installBreakpointPatch(baseProto: object): () => void {
-		const hub = this;
+		const hub = this.self;
 		// Patch every prototype in the chain of known node classes that defines updateBreakpoint,
 		// so the override reaches content nodes (which don't call super for unmounting logic).
 		const uninstallers: (() => void)[] = [];
@@ -687,9 +689,6 @@ function fitMenuWidth(menu: CanvasMenuLike, rebuild: boolean): void {
 	if (!width || (!rebuild && fittedWidth.get(menu) === width)) return;
 	fittedWidth.set(menu, width);
 	const zoom = parseFloat(getComputedStyle(menu.menuEl).zoom) || 1;
-	// The container is 0px wide, so fit-content would shrink a wrapping menu to one column.
-	menu.menuEl.style.width = "max-content";
-	menu.menuEl.style.flexWrap = "wrap";
-	menu.menuEl.style.justifyContent = "center";
-	menu.menuEl.style.maxWidth = `${Math.max(120, Math.floor((width - 20) / zoom))}px`;
+	menu.menuEl.addClass("opc-fitted-menu");
+	menu.menuEl.setCssProps({ "--opc-menu-max-width": `${Math.max(120, Math.floor((width - 20) / zoom))}px` });
 }

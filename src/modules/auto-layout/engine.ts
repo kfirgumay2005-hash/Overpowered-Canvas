@@ -13,7 +13,7 @@ export function getElk(): ElkLike {
 	if (!elk) {
 		url = URL.createObjectURL(new Blob([workerSource], { type: "text/javascript" }));
 		const workerUrl = url;
-		elk = new ELK({ workerFactory: () => new Worker(workerUrl) }) as unknown as ElkLike & { terminateWorker(): void };
+		elk = new ELK({ workerFactory: () => new Worker(workerUrl) });
 	}
 	return elk;
 }

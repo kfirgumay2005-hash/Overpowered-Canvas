@@ -139,7 +139,7 @@ export class PropertiesModal extends Modal {
 				this.rows.splice(index, 1);
 				this.renderRows();
 			});
-			if (focusLast && index === this.rows.length - 1) setTimeout(() => key.focus());
+			if (focusLast && index === this.rows.length - 1) window.setTimeout(() => key.focus());
 		});
 	}
 }

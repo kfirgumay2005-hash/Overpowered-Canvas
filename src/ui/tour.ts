@@ -134,9 +134,8 @@ export class Tour {
 				const row = panel.createDiv({ cls: "opc-tour-status" });
 				row.createSpan({ text: t("tour.module.off") });
 				const enable = row.createEl("button", { text: t("tour.module.enable") });
-				enable.addEventListener("click", async () => {
-					await this.host.modules.setEnabled(step.module!, true);
-					this.render();
+				enable.addEventListener("click", () => {
+					void this.host.modules.setEnabled(step.module!, true).then(() => this.render());
 				});
 			} else if (status === "unavailable") panel.createDiv({ cls: "opc-tour-status", text: t("settings.module.desktopOnly") });
 		}

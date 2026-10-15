@@ -22,7 +22,6 @@ body.opc-mod-toolbar-size.is-phone .canvas-wrapper[data-opc-phone-bar] .canvas-c
 	display: flex;
 	position: static;
 	transform: none;
-	z-index: auto !important;
 	border-radius: var(--canvas-controls-radius);
 	background: var(--raised, var(--raised-background, var(--interactive-normal)));
 	overflow: hidden;

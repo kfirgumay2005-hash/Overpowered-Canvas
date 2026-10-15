@@ -246,7 +246,7 @@ export class CanvasUi {
 		const scope = (view as CanvasViewLike & { scope: Scope | null }).scope;
 		if (!scope) return;
 		let map = this.keyHandlers.get(view);
-		if (!map) this.keyHandlers.set(view, (map = new Map()));
+		if (!map) this.keyHandlers.set(view, (map = new Map<string, unknown>()));
 		for (const spec of this.keySpecs) {
 			const combo = comboOf(spec);
 			if (map.has(combo)) continue;
@@ -343,10 +343,9 @@ export class CanvasUi {
 			});
 		}
 		if (spec.onContextMenu) {
-			const onContextMenu = spec.onContextMenu;
 			el.addEventListener("contextmenu", (evt) => {
 				evt.preventDefault();
-				onContextMenu(canvas, evt);
+				spec.onContextMenu?.(canvas, evt);
 			});
 		}
 		// Keep our buttons sorted after the core ones.

@@ -17,7 +17,7 @@ class NameModal extends Modal {
 		app: App,
 		private readonly t: Translate,
 		private name: string,
-		private readonly onSubmit: (name: string) => void,
+		private readonly onSubmit: (name: string) => void | Promise<void>,
 	) {
 		super(app);
 	}
@@ -27,12 +27,12 @@ class NameModal extends Modal {
 			const name = this.name.trim().replace(/[\\/:*?"<>|]/g, "-");
 			if (!name) return;
 			this.close();
-			this.onSubmit(name);
+			void this.onSubmit(name);
 		};
 		new Setting(this.contentEl).setName(this.t("encapsulate.fileName")).addText((text) => {
 			text.setValue(this.name).onChange((v) => (this.name = v));
 			text.inputEl.addEventListener("keydown", (e) => e.key === "Enter" && submit());
-			setTimeout(() => text.inputEl.select());
+			window.setTimeout(() => text.inputEl.select());
 		});
 		new Setting(this.contentEl).addButton((b) => b.setButtonText(this.t("encapsulate.create")).setCta().onClick(submit));
 	}

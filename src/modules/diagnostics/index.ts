@@ -117,9 +117,9 @@ function runBenchmark(canvas: CanvasLike, frames: number, onDisable: (cleanup: (
 			last = ts;
 			const v = benchmarkViewport(i, frames, start);
 			canvas.setViewport(v.x, v.y, v.zoom);
-			if (++i < frames) handle = requestAnimationFrame(step);
+			if (++i < frames) handle = window.requestAnimationFrame(step);
 			else finish();
 		};
-		handle = requestAnimationFrame(step);
+		handle = window.requestAnimationFrame(step);
 	});
 }

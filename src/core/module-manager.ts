@@ -161,7 +161,7 @@ export class ModuleManager {
 	}
 
 	private resolveSettings(def: AnyModule, stored: unknown): object {
-		const defaults = def.defaultSettings as object;
+		const defaults = def.defaultSettings;
 		try {
 			return def.sanitizeSettings ? def.sanitizeSettings(stored, defaults) : mergeWithDefaults(stored, defaults);
 		} catch (error) {
@@ -232,7 +232,7 @@ export class ModuleManager {
 				this.applySettings(mod, next);
 			},
 			onSettingsChange: (cb) => {
-				const listener = cb as SettingsListener;
+				const listener = cb;
 				mod.listeners.add(listener);
 				component.register(() => mod.listeners.delete(listener));
 			},

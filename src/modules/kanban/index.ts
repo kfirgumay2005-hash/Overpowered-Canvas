@@ -14,7 +14,6 @@ interface KanbanSettings {
 	liveSync: boolean;
 }
 
-type Ctx = ModuleContext<KanbanSettings>;
 
 const boxOf = (n: CanvasNodeLike) => ({ x: n.x, y: n.y, width: n.width, height: n.height });
 
@@ -107,7 +106,7 @@ export const kanbanModule = defineModule<KanbanSettings>({
 				const col = columnAt(cols, boxOf(node));
 				seen?.set(node.id, col?.id ?? null);
 				if (!col) continue;
-				const current = app.metadataCache.getFileCache(file)?.frontmatter?.[col.key];
+				const current: unknown = app.metadataCache.getFileCache(file)?.frontmatter?.[col.key];
 				if (propertyMatches(current, col.value)) continue;
 				void app.fileManager
 					.processFrontMatter(file, (fm: Record<string, unknown>) => {
@@ -142,7 +141,7 @@ export const kanbanModule = defineModule<KanbanSettings>({
 			}
 			applying = true;
 			try {
-				mutate(ctx as ModuleContext<object>, canvas, () => {
+				mutate(ctx, canvas, () => {
 					for (const { node, to } of moves) {
 						const group = canvas.nodes.get(to.id);
 						if (!group) continue;
@@ -211,7 +210,7 @@ export const kanbanModule = defineModule<KanbanSettings>({
 		const bind = (canvas: CanvasLike, group: CanvasNodeLike) => {
 			const current = ctx.data.node(group).get().kanban;
 			new BindingModal(app, ctx.t, current ?? { key: "status", value: slug(group.label ?? "") || "todo" }, (binding) => {
-				mutate(ctx as ModuleContext<object>, canvas, () => ctx.data.node(group).set({ kanban: binding }));
+				mutate(ctx, canvas, () => ctx.data.node(group).set({ kanban: binding }));
 				writeBack(canvas, canvas.nodes.values());
 			}).open();
 		};
@@ -224,7 +223,7 @@ export const kanbanModule = defineModule<KanbanSettings>({
 					item
 						.setTitle(ctx.t("kanban.unbind"))
 						.setIcon("unlink")
-						.onClick(() => mutate(ctx as ModuleContext<object>, node.canvas, () => ctx.data.node(node).set({ kanban: undefined }))),
+						.onClick(() => mutate(ctx, node.canvas, () => ctx.data.node(node).set({ kanban: undefined }))),
 				);
 		});
 		ctx.addCommand({

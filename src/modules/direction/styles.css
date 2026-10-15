@@ -31,12 +31,9 @@ body.opc-mod-direction .canvas-wrapper.opc-rtl-text .canvas-edges {
 	direction: rtl;
 }
 
-/*
- * Lists follow the direction of their first item (the core marks each item dir="auto" but
- * not the list), so bullets, numbers, checkboxes and indentation sit on the reading side.
- */
-body.opc-mod-direction .canvas-node :is(ul, ol):has(> li:first-child:dir(rtl)),
-body.opc-mod-direction .canvas-node :is(ul, ol):has(> li:first-child:dir(rtl)) > li {
+/* Lists whose first item is right-to-left (marked by the module when they render). */
+body.opc-mod-direction .canvas-node .opc-list-rtl,
+body.opc-mod-direction .canvas-node .opc-list-rtl > li {
 	direction: rtl;
 }
 body.opc-mod-direction .canvas-node[dir="rtl"] .markdown-preview-view :is(p, li, h1, h2, h3, h4, h5, h6, blockquote) {

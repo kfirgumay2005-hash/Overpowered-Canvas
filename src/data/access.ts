@@ -94,7 +94,7 @@ export function createCanvasDataApi(
 			set(patch, options) {
 				guardWrite(canvas);
 				const { v: _v, ...rootShape } = ROOT_SHAPE;
-				const next = applyPatch<RootExtra>(canvas.data[SCHEMA_KEY], patch, rootShape as Shape<RootExtra>, ROOT_DEFAULTS);
+				const next = applyPatch<RootExtra>(canvas.data[SCHEMA_KEY], patch, rootShape, ROOT_DEFAULTS);
 				const { [SCHEMA_KEY]: _old, ...rest } = canvas.data;
 				const { v: _ignored, ...content } = next ?? {};
 				canvas.data = Object.keys(content).length > 0 ? { ...rest, [SCHEMA_KEY]: { ...content, v: SCHEMA_VERSION } } : rest;

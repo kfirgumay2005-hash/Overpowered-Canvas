@@ -44,7 +44,7 @@ a fake canvas that mirrors Obsidian 1.14's behavior), benchmark statistics, and 
 
 ### 0.6 Internals probe
 1. Same state as 0.5 (Advanced Canvas off). Open `OPC Tests/roundtrip.canvas`, click into it.
-2. Console → paste `scripts/console/probe-internals.js` → Enter. The report is copied; send it
+2. Command “Copy canvas internals report” (Diagnostics module). The report is copied; send it
    back. Expect `problems: []`, `roundTrip.node/edge/root: true`, `historyIsShallow: true`.
 
 ### 0.7 Stress canvas and baseline benchmark
@@ -291,8 +291,8 @@ Automated runtime checks of every item below were run in an isolated Obsidian 1.
    line every 2 / 4 / 5 / 10 dots* or *Other size…*; Settings → *Grid* → color.
 10. **Text-only RTL:** Settings → *Right-to-left support* → *What right-to-left changes* → *Text
    only* → the canvas controls and toolbars stay left-to-right, card text is right-to-left.
-11. **Settings search:** type "sticky" in the search box at the top of the settings tab → only
-   matching settings remain; nonsense → "No settings match."
+11. **Settings search:** type "sticky" in the search box of Obsidian's settings window → the
+   sticky-note module and its options are listed; click one to jump to it.
 12. **Tour:** ribbon compass (or the compass in the canvas controls) → the tour opens; arrows /
    ← → keys move through ~60 steps, features with a button get highlighted; close it on step 12,
    reopen → it continues at step 12; *Finish* on the last step resets it.

@@ -61,7 +61,7 @@ export const textAlignModule = defineModule<TextAlignSettings>({
 			},
 		});
 
-		const eligible = (selection: Parameters<typeof onlyNodes>[0]) => onlyTextBoxes(ctx as ModuleContext<object>, selection);
+		const eligible = (selection: Parameters<typeof onlyNodes>[0]) => onlyTextBoxes(ctx, selection);
 
 		ctx.addMenuButton({
 			id: "align",

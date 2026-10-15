@@ -35,7 +35,7 @@ class Minimap {
 	private transform: MapTransform | null = null;
 	private timer = 0;
 	/** Cards, edges and strokes, re-rendered only when the content changes (not on pan/zoom). */
-	private readonly layer = document.createElement("canvas");
+	private readonly layer = createEl("canvas");
 	private contentDirty = true;
 	private accent: string | null = null;
 	/** The canvas size, observed (reading clientWidth while panning forces a layout). */
@@ -372,6 +372,6 @@ export const minimapModule = defineModule<MinimapSettings>({
 				.setValue(ctx.settings.corner)
 				.onChange((v) => ctx.updateSettings({ corner: v as Corner })),
 		);
-		new Setting(el).setName(ctx.t("minimap.width")).addSlider((s) => s.setLimits(140, 400, 10).setValue(ctx.settings.width).setDynamicTooltip().onChange((v) => ctx.updateSettings({ width: v })));
+		new Setting(el).setName(ctx.t("minimap.width")).addSlider((s) => s.setLimits(140, 400, 10).setValue(ctx.settings.width).onChange((v) => ctx.updateSettings({ width: v })));
 	},
 });

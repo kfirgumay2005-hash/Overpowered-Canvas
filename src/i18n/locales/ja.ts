@@ -17,6 +17,7 @@ export const ja: Record<I18nKey, string> = {
 	"settings.module.desktopOnly": "モバイルでは利用できません。",
 	"settings.module.failed": "起動に失敗しました。詳細は開発者コンソールを確認してください。",
 	"settings.module.requires": "必要：{modules}。",
+	"saveGuard.dropped": "Overpowered Canvas：保存前に無効なプラグインデータの一部を破棄しました。詳しくは開発者コンソールを確認してください。",
 	"settings.coexistence.name": "機能重複の通知",
 	"settings.coexistence.desc": "機能が重複するプラグイン（Advanced Canvas、Canvas Mindmap）についての通知を、次回起動時に再表示します。",
 	"settings.coexistence.button": "再表示",
@@ -680,8 +681,6 @@ export const ja: Record<I18nKey, string> = {
 	"direction.scope.full": "キャンバス全体",
 	"direction.scope.text": "テキストのみ",
 
-	"settings.search.placeholder": "設定を検索…",
-	"settings.search.empty": "一致する設定はありません。",
 
 	"tour.open": "Overpowered Canvas ツアー",
 	"tour.count": "ステップ {n} / {total}",

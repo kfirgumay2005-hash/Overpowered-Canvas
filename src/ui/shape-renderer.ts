@@ -35,7 +35,7 @@ export function renderNodeShape(node: CanvasNodeLike, shape: ShapeName | null): 
 	if (svg && svg.dataset.key === key && nodeEl.firstChild === svg) return;
 
 	if (!svg) {
-		svg = document.createElementNS(SVG_NS, "svg") as SVGSVGElement;
+		svg = createSvg("svg");
 		svg.classList.add(CLASS);
 		svg.setAttribute("aria-hidden", "true");
 		svg.append(document.createElementNS(SVG_NS, "path"), document.createElementNS(SVG_NS, "path"));

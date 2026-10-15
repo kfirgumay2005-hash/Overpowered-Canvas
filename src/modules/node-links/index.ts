@@ -1,7 +1,7 @@
 import { Component, MarkdownRenderer, Notice, TFile, setIcon } from "obsidian";
 import { defineModule } from "../../core/module";
 import type { CanvasNodeData } from "../../data/json-canvas";
-import { embedRegistry, type EmbedContext, type EmbedCreator } from "../../internals/app";
+import { embedRegistry, type EmbedContext } from "../../internals/app";
 import type { CanvasLike, CanvasNodeLike, CanvasViewLike } from "../../internals/types";
 import { selectedNodes } from "../shared";
 
@@ -35,7 +35,7 @@ class NodeEmbed extends Component {
 		el.empty();
 		let data: { nodes?: CanvasNodeData[] } = {};
 		try {
-			data = JSON.parse(await app.vault.cachedRead(this.file));
+			data = JSON.parse(await app.vault.cachedRead(this.file)) as { nodes?: CanvasNodeData[] };
 		} catch {
 			// handled as not found
 		}
@@ -145,7 +145,7 @@ export const nodeLinksModule = defineModule({
 		const registry = embedRegistry(ctx.app);
 		if (registry?.embedByExtension.canvas) {
 			const labels = { notFound: ctx.t("nodeLinks.notFound"), open: ctx.t("nodeLinks.open") };
-			ctx.patch("embedRegistry.canvas", registry.embedByExtension as Record<string, EmbedCreator>, {
+			ctx.patch("embedRegistry.canvas", registry.embedByExtension, {
 				canvas: (next) =>
 					function (this: unknown, embedCtx: EmbedContext, file: TFile, subpath: string) {
 						const id = nodeIdFromSubpath(subpath);

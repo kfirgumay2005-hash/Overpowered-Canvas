@@ -2,7 +2,7 @@
  * Command-palette counterpart of the toolbar pickers: a searchable list of choices
  * (shapes, styles, routes…) applied to the current selection.
  */
-import { setIcon, SuggestModal, type App } from "obsidian";
+import { sanitizeHTMLToDom, setIcon, SuggestModal, type App } from "obsidian";
 
 export interface Choice {
 	id: string;
@@ -32,7 +32,7 @@ export class ChoiceModal extends SuggestModal<Choice> {
 	renderSuggestion(choice: Choice, el: HTMLElement): void {
 		el.addClass("opc-choice");
 		const icon = el.createSpan({ cls: "opc-choice-icon" });
-		if (choice.svg) icon.innerHTML = choice.svg;
+		if (choice.svg) icon.appendChild(sanitizeHTMLToDom(choice.svg));
 		else if (choice.icon) setIcon(icon, choice.icon);
 		el.createSpan({ text: choice.label });
 		if (choice.active) el.createSpan({ cls: "opc-choice-active", text: "✓" });

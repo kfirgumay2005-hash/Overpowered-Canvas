@@ -1,5 +1,8 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { rewriteRootSelectors } from "./exporter";
+
+// The exporter fetches web images through Obsidian; these tests only need its pure helpers.
+vi.mock("obsidian", () => ({ arrayBufferToBase64: vi.fn(), requestUrl: vi.fn() }));
 
 describe("rewriteRootSelectors", () => {
 	it("maps body, html and :root to the export root", () => {

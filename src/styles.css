@@ -44,34 +44,20 @@
 @import "./modules/direction/styles.css";
 @import "./modules/performance/styles.css";
 
-.opc-settings .opc-setting-note {
+.opc-setting-note {
 	color: var(--text-warning);
 	font-size: var(--font-ui-smaller);
 }
 
-.opc-settings .opc-module-options {
+.setting-item.opc-has-options {
+	flex-wrap: wrap;
+}
+.opc-module-options {
+	flex-basis: 100%;
+	margin-top: var(--size-4-2);
 	padding-inline-start: var(--size-4-6);
 	border-inline-start: 2px solid var(--background-modifier-border);
 	margin-inline-start: var(--size-4-3);
-}
-
-.opc-settings .opc-settings-search {
-	position: sticky;
-	top: 0;
-	z-index: 2;
-	padding-block: var(--size-4-2);
-	background: var(--background-primary);
-}
-.opc-settings .opc-settings-search .search-input-container {
-	width: 100%;
-}
-.opc-settings .opc-settings-search input {
-	width: 100%;
-}
-.opc-settings .opc-settings-empty {
-	color: var(--text-muted);
-	padding: var(--size-4-4) 0;
-	text-align: center;
 }
 
 /* Guided tour */
@@ -173,4 +159,13 @@ body.mod-rtl .opc-tour,
 	.opc-tour-highlight {
 		animation: none;
 	}
+}
+
+/* Selection toolbar that wraps onto a second row when wider than the canvas (core hooks). */
+.canvas-menu.opc-fitted-menu {
+	/* The container is 0px wide, so fit-content would shrink a wrapping menu to one column. */
+	width: max-content;
+	flex-wrap: wrap;
+	justify-content: center;
+	max-width: var(--opc-menu-max-width);
 }

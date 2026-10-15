@@ -17,6 +17,7 @@ export const zh: Record<I18nKey, string> = {
 	"settings.module.desktopOnly": "移动端不可用。",
 	"settings.module.failed": "启动失败——详情请查看开发者控制台。",
 	"settings.module.requires": "需要：{modules}。",
+	"saveGuard.dropped": "Overpowered Canvas：保存前丢弃了一些无效的插件数据。详情见开发者控制台。",
 	"settings.coexistence.name": "功能重叠提示",
 	"settings.coexistence.desc": "下次启动时再次显示关于功能重叠插件（Advanced Canvas、Canvas Mindmap）的提示。",
 	"settings.coexistence.button": "再次显示",
@@ -680,8 +681,6 @@ export const zh: Record<I18nKey, string> = {
 	"direction.scope.full": "整个画布",
 	"direction.scope.text": "仅文本",
 
-	"settings.search.placeholder": "搜索设置……",
-	"settings.search.empty": "没有匹配的设置。",
 
 	"tour.open": "Overpowered Canvas 导览",
 	"tour.count": "第 {n} 步，共 {total} 步",

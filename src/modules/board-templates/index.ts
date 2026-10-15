@@ -3,7 +3,7 @@ import { defineModule, type ModuleContext } from "../../core/module";
 import type { CanvasFileData } from "../../data/json-canvas";
 import { checkCanvasFile, hasErrors } from "../../data/validate-file";
 import type { Translate } from "../../i18n";
-import type { CanvasItemLike, CanvasLike, CanvasNodeLike } from "../../internals/types";
+import type { CanvasLike, CanvasNodeLike } from "../../internals/types";
 import { mergeWithDefaults } from "../../settings/settings";
 import { TextPromptModal } from "../../ui/text-prompt";
 import { canvasDirection, mutate, randomId, selectedNodes } from "../shared";
@@ -14,7 +14,6 @@ interface TemplateSettings {
 	folder: string;
 }
 
-type Ctx = ModuleContext<TemplateSettings>;
 
 interface TemplateChoice {
 	name: string;
@@ -136,11 +135,11 @@ export const boardTemplatesModule = defineModule<TemplateSettings>({
 				const at = { x: (view.minX + view.maxX) / 2 - (b.maxX - b.minX) / 2, y: (view.minY + view.maxY) / 2 - (b.maxY - b.minY) / 2 };
 				const data = instantiate(template, at, () => randomId(), canvasDirection(canvas) === "rtl");
 				let added: Set<CanvasNodeLike> | undefined;
-				mutate(ctx as ModuleContext<object>, canvas, () => {
+				mutate(ctx, canvas, () => {
 					added = canvas.importData({ nodes: data.nodes, edges: data.edges }, false);
 				});
 				if (added?.size) {
-					canvas.selectAll(added as Set<CanvasItemLike>);
+					canvas.selectAll(added);
 					canvas.zoomToSelection();
 				}
 				ctx.events.emit("board-template-applied", canvas, choice.name);

@@ -3,11 +3,10 @@
  * whether every internal member we rely on exists with the expected type, and whether unknown
  * properties survive Obsidian's get/set paths.
  *
- * Self-contained on purpose (no imports at runtime): it is also bundled as a paste-into-console
- * script (scripts/console/probe-internals.js) that works without this plugin.
  * The round-trip checks change in-memory state synchronously and restore it before returning;
  * nothing is saved to disk.
  */
+import { apiVersion } from "obsidian";
 
 type AnyRecord = Record<string, unknown>;
 
@@ -90,7 +89,7 @@ function patchedMethods(obj: unknown, prefix: string): string[] {
 	while (proto && proto !== Object.prototype) {
 		for (const n of Object.getOwnPropertyNames(proto)) {
 			if (n === "constructor") continue; // subclass constructors inherit from their parent class
-			const fn = Object.getOwnPropertyDescriptor(proto, n)?.value;
+			const fn: unknown = Object.getOwnPropertyDescriptor(proto, n)?.value;
 			if (typeof fn === "function" && Object.getPrototypeOf(fn) !== Function.prototype) out.push(`${prefix}.${n}`);
 		}
 		proto = Object.getPrototypeOf(proto) as object | null;
@@ -108,12 +107,10 @@ function attempt<T>(fn: () => T): T | string {
 
 export function probeCanvasInternals(app: unknown): ProbeReport {
 	const a = app as AnyRecord & { workspace?: AnyRecord; plugins?: AnyRecord; isMobile?: boolean };
-	const ua = typeof navigator !== "undefined" ? navigator.userAgent : "";
 	const enabled = a.plugins?.enabledPlugins;
 	const report: ProbeReport = {
 		probeVersion: 1,
-		// The window title carries the app package version; the user agent only has the installer's.
-		obsidianVersion: /Obsidian v?(\d+\.\d+\.\d+)/.exec(typeof document !== "undefined" ? document.title : "")?.[1] ?? /obsidian\/([\d.]+)/i.exec(ua)?.[1] ?? null,
+		obsidianVersion: apiVersion,
 		isMobile: typeof a.isMobile === "boolean" ? a.isMobile : null,
 		enabledPlugins: enabled instanceof Set ? [...(enabled as Set<string>)].sort() : [],
 		canvasFound: false,

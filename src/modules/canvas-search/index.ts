@@ -159,7 +159,7 @@ export const canvasSearchModule = defineModule({
 		const open = (canvas: CanvasLike) => {
 			const existing = bars.get(canvas);
 			if (existing?.isOpen) return existing.focus();
-			bars.set(canvas, new CanvasSearchBar(ctx as ModuleContext<object>, canvas));
+			bars.set(canvas, new CanvasSearchBar(ctx, canvas));
 		};
 
 		// Canvas-local Mod+F: only in canvases, no conflict with the editor's global "Find".

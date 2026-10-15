@@ -80,7 +80,7 @@ export const styleAttributesModule = defineModule({
 		const choose = (attr: StyleAttribute, selection: CanvasItemLike[], buttonEl: HTMLElement) => {
 			const canvas = selection[0]?.canvas;
 			if (!canvas) return;
-			const handle = (item: CanvasItemLike) => ("nodeEl" in item ? ctx.data.node(item) : ctx.data.edge(item as CanvasEdgeLike));
+			const handle = (item: CanvasItemLike) => ("nodeEl" in item ? ctx.data.node(item) : ctx.data.edge(item));
 			const current = common(selection, (i) => handle(i).get().styles?.[attr.key] ?? null);
 			showPicker(
 				buttonEl,

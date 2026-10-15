@@ -166,6 +166,6 @@ export const edgeRoutingModule = defineModule<RoutingSettings>({
 			});
 		new Setting(el)
 			.setName(ctx.t("edgeRouting.radius.name"))
-			.addSlider((s) => s.setLimits(0, 30, 1).setValue(ctx.settings.cornerRadius).setDynamicTooltip().onChange((v) => ctx.updateSettings({ cornerRadius: v })));
+			.addSlider((s) => s.setLimits(0, 30, 1).setValue(ctx.settings.cornerRadius).onChange((v) => ctx.updateSettings({ cornerRadius: v })));
 	},
 });

@@ -90,7 +90,7 @@ export const portalsModule = defineModule({
 			canvas.importData({ nodes: built.nodes, edges: built.edges }, false);
 			const state: OpenPortal = { portal, ghosts: new Set(built.nodes.map((n) => n.id)), pos: { x: portal.x, y: portal.y } };
 			let map = open.get(canvas);
-			if (!map) open.set(canvas, (map = new Map()));
+			if (!map) open.set(canvas, (map = new Map<string, OpenPortal>()));
 			map.set(portal.id, state);
 			for (const gid of state.ghosts) canvas.nodes.get(gid)?.nodeEl.addClass("opc-portal-ghost");
 			portal.nodeEl.addClass("opc-portal-open");

@@ -480,9 +480,9 @@ export const performanceModule = defineModule<PerformanceSettings>({
 		new Setting(el)
 			.setName(ctx.t("performance.zoom.name"))
 			.setDesc(ctx.t("performance.zoom.desc"))
-			.addSlider((s) => s.setLimits(-4, 0, 0.1).setValue(ctx.settings.zoom).setDynamicTooltip().onChange((v) => ctx.updateSettings({ zoom: v })));
+			.addSlider((s) => s.setLimits(-4, 0, 0.1).setValue(ctx.settings.zoom).onChange((v) => ctx.updateSettings({ zoom: v })));
 		new Setting(el)
 			.setName(ctx.t("performance.minNodes.name"))
-			.addSlider((s) => s.setLimits(0, 2000, 50).setValue(ctx.settings.minNodes).setDynamicTooltip().onChange((v) => ctx.updateSettings({ minNodes: v })));
+			.addSlider((s) => s.setLimits(0, 2000, 50).setValue(ctx.settings.minNodes).onChange((v) => ctx.updateSettings({ minNodes: v })));
 	},
 });
