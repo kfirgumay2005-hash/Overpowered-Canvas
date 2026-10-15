@@ -5,6 +5,17 @@
 body.opc-mod-direction .canvas-wrapper[dir] > .canvas {
 	direction: ltr;
 }
+/*
+ * The selection toolbar hangs off a 0px-wide container placed with `left`: in RTL it would
+ * extend leftwards from that point, far from the selection (and under the sidebar). Anchor it
+ * LTR; its buttons still run right to left.
+ */
+body.opc-mod-direction .canvas-wrapper[dir="rtl"] > .canvas-menu-container {
+	direction: ltr;
+}
+body.opc-mod-direction .canvas-wrapper[dir="rtl"] > .canvas-menu-container > .canvas-menu {
+	direction: rtl;
+}
 body.opc-mod-direction .canvas-wrapper[dir="rtl"] .canvas-node:not([dir]) .canvas-node-content,
 body.opc-mod-direction .canvas-wrapper[dir="rtl"] .canvas-edges,
 body.opc-mod-direction .canvas-node[dir="rtl"] .canvas-node-content {
@@ -12,6 +23,12 @@ body.opc-mod-direction .canvas-node[dir="rtl"] .canvas-node-content {
 }
 body.opc-mod-direction .canvas-node[dir="ltr"] .canvas-node-content {
 	direction: ltr;
+}
+/* "Text only" right-to-left: the canvas stays LTR, card text and labels turn RTL. */
+body.opc-mod-direction .canvas-wrapper.opc-rtl-text .canvas-node:not([dir]) .canvas-node-content,
+body.opc-mod-direction .canvas-wrapper.opc-rtl-text .canvas-node-label,
+body.opc-mod-direction .canvas-wrapper.opc-rtl-text .canvas-edges {
+	direction: rtl;
 }
 
 /*
@@ -34,4 +51,23 @@ body.opc-mod-direction[dir="rtl"] .cm-content {
 }
 body.opc-mod-direction[dir="ltr"] .cm-content {
 	direction: ltr;
+}
+
+/*
+ * Card editor lines marked dir="auto" (e.g. by the RTL Support plugin) are created empty, and
+ * Chromium does not re-resolve dir="auto" while the user types, so Hebrew lines stayed
+ * left-aligned until the editor closed. plaintext resolves the direction from the content
+ * on every layout instead.
+ */
+body.opc-mod-direction .markdown-source-view.mod-inside-iframe .cm-line[dir="auto"] {
+	unicode-bidi: plaintext;
+}
+/* A card with a fixed direction overrides per-line detection. */
+body.opc-mod-direction[dir="rtl"] .markdown-source-view.mod-inside-iframe .cm-line {
+	direction: rtl;
+	unicode-bidi: isolate;
+}
+body.opc-mod-direction[dir="ltr"] .markdown-source-view.mod-inside-iframe .cm-line {
+	direction: ltr;
+	unicode-bidi: isolate;
 }

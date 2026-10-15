@@ -10,3 +10,31 @@ body.opc-mod-text-align .canvas-node[data-opc-align="end"] .markdown-preview-vie
 body.opc-mod-text-align[data-opc-align="end"] .cm-content {
 	text-align: end;
 }
+
+/* Vertical position, in reading mode… */
+body.opc-mod-text-align .canvas-node[data-opc-valign] .markdown-embed-content > .markdown-preview-view {
+	display: flex;
+	flex-direction: column;
+}
+body.opc-mod-text-align .canvas-node[data-opc-valign] .markdown-embed-content > .markdown-preview-view > .markdown-preview-sizer {
+	flex: 0 0 auto;
+}
+body.opc-mod-text-align .canvas-node[data-opc-valign="top"] .markdown-embed-content > .markdown-preview-view {
+	justify-content: flex-start;
+}
+body.opc-mod-text-align .canvas-node[data-opc-valign="middle"] .markdown-embed-content > .markdown-preview-view {
+	justify-content: safe center;
+}
+body.opc-mod-text-align .canvas-node[data-opc-valign="bottom"] .markdown-embed-content > .markdown-preview-view {
+	justify-content: safe flex-end;
+}
+/* …and in the card editor (an iframe whose body mirrors the card's data attributes). */
+body.opc-mod-text-align:is([data-opc-valign="middle"], [data-opc-valign="bottom"]) .markdown-source-view.mod-cm6 .cm-sizer > .cm-contentContainer {
+	flex: 0 0 auto;
+}
+body.opc-mod-text-align[data-opc-valign="middle"] .markdown-source-view.mod-cm6 .cm-sizer {
+	justify-content: safe center;
+}
+body.opc-mod-text-align[data-opc-valign="bottom"] .markdown-source-view.mod-cm6 .cm-sizer {
+	justify-content: safe flex-end;
+}

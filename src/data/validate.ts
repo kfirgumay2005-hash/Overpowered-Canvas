@@ -14,8 +14,10 @@ import {
 	SHAPES,
 	STROKE_TOOLS,
 	TEXT_ALIGNS,
+	VERTICAL_ALIGNS,
 	type Attach,
 	type CropRect,
+	type GuideData,
 	type LineData,
 	type OpcEdge,
 	type OpcNode,
@@ -203,8 +205,10 @@ export const NODE_SHAPE: Shape<OpcNode> = {
 	shape: oneOf(SHAPES),
 	border: oneOf(BORDER_STYLES),
 	align: oneOf(TEXT_ALIGNS),
+	valign: oneOf(VERTICAL_ALIGNS),
 	dir: oneOf(DIRECTIONS),
 	autoResize: bool,
+	autoWidth: bool,
 	locked: bool,
 	breakpoint: finite,
 	collapsed: bool,
@@ -223,6 +227,7 @@ export const NODE_SHAPE: Shape<OpcNode> = {
 	query,
 	queryOwner: nonEmptyStr,
 	strokes: arrayOf(stroke),
+	guide: objectOf<GuideData>({ axis: oneOf(["h", "v"] as const), width: inRange(0.5, 200) }, { required: ["axis", "width"] }),
 };
 
 export const EDGE_SHAPE: Shape<OpcEdge> = {

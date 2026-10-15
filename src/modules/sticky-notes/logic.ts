@@ -12,6 +12,13 @@ export const STICKY_COLORS = {
 export type StickyColor = keyof typeof STICKY_COLORS;
 
 export const STICKY_SIZE = 200;
+export const RECENT_MAX = 10;
+
+/** Puts `color` first in the recent list, without duplicates, keeping at most RECENT_MAX. */
+export function pushRecent(recent: readonly string[], color: string): string[] {
+	const c = color.toLowerCase();
+	return [c, ...recent.filter((r) => r.toLowerCase() !== c)].slice(0, RECENT_MAX);
+}
 export const STICKY_GAP = 24;
 
 /** Font size bucket: shorter text in a bigger note gets bigger type. */

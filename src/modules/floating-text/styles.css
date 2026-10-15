@@ -1,0 +1,24 @@
+/* Floating text: no card around the text until it is hovered or selected. */
+body.opc-mod-floating-text .canvas-node[data-opc-kind="text"] > .canvas-node-container {
+	background: transparent;
+	border-color: transparent;
+	box-shadow: none;
+}
+body.opc-mod-floating-text .canvas-node[data-opc-kind="text"] > .canvas-node-container > .canvas-node-content {
+	background: transparent;
+}
+body.opc-mod-floating-text .canvas-node[data-opc-kind="text"]:hover > .canvas-node-container {
+	border-color: var(--background-modifier-border-hover);
+	border-style: dashed;
+}
+body.opc-mod-floating-text .canvas-node[data-opc-kind="text"]:is(.is-selected, .is-focused) > .canvas-node-container {
+	border-color: var(--color-accent);
+	border-style: dashed;
+}
+/* A themed (colored) floating text colors its letters instead of the card. */
+body.opc-mod-floating-text .canvas-node[data-opc-kind="text"].is-themed .markdown-preview-view {
+	color: var(--canvas-color);
+}
+body.opc-mod-floating-text[data-opc-kind="text"] {
+	--background-primary: transparent;
+}

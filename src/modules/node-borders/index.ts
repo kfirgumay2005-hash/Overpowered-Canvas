@@ -35,7 +35,7 @@ export const nodeBordersModule = defineModule({
 			icon: "square-dashed",
 			tooltip: () => ctx.t("nodeBorders.button"),
 			order: 11,
-			isVisible: (selection) => !!onlyNodes(selection),
+			isVisible: (selection) => !!onlyNodes(selection) && onlyNodes(selection)!.every((n) => !["guide", "ink"].includes(ctx.data.node(n).get().kind ?? "")),
 			onClick: ({ canvas, selection, buttonEl }) => {
 				const nodes = onlyNodes(selection) ?? [];
 				const current = common(nodes, (n) => ctx.data.node(n).get().border ?? "solid");

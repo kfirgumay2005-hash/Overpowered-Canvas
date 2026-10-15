@@ -60,7 +60,7 @@ Run it with the same window size each time and with no other canvas plugins enab
   canvas tracker, history transactions, public events, coexistence.
 - `src/internals/` — the only place that knows Obsidian's undocumented canvas shapes.
 - `src/data/` — `x-opc` schema, validators, migrations, typed access (see SCHEMA.md).
-- `src/i18n/` — `t()` and the en/he string tables (a missing Hebrew key is a compile error).
+- `src/i18n/` — `t()` and the en/zh/ja/hi string tables (a missing key in any locale is a compile error).
 - `src/settings/` — settings model (pure) and the settings tab.
 - `src/modules/<id>/` — one folder per feature: `index.ts` (definition), `patches.ts` (all of
   its patches), `styles.css` (scoped under `body.opc-mod-<id>`), tests.

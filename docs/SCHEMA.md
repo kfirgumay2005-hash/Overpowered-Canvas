@@ -43,12 +43,15 @@ interface OpcRoot {                       // file root "x-opc"
 }
 
 interface OpcNode {
-  kind?: "sticky" | "shape" | "line" | "ink";  // absent = ordinary node
+  kind?: "sticky" | "shape" | "line" | "ink" | "text" | "guide";  // absent = ordinary node
   shape?: FlowchartShape | StandaloneShape;
   border?: "solid" | "dotted" | "dashed" | "none";
   align?: "start" | "center" | "end";
+  valign?: "top" | "middle" | "bottom";   // absent = top (stickies: middle)
   dir?: "ltr" | "rtl" | "auto";
-  autoResize?: boolean; locked?: boolean; breakpoint?: number; collapsed?: boolean;
+  autoResize?: boolean;                   // grow in height with the text
+  autoWidth?: boolean;                    // grow in width (no wrapping) and height
+  locked?: boolean; breakpoint?: number; collapsed?: boolean;
   styles?: Record<string, string>;        // custom style attributes → data-* attributes
   fill?: string; stroke?: string; strokeWidth?: number; opacity?: number; rotation?: number;
   line?: { points: [number, number][]; from?: Attach; to?: Attach; startArrow?: ArrowStyle; endArrow?: ArrowStyle };
@@ -60,6 +63,7 @@ interface OpcNode {
   query?: { tags?: string[]; folder?: string; properties?: { key: string; value?: string }[]; linksTo?: string[]; auto?: boolean };
   queryOwner?: string;
   strokes?: Stroke[];                     // only on kind: "ink"
+  guide?: { axis: "h" | "v"; width: number };  // only on kind: "guide"
 }
 
 interface OpcEdge {
@@ -117,7 +121,9 @@ All kinds are `text` nodes, so vanilla Obsidian and other JSON Canvas apps still
 | `ink` | `strokes` (points relative to the node). Text is `✏️`. The node box always wraps its strokes (re-fitted after every edit). | A small card with ✏️ |
 | `line` | `line.points` relative to the node, `from`/`to` attachments, arrowheads; `strokeWidth`; color in the standard `color` field. | An empty card where the line was |
 | `shape` | `shape`, `fill` (`"solid"`, `"none"`, a hex color; absent = light tint), `strokeWidth`, `opacity`, `rotation`; color in `color`. | A card with the shape's text |
-| `sticky` | Pastel color in `color` (hex), optional `sticky: { author, created, footer }`. | A colored card |
+| `sticky` | Color in `color` (hex, any color), optional `sticky: { author, created, footer }`. | A colored card |
+| `text` | Floating text: an ordinary text card drawn without background or border, usually with `autoWidth`. | An ordinary text card |
+| `guide` | Infinite line: `guide: { axis, width }`, color in `color`. The node is a small handle on the line; the line itself is drawn across the whole board. | A small empty card |
 
 Other Phase 5 fields: `crop` on image file nodes (normalized rectangle; the image file is never
 changed) and `locked` on any node.

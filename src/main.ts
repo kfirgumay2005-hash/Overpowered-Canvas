@@ -1,4 +1,4 @@
-import { getLanguage, Notice, Plugin } from "obsidian";
+import { getLanguage, Notice, Plugin, setIcon, setTooltip } from "obsidian";
 import { CanvasHooks } from "./core/canvas-hooks";
 import { CanvasTracker } from "./core/canvas-tracker";
 import { CanvasUi } from "./core/canvas-ui";
@@ -15,6 +15,7 @@ import type { CanvasLike } from "./internals/types";
 import { MODULES } from "./modules/registry";
 import { OpcSettingTab } from "./settings/settings-tab";
 import { sanitizeSettings, type PluginSettings } from "./settings/settings";
+import { Tour } from "./ui/tour";
 
 export default class OverpoweredCanvasPlugin extends Plugin {
 	declare settings: PluginSettings;
@@ -76,6 +77,8 @@ export default class OverpoweredCanvasPlugin extends Plugin {
 			}),
 		);
 
+		this.setupTour(tracker);
+
 		this.app.workspace.onLayoutReady(async () => {
 			await this.modules.startAll();
 			checkCoexistence(this.app, this.modules, this.settings, () => this.saveSettings(), this.translate);
@@ -84,6 +87,41 @@ export default class OverpoweredCanvasPlugin extends Plugin {
 
 	override async onunload(): Promise<void> {
 		await this.modules?.stopAll();
+	}
+
+	/** The guided tour: a ribbon button, a button in every canvas' side controls and a command. */
+	private setupTour(tracker: CanvasTracker): void {
+		const tour = new Tour({
+			app: this.app,
+			modules: this.modules,
+			definitions: MODULES,
+			t: () => this.translate,
+			getStep: () => this.settings.tour.step,
+			setStep: (step) => {
+				this.settings.tour.step = step;
+				void this.saveSettings();
+			},
+			openSettings: () => {
+				const setting = (this.app as unknown as { setting: { open(): void; openTabById(id: string): void } }).setting;
+				setting.open();
+				setting.openTabById(this.manifest.id);
+			},
+		});
+		this.register(() => tour.close());
+		this.addRibbonIcon("compass", this.translate("tour.open"), () => tour.toggle());
+		this.addCommand({ id: "tour", name: this.translate("tour.open"), icon: "compass", callback: () => tour.toggle() });
+		this.register(
+			tracker.subscribe((canvas) => {
+				const group = canvas.wrapperEl.querySelector(".canvas-controls")?.createDiv({ cls: "canvas-control-group mod-raised opc-tour-control" });
+				const item = group?.createDiv({ cls: "canvas-control-item", attr: { "aria-label": this.translate("tour.open") } });
+				if (item) {
+					setIcon(item, "compass");
+					setTooltip(item, this.translate("tour.open"), { placement: "left" });
+					item.addEventListener("click", () => tour.toggle());
+				}
+				return () => group?.remove();
+			}),
+		);
 	}
 
 	/** data.json changed on disk (e.g. synced from another device): adopt it without restarting. */

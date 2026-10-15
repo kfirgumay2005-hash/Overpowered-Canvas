@@ -16,6 +16,21 @@ export function nodeType(node: CanvasNodeLike): NodeType {
 	return "text";
 }
 
+/** Kinds drawn by us whose card is not a text box: no text alignment, direction, borders… */
+const NOT_TEXT_BOXES: ReadonlySet<string> = new Set(["ink", "guide", "line"]);
+
+/** A text or file card showing text (not an ink carrier, line or infinite line). */
+export function isTextBox(ctx: ModuleContext<object>, node: CanvasNodeLike): boolean {
+	const type = nodeType(node);
+	return (type === "text" || type === "file") && !NOT_TEXT_BOXES.has(ctx.data.node(node).get().kind ?? "");
+}
+
+/** The selected nodes when every one of them is a text box, else null. */
+export function onlyTextBoxes(ctx: ModuleContext<object>, selection: CanvasItemLike[]): CanvasNodeLike[] | null {
+	const nodes = onlyNodes(selection);
+	return nodes && nodes.every((n) => isTextBox(ctx, n)) ? nodes : null;
+}
+
 export function selectedNodes(canvas: CanvasLike): CanvasNodeLike[] {
 	return [...canvas.selection].filter(isNode);
 }

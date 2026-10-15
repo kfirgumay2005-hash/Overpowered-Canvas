@@ -9,11 +9,11 @@ describe("sanitizeSettings", () => {
 
 	it("keeps valid values, including entries of unknown modules", () => {
 		const s = sanitizeSettings({
-			language: "he",
+			language: "ja",
 			modules: { diagnostics: { enabled: true, settings: { benchmarkFrames: 100 } }, "future-module": { enabled: true, settings: {} }, bad: 3 },
 			coexistence: { acknowledged: ["advanced-canvas", 5] },
 		});
-		expect(s.language).toBe("he");
+		expect(s.language).toBe("ja");
 		expect(s.modules).toEqual({
 			diagnostics: { enabled: true, settings: { benchmarkFrames: 100 } },
 			"future-module": { enabled: true, settings: {} },
@@ -21,8 +21,9 @@ describe("sanitizeSettings", () => {
 		expect(s.coexistence.acknowledged).toEqual(["advanced-canvas"]);
 	});
 
-	it("rejects an unknown language", () => {
+	it("rejects an unknown or removed language", () => {
 		expect(sanitizeSettings({ language: "fr" }).language).toBe("auto");
+		expect(sanitizeSettings({ language: "he" }).language).toBe("auto");
 	});
 });
 

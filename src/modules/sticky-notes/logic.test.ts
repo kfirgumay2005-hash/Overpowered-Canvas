@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { fontBucket, nextStickyPos, STICKY_GAP } from "./logic";
+import { fontBucket, nextStickyPos, pushRecent, RECENT_MAX, STICKY_GAP } from "./logic";
 
 describe("sticky notes", () => {
 	it("shrinks the font as text grows", () => {
@@ -21,5 +21,15 @@ describe("sticky notes", () => {
 			return hit;
 		};
 		expect(nextStickyPos(from, "left", once)).toEqual({ x: -2 * (200 + STICKY_GAP), y: 0 });
+	});
+
+	it("keeps the most recent custom colors first, without duplicates", () => {
+		expect(pushRecent(["#111111", "#222222"], "#222222")).toEqual(["#222222", "#111111"]);
+		expect(pushRecent([], "#ABCDEF")).toEqual(["#abcdef"]);
+		const full = Array.from({ length: RECENT_MAX }, (_, i) => `#00000${i}`);
+		const next = pushRecent(full, "#ffffff");
+		expect(next).toHaveLength(RECENT_MAX);
+		expect(next[0]).toBe("#ffffff");
+		expect(next).not.toContain(full[RECENT_MAX - 1]);
 	});
 });

@@ -5,16 +5,21 @@ import type { I18nKey } from "../../i18n";
 import type { CanvasLike, CanvasNodeLike } from "../../internals/types";
 import { mergeWithDefaults } from "../../settings/settings";
 import { showPicker } from "../../ui/picker";
-import { common, mutate, nodeType, onlyNodes } from "../shared";
+import { common, mutate, nodeType, onlyNodes, onlyTextBoxes } from "../shared";
 
 interface DirectionSettings {
 	/** Layout direction of canvases: follow Obsidian's interface, or fixed. */
 	canvas: "ui" | "ltr" | "rtl";
 	/** Text direction in cards: "auto" detects it per paragraph. */
 	cards: Direction;
+	/**
+	 * What a right-to-left canvas mirrors: "full" = layout, menus, controls and text;
+	 * "text" = only the text in cards and labels (the canvas UI stays left-to-right).
+	 */
+	scope: "full" | "text";
 }
 
-const DEFAULTS: DirectionSettings = { canvas: "ui", cards: "auto" };
+const DEFAULTS: DirectionSettings = { canvas: "ui", cards: "auto", scope: "full" };
 const ICONS: Record<Direction, string> = { auto: "languages", ltr: "pilcrow-right", rtl: "pilcrow-left" };
 
 /**
@@ -35,6 +40,7 @@ export const directionModule = defineModule<DirectionSettings>({
 		return {
 			canvas: ["ui", "ltr", "rtl"].includes(s.canvas) ? s.canvas : defaults.canvas,
 			cards: DIRECTIONS.includes(s.cards) ? s.cards : defaults.cards,
+			scope: s.scope === "text" ? "text" : "full",
 		};
 	},
 
@@ -42,8 +48,17 @@ export const directionModule = defineModule<DirectionSettings>({
 		const applyCanvas = (canvas: CanvasLike) => {
 			const own = ctx.data.root(canvas).get().dir;
 			const dir = own === "ltr" || own === "rtl" ? own : ctx.settings.canvas === "ui" ? null : ctx.settings.canvas;
-			if (dir) canvas.wrapperEl.setAttribute("dir", dir);
-			else canvas.wrapperEl.removeAttribute("dir");
+			if (ctx.settings.scope === "text") {
+				// Text only: the layout stays LTR, card text turns RTL.
+				const parent = canvas.wrapperEl.parentElement;
+				const rtl = dir ? dir === "rtl" : !!parent && getComputedStyle(parent).direction === "rtl";
+				canvas.wrapperEl.setAttribute("dir", "ltr");
+				canvas.wrapperEl.toggleClass("opc-rtl-text", rtl);
+			} else {
+				if (dir) canvas.wrapperEl.setAttribute("dir", dir);
+				else canvas.wrapperEl.removeAttribute("dir");
+				canvas.wrapperEl.removeClass("opc-rtl-text");
+			}
 			canvas.wrapperEl.toggleClass("opc-rtl", getComputedStyle(canvas.wrapperEl).direction === "rtl");
 		};
 		const applyNode = (node: CanvasNodeLike, own: Direction | undefined) => {
@@ -59,6 +74,7 @@ export const directionModule = defineModule<DirectionSettings>({
 			return () => {
 				canvas.wrapperEl.removeAttribute("dir");
 				canvas.wrapperEl.removeClass("opc-rtl");
+				canvas.wrapperEl.removeClass("opc-rtl-text");
 			};
 		});
 		ctx.on("root-extra-change", applyCanvas);
@@ -76,10 +92,7 @@ export const directionModule = defineModule<DirectionSettings>({
 		});
 
 		// Per-card text direction.
-		const textNodes = (selection: Parameters<typeof onlyNodes>[0]) => {
-			const nodes = onlyNodes(selection);
-			return nodes && nodes.every((n) => nodeType(n) === "text" || nodeType(n) === "file") ? nodes : null;
-		};
+		const textNodes = (selection: Parameters<typeof onlyNodes>[0]) => onlyTextBoxes(ctx as ModuleContext<object>, selection);
 		ctx.addMenuButton({
 			id: "text-direction",
 			icon: (selection) => ICONS[common(textNodes(selection) ?? [], (n) => ctx.data.node(n).get().dir) ?? "auto"],
@@ -125,6 +138,15 @@ export const directionModule = defineModule<DirectionSettings>({
 					.addOptions({ ui: ctx.t("direction.ui"), ltr: ctx.t("direction.ltr"), rtl: ctx.t("direction.rtl") })
 					.setValue(ctx.settings.canvas)
 					.onChange((v) => ctx.updateSettings({ canvas: v as DirectionSettings["canvas"] })),
+			);
+		new Setting(el)
+			.setName(ctx.t("direction.scope.name"))
+			.setDesc(ctx.t("direction.scope.desc"))
+			.addDropdown((d) =>
+				d
+					.addOptions({ full: ctx.t("direction.scope.full"), text: ctx.t("direction.scope.text") })
+					.setValue(ctx.settings.scope)
+					.onChange((v) => ctx.updateSettings({ scope: v as DirectionSettings["scope"] })),
 			);
 		new Setting(el)
 			.setName(ctx.t("direction.cards.name"))

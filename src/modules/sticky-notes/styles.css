@@ -72,3 +72,14 @@ body.opc-mod-sticky-notes .opc-sticky-footer {
 	text-overflow: ellipsis;
 	pointer-events: none;
 }
+
+/* The hidden input behind "custom color": the system picker opens next to the button. */
+body.opc-mod-sticky-notes .opc-sticky-color-input {
+	position: fixed;
+	width: 1px;
+	height: 1px;
+	padding: 0;
+	border: 0;
+	opacity: 0;
+	pointer-events: none;
+}

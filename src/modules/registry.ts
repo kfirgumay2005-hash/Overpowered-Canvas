@@ -30,10 +30,13 @@ import { drawingModule } from "./drawing";
 import { freeLinesModule } from "./free-lines";
 import { shapesModule } from "./shapes";
 import { stickyNotesModule } from "./sticky-notes";
+import { floatingTextModule } from "./floating-text";
+import { infiniteLinesModule } from "./infinite-lines";
 import { imageCropModule } from "./image-crop";
 import { edgeEditingModule } from "./edge-editing";
 import { lockItemsModule } from "./lock-items";
 import { minimapModule } from "./minimap";
+import { gridModule } from "./grid";
 import { framesModule } from "./frames";
 import { boardTemplatesModule } from "./board-templates";
 import { kanbanModule } from "./kanban";
@@ -46,6 +49,7 @@ import { nodeBordersModule } from "./node-borders";
 import { nodeShapesModule } from "./node-shapes";
 import { nodeTemplatesModule } from "./node-templates";
 import { textAlignModule } from "./text-align";
+import { toolbarSizeModule } from "./toolbar-size";
 import { variableBreakpointsModule } from "./variable-breakpoints";
 import { zOrderModule } from "./z-order";
 
@@ -76,6 +80,7 @@ export const MODULES: readonly AnyModule[] = [
 	readonlyPlusModule,
 	imageExportModule,
 	canvasCommandsModule,
+	toolbarSizeModule,
 	presentationModule,
 	portalsModule,
 	collapsibleGroupsModule,
@@ -91,10 +96,13 @@ export const MODULES: readonly AnyModule[] = [
 	freeLinesModule,
 	shapesModule,
 	stickyNotesModule,
+	floatingTextModule,
+	infiniteLinesModule,
 	imageCropModule,
 	edgeEditingModule,
 	lockItemsModule,
 	minimapModule,
+	gridModule,
 	framesModule,
 	boardTemplatesModule,
 	kanbanModule,

@@ -1,0 +1,12 @@
+/* Cards that grow sideways: lines never wrap, in reading mode and in the editor iframe. */
+body.opc-mod-auto-resize .canvas-node[data-opc-auto-width] .markdown-embed-content > .markdown-preview-view {
+	white-space: nowrap;
+}
+body.opc-mod-auto-resize[data-opc-auto-width] .markdown-source-view.mod-cm6 .cm-content,
+body.opc-mod-auto-resize[data-opc-auto-width] .markdown-source-view.mod-cm6 .cm-line {
+	white-space: pre !important;
+}
+/* Fitted cards never show a scrollbar while they catch up with the text. */
+body.opc-mod-auto-resize .canvas-node[data-opc-auto-resize] .markdown-embed-content > .markdown-preview-view {
+	overflow: hidden;
+}

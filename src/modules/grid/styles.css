@@ -1,0 +1,13 @@
+/* The line grid: above the core's dot background, below all content. */
+body.opc-mod-grid .canvas-wrapper > svg.opc-grid {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+	pointer-events: none;
+}
+body.opc-mod-grid svg.opc-grid .opc-grid-line {
+	fill: none;
+	stroke: var(--background-modifier-border-hover);
+	stroke-width: 1px;
+}

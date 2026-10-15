@@ -26,8 +26,8 @@ a fake canvas that mirrors Obsidian 1.14's behavior), benchmark statistics, and 
 5. Restart Obsidian → the enabled state and settings are remembered.
 
 ### 0.3 Language
-1. Set *Interface language* to Hebrew → the settings tab redraws in Hebrew (full RTL mirroring is Phase 8).
-2. Reload the plugin → command names are in Hebrew too. Set it back to "Same as Obsidian".
+1. Set *Interface language* to Japanese (or Chinese / Hindi) → the settings tab redraws in that language.
+2. Reload the plugin → command names are translated too. Set it back to "Same as Obsidian".
 
 ### 0.4 Coexistence notice
 1. With Advanced Canvas enabled there is **no** notice in Phase 0 (no module overlaps it yet).
@@ -247,8 +247,8 @@ Automated runtime checks of every item below were run in an isolated Obsidian 1.
 2. **Mixed text:** a card with `שלום world`, `Hello עולם`, a Hebrew bullet list and a task →
    each paragraph takes its own direction; bullets, numbers and checkboxes sit on the right for
    Hebrew lists. Toolbar → *Text direction* forces LTR/RTL for a card (also while editing).
-3. **Hebrew UI:** Settings → language → Hebrew → reload the plugin: every command, menu,
-   tooltip and setting is in Hebrew, consistent terms (קנבס, קשתות, כרטיס).
+3. **UI languages:** Settings → language → Chinese / Japanese / Hindi → reload the plugin: every
+   command, menu, tooltip and setting is translated. (The Hebrew UI was removed in 0.2.)
 4. **Large canvas:** `npm run stress` → open `stress-1000.canvas` → zoom to fit: the canvas
    switches to the fast renderer (cards as simple boxes, group labels readable); panning and
    zooming are smooth. Click a card → it gets selected; drag it → it moves; zoom in past 25 % →
@@ -262,3 +262,37 @@ Automated runtime checks of every item below were run in an isolated Obsidian 1.
 6. **Mobile:** open the vault on a phone/tablet → the plugin loads; drawing works with a finger
    (pen-only mode off) and with a stylus; image export saves into the attachment folder.
 
+## Manual — Round 2 (user requests, 2026-10-15)
+
+1. **Drawing preview:** drawing mode → lasso, line, arrow and highlighter show their stroke /
+   outline *while* dragging, not only after release.
+2. **Hebrew while typing:** with the RTL Support plugin on, type Hebrew in a new text card and in
+   a sticky → each line is right-aligned as you type, also after Enter Enter (new paragraph);
+   English lines stay left. Same with *Text direction → Right to left* on the card.
+3. **Selection toolbar position:** narrow window with the file sidebar open, canvas direction
+   right-to-left → click a card at the left edge: the toolbar sits above the card, never under
+   the sidebar; when it doesn't fit it wraps onto two rows. Settings → *Selection toolbar size*
+   → change *Computer* (and *Phone and tablet* on mobile) → the toolbar scales.
+4. **Sticky colors:** select a sticky → sticky color button → *Custom color…* → pick a color →
+   the sticky takes it and the color appears under *Recent colors*; after 11 custom colors only
+   the last 10 are kept. Settings → *Default color* → *Custom color* + picker.
+5. **Vertical alignment:** text alignment button → *Top / Middle / Bottom* for any card
+   (stickies default to middle) — in reading mode and while editing. Settings → *Text alignment*
+   → *Center text in new cards* → *Horizontally and vertically* → double-click the canvas: the
+   new card's text is centered both ways.
+6. **Grow with text:** toolbar → *Grow to fit text* → *Grow downwards* / *Grow sideways* → type
+   a long line: the card grows instead of scrolling (sideways: lines don't wrap).
+7. **Floating text:** bottom bar → *T* button (or drag it) → type: no card around the text, it
+   grows as you type; color it from the palette.
+8. **Infinite lines:** bottom bar → infinite line button (right-click: vertical) → a line across
+   the whole board under the cards. Select it (click anywhere on it) → thickness and
+   horizontal/vertical buttons; color from the palette; drag to move; undo works.
+9. **Grid:** side controls → grid button → a line grid behind everything; right-click it → *A
+   line every 2 / 4 / 5 / 10 dots* or *Other size…*; Settings → *Grid* → color.
+10. **Text-only RTL:** Settings → *Right-to-left support* → *What right-to-left changes* → *Text
+   only* → the canvas controls and toolbars stay left-to-right, card text is right-to-left.
+11. **Settings search:** type "sticky" in the search box at the top of the settings tab → only
+   matching settings remain; nonsense → "No settings match."
+12. **Tour:** ribbon compass (or the compass in the canvas controls) → the tour opens; arrows /
+   ← → keys move through ~60 steps, features with a button get highlighted; close it on step 12,
+   reopen → it continues at step 12; *Finish* on the last step resets it.

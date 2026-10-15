@@ -3,13 +3,15 @@ import { createTranslator, interpolate, LOCALES, resolveLocale } from "./index";
 
 describe("resolveLocale", () => {
 	it("uses the explicit setting", () => {
-		expect(resolveLocale("he", "en")).toBe("he");
-		expect(resolveLocale("en", "he")).toBe("en");
+		expect(resolveLocale("ja", "en")).toBe("ja");
+		expect(resolveLocale("en", "zh")).toBe("en");
 	});
 	it("follows Obsidian's language in auto mode", () => {
-		expect(resolveLocale("auto", "he")).toBe("he");
-		expect(resolveLocale("auto", "iw")).toBe("he");
-		expect(resolveLocale("auto", "he-IL")).toBe("he");
+		expect(resolveLocale("auto", "zh")).toBe("zh");
+		expect(resolveLocale("auto", "zh-TW")).toBe("zh");
+		expect(resolveLocale("auto", "ja")).toBe("ja");
+		expect(resolveLocale("auto", "hi")).toBe("hi");
+		expect(resolveLocale("auto", "he")).toBe("en");
 		expect(resolveLocale("auto", "fr")).toBe("en");
 		expect(resolveLocale("auto", "")).toBe("en");
 	});
@@ -39,11 +41,12 @@ describe("locales", () => {
 
 	it("placeholders match between locales", () => {
 		const names = (s: string) => [...s.matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort();
-		for (const key of keys) expect(names(LOCALES.he[key]), key).toEqual(names(LOCALES.en[key]));
+		for (const [locale, table] of Object.entries(LOCALES))
+			for (const key of keys) expect(names(table[key]), `${locale}:${key}`).toEqual(names(LOCALES.en[key]));
 	});
 
 	it("translator interpolates", () => {
-		const t = createTranslator("he");
+		const t = createTranslator("ja");
 		expect(t("diagnostics.patches.copied", { count: 3 })).toContain("3");
 	});
 });

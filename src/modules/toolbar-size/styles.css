@@ -1,0 +1,4 @@
+/* The selection toolbar, scaled (zoom keeps its measured size right for the core's positioning). */
+body.opc-mod-toolbar-size .canvas-menu {
+	zoom: var(--opc-menu-zoom, 1);
+}

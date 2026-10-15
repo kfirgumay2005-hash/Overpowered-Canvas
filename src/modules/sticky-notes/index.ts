@@ -5,16 +5,20 @@ import type { CanvasLike, CanvasNodeLike } from "../../internals/types";
 import { mergeWithDefaults } from "../../settings/settings";
 import { showPicker } from "../../ui/picker";
 import { canvasDirection, mutate, nodeType, onlyNodes, randomId, selectedNodes } from "../shared";
-import { fontBucket, nextStickyPos, STICKY_COLORS, STICKY_SIZE, type Dir, type StickyColor } from "./logic";
+import { fontBucket, nextStickyPos, pushRecent, RECENT_MAX, STICKY_COLORS, STICKY_SIZE, type Dir, type StickyColor } from "./logic";
 
 interface StickySettings {
-	color: StickyColor;
+	/** A palette name, or any hex color. */
+	color: string;
+	/** Custom colors used last, newest first (at most RECENT_MAX). */
+	recent: string[];
 	/** Show author and date at the bottom of new notes. */
 	footer: boolean;
 	author: string;
 }
 
-const DEFAULTS: StickySettings = { color: "yellow", footer: false, author: "" };
+const DEFAULTS: StickySettings = { color: "yellow", recent: [], footer: false, author: "" };
+const HEX = /^#[0-9a-f]{6}$/i;
 const ARROWS: Record<string, Dir> = { ArrowRight: "right", ArrowLeft: "left", ArrowDown: "down", ArrowUp: "up" };
 
 function isSticky(node: CanvasNodeLike, extra: OpcNode): boolean {
@@ -54,7 +58,11 @@ export const stickyNotesModule = defineModule<StickySettings>({
 	defaultSettings: DEFAULTS,
 	sanitizeSettings: (raw, defaults) => {
 		const s = mergeWithDefaults(raw, defaults);
-		return { ...s, color: s.color in STICKY_COLORS ? s.color : defaults.color };
+		return {
+			...s,
+			color: s.color in STICKY_COLORS || HEX.test(s.color) ? s.color : defaults.color,
+			recent: s.recent.filter((c): c is string => typeof c === "string" && HEX.test(c)).slice(0, RECENT_MAX),
+		};
 	},
 
 	enable(ctx) {
@@ -86,7 +94,36 @@ export const stickyNotesModule = defineModule<StickySettings>({
 			if (edit) window.setTimeout(() => node.startEditing(), 20);
 			return node;
 		};
-		const defaultColor = () => STICKY_COLORS[ctx.settings.color];
+		const defaultColor = () => resolveColor(ctx.settings.color);
+
+		/** Remembers a custom color at the front of the recent list. */
+		const remember = (color: string) => {
+			if (isPreset(color)) return;
+			void ctx.updateSettings({ recent: pushRecent(ctx.settings.recent, color) });
+		};
+		/** Preset swatches, recent custom colors and a "custom color" button; calls `apply` with a hex color. */
+		const colorPicker = (anchor: HTMLElement, title: string | undefined, isActive: (hex: string) => boolean, apply: (hex: string) => void) => {
+			const recent = ctx.settings.recent;
+			showPicker(
+				anchor,
+				[
+					{ title, columns: 6, items: (Object.keys(STICKY_COLORS) as StickyColor[]).map((c) => ({ id: STICKY_COLORS[c], label: ctx.t(`stickyNotes.color.${c}`), svg: swatch(STICKY_COLORS[c]), active: isActive(STICKY_COLORS[c]) })) },
+					...(recent.length ? [{ title: ctx.t("stickyNotes.recent"), columns: 5, items: recent.map((c) => ({ id: c, label: c, svg: swatch(c), active: isActive(c) })) }] : []),
+					{ columns: 1, items: [{ id: "custom", label: ctx.t("stickyNotes.customColor"), icon: "pipette" }] },
+				],
+				(id) => {
+					if (id !== "custom") {
+						remember(id);
+						apply(id);
+						return;
+					}
+					pickColor(anchor, defaultColor(), (hex) => {
+						remember(hex);
+						apply(hex);
+					});
+				},
+			);
+		};
 		const atCenter = (canvas: CanvasLike) => {
 			const v = canvas.getViewportBBox();
 			return { x: (v.minX + v.maxX) / 2 - STICKY_SIZE / 2, y: (v.minY + v.maxY) / 2 - STICKY_SIZE / 2 };
@@ -112,12 +149,7 @@ export const stickyNotesModule = defineModule<StickySettings>({
 			tooltip: () => ctx.t("stickyNotes.add"),
 			order: 100,
 			onClick: (canvas) => void create(canvas, atCenter(canvas), defaultColor()),
-			onContextMenu: (canvas, evt) =>
-				showPicker(
-					evt.currentTarget as HTMLElement,
-					[{ title: ctx.t("stickyNotes.add"), columns: 6, items: (Object.keys(STICKY_COLORS) as StickyColor[]).map((c) => ({ id: c, label: ctx.t(`stickyNotes.color.${c}`), svg: swatch(STICKY_COLORS[c]) })) }],
-					(id) => void create(canvas, atCenter(canvas), STICKY_COLORS[id as StickyColor]),
-				),
+			onContextMenu: (canvas, evt) => colorPicker(evt.currentTarget as HTMLElement, ctx.t("stickyNotes.add"), () => false, (hex) => void create(canvas, atCenter(canvas), hex)),
 			drag: { size: () => ({ width: STICKY_SIZE, height: STICKY_SIZE }), drop: (canvas, pos) => void create(canvas, pos, defaultColor()) },
 		});
 		ctx.addCommand({
@@ -145,12 +177,13 @@ export const stickyNotesModule = defineModule<StickySettings>({
 			isVisible: (selection) => !!selectedStickies(selection),
 			onClick: ({ canvas, selection, buttonEl }) => {
 				const nodes = selectedStickies(selection) ?? [];
-				showPicker(
+				colorPicker(
 					buttonEl,
-					[{ columns: 6, items: (Object.keys(STICKY_COLORS) as StickyColor[]).map((c) => ({ id: c, label: ctx.t(`stickyNotes.color.${c}`), svg: swatch(STICKY_COLORS[c]), active: nodes.every((n) => n.color === STICKY_COLORS[c]) })) }],
-					(id) =>
+					undefined,
+					(hex) => nodes.every((n) => n.color.toLowerCase() === hex.toLowerCase()),
+					(hex) =>
 						mutate(ctx, canvas, () => {
-							for (const n of nodes) n.setColor(STICKY_COLORS[id as StickyColor]);
+							for (const n of nodes) n.setColor(hex);
 						}),
 				);
 			},
@@ -158,12 +191,20 @@ export const stickyNotesModule = defineModule<StickySettings>({
 	},
 
 	renderSettings(el, ctx: ModuleContext<StickySettings>) {
-		new Setting(el).setName(ctx.t("stickyNotes.defaultColor")).addDropdown((d) =>
-			d
-				.addOptions(Object.fromEntries((Object.keys(STICKY_COLORS) as StickyColor[]).map((c) => [c, ctx.t(`stickyNotes.color.${c}`)])))
-				.setValue(ctx.settings.color)
-				.onChange((v) => ctx.updateSettings({ color: v as StickyColor })),
-		);
+		const custom = !(ctx.settings.color in STICKY_COLORS);
+		new Setting(el)
+			.setName(ctx.t("stickyNotes.defaultColor"))
+			.addDropdown((d) =>
+				d
+					.addOptions(Object.fromEntries((Object.keys(STICKY_COLORS) as StickyColor[]).map((c) => [c, ctx.t(`stickyNotes.color.${c}`)])))
+					.addOption("custom", ctx.t("stickyNotes.customColor"))
+					.setValue(custom ? "custom" : ctx.settings.color)
+					.onChange((v) => {
+						if (v !== "custom") void ctx.updateSettings({ color: v });
+						else void ctx.updateSettings({ color: resolveColor(ctx.settings.color) });
+					}),
+			)
+			.addColorPicker((c) => c.setValue(resolveColor(ctx.settings.color)).onChange((v) => ctx.updateSettings({ color: v.toLowerCase() })));
 		new Setting(el)
 			.setName(ctx.t("stickyNotes.footer.name"))
 			.setDesc(ctx.t("stickyNotes.footer.desc"))
@@ -171,6 +212,29 @@ export const stickyNotesModule = defineModule<StickySettings>({
 		new Setting(el).setName(ctx.t("stickyNotes.author")).addText((t) => t.setValue(ctx.settings.author).onChange((v) => ctx.updateSettings({ author: v.trim() })));
 	},
 });
+
+function resolveColor(color: string): string {
+	return color in STICKY_COLORS ? STICKY_COLORS[color as StickyColor] : color;
+}
+
+function isPreset(hex: string): boolean {
+	return Object.values(STICKY_COLORS).some((c) => c.toLowerCase() === hex.toLowerCase());
+}
+
+/** Opens the system color picker next to `anchor`. */
+function pickColor(anchor: HTMLElement, initial: string, onPick: (hex: string) => void): void {
+	const input = anchor.doc.body.createEl("input", { type: "color", cls: "opc-sticky-color-input" });
+	const rect = anchor.getBoundingClientRect();
+	input.style.left = `${Math.round(rect.left)}px`;
+	input.style.top = `${Math.round(rect.bottom)}px`;
+	input.value = initial;
+	input.addEventListener("change", () => {
+		onPick(input.value.toLowerCase());
+		input.remove();
+	});
+	input.addEventListener("blur", () => window.setTimeout(() => input.remove(), 200));
+	input.click();
+}
 
 function swatch(color: string): string {
 	return `<svg viewBox="0 0 20 20" width="20" height="20"><rect x="2" y="2" width="16" height="16" rx="2" fill="${color}" stroke="rgba(0,0,0,.2)"/></svg>`;

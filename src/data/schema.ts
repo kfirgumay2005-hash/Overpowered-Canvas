@@ -11,7 +11,7 @@ export const SCHEMA_VERSION = 1;
 export const DIRECTIONS = ["ltr", "rtl", "auto"] as const;
 export type Direction = (typeof DIRECTIONS)[number];
 
-export const NODE_KINDS = ["sticky", "shape", "line", "ink"] as const;
+export const NODE_KINDS = ["sticky", "shape", "line", "ink", "text", "guide"] as const;
 export type NodeKind = (typeof NODE_KINDS)[number];
 
 export const FLOWCHART_SHAPES = [
@@ -63,6 +63,9 @@ export type BorderStyle = (typeof BORDER_STYLES)[number];
 export const TEXT_ALIGNS = ["start", "center", "end"] as const;
 export type TextAlign = (typeof TEXT_ALIGNS)[number];
 
+export const VERTICAL_ALIGNS = ["top", "middle", "bottom"] as const;
+export type VerticalAlign = (typeof VERTICAL_ALIGNS)[number];
+
 export const ARROW_STYLES = [
 	"triangle",
 	"triangle-outline",
@@ -103,6 +106,13 @@ export interface LineData {
 	to?: Attach;
 	startArrow?: ArrowStyle;
 	endArrow?: ArrowStyle;
+}
+
+/** An infinite line (kind "guide"): horizontal lines run along x, vertical ones along y. */
+export interface GuideData {
+	axis: "h" | "v";
+	/** Line thickness in canvas pixels. */
+	width: number;
 }
 
 export interface StickyData {
@@ -161,8 +171,13 @@ export interface OpcNode {
 	shape?: ShapeName;
 	border?: BorderStyle;
 	align?: TextAlign;
+	/** Vertical text position; without it text sits at the top (stickies: middle). */
+	valign?: VerticalAlign;
 	dir?: Direction;
+	/** Grow and shrink in height to fit the text. */
 	autoResize?: boolean;
+	/** Grow and shrink in width to fit the longest line (lines don't wrap). */
+	autoWidth?: boolean;
 	locked?: boolean;
 	breakpoint?: number;
 	collapsed?: boolean;
@@ -181,6 +196,7 @@ export interface OpcNode {
 	query?: QuerySpec;
 	queryOwner?: string;
 	strokes?: Stroke[];
+	guide?: GuideData;
 }
 
 export interface OpcEdge {
@@ -205,6 +221,7 @@ export const NODE_DEFAULTS: Readonly<Partial<OpcNode>> = {
 	border: "solid",
 	align: "start",
 	autoResize: false,
+	autoWidth: false,
 	locked: false,
 	collapsed: false,
 	opacity: 1,

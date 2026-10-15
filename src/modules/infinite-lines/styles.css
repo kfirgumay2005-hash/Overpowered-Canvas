@@ -1,0 +1,64 @@
+/* Infinite lines: drawn on a layer under all cards, inside the transformed canvas. */
+body.opc-mod-infinite-lines .canvas > .opc-guides {
+	position: absolute;
+	left: 0;
+	top: 0;
+	width: 0;
+	height: 0;
+}
+body.opc-mod-infinite-lines .opc-guide {
+	position: absolute;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	/* A hit area wider than thin lines, constant on screen. */
+	--opc-guide-hit: max(var(--opc-guide-width), calc(12px * var(--zoom-multiplier, 1) * var(--zoom-multiplier, 1)));
+	cursor: pointer;
+}
+body.opc-mod-infinite-lines .opc-guide[data-axis="h"] {
+	height: var(--opc-guide-hit);
+	transform: translateY(-50%);
+	cursor: row-resize;
+}
+body.opc-mod-infinite-lines .opc-guide[data-axis="v"] {
+	width: var(--opc-guide-hit);
+	transform: translateX(-50%);
+	cursor: col-resize;
+}
+body.opc-mod-infinite-lines .opc-guide > .opc-guide-stroke {
+	background: var(--text-muted);
+	pointer-events: none;
+}
+body.opc-mod-infinite-lines .opc-guide.is-themed > .opc-guide-stroke {
+	background: var(--canvas-color);
+}
+body.opc-mod-infinite-lines .opc-guide[data-axis="h"] > .opc-guide-stroke {
+	width: 100%;
+	height: var(--opc-guide-width);
+}
+body.opc-mod-infinite-lines .opc-guide[data-axis="v"] > .opc-guide-stroke {
+	height: 100%;
+	width: var(--opc-guide-width);
+}
+body.opc-mod-infinite-lines .opc-guide.is-selected > .opc-guide-stroke {
+	box-shadow: 0 0 0 calc(1.5px * var(--zoom-multiplier, 1)) var(--color-accent);
+}
+
+/* The handle card: invisible, only the line takes the pointer. */
+body.opc-mod-infinite-lines .canvas-node[data-opc-kind="guide"] {
+	pointer-events: none;
+}
+body.opc-mod-infinite-lines .canvas-node[data-opc-kind="guide"] > .canvas-node-container {
+	background: transparent;
+	border-color: transparent;
+	box-shadow: none;
+}
+body.opc-mod-infinite-lines .canvas-node[data-opc-kind="guide"] > .canvas-node-container > .canvas-node-content,
+body.opc-mod-infinite-lines .canvas-node[data-opc-kind="guide"] > .canvas-node-resizer,
+body.opc-mod-infinite-lines .canvas-node[data-opc-kind="guide"] .canvas-node-connection-point {
+	display: none;
+}
+body.opc-mod-infinite-lines .canvas-node[data-opc-kind="guide"]:is(.is-selected, .is-focused) > .canvas-node-container {
+	border: 1px dashed var(--color-accent);
+	border-radius: var(--radius-s);
+}

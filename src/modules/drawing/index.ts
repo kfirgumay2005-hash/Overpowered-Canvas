@@ -253,13 +253,13 @@ class InkSession {
 		if (!cur) return;
 		const s = this.ctx.settings;
 		if (cur.mode === "lasso") {
-			const pl = this.preview.createSvg("polyline", { cls: "opc-ink-live opc-ink-lasso" });
+			const pl = this.preview.createSvg("polyline", { cls: ["opc-ink-live", "opc-ink-lasso"] });
 			pl.setAttribute("points", cur.points.map((p) => `${p.x},${p.y}`).join(" "));
 			return;
 		}
 		if (cur.mode === "line") {
 			const [a, b] = cur.points;
-			const l = this.preview.createSvg("line", { cls: "opc-ink-live opc-ink-line-preview" });
+			const l = this.preview.createSvg("line", { cls: ["opc-ink-live", "opc-ink-line-preview"] });
 			l.setAttrs({ x1: a!.x, y1: a!.y, x2: b!.x, y2: b!.y, stroke: s.color, "stroke-width": s.sizes.pen });
 			return;
 		}
@@ -268,15 +268,15 @@ class InkSession {
 			const r = cur.recognized;
 			const el =
 				r.kind === "line" || r.kind === "arrow"
-					? this.preview.createSvg("line", { cls: "opc-ink-live opc-ink-recognized", attr: { x1: r.from.x, y1: r.from.y, x2: r.to.x, y2: r.to.y } })
+					? this.preview.createSvg("line", { cls: ["opc-ink-live", "opc-ink-recognized"], attr: { x1: r.from.x, y1: r.from.y, x2: r.to.x, y2: r.to.y } })
 					: r.kind === "ellipse"
-						? this.preview.createSvg("ellipse", { cls: "opc-ink-live opc-ink-recognized", attr: { cx: (r.box.minX + r.box.maxX) / 2, cy: (r.box.minY + r.box.maxY) / 2, rx: (r.box.maxX - r.box.minX) / 2, ry: (r.box.maxY - r.box.minY) / 2 } })
-						: this.preview.createSvg("rect", { cls: "opc-ink-live opc-ink-recognized", attr: { x: r.box.minX, y: r.box.minY, width: r.box.maxX - r.box.minX, height: r.box.maxY - r.box.minY } });
+						? this.preview.createSvg("ellipse", { cls: ["opc-ink-live", "opc-ink-recognized"], attr: { cx: (r.box.minX + r.box.maxX) / 2, cy: (r.box.minY + r.box.maxY) / 2, rx: (r.box.maxX - r.box.minX) / 2, ry: (r.box.maxY - r.box.minY) / 2 } })
+						: this.preview.createSvg("rect", { cls: ["opc-ink-live", "opc-ink-recognized"], attr: { x: r.box.minX, y: r.box.minY, width: r.box.maxX - r.box.minX, height: r.box.maxY - r.box.minY } });
 			el.setAttribute("stroke", s.color);
 			return;
 		}
 		const tool = this.tool as PenTool;
-		const path = this.preview.createSvg("path", { cls: `opc-ink-live${tool === "highlighter" ? " is-highlighter" : ""}` });
+		const path = this.preview.createSvg("path", { cls: tool === "highlighter" ? ["opc-ink-live", "is-highlighter"] : "opc-ink-live" });
 		path.setAttribute("d", strokePath(cur.points, tool, this.size(tool), s.smoothing));
 		path.setAttribute("fill", s.color);
 		path.style.opacity = tool === "highlighter" ? "0.35" : tool === "pencil" ? "0.85" : "1";
@@ -417,7 +417,7 @@ class InkSession {
 		const rect = this.preview.createSvg("rect", { cls: "opc-ink-selection", attr: { x: box.minX, y: box.minY, width: box.maxX - box.minX, height: box.maxY - box.minY } });
 		rect.style.strokeWidth = `${1.5 / this.canvas.scale}px`;
 		const h = 10 / this.canvas.scale;
-		this.preview.createSvg("rect", { cls: "opc-ink-selection opc-ink-handle", attr: { x: box.maxX - h / 2, y: box.maxY - h / 2, width: h, height: h } });
+		this.preview.createSvg("rect", { cls: ["opc-ink-selection", "opc-ink-handle"], attr: { x: box.maxX - h / 2, y: box.maxY - h / 2, width: h, height: h } });
 	}
 
 	private clearSelection(): void {

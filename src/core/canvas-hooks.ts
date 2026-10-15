@@ -574,6 +574,7 @@ export class CanvasHooks {
 					this.patch<CanvasMenuLike>("menu.render", proto, {
 						render: (next) =>
 							function (this: CanvasMenuLike, rebuild: boolean) {
+								fitMenuWidth(this, rebuild);
 								next.call(this, rebuild);
 								if (!rebuild || this.canvas.selection.size === 0 || this.canvas.isDragging) return;
 								const before = this.menuEl.childElementCount;
@@ -671,4 +672,24 @@ function safe(fn: () => void): void {
 	} catch (error) {
 		console.error("[overpowered-canvas]", error);
 	}
+}
+
+/**
+ * The core clamps the popup menu into the canvas with Math.clamp(x, 10, width - menuWidth - 10),
+ * which goes negative when the menu is wider than the canvas (narrow window, open sidebar, many
+ * buttons): the menu then slides off to the left, under the sidebar. Wrapping the buttons onto
+ * a second row keeps it inside, so the core can center it over the selection again.
+ */
+const fittedWidth = new WeakMap<CanvasMenuLike, number>();
+function fitMenuWidth(menu: CanvasMenuLike, rebuild: boolean): void {
+	// render(false) runs every frame while something is selected: only measure when needed.
+	const width = menu.canvas.canvasRect?.width ?? menu.canvas.wrapperEl.clientWidth;
+	if (!width || (!rebuild && fittedWidth.get(menu) === width)) return;
+	fittedWidth.set(menu, width);
+	const zoom = parseFloat(getComputedStyle(menu.menuEl).zoom) || 1;
+	// The container is 0px wide, so fit-content would shrink a wrapping menu to one column.
+	menu.menuEl.style.width = "max-content";
+	menu.menuEl.style.flexWrap = "wrap";
+	menu.menuEl.style.justifyContent = "center";
+	menu.menuEl.style.maxWidth = `${Math.max(120, Math.floor((width - 20) / zoom))}px`;
 }

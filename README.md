@@ -2,17 +2,18 @@
 
 An Obsidian plugin that turns the core Canvas into a full whiteboard: shapes and sticky notes,
 freehand drawing with stylus support, mind maps with automatic layout, presentations, kanban
-boards synced with your notes, a minimap, a frames panel, and first-class right-to-left and
-Hebrew support — while every canvas stays a standard JSON Canvas file that vanilla Obsidian
-opens cleanly.
+boards synced with your notes, a minimap, a frames panel, a background grid, a guided tour, and
+first-class right-to-left support — while every canvas stays a standard JSON Canvas file that
+vanilla Obsidian opens cleanly.
 
 Every feature is a **module** you can switch off in the settings. A disabled module leaves no
 patches, listeners or styling behind.
 
 ## Features
 
-**Cards and edges** — flowchart and basic shapes on cards, border styles, start/center/end text
-alignment, auto-resize to fit text, z-order, custom colors from CSS, card templates in the
+**Cards and edges** — flowchart and basic shapes on cards, border styles, start/center/end and
+top/middle/bottom text alignment (new cards can be centered automatically), cards that grow
+downwards or sideways as you type, z-order, custom colors from CSS, card templates in the
 bottom bar, empty groups, per-card zoom breakpoints, stable text rendering; edge line styles and
 arrowheads, routing (curved, straight, right-angle, A* around cards), floating edge ends, flip /
 highlight / select connected edges, draggable bend points and labels.
@@ -21,8 +22,10 @@ highlight / select connected edges, draggable bend points and labels.
 palm rejection, pen-only mode, the pen's eraser end, whole-stroke and partial eraser, lasso to
 move / scale / delete / lock strokes, recent colors, smoothing, and shape recognition (hold at
 the end of a stroke). Free lines and arrows whose ends stick to cards. Standalone shapes with
-fill, outline, opacity and rotation. Sticky notes whose text shrinks to fit. Non-destructive
-image crop. Lock items in place.
+fill, outline, opacity and rotation. Sticky notes in any color (the last 10 custom colors are
+kept) whose text shrinks to fit. Floating text without a card, like Miro's text tool. Infinite
+horizontal and vertical lines with their own color and thickness. Non-destructive image crop.
+Lock items in place.
 
 **Mind maps** — Tab / Enter to add children and siblings, Alt+arrows to move between cards,
 collapsible branches with child counts, and automatic layout with elkjs (mind map in any
@@ -36,17 +39,22 @@ export.
 **Interaction and navigation** — presentations along edges or through frames, portals into
 other canvases, collapsible groups, focus mode, move a selection to a new canvas, PDF pages as
 cards for annotation, custom style attributes from CSS snippets, a public events API, a minimap,
-and a frames panel to search, reorder and present the groups of a canvas.
+a frames panel to search, reorder and present the groups of a canvas, a line grid behind the
+content (a line every N dots), an adjustable selection toolbar size (separately for computers
+and phones), and a guided tour of every feature (ribbon or canvas controls; it remembers where
+you stopped). The settings tab has a search box.
 
 **Data features** — board templates (your own, plus Kanban, SWOT, Retrospective, Weekly plan,
 Mind map and Flowchart), kanban columns bound to a frontmatter property with two-way sync
 (rules: [docs/KANBAN.md](docs/KANBAN.md)), and query groups that fill themselves with notes
 matching tags, folders, properties or links.
 
-**Right-to-left and Hebrew** — the whole UI is available in English and Hebrew. A canvas can be
-right-to-left (globally or per canvas): mind maps grow to the left, templates and frames run
-right to left, menus and panels mirror. Card text takes its direction per paragraph, so Hebrew
-and English mix naturally; it can also be fixed per card.
+**Languages and right-to-left** — the UI is available in English, Chinese (Mandarin), Japanese
+and Hindi. A canvas can be right-to-left (globally or per canvas): mind maps grow to the left,
+templates and frames run right to left, menus and panels mirror — or, in "text only" mode, only
+the text turns right-to-left and the canvas UI stays as it is. Card text takes its direction per
+paragraph (also while typing), so Hebrew and English mix naturally; it can also be fixed per
+card.
 
 **Large canvases** — below a zoom threshold, canvases with hundreds of cards switch to a
 level-of-detail renderer: ~90 fps instead of ~9 fps on a 1,000-card stress canvas, with cards
