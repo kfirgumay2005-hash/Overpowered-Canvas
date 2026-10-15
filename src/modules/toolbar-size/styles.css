@@ -2,3 +2,69 @@
 body.opc-mod-toolbar-size .canvas-menu {
 	zoom: var(--opc-menu-zoom, 1);
 }
+body.opc-mod-toolbar-size .canvas-controls {
+	zoom: var(--opc-controls-zoom, 1);
+}
+
+/* Phones: the card bar lives inside the controls bar, as its first group. */
+body.opc-mod-toolbar-size .canvas-wrapper[data-opc-phone-bar] .canvas-controls {
+	overscroll-behavior: contain;
+	scrollbar-width: none;
+}
+body.opc-mod-toolbar-size .canvas-wrapper[data-opc-phone-bar] .canvas-controls::-webkit-scrollbar {
+	display: none;
+}
+body.opc-mod-toolbar-size .canvas-wrapper[data-opc-phone-bar] .canvas-control-group,
+body.opc-mod-toolbar-size .canvas-wrapper[data-opc-phone-bar] .canvas-card-menu {
+	flex-shrink: 0;
+}
+body.opc-mod-toolbar-size.is-phone .canvas-wrapper[data-opc-phone-bar] .canvas-card-menu {
+	display: flex;
+	position: static;
+	transform: none;
+	z-index: auto !important;
+	border-radius: var(--canvas-controls-radius);
+	background: var(--raised, var(--raised-background, var(--interactive-normal)));
+	overflow: hidden;
+}
+body.opc-mod-toolbar-size.is-phone .canvas-wrapper[data-opc-phone-bar] .canvas-card-menu .canvas-card-menu-button {
+	padding: var(--size-4-2);
+	--icon-size: var(--canvas-controls-icon-size);
+	--icon-stroke: var(--canvas-controls-icon-stroke);
+}
+/* The core hides the card bar while the keyboard toolbar is open; keep doing so. */
+body.opc-mod-toolbar-size.is-phone.mod-toolbar-open .canvas-wrapper[data-opc-phone-bar] .canvas-card-menu,
+body.opc-mod-toolbar-size.is-phone .canvas-wrapper[data-opc-phone-bar].opc-drawing .canvas-card-menu {
+	display: none;
+}
+
+/*
+ * Bottom of the screen: one row, centered, scrolls sideways. It sits above Obsidian's floating
+ * navigation bar (--view-bottom-spacing). Lengths are divided by the zoom, which scales them too.
+ */
+body.opc-mod-toolbar-size .canvas-wrapper[data-opc-phone-bar="bottom"] .canvas-controls {
+	top: auto;
+	bottom: calc(max(var(--size-4-3), var(--view-bottom-spacing, 0px) + var(--size-4-2)) / var(--opc-controls-zoom, 1));
+	inset-inline: 0;
+	margin-inline: auto;
+	width: fit-content;
+	max-width: calc((100% - 2 * var(--size-4-3)) / var(--opc-controls-zoom, 1));
+	flex-direction: row;
+	overflow-x: auto;
+	overflow-y: hidden;
+	touch-action: pan-x;
+}
+body.opc-mod-toolbar-size .canvas-wrapper[data-opc-phone-bar="bottom"] :is(.canvas-control-group, .canvas-card-menu) {
+	flex-direction: row;
+}
+
+/* Side of the screen: one column, scrolls up and down. */
+body.opc-mod-toolbar-size .canvas-wrapper[data-opc-phone-bar="side"] .canvas-controls {
+	max-height: calc((100% - var(--size-4-3) - max(var(--size-4-3), var(--view-bottom-spacing, 0px) + var(--size-4-2))) / var(--opc-controls-zoom, 1));
+	overflow-y: auto;
+	overflow-x: hidden;
+	touch-action: pan-y;
+}
+body.opc-mod-toolbar-size .canvas-wrapper[data-opc-phone-bar="side"] :is(.canvas-control-group, .canvas-card-menu) {
+	flex-direction: column;
+}

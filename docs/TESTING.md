@@ -296,3 +296,10 @@ Automated runtime checks of every item below were run in an isolated Obsidian 1.
 12. **Tour:** ribbon compass (or the compass in the canvas controls) → the tour opens; arrows /
    ← → keys move through ~60 steps, features with a button get highlighted; close it on step 12,
    reopen → it continues at step 12; *Finish* on the last step resets it.
+13. **Phone controls bar:** on a phone open a canvas → the controls bar sits at the bottom, above
+   Obsidian's navigation bar, and starts with the add buttons (card, note, media, text, group,
+   sticky, shapes, line, drawing…). Swipe it sideways to reach zoom/undo/grid; tapping an add
+   button adds the item at the center. Settings → *Toolbar size and layout* → *Controls bar on
+   phones* → *Side of the screen* → one column on the right that scrolls up and down.
+   *Controls bar* → *Phone and tablet* → the bar shrinks/grows. On a computer nothing moves;
+   *Controls bar* → *Computer* scales the side controls.
