@@ -9,13 +9,15 @@ vanilla Obsidian opens cleanly.
 Every feature is a **module** you can switch off in the settings. A disabled module leaves no
 patches, listeners or styling behind.
 
+Includes all the features from both advanced canvas and canvas mindmap plugins , and far more , built by the goat claude code this is the perfected form of ultra instinct.
+
 ## Features
 
 **Cards and edges** — flowchart and basic shapes on cards, border styles, start/center/end and
 top/middle/bottom text alignment (new cards can be centered automatically), cards that grow
 downwards or sideways as you type, z-order, custom colors from CSS, card templates in the
 bottom bar, empty groups, per-card zoom breakpoints, stable text rendering; edge line styles and
-arrowheads, routing (curved, straight, right-angle, A* around cards), floating edge ends, flip /
+arrowheads, routing (curved, straight, right-angle, A\* around cards), floating edge ends, flip /
 highlight / select connected edges, draggable bend points and labels.
 
 **Drawing** — pen, pencil, marker and highlighter with pressure and tilt (perfect-freehand),
@@ -62,17 +64,17 @@ still clickable ([docs/BENCHMARKS.md](docs/BENCHMARKS.md)).
 
 ## Keys inside a canvas
 
-| Key | Action |
-|---|---|
-| P | Drawing mode on/off (Esc leaves it) |
-| M | Minimap on/off |
-| Ctrl/Cmd+F | Search the canvas |
-| Tab | Mind map: add a child (on a sticky note: the next sticky) |
-| Enter / Shift+Enter | Mind map: add a sibling (configurable) |
-| Alt+Arrows | Move between connected cards |
-| Ctrl/Cmd+Arrows | Add a card (or sticky) in that direction |
-| Ctrl/Cmd+Shift+Arrows | Add a child in that direction |
-| → / Space / PageDown, ← / PageUp, Esc | Presentations |
+| Key                                   | Action                                                    |
+| ------------------------------------- | --------------------------------------------------------- |
+| P                                     | Drawing mode on/off (Esc leaves it)                       |
+| M                                     | Minimap on/off                                            |
+| Ctrl/Cmd+F                            | Search the canvas                                         |
+| Tab                                   | Mind map: add a child (on a sticky note: the next sticky) |
+| Enter / Shift+Enter                   | Mind map: add a sibling (configurable)                    |
+| Alt+Arrows                            | Move between connected cards                              |
+| Ctrl/Cmd+Arrows                       | Add a card (or sticky) in that direction                  |
+| Ctrl/Cmd+Shift+Arrows                 | Add a child in that direction                             |
+| → / Space / PageDown, ← / PageUp, Esc | Presentations                                             |
 
 Every toolbar action is also in the command palette ("Selection: …"), so you can assign your
 own hotkeys to any of them.
@@ -87,7 +89,7 @@ npm run build        # type-check + bundle → main.js, styles.css
 ```
 
 Copy `main.js`, `manifest.json` and `styles.css` into `<vault>/.obsidian/plugins/overpowered-canvas/`
-and enable *Overpowered Canvas* under *Settings → Community plugins*. Requires Obsidian 1.14 or
+and enable _Overpowered Canvas_ under _Settings → Community plugins_. Requires Obsidian 1.14 or
 newer; works on desktop and mobile.
 
 If Advanced Canvas or Canvas MindMap is installed, the plugin offers to switch off its own
@@ -103,12 +105,12 @@ The schema is versioned, with tested migrations.
 
 ## Development
 
-| Command | |
-|---|---|
-| `npm run dev` | Rebuild on change |
-| `npm run build` | Type-check and production build |
-| `npm test` | Unit tests (vitest) for all pure logic |
-| `npm run stress` | Generate the 1,000-card stress canvas |
+| Command          |                                        |
+| ---------------- | -------------------------------------- |
+| `npm run dev`    | Rebuild on change                      |
+| `npm run build`  | Type-check and production build        |
+| `npm test`       | Unit tests (vitest) for all pure logic |
+| `npm run stress` | Generate the 1,000-card stress canvas  |
 
 Docs: [DEV](docs/DEV.md) (architecture and module API) · [INTERNALS](docs/INTERNALS.md) (the
 Obsidian canvas internals the plugin relies on) · [SCHEMA](docs/SCHEMA.md) · [EVENTS](docs/EVENTS.md)

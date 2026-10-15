@@ -1,9 +1,10 @@
 {
-	"id": "overpowered-canvas",
-	"name": "Overpowered Canvas",
-	"version": "0.2.0",
-	"minAppVersion": "1.14.0",
-	"description": "Turns Canvas into a Miro-level whiteboard: shapes, drawing, mind maps, auto layout, presentations and more.",
-	"author": "kfirg",
-	"isDesktopOnly": false
+  "id": "overpoweredcanvas",
+  "name": "Overpowered Canvas",
+  "version": "0.2.0",
+  "minAppVersion": "1.14.0",
+  "description": "Turns Canvas into a Miro-level whiteboard: shapes, drawing, mind maps, auto layout, presentations and more. ",
+  "author": "KfirG",
+  "authorUrl": "https://github.com/kfirgumay2005-hash",
+  "isDesktopOnly": false
 }
