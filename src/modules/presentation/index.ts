@@ -103,7 +103,7 @@ export const presentationModule = defineModule<PresentationSettings>({
 				return;
 			}
 			const wrapper = canvas.wrapperEl;
-			const counterEl = wrapper.createDiv({ cls: "opc-presentation-counter", attr: { "aria-live": "polite" } });
+			const counterEl = wrapper.createDiv({ cls: "opc-presentation-counter", attr: { "aria-live": "polite", dir: "ltr" } });
 			const onKey = (evt: KeyboardEvent) => {
 				if (!sessions.has(canvas)) return;
 				if (NEXT_KEYS.has(evt.key)) step(canvas, 1);

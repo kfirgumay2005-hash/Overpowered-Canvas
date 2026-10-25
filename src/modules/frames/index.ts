@@ -115,6 +115,7 @@ class FramesView extends ItemView {
 				if (!n) return;
 				zoomTo(canvas, n, this.ctx.settings.padding);
 				canvas.selectOnly(n);
+				this.ctx.events.emit("frame-focused", canvas, n);
 				this.render();
 			};
 			item.addEventListener("click", open);
@@ -207,7 +208,7 @@ export const framesModule = defineModule<FramesSettings>({
 				return;
 			}
 			const wrapper = canvas.wrapperEl;
-			const counter = wrapper.createDiv({ cls: "opc-frames-counter", attr: { "aria-live": "polite" } });
+			const counter = wrapper.createDiv({ cls: "opc-frames-counter", attr: { "aria-live": "polite", dir: "ltr" } });
 			const session: FrameSession = { order, index: Math.max(0, from ? order.indexOf(from) : 0), wasReadonly: canvas.readonly, cleanup: () => {} };
 			const step = (delta: number) => {
 				const next = Math.min(order.length - 1, Math.max(0, session.index + delta));
