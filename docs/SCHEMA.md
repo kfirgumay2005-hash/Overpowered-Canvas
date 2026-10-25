@@ -40,6 +40,8 @@ interface OpcRoot {                       // file root "x-opc"
   dir?: "ltr" | "rtl" | "auto";           // overrides the global direction
   presentation?: { start?: string; last?: string };
   frameOrder?: string[];                  // group ids, Frames panel order
+  layers?: { id: string; name: string; hidden?: boolean; locked?: boolean }[];  // bottom to top
+  activeLayer?: string;                   // layer id that new items go to
 }
 
 interface OpcNode {
@@ -63,7 +65,9 @@ interface OpcNode {
   query?: { tags?: string[]; folder?: string; properties?: { key: string; value?: string }[]; linksTo?: string[]; auto?: boolean };
   queryOwner?: string;
   strokes?: Stroke[];                     // only on kind: "ink"
-  guide?: { axis: "h" | "v"; width: number };  // only on kind: "guide"
+  guide?: { axis: "h" | "v"; angle?: number; width: number };  // only on kind: "guide"; angle 0–180°, clockwise
+  layer?: string;                         // layer id; absent or unknown = bottom layer
+  slide?: boolean;                        // a presentation slide (group)
 }
 
 interface OpcEdge {

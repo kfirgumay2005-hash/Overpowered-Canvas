@@ -1,0 +1,102 @@
+/* Hidden layers: their cards, and the edges and labels attached to them. */
+body.opc-mod-layers .canvas-node.opc-layer-hidden,
+body.opc-mod-layers .canvas-edges .opc-layer-hidden,
+body.opc-mod-layers .canvas-path-label-wrapper.opc-layer-hidden {
+	display: none;
+}
+/* Locked layers can't be picked up: let clicks through to what's below. */
+body.opc-mod-layers .canvas-node[data-opc-layer-locked] {
+	pointer-events: none;
+}
+
+/*
+ * Layered z-indexes go far above the core's own counter, which the selection outline, snapping
+ * guides and drag previews use to stay on top: lift those above every layer.
+ */
+body.opc-mod-layers .canvas-wrapper.opc-has-layers .canvas > :is(.canvas-node-interaction-layer, .canvas-snaps, .canvas-node.is-dragging) {
+	z-index: 2147483000 !important;
+}
+
+/* Panel. */
+body.opc-mod-layers .opc-layers-view {
+	padding: 0;
+	display: flex;
+	flex-direction: column;
+}
+body.opc-mod-layers .opc-layers-header {
+	display: flex;
+	align-items: center;
+	gap: var(--size-2-2);
+	padding: var(--size-4-2);
+	border-bottom: 1px solid var(--background-modifier-border);
+}
+body.opc-mod-layers .opc-layers-heading {
+	flex: 1;
+	font-weight: var(--font-semibold);
+}
+body.opc-mod-layers .opc-layers-list {
+	flex: 1;
+	overflow-y: auto;
+	padding: var(--size-2-2) var(--size-4-1);
+}
+body.opc-mod-layers .opc-layers-item {
+	display: flex;
+	align-items: center;
+	gap: var(--size-2-2);
+	padding: var(--size-2-2) var(--size-4-2);
+	border-radius: var(--radius-s);
+	cursor: pointer;
+	border-block: 2px solid transparent;
+}
+body.opc-mod-layers .opc-layers-item:hover {
+	background: var(--background-modifier-hover);
+}
+body.opc-mod-layers .opc-layers-item.is-active {
+	background: var(--background-modifier-active-hover);
+	box-shadow: inset 3px 0 0 var(--interactive-accent);
+}
+body.opc-mod-layers .opc-layers-item.is-hidden-layer .opc-layers-name {
+	color: var(--text-faint);
+	text-decoration: line-through;
+}
+body.opc-mod-layers .opc-layers-item.is-dragging {
+	opacity: 0.5;
+}
+body.opc-mod-layers .opc-layers-item.drop-before {
+	border-top-color: var(--interactive-accent);
+}
+body.opc-mod-layers .opc-layers-item.drop-after {
+	border-bottom-color: var(--interactive-accent);
+}
+body.opc-mod-layers .opc-layers-toggle.is-off {
+	opacity: 0.35;
+}
+body.opc-mod-layers .opc-layers-item:hover .opc-layers-toggle.is-off {
+	opacity: 0.8;
+}
+body.opc-mod-layers .opc-layers-name {
+	flex: 1;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+body.opc-mod-layers .opc-layers-item.has-selection .opc-layers-name::after {
+	content: " ●";
+	color: var(--interactive-accent);
+}
+body.opc-mod-layers .opc-layers-count {
+	font-size: var(--font-ui-smaller);
+	color: var(--text-faint);
+	font-variant-numeric: tabular-nums;
+}
+body.opc-mod-layers .opc-layers-here.is-disabled {
+	opacity: 0.3;
+	pointer-events: none;
+}
+body.opc-mod-layers .opc-layers-footer {
+	padding: var(--size-4-2);
+	border-top: 1px solid var(--background-modifier-border);
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+}

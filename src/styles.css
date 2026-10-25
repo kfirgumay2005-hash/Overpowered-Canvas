@@ -11,7 +11,7 @@
 @import "./modules/toolbar-size/styles.css";
 @import "./modules/better-defaults/styles.css";
 @import "./modules/custom-colors/styles.css";
-@import "./modules/alt-text-rendering/styles.css";
+@import "./ui/stable-text.css";
 @import "./ui/icon-picker.css";
 @import "./modules/edge-styles/styles.css";
 @import "./modules/floating-edges/styles.css";
@@ -43,6 +43,7 @@
 @import "./modules/query-groups/styles.css";
 @import "./modules/direction/styles.css";
 @import "./modules/performance/styles.css";
+@import "./modules/layers/styles.css";
 
 .opc-setting-note {
 	color: var(--text-warning);
@@ -168,4 +169,51 @@ body.mod-rtl .opc-tour,
 	flex-wrap: wrap;
 	justify-content: center;
 	max-width: var(--opc-menu-max-width);
+}
+
+/* Plain-language explanation under a setting's description. */
+.opc-setting-simple {
+	display: flex;
+	gap: var(--size-4-1);
+	align-items: flex-start;
+	margin-top: var(--size-4-1);
+	color: var(--text-muted);
+}
+.opc-setting-simple-icon {
+	display: inline-flex;
+	flex-shrink: 0;
+	color: var(--text-accent);
+}
+.opc-setting-simple-icon svg {
+	width: var(--icon-xs);
+	height: var(--icon-xs);
+}
+
+/* Settings search and collapsible sections. */
+.opc-settings-search {
+	gap: var(--size-4-2);
+}
+.opc-settings-search > .setting-item-control {
+	flex: 1 1 auto;
+	justify-content: stretch;
+}
+.opc-settings-search .search-input-container {
+	flex: 1 1 auto;
+	width: auto;
+}
+.opc-settings-search .search-input-container input {
+	width: 100%;
+}
+.opc-search-hidden {
+	display: none !important;
+}
+.setting-group.is-opc-collapsed > .setting-items {
+	display: none;
+}
+.opc-settings-searching .setting-group.is-opc-collapsed > .setting-items {
+	display: revert;
+}
+.opc-collapse-name {
+	cursor: pointer;
+	user-select: none;
 }

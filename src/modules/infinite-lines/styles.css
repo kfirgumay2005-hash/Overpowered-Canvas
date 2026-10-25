@@ -13,35 +13,32 @@ body.opc-mod-infinite-lines .opc-guide {
 	justify-content: center;
 	/* A hit area wider than thin lines, constant on screen. */
 	--opc-guide-hit: max(var(--opc-guide-width), calc(12px * var(--zoom-multiplier, 1) * var(--zoom-multiplier, 1)));
-	cursor: pointer;
+}
+/* Every line is a long horizontal bar turned around its middle (left/top/width/transform inline). */
+body.opc-mod-infinite-lines .opc-guide {
+	height: var(--opc-guide-hit);
+	transform-origin: 50% 50%;
+	cursor: move;
 }
 body.opc-mod-infinite-lines .opc-guide[data-axis="h"] {
-	height: var(--opc-guide-hit);
-	transform: translateY(-50%);
 	cursor: row-resize;
 }
 body.opc-mod-infinite-lines .opc-guide[data-axis="v"] {
-	width: var(--opc-guide-hit);
-	transform: translateX(-50%);
 	cursor: col-resize;
 }
 body.opc-mod-infinite-lines .opc-guide > .opc-guide-stroke {
 	background: var(--text-muted);
 	pointer-events: none;
+	width: 100%;
+	height: var(--opc-guide-width);
 }
 body.opc-mod-infinite-lines .opc-guide.is-themed > .opc-guide-stroke {
 	background: var(--canvas-color);
 }
-body.opc-mod-infinite-lines .opc-guide[data-axis="h"] > .opc-guide-stroke {
-	width: 100%;
-	height: var(--opc-guide-width);
-}
-body.opc-mod-infinite-lines .opc-guide[data-axis="v"] > .opc-guide-stroke {
-	height: 100%;
-	width: var(--opc-guide-width);
-}
+/* Selected: accent and a little thicker (a box-shadow on a 2,000,000 px turned bar paints the whole canvas in Chromium). */
 body.opc-mod-infinite-lines .opc-guide.is-selected > .opc-guide-stroke {
-	box-shadow: 0 0 0 calc(1.5px * var(--zoom-multiplier, 1)) var(--color-accent);
+	background: var(--color-accent);
+	height: calc(var(--opc-guide-width) + 3px * var(--zoom-multiplier, 1));
 }
 
 /* The handle card: invisible, only the line takes the pointer. */
@@ -61,4 +58,32 @@ body.opc-mod-infinite-lines .canvas-node[data-opc-kind="guide"] .canvas-node-con
 body.opc-mod-infinite-lines .canvas-node[data-opc-kind="guide"]:is(.is-selected, .is-focused) > .canvas-node-container {
 	border: 1px dashed var(--color-accent);
 	border-radius: var(--radius-s);
+}
+/* The hover layer over a line's handle: no connection dots or resize handles (no edges from lines). */
+body.opc-mod-infinite-lines .canvas-node-interaction-layer.opc-on-guide > * {
+	display: none;
+}
+body.opc-mod-infinite-lines .opc-angle-popover {
+	padding: var(--size-4-2);
+}
+body.opc-mod-infinite-lines .opc-angle-row {
+	display: flex;
+	align-items: center;
+	gap: var(--size-4-2);
+	margin-bottom: var(--size-4-2);
+}
+body.opc-mod-infinite-lines .opc-angle-row .slider {
+	flex: 1;
+	min-width: 160px;
+}
+body.opc-mod-infinite-lines .opc-angle-number {
+	width: 5em;
+}
+
+/* A line on a hidden layer hides with it; one on a locked layer can't be picked up. */
+body.opc-mod-infinite-lines .opc-guide.opc-layer-hidden {
+	display: none;
+}
+body.opc-mod-infinite-lines .opc-guide[data-opc-layer-locked] {
+	pointer-events: none;
 }

@@ -66,8 +66,7 @@ Automated runtime checks of every item below were run in an isolated Obsidian 1.
    centered too. In an RTL note "Align to start" aligns right.
 4. **Auto-resize:** toolbar "Auto-resize" on a text card, type several lines → the card grows;
    delete lines → it shrinks. The toggle shows as active.
-5. **Z-order:** overlap two cards, right-click → *Send to back* / *Bring to front*; reopen the file:
-   the order is kept.
+5. **Layers:** see Round 3 below (they replace the old z-order commands).
 6. **Custom colors:** add a CSS snippet with `body { --canvas-color-7: #ff0080; }` → the color
    picker gets an extra swatch; pick it → reopen the file → still colored.
 7. **Card templates:** right-click a card → *Save card as template* → name + icon → a new button
@@ -77,8 +76,8 @@ Automated runtime checks of every item below were run in an isolated Obsidian 1.
    size from settings. Toggle *Disable label scaling* and zoom out: labels keep their size.
 10. **Variable breakpoints:** right-click a card → *Set content zoom breakpoint…* → `0`; zoom out
     below 100%: only that card shows its placeholder.
-11. **Stable text rendering** (off by default): enable it; double-click a card with a heading and
-    paragraphs: the text no longer jumps between reading and editing.
+11. **Stable text rendering** (always on, no setting): double-click a card with a heading and
+    paragraphs: the text doesn't jump between reading and editing.
 
 ### Edges
 12. **Line style / arrowheads:** select an edge → toolbar "Line style" (dotted/dashed) and
@@ -285,8 +284,11 @@ Automated runtime checks of every item below were run in an isolated Obsidian 1.
 7. **Floating text:** bottom bar → *T* button (or drag it) → type: no card around the text, it
    grows as you type; color it from the palette.
 8. **Infinite lines:** bottom bar → infinite line button (right-click: vertical) → a line across
-   the whole board under the cards. Select it (click anywhere on it) → thickness and
-   horizontal/vertical buttons; color from the palette; drag to move; undo works.
+   the whole board under the cards. Select it (click anywhere on it) → thickness and *Angle*:
+   the slider and number turn the line live, presets every 15°; each release is one undo step,
+   Esc / clicking away without releasing restores it. Zoom far out and pan far along the line:
+   it still crosses the view. Hovering the line shows no connection dots; no edge can start
+   from it. Color from the palette; drag to move.
 9. **Grid:** side controls → grid button → a line grid behind everything; right-click it → *A
    line every 2 / 4 / 5 / 10 dots* or *Other size…*; Settings → *Grid* → color.
 10. **Text-only RTL:** Settings → *Right-to-left support* → *What right-to-left changes* → *Text
@@ -303,3 +305,33 @@ Automated runtime checks of every item below were run in an isolated Obsidian 1.
    phones* → *Side of the screen* → one column on the right that scrolls up and down.
    *Controls bar* → *Phone and tablet* → the bar shrinks/grows. On a computer nothing moves;
    *Controls bar* → *Computer* scales the side controls.
+
+## Manual — Round 3 (user requests, 2026-10-25)
+1. **Double-click speed:** Settings → *Better defaults* → *Double-click speed for new cards* →
+   Fast: two clicks 300 ms apart on the empty canvas create nothing, 150 ms apart create a card.
+   *Custom* shows a milliseconds field. Click a card, then drag a selection box: no new card.
+2. **Bottom-bar buttons:** hold the add-card button a moment and release on it: the card is
+   added in the middle of the view (as a click), never under the bar. Dragging onto the board
+   still places it where it's dropped.
+3. **Layers:** overlap cards A, B, C; select A → toolbar *Layer* → *New layer with the selection*.
+   Click B and C (the core lifts clicked cards): A stays on top. Side controls → layers button →
+   the panel lists *Layer 2* (active) above *Layer 1* with item counts. Eye hides a layer (its
+   cards and their edges), lock makes its cards unselectable (a selection box skips them).
+   Right-click a row → rename, move the selection here, select everything on it, move the layer
+   up/down, delete (its items go to the layer below; deleting the last extra layer removes all
+   layer data). A new card goes to the active layer. *Move to the layer above / below* from the
+   context menu or commands; undo works. A group moves with the items inside it; groups stay
+   behind cards. Minimap, fast rendering and image export follow the layer order and skip
+   hidden layers. Hide (or lock) the active layer, then add a card: the layer is shown and
+   unlocked again with a notice, and the new card stays visible. With *Layer 1* hidden or locked
+   and another layer active, a double-click or right-click → *Add card* makes the card where
+   clicked (not at 0,0), in edit mode, and it stays after clicking away; undoing a deletion
+   puts the card back in place. An infinite line hides with its layer and can't be picked up on a
+   locked one. Quick clicks on a row's eye or lock don't open *Rename*; double-clicking the name
+   does.
+4. **Slides:** bottom bar → *Add slide*; click its name: the frame hides (and stays hidden after
+   deselecting); click again: it shows. Double-click the name: rename, no toggle.
+5. **Settings page:** the search box at the top filters the rows (in the current language and in
+   English); the arrows in each section heading (or the heading itself) collapse it; the two
+   buttons next to the search collapse / expand all; the state is remembered.
+6. **No "Stable text rendering" setting:** the behavior is always on.

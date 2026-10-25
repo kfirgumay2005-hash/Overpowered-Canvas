@@ -1,5 +1,7 @@
 import { Notice, Setting } from "obsidian";
 import { defineModule, type ModuleContext } from "../../core/module";
+import type { OpcNode } from "../../data/schema";
+import { LOCALES } from "../../i18n";
 import type { CanvasLike, CanvasNodeLike } from "../../internals/types";
 import { NumberPromptModal } from "../../ui/number-prompt";
 import { mutate, nodeType, selectedEdges, selectedNodes } from "../shared";
@@ -17,6 +19,23 @@ interface Session {
 	counterEl: HTMLElement;
 	cleanup: () => void;
 }
+
+/** "Slide 3" in any UI language: slides made before the `slide` flag existed. */
+const escapeRegExp = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const SLIDE_LABEL = new RegExp(
+	`^(?:${Object.values(LOCALES)
+		.map((l) => l["presentation.slideLabel"].split("{n}").map(escapeRegExp).join("\\d+"))
+		.join("|")})$`,
+);
+
+function isSlide(node: CanvasNodeLike, extra: Readonly<OpcNode>): boolean {
+	return nodeType(node) === "group" && (extra.slide === true || SLIDE_LABEL.test(node.label ?? ""));
+}
+
+/** A click shorter than this that moved less than SLIDE_CLICK_MOVE toggles the frame. */
+const SLIDE_CLICK_MOVE = 5;
+/** Wait this long so a double-click (label editing) doesn't toggle twice. */
+const SLIDE_CLICK_DELAY = 300;
 
 const NEXT_KEYS = new Set(["ArrowRight", "ArrowDown", "PageDown", " ", "Enter"]);
 const PREV_KEYS = new Set(["ArrowLeft", "ArrowUp", "PageUp", "Backspace"]);
@@ -186,19 +205,57 @@ export const presentationModule = defineModule<PresentationSettings>({
 			if (!edge.canvas.readonly) menu.addItem((item) => item.setSection("canvas").setTitle(ctx.t("presentation.edgeOrder")).setIcon("list-ordered").onClick(() => promptOrder(edge.canvas, edge)));
 		});
 
-		// Start slide badge on the node.
+		// Clicking a slide's label hides or shows its frame (the border stays as set until then).
+		const toggleFrame = (node: CanvasNodeLike) => {
+			const canvas = node.canvas;
+			if (canvas.readonly || sessions.has(canvas)) return;
+			const hidden = ctx.data.node(node).get().border === "none";
+			mutate(ctx, canvas, () => ctx.data.node(node).set({ border: hidden ? undefined : "none" }));
+		};
+		const wired = new WeakSet<HTMLElement>();
+		const wireLabel = (node: CanvasNodeLike) => {
+			const label = node.labelEl;
+			if (!label || wired.has(label)) return;
+			wired.add(label);
+			let down: { x: number; y: number; id: number } | null = null;
+			let timer = 0;
+			label.addEventListener("pointerdown", (evt) => {
+				down = evt.button === 0 && evt.isPrimary ? { x: evt.clientX, y: evt.clientY, id: evt.pointerId } : null;
+			});
+			label.addEventListener("pointerup", (evt) => {
+				const d = down;
+				down = null;
+				if (!d || d.id !== evt.pointerId || Math.hypot(evt.clientX - d.x, evt.clientY - d.y) > SLIDE_CLICK_MOVE) return;
+				if (label.getAttr("contenteditable") === "true" || !node.nodeEl.hasAttribute("data-opc-slide")) return;
+				window.clearTimeout(timer);
+				timer = window.setTimeout(() => toggleFrame(node), SLIDE_CLICK_DELAY);
+			});
+			label.addEventListener("dblclick", () => window.clearTimeout(timer));
+		};
+
+		// Start slide badge and slide marker on the node.
 		ctx.decorateNodes({
-			apply: (node) => node.nodeEl.toggleClass("opc-start-slide", ctx.data.root(node.canvas).get().presentation?.start === node.id),
-			clear: (node) => node.nodeEl.removeClass("opc-start-slide"),
+			apply: (node, extra) => {
+				node.nodeEl.toggleClass("opc-start-slide", ctx.data.root(node.canvas).get().presentation?.start === node.id);
+				const slide = isSlide(node, extra);
+				node.nodeEl.toggleAttribute("data-opc-slide", slide);
+				if (slide) wireLabel(node);
+				if (node.labelEl) node.labelEl.title = slide ? ctx.t("presentation.frameToggle") : "";
+			},
+			clear: (node) => {
+				node.nodeEl.removeClass("opc-start-slide");
+				node.nodeEl.removeAttribute("data-opc-slide");
+				if (node.labelEl) node.labelEl.title = "";
+			},
 		});
 		ctx.on("root-extra-change", (canvas) => canvas.nodes.forEach((n) => n.nodeEl.toggleClass("opc-start-slide", ctx.data.root(canvas).get().presentation?.start === n.id)));
 
 		// "Add slide": a group with consistent dimensions.
 		const addSlide = (canvas: CanvasLike, pos: { x: number; y: number }, centered: boolean) =>
 			mutate(ctx, canvas, () => {
-				const count = [...canvas.nodes.values()].filter((n) => nodeType(n) === "group" && /^(Slide|שקופית) \d+$/.test(n.label ?? "")).length;
+				const count = [...canvas.nodes.values()].filter((n) => isSlide(n, ctx.data.node(n).get())).length;
 				canvas.deselectAll();
-				canvas.createGroupNode({
+				const slide = canvas.createGroupNode({
 					pos,
 					size: { width: ctx.settings.slideWidth, height: ctx.settings.slideHeight },
 					...(centered ? { position: "center" } : {}),
@@ -206,6 +263,7 @@ export const presentationModule = defineModule<PresentationSettings>({
 					save: false,
 					focus: false,
 				});
+				ctx.data.node(slide).set({ slide: true });
 			});
 		ctx.addCardMenuButton({
 			id: "add-slide",

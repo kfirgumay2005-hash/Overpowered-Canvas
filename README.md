@@ -15,8 +15,10 @@ Includes all the features from both advanced canvas and canvas mindmap plugins ,
 
 **Cards and edges** — flowchart and basic shapes on cards, border styles, start/center/end and
 top/middle/bottom text alignment (new cards can be centered automatically), cards that grow
-downwards or sideways as you type, z-order, custom colors from CSS, card templates in the
-bottom bar, empty groups, per-card zoom breakpoints, stable text rendering; edge line styles and
+downwards or sideways as you type, layers like in image editors (a Layers panel to create,
+rename, reorder, hide, lock and delete them; new items go to the active layer; move the
+selection to a layer or one layer up or down), custom colors from CSS, card templates in the bottom bar, empty groups, per-card zoom
+breakpoints, text that doesn't jump between reading and editing; edge line styles and
 arrowheads, routing (curved, straight, right-angle, A\* around cards), floating edge ends, flip /
 highlight / select connected edges, draggable bend points and labels.
 
@@ -26,7 +28,8 @@ move / scale / delete / lock strokes, recent colors, smoothing, and shape recogn
 the end of a stroke). Free lines and arrows whose ends stick to cards. Standalone shapes with
 fill, outline, opacity and rotation. Sticky notes in any color (the last 10 custom colors are
 kept) whose text shrinks to fit. Floating text without a card, like Miro's text tool. Infinite
-horizontal and vertical lines with their own color and thickness. Non-destructive image crop.
+lines at any angle (turn them live with a slider from the selection toolbar) with their own
+color and thickness. Non-destructive image crop.
 Lock items in place.
 
 **Mind maps** — Tab / Enter to add children and siblings, Alt+arrows to move between cards,
@@ -38,13 +41,17 @@ metadata cache; edges from frontmatter links; links and embeds to a single card
 (`[[file.canvas#card-id]]`); search inside a canvas (Ctrl/Cmd+F); read-only options; PNG/SVG
 export.
 
-**Interaction and navigation** — presentations along edges or through frames, portals into
+**Interaction and navigation** — presentations along edges or through frames
+(click a slide's name to hide or show its frame), portals into
 other canvases, collapsible groups, focus mode, move a selection to a new canvas, PDF pages as
 cards for annotation, custom style attributes from CSS snippets, a public events API, a minimap,
 a frames panel to search, reorder and present the groups of a canvas, a line grid behind the
 content (a line every N dots), an adjustable selection toolbar size (separately for computers
 and phones), and a guided tour of every feature (ribbon or canvas controls; it remembers where
-you stopped). Every module and option shows up in Obsidian's settings search.
+you stopped). The settings page has its own search box and collapsible sections, a plain-language
+explanation under every setting, and every module and option also shows up in Obsidian's
+settings search. A double-click on the empty canvas creates a card at a speed you choose
+(fast, regular, slow or your own); dragging never creates one.
 
 **Data features** — board templates (your own, plus Kanban, SWOT, Retrospective, Weekly plan,
 Mind map and Flowchart), kanban columns bound to a frontmatter property with two-way sync
@@ -55,7 +62,7 @@ matching tags, folders, properties or links.
 and Hindi. A canvas can be right-to-left (globally or per canvas): mind maps grow to the left,
 templates and frames run right to left, menus and panels mirror — or, in "text only" mode, only
 the text turns right-to-left and the canvas UI stays as it is. Card text takes its direction per
-paragraph (also while typing), so Hebrew and English mix naturally; it can also be fixed per
+paragraph (also while typing), so right-to-left and left-to-right text mix naturally; it can also be fixed per
 card.
 
 **Large canvases** — below a zoom threshold, canvases with hundreds of cards switch to a
@@ -81,14 +88,16 @@ own hotkeys to any of them.
 
 ## Install
 
-The plugin is not in the community catalog. To install from source:
+The plugin is not in the community catalog. Download `main.js`, `manifest.json` and
+`styles.css` from the [latest release](https://github.com/kfirgumay2005-hash/Overpowered-Canvas/releases/latest)
+(or install it with [BRAT](https://github.com/TfTHacker/obsidian42-brat)). To build from source:
 
 ```sh
 npm install
 npm run build        # type-check + bundle → main.js, styles.css
 ```
 
-Copy `main.js`, `manifest.json` and `styles.css` into `<vault>/.obsidian/plugins/overpowered-canvas/`
+Copy `main.js`, `manifest.json` and `styles.css` into `<vault>/.obsidian/plugins/overpoweredcanvas/`
 and enable _Overpowered Canvas_ under _Settings → Community plugins_. Requires Obsidian 1.14 or
 newer; works on desktop and mobile.
 

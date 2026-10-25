@@ -33,6 +33,7 @@ const TARGETS: Readonly<Record<string, string>> = {
 	minimap: ".opc-minimap-control",
 	grid: ".opc-grid-control",
 	frames: ".opc-frames-control",
+	layers: ".opc-layers-control",
 };
 
 export interface TourHost {

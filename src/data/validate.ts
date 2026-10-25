@@ -18,6 +18,7 @@ import {
 	type Attach,
 	type CropRect,
 	type GuideData,
+	type LayerInfo,
 	type LineData,
 	type OpcEdge,
 	type OpcNode,
@@ -198,6 +199,8 @@ export const ROOT_SHAPE: Shape<OpcRoot> = {
 	dir: oneOf(DIRECTIONS),
 	presentation: objectOf<{ start?: string; last?: string }>({ start: nonEmptyStr, last: nonEmptyStr }),
 	frameOrder: arrayOf(nonEmptyStr),
+	layers: arrayOf(objectOf<LayerInfo>({ id: nonEmptyStr, name: str, hidden: bool, locked: bool }, { required: ["id", "name"] }), { min: 1 }),
+	activeLayer: nonEmptyStr,
 };
 
 export const NODE_SHAPE: Shape<OpcNode> = {
@@ -227,7 +230,9 @@ export const NODE_SHAPE: Shape<OpcNode> = {
 	query,
 	queryOwner: nonEmptyStr,
 	strokes: arrayOf(stroke),
-	guide: objectOf<GuideData>({ axis: oneOf(["h", "v"] as const), width: inRange(0.5, 200) }, { required: ["axis", "width"] }),
+	guide: objectOf<GuideData>({ axis: oneOf(["h", "v"] as const), angle: inRange(0, 180), width: inRange(0.5, 200) }, { required: ["axis", "width"] }),
+	layer: nonEmptyStr,
+	slide: bool,
 };
 
 export const EDGE_SHAPE: Shape<OpcEdge> = {

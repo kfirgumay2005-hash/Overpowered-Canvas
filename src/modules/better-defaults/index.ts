@@ -2,6 +2,7 @@ import { Setting } from "obsidian";
 import { defineModule } from "../../core/module";
 import type { CanvasLike } from "../../internals/types";
 import { mergeWithDefaults } from "../../settings/settings";
+import { BackgroundDoubleClick, clampDoubleClickMs, DOUBLE_CLICK_PRESETS, type DoubleClickSpeed } from "./double-click";
 
 interface BetterDefaultsSettings {
 	alignToGrid: boolean;
@@ -11,6 +12,8 @@ interface BetterDefaultsSettings {
 	fileNodeHeight: number;
 	minNodeSize: number;
 	disableFontScaling: boolean;
+	doubleClickSpeed: DoubleClickSpeed;
+	doubleClickMs: number;
 }
 
 const DEFAULTS: BetterDefaultsSettings = {
@@ -21,11 +24,22 @@ const DEFAULTS: BetterDefaultsSettings = {
 	fileNodeHeight: 400,
 	minNodeSize: 40,
 	disableFontScaling: false,
+	doubleClickSpeed: "regular",
+	doubleClickMs: DOUBLE_CLICK_PRESETS.regular,
 };
+
+const SPEEDS: readonly DoubleClickSpeed[] = ["fast", "regular", "slow", "custom"];
 
 const clampSize = (n: number, min: number) => (Number.isFinite(n) ? Math.min(5000, Math.max(min, Math.round(n))) : min);
 
-/** Grid-aligned new nodes, default sizes, minimum size and optional constant label size. */
+/** A card dragged from the bottom bar lands only if it moved and is released over the board itself. */
+function dropAllowed(canvas: CanvasLike, from: { x: number; y: number }, up: PointerEvent): boolean {
+	if (Math.hypot(up.clientX - from.x, up.clientY - from.y) < 8) return false;
+	const el = up.view?.document.elementFromPoint(up.clientX, up.clientY);
+	return !el || !(canvas.cardMenuEl.contains(el) || canvas.canvasControlsEl.contains(el));
+}
+
+/** Grid-aligned new nodes, default sizes, minimum size, optional constant label size and the double-click speed. */
 export const betterDefaultsModule = defineModule<BetterDefaultsSettings>({
 	id: "better-defaults",
 	name: "betterDefaults.name",
@@ -43,6 +57,8 @@ export const betterDefaultsModule = defineModule<BetterDefaultsSettings>({
 			fileNodeWidth: clampSize(s.fileNodeWidth, 20),
 			fileNodeHeight: clampSize(s.fileNodeHeight, 20),
 			minNodeSize: clampSize(s.minNodeSize, 5),
+			doubleClickSpeed: SPEEDS.includes(s.doubleClickSpeed) ? s.doubleClickSpeed : defaults.doubleClickSpeed,
+			doubleClickMs: clampDoubleClickMs(s.doubleClickMs),
 		};
 	},
 
@@ -79,6 +95,72 @@ export const betterDefaultsModule = defineModule<BetterDefaultsSettings>({
 		ctx.onSettingsChange(() => {
 			for (const canvas of ctx.canvases()) apply(canvas);
 			syncBodyClass();
+		});
+
+		// Double-click on the background creates a card: our own detection replaces the browser's dblclick there.
+		const interval = () => (ctx.settings.doubleClickSpeed === "custom" ? ctx.settings.doubleClickMs : DOUBLE_CLICK_PRESETS[ctx.settings.doubleClickSpeed]);
+		ctx.onCanvas((canvas) => {
+			const tracker = new BackgroundDoubleClick(interval);
+			const el = canvas.wrapperEl;
+			const listeners: { [K in keyof HTMLElementEventMap]?: (evt: HTMLElementEventMap[K]) => void } = {
+				// The core listener is bound at construction (patching the prototype misses open canvases),
+				// but it skips events whose default was prevented; capture listeners run first.
+				dblclick: (evt) => {
+					if (evt.target === el) evt.preventDefault();
+				},
+				pointerdown: (evt) =>
+					tracker.pointerDown({
+						id: evt.pointerId,
+						x: evt.clientX,
+						y: evt.clientY,
+						time: evt.timeStamp,
+						onBackground: evt.target === el,
+						primary: evt.isPrimary,
+						leftButton: evt.button === 0,
+						mouse: evt.pointerType === "mouse",
+					}),
+				pointermove: (evt) => tracker.pointerMove(evt.pointerId, evt.clientX, evt.clientY),
+				pointercancel: () => tracker.cancel(),
+				pointerup: (evt) => {
+					if (!tracker.pointerUp(evt.pointerId, evt.clientX, evt.clientY, evt.timeStamp)) return;
+					if (canvas.readonly || canvas.isDragging) return;
+					canvas.createTextNode({ pos: canvas.posFromEvt(evt), position: "center" });
+				},
+			};
+			const entries = Object.entries(listeners) as [string, EventListener][];
+			for (const [type, fn] of entries) el.addEventListener(type, fn, true);
+			return () => {
+				for (const [type, fn] of entries) el.removeEventListener(type, fn, true);
+			};
+		});
+
+		// Holding a bottom-bar button starts a drag even without moving; releasing it there dropped a
+		// card under the bar. A drop that barely moved, or ends on the bar or the controls, is dropped.
+		const patchedDrag = new WeakSet<object>();
+		ctx.onCanvas((canvas) => {
+			const proto = Object.getPrototypeOf(canvas) as CanvasLike;
+			if (patchedDrag.has(proto)) return;
+			patchedDrag.add(proto);
+			ctx.patch("canvas.dragTempNode", proto, {
+				dragTempNode: (next) =>
+					function (this: CanvasLike, evt: PointerEvent, size: { width: number; height: number }, onDrop: (pos: { x: number; y: number }) => void) {
+						const win = evt.view ?? window;
+						const from = { x: evt.clientX, y: evt.clientY };
+						let release: PointerEvent | null = null;
+						// Window capture runs before the core's drag end, which calls onDrop.
+						const onUp = (e: PointerEvent) => {
+							if (e.pointerId !== evt.pointerId) return;
+							release = e;
+							win.removeEventListener("pointerup", onUp, true);
+						};
+						win.addEventListener("pointerup", onUp, true);
+						return next.call(this, evt, size, (pos) => {
+							const up: PointerEvent | null = release;
+							if (up && !dropAllowed(this, from, up)) return;
+							onDrop(pos);
+						});
+					},
+			});
 		});
 
 		// Nodes created by the user (not loaded or pasted: those get their position from setData right after).
@@ -121,5 +203,30 @@ export const betterDefaultsModule = defineModule<BetterDefaultsSettings>({
 			.setName(t("betterDefaults.fontScaling.name"))
 			.setDesc(t("betterDefaults.fontScaling.desc"))
 			.addToggle((tg) => tg.setValue(ctx.settings.disableFontScaling).onChange((v) => ctx.updateSettings({ disableFontScaling: v })));
+		const customMs = new Setting(el)
+			.setName(t("betterDefaults.doubleClickMs.name"))
+			.setDesc(t("betterDefaults.doubleClickMs.desc"))
+			.addText((tx) => {
+				tx.inputEl.type = "number";
+				tx.setValue(String(ctx.settings.doubleClickMs)).onChange((v) => ctx.updateSettings({ doubleClickMs: Number(v) }));
+			});
+		new Setting(el)
+			.setName(t("betterDefaults.doubleClick.name"))
+			.setDesc(t("betterDefaults.doubleClick.desc"))
+			.addDropdown((d) =>
+				d
+					.addOption("fast", t("betterDefaults.doubleClick.fast", { ms: DOUBLE_CLICK_PRESETS.fast }))
+					.addOption("regular", t("betterDefaults.doubleClick.regular", { ms: DOUBLE_CLICK_PRESETS.regular }))
+					.addOption("slow", t("betterDefaults.doubleClick.slow", { ms: DOUBLE_CLICK_PRESETS.slow }))
+					.addOption("custom", t("betterDefaults.doubleClick.custom"))
+					.setValue(ctx.settings.doubleClickSpeed)
+					.onChange((v) => {
+						customMs.settingEl.toggle(v === "custom");
+						void ctx.updateSettings({ doubleClickSpeed: v as DoubleClickSpeed });
+					}),
+			);
+		// The custom value goes right below the speed choice, shown only for "custom".
+		el.appendChild(customMs.settingEl);
+		customMs.settingEl.toggle(ctx.settings.doubleClickSpeed === "custom");
 	},
 });

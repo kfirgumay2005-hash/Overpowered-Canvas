@@ -110,7 +110,10 @@ export interface LineData {
 
 /** An infinite line (kind "guide"): horizontal lines run along x, vertical ones along y. */
 export interface GuideData {
+	/** The nearest of horizontal / vertical; the whole direction when `angle` is absent. */
 	axis: "h" | "v";
+	/** Degrees clockwise from horizontal, in [0, 180). Absent: 0 for "h", 90 for "v". */
+	angle?: number;
 	/** Line thickness in canvas pixels. */
 	width: number;
 }
@@ -164,6 +167,17 @@ export interface OpcRoot {
 	dir?: Direction;
 	presentation?: { start?: string; last?: string };
 	frameOrder?: string[];
+	/** Layers, bottom to top. Absent: one implicit layer holding everything. */
+	layers?: LayerInfo[];
+	/** The layer new items go to; absent or unknown: the bottom layer. */
+	activeLayer?: string;
+}
+
+export interface LayerInfo {
+	id: string;
+	name: string;
+	hidden?: boolean;
+	locked?: boolean;
 }
 
 export interface OpcNode {
@@ -197,6 +211,10 @@ export interface OpcNode {
 	queryOwner?: string;
 	strokes?: Stroke[];
 	guide?: GuideData;
+	/** Id of the layer the item is on; absent or unknown: the bottom layer. */
+	layer?: string;
+	/** A presentation slide (a group made with "Add slide"). */
+	slide?: boolean;
 }
 
 export interface OpcEdge {

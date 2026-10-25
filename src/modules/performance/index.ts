@@ -5,7 +5,7 @@ import { unpack } from "../../geometry/ink";
 import type { CanvasEdgeLike, CanvasLike } from "../../internals/types";
 import { mergeWithDefaults } from "../../settings/settings";
 import { cssColor } from "../minimap/logic";
-import { nodeType } from "../shared";
+import { nodeType, onHiddenLayer, renderedZ } from "../shared";
 
 interface PerformanceSettings {
 	/** Below this zoom level (0 = 100%, -1 = 50%, …) large canvases switch to the fast renderer. */
@@ -309,7 +309,7 @@ class LodLayer {
 		const visible = (x: number, y: number, ww: number, hh: number) => x < view.maxX && x + ww > view.minX && y < view.maxY && y + hh > view.minY;
 		const { presets, bg, border, text, faint, dark } = this.colors();
 		const ink = (c: string) => (dark && c.toLowerCase() === "#1e1e1e" ? "#e8e8e8" : c);
-		const nodes = [...canvas.nodes.values()].filter((n) => visible(n.x, n.y, n.width, n.height)).sort((a, b) => a.zIndex - b.zIndex);
+		const nodes = [...canvas.nodes.values()].filter((n) => !onHiddenLayer(n) && visible(n.x, n.y, n.width, n.height)).sort((a, b) => renderedZ(a) - renderedZ(b));
 
 		// Groups.
 		for (const n of nodes) {

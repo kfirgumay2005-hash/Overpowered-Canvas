@@ -77,6 +77,17 @@ export function canvasDirection(canvas: CanvasLike): "ltr" | "rtl" {
 	return getComputedStyle(canvas.wrapperEl).direction === "rtl" ? "rtl" : "ltr";
 }
 
+/** Drawing order as rendered (layers move it far from the core's own zIndex). */
+export function renderedZ(node: CanvasNodeLike): number {
+	const rendered = Number.parseInt(node.nodeEl.style.zIndex, 10);
+	return Number.isFinite(rendered) ? rendered : node.zIndex;
+}
+
+/** On a hidden layer (the Layers module marks those cards). */
+export function onHiddenLayer(node: CanvasNodeLike): boolean {
+	return node.nodeEl.hasClass("opc-layer-hidden");
+}
+
 export function randomId(length = 16): string {
 	const bytes = new Uint8Array(length / 2);
 	crypto.getRandomValues(bytes);

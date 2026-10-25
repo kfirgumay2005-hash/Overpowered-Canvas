@@ -111,3 +111,49 @@ export function showPicker(anchor: HTMLElement, sections: PickerSection[], onPic
 	current = { close, anchor };
 	(buttons.find((b) => b.hasClass("is-active")) ?? buttons[0])?.focus({ preventScroll: true });
 }
+
+/**
+ * A popover with custom content under a toolbar button (same look, placement and closing as the
+ * picker: outside click or Esc). `onClose` runs however it closes.
+ */
+export function showPopover(anchor: HTMLElement, fill: (el: HTMLElement, close: () => void) => void, onClose?: () => void): void {
+	if (current?.anchor === anchor) {
+		current.close();
+		return;
+	}
+	current?.close();
+	const doc = anchor.doc;
+	const el = doc.body.createDiv({ cls: "opc-picker opc-popover", attr: { role: "dialog" } });
+	const onPointerDown = (evt: PointerEvent) => {
+		if (!el.contains(evt.target as Node) && !anchor.contains(evt.target as Node)) close();
+	};
+	const onKey = (evt: KeyboardEvent) => {
+		if (evt.key !== "Escape") return;
+		evt.preventDefault();
+		evt.stopPropagation();
+		close();
+		anchor.focus();
+	};
+	function close() {
+		if (!el.isConnected) return;
+		el.remove();
+		anchor.removeClass("has-active-menu");
+		doc.removeEventListener("pointerdown", onPointerDown, true);
+		doc.removeEventListener("keydown", onKey, true);
+		if (current?.anchor === anchor) current = null;
+		onClose?.();
+	}
+	fill(el, close);
+	const rect = anchor.getBoundingClientRect();
+	el.style.left = `${Math.round(rect.left + rect.width / 2)}px`;
+	el.style.top = `${Math.round(rect.bottom + 6)}px`;
+	const box = el.getBoundingClientRect();
+	const win = doc.win;
+	if (box.right > win.innerWidth - 8) el.style.left = `${Math.round(rect.left + rect.width / 2 - (box.right - win.innerWidth + 8))}px`;
+	if (box.left < 8) el.style.left = `${Math.round(rect.left + rect.width / 2 + (8 - box.left))}px`;
+	if (box.bottom > win.innerHeight - 8) el.style.top = `${Math.round(rect.top - box.height - 6)}px`;
+	anchor.addClass("has-active-menu");
+	doc.addEventListener("pointerdown", onPointerDown, true);
+	doc.addEventListener("keydown", onKey, true);
+	current = { close, anchor };
+}

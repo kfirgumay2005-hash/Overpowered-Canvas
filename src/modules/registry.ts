@@ -1,5 +1,4 @@
 import type { AnyModule } from "../core/module";
-import { altTextRenderingModule } from "./alt-text-rendering";
 import { autoEdgesModule } from "./auto-edges";
 import { canvasMetadataModule } from "./canvas-metadata";
 import { canvasPropertiesModule } from "./canvas-properties";
@@ -51,7 +50,7 @@ import { nodeTemplatesModule } from "./node-templates";
 import { textAlignModule } from "./text-align";
 import { toolbarSizeModule } from "./toolbar-size";
 import { variableBreakpointsModule } from "./variable-breakpoints";
-import { zOrderModule } from "./z-order";
+import { layersModule } from "./layers";
 
 /** Every feature module, in display order within its settings group. */
 export const MODULES: readonly AnyModule[] = [
@@ -63,11 +62,10 @@ export const MODULES: readonly AnyModule[] = [
 	textAlignModule,
 	autoResizeModule,
 	customColorsModule,
-	zOrderModule,
+	layersModule,
 	nodeTemplatesModule,
 	createGroupModule,
 	variableBreakpointsModule,
-	altTextRenderingModule,
 	edgeStylesModule,
 	edgeRoutingModule,
 	floatingEdgesModule,
