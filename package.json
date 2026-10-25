@@ -1,6 +1,6 @@
 {
 	"name": "overpowered-canvas",
-	"version": "0.5.1",
+	"version": "0.5.2",
 	"private": true,
 	"description": "Turns Obsidian Canvas into a Miro-level whiteboard.",
 	"main": "main.js",
