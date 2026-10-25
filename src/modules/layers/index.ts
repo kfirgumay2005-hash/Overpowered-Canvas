@@ -9,6 +9,19 @@ import { BASE_LAYER, cardZ, groupZ, heirOf, layerIndex, layersOf, MAX_LAYERS, mo
 
 export const LAYERS_VIEW = "opc-layers";
 
+/**
+ * Layered z-indexes go far above the core's own counter, which the hover layer (resize handles),
+ * snapping guides and dragged cards use to stay on top: those get this value instead.
+ */
+const ABOVE_LAYERS = 2147483000;
+
+/** Obsidian's hover layer over a card (resize handles, connection dots). */
+interface InteractionLayer {
+	interactionEl: HTMLElement;
+	render(): void;
+}
+type SnappingCanvas = CanvasLike & { snapContainerEl?: SVGElement | null; renderSnapPoints(...args: unknown[]): void };
+
 type Ctx = ModuleContext<Record<string, never>>;
 
 /** The stored layer id of a node, read straight from its data (fast, also for nodes off screen). */
@@ -285,7 +298,7 @@ export const layersModule = defineModule({
 		ctx.intercept("node-start-editing", (node) => (blocked(node) ? true : undefined));
 		/** A selection box or Select all never picks items of locked or hidden layers. */
 		const pruneSelection = (canvas: CanvasLike) => {
-			const drop = [...canvas.selection].filter((item): item is CanvasNodeLike => canvas.nodes.get(item.id) === item && blocked(item as CanvasNodeLike));
+			const drop = [...canvas.selection].filter((item): item is CanvasNodeLike => canvas.nodes.get(item.id) === item && blocked(item));
 			if (drop.length > 0) canvas.updateSelection(() => drop.forEach((n) => canvas.selection.delete(n)));
 		};
 		ctx.on("selection-change", (canvas) => {
@@ -336,8 +349,9 @@ export const layersModule = defineModule({
 							next.call(this);
 							if (!state.layered(this.canvas)) return;
 							const index = state.indexOf(this);
-							const z =
-								nodeType(this) === "group"
+							const z = this.nodeEl.hasClass("is-dragging")
+								? ABOVE_LAYERS
+								: nodeType(this) === "group"
 									? groupZ(index, this.width * this.height)
 									: cardZ(index, this.canvas.selection.size === 1 && this.canvas.selection.has(this) ? this.canvas.zIndexCounter + 1 : this.zIndex);
 							this.nodeEl.style.zIndex = String(z);
@@ -411,6 +425,44 @@ export const layersModule = defineModule({
 					}
 				};
 			ctx.patch("canvas.setData/applyHistory (layers)", proto, { setData: guard, applyHistory: guard });
+			ctx.patch("canvas.renderSnapPoints (layers)", proto as SnappingCanvas, {
+				renderSnapPoints: (next) =>
+					function (this: SnappingCanvas, ...args: unknown[]) {
+						next.apply(this, args);
+						if (this.snapContainerEl && state.layered(this)) this.snapContainerEl.style.zIndex = String(ABOVE_LAYERS + 1);
+					},
+			});
+		});
+
+		// The hover layer is placed with the core's counter on every render.
+		const patchedHover = new WeakSet<object>();
+		ctx.onCanvas((canvas) => {
+			const layer = (canvas as unknown as { nodeInteractionLayer?: InteractionLayer }).nodeInteractionLayer;
+			if (!layer) return;
+			const proto = Object.getPrototypeOf(layer) as InteractionLayer;
+			if (patchedHover.has(proto)) return;
+			patchedHover.add(proto);
+			ctx.patch("nodeInteractionLayer.render (layers)", proto, {
+				render: (next) =>
+					function (this: InteractionLayer & { canvas: CanvasLike }) {
+						next.call(this);
+						if (state.layered(this.canvas)) this.interactionEl.style.zIndex = String(ABOVE_LAYERS);
+					},
+			});
+		});
+
+		// Dragged cards were lifted above every layer: back into their layer once released.
+		ctx.onCanvas((canvas) => {
+			const settle = () =>
+				window.setTimeout(() => {
+					for (const n of canvas.nodes.values()) if (n.nodeEl.style.zIndex === String(ABOVE_LAYERS)) n.renderZIndex();
+				});
+			canvas.wrapperEl.addEventListener("pointerup", settle, true);
+			canvas.wrapperEl.addEventListener("pointercancel", settle, true);
+			return () => {
+				canvas.wrapperEl.removeEventListener("pointerup", settle, true);
+				canvas.wrapperEl.removeEventListener("pointercancel", settle, true);
+			};
 		});
 		ctx.on("node-added", (node) => {
 			if (replaying > 0) return;

@@ -362,7 +362,7 @@ export const infiniteLinesModule = defineModule({
 					const number = row.createEl("input", { type: "number", cls: "opc-angle-number", attr: { min: "0", max: "179.9", step: "1", "aria-label": ctx.t("infiniteLines.rotate") } });
 					row.createSpan({ text: "°" });
 					const presets = el.createDiv({ cls: "opc-picker-grid" });
-					presets.style.setProperty("--opc-picker-columns", "6");
+					presets.setCssProps({ "--opc-picker-columns": "6" });
 					const show = (angle: number) => {
 						const a = normalizeAngle(angle);
 						slider.value = String(Math.round(a));

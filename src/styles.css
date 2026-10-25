@@ -204,8 +204,9 @@ body.mod-rtl .opc-tour,
 .opc-settings-search .search-input-container input {
 	width: 100%;
 }
-.opc-search-hidden {
-	display: none !important;
+.setting-item.opc-search-hidden,
+.setting-group.opc-search-hidden {
+	display: none;
 }
 .setting-group.is-opc-collapsed > .setting-items {
 	display: none;

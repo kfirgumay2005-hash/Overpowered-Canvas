@@ -9,14 +9,6 @@ body.opc-mod-layers .canvas-node[data-opc-layer-locked] {
 	pointer-events: none;
 }
 
-/*
- * Layered z-indexes go far above the core's own counter, which the selection outline, snapping
- * guides and drag previews use to stay on top: lift those above every layer.
- */
-body.opc-mod-layers .canvas-wrapper.opc-has-layers .canvas > :is(.canvas-node-interaction-layer, .canvas-snaps, .canvas-node.is-dragging) {
-	z-index: 2147483000 !important;
-}
-
 /* Panel. */
 body.opc-mod-layers .opc-layers-view {
 	padding: 0;
