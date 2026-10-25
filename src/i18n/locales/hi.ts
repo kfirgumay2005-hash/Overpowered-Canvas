@@ -1,4 +1,5 @@
 import type { I18nKey } from "./en";
+import { tutorialsHi } from "./tutorials/hi";
 
 /** Hindi UI strings. Must define every key in en.ts — a missing key is a compile error. */
 export const hi: Record<I18nKey, string> = {
@@ -686,31 +687,6 @@ export const hi: Record<I18nKey, string> = {
 	"direction.scope.desc": "\"पूरा कैनवास\" लेआउट, मेनू, नियंत्रण और टेक्स्ट को उलट देता है। \"केवल टेक्स्ट\" कैनवास को बाएँ-से-दाएँ रखता है और केवल कार्डों और लेबलों के टेक्स्ट को दाएँ-से-बाएँ करता है।",
 	"direction.scope.full": "पूरा कैनवास",
 	"direction.scope.text": "केवल टेक्स्ट",
-
-
-	"tour.open": "Overpowered Canvas टूर",
-	"tour.count": "चरण {n} / {total}",
-	"tour.close": "टूर बंद करें",
-	"tour.prev": "पीछे",
-	"tour.next": "आगे",
-	"tour.finish": "समाप्त",
-	"tour.welcome.title": "Overpowered Canvas में आपका स्वागत है",
-	"tour.welcome.body": "यह टूर हर सुविधा को एक-एक करके दिखाता है। आगे-पीछे जाने के लिए तीरों (या ← → कुंजियों) का इस्तेमाल करें। आप इसे कभी भी बंद कर सकते हैं: अगली बार यह उसी चरण से जारी रहेगा।",
-	"tour.cardMenu.title": "नीचे की बार",
-	"tour.cardMenu.body": "कैनवास के नीचे की बार चीज़ें जोड़ती है: कार्ड, नोट्स, समूह, और हमारी जोड़ी गई चीज़ें जैसे स्टिकी नोट्स, तैरता टेक्स्ट, आकृतियाँ, अनंत रेखाएँ, ड्रॉइंग और टेम्पलेट। बटन पर क्लिक करें, या उसे वहाँ खींचें जहाँ नया आइटम चाहिए। कुछ बटनों पर राइट-क्लिक करने से और विकल्प मिलते हैं।",
-	"tour.selection.title": "चयन टूलबार",
-	"tour.selection.body": "कोई कार्ड या रेखा चुनें, तो उसके ऊपर एक टूलबार दिखता है: रंग, आकार, बॉर्डर, टेक्स्ट संरेखण, दिशा, टेक्स्ट के साथ बढ़ना, लॉक करना और बहुत कुछ। इसका आकार सेटिंग्स में कंप्यूटर और फ़ोन के लिए अलग-अलग बदला जा सकता है।",
-	"tour.controls.title": "साइड नियंत्रण",
-	"tour.controls.body": "कैनवास के किनारे के नियंत्रणों में ज़ूम, पूर्ववत, और हमारे मिनीमैप, ग्रिड (आकार के लिए राइट-क्लिक), फ़्रेम पैनल और इस टूर के बटन शामिल हैं।",
-	"tour.settings.title": "सेटिंग्स",
-	"tour.settings.body": "हर सुविधा को सेटिंग्स → Overpowered Canvas में बंद या समायोजित किया जा सकता है। कोई सेटिंग जल्दी ढूँढ़ने के लिए ऊपर दिए खोज बॉक्स का इस्तेमाल करें।",
-	"tour.settings.open": "सेटिंग्स खोलें",
-	"tour.end.title": "बस इतना ही",
-	"tour.end.body": "आपने सभी सुविधाएँ देख लीं। जब चाहें रिबन या कैनवास नियंत्रणों से टूर फिर खोलें।",
-	"tour.module.off": "यह सुविधा बंद है।",
-	"tour.module.enable": "चालू करें",
-	"tour.notVisible": "इसका बटन अभी इस कैनवास में नहीं दिख रहा है।",
-	"tour.openCanvas": "यह कहाँ है, देखने के लिए कैनवास खोलें।",
 	// Plain-language explanations shown under the settings (key: "<setting>.simple").
 	"betterDefaults.simple": "नए कार्ड के व्यवहार में छोटे सुधार: उनका आकार, ग्रिड से मेल, और कार्ड बनाने के लिए डबल-क्लिक कितना तेज़ हो।",
 	"betterDefaults.alignToGrid.simple": "नए कार्ड पृष्ठभूमि के बिंदुओं के साथ सीधी पंक्ति में रखे जाते हैं।",
@@ -843,4 +819,5 @@ export const hi: Record<I18nKey, string> = {
 	"layers.button": "लेयर",
 	"layers.revealed": "\"{name}\" छिपी या लॉक थी: नया आइटम दिखता रहे, इसलिए उसे फिर से दिखाया और अनलॉक किया गया।",
 	"layers.simple": "Photoshop के लेयर की तरह: लेयर बनाएँ, उन पर कार्ड रखें, और चुनें कि कौन-सा लेयर ऊपर रहे। पूरा लेयर एक साथ छिपाएँ या लॉक करें।",
+	...tutorialsHi,
 };

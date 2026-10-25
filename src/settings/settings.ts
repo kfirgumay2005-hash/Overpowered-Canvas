@@ -20,14 +20,14 @@ export interface PluginSettings {
 		/** Overlapping plugin ids whose notice the user has already answered. */
 		acknowledged: string[];
 	};
-	tour: {
-		/** Step the guided tour continues from. */
-		step: number;
+	tutorials: {
+		/** Ids of the tutorials finished at least once. */
+		done: string[];
 	};
 }
 
 export function defaultSettings(): PluginSettings {
-	return { settingsVersion: SETTINGS_VERSION, language: "auto", modules: {}, coexistence: { acknowledged: [] }, tour: { step: 0 } };
+	return { settingsVersion: SETTINGS_VERSION, language: "auto", modules: {}, coexistence: { acknowledged: [] }, tutorials: { done: [] } };
 }
 
 const LANGUAGES: readonly LanguageSetting[] = ["auto", "en", "zh", "ja", "hi"];
@@ -52,8 +52,8 @@ export function sanitizeSettings(raw: unknown): PluginSettings {
 	if (isPlainObject(raw.coexistence) && Array.isArray(raw.coexistence.acknowledged))
 		out.coexistence.acknowledged = raw.coexistence.acknowledged.filter((x): x is string => typeof x === "string");
 
-	if (isPlainObject(raw.tour) && typeof raw.tour.step === "number" && Number.isInteger(raw.tour.step) && raw.tour.step >= 0)
-		out.tour.step = raw.tour.step;
+	if (isPlainObject(raw.tutorials) && Array.isArray(raw.tutorials.done))
+		out.tutorials.done = [...new Set(raw.tutorials.done.filter((x): x is string => typeof x === "string"))];
 
 	return out;
 }

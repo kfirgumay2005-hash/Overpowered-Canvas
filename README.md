@@ -2,7 +2,7 @@
 
 An Obsidian plugin that turns the core Canvas into a full whiteboard: shapes and sticky notes,
 freehand drawing with stylus support, mind maps with automatic layout, presentations, kanban
-boards synced with your notes, a minimap, a frames panel, a background grid, a guided tour, and
+boards synced with your notes, a minimap, a frames panel, a background grid, hands-on tutorials, and
 first-class right-to-left support — while every canvas stays a standard JSON Canvas file that
 vanilla Obsidian opens cleanly.
 
@@ -47,8 +47,10 @@ other canvases, collapsible groups, focus mode, move a selection to a new canvas
 cards for annotation, custom style attributes from CSS snippets, a public events API, a minimap,
 a frames panel to search, reorder and present the groups of a canvas, a line grid behind the
 content (a line every N dots), an adjustable selection toolbar size (separately for computers
-and phones), and a guided tour of every feature (ribbon or canvas controls; it remembers where
-you stopped). The settings page has its own search box and collapsible sections, a plain-language
+and phones), and ten hands-on tutorials (at the top of the settings, in the ribbon and the canvas
+controls). Each tutorial opens a temporary practice board with a coach panel: small tasks that
+tick themselves off as you do them, a "Show me" button that does each task live on the board, and
+highlights on the controls involved. The board is deleted when the tutorial closes. The settings page has its own search box and collapsible sections, a plain-language
 explanation under every setting, and every module and option also shows up in Obsidian's
 settings search. A double-click on the empty canvas creates a card at a speed you choose
 (fast, regular, slow or your own); dragging never creates one.

@@ -1,4 +1,5 @@
 import type { I18nKey } from "./en";
+import { tutorialsZh } from "./tutorials/zh";
 
 /** Chinese (Mandarin, simplified) UI strings. Must define every key in en.ts — a missing key is a compile error. */
 export const zh: Record<I18nKey, string> = {
@@ -686,31 +687,6 @@ export const zh: Record<I18nKey, string> = {
 	"direction.scope.desc": "“整个画布”会镜像布局、菜单、控件和文本。“仅文本”保持画布从左到右，只把卡片和标签中的文本变为从右到左。",
 	"direction.scope.full": "整个画布",
 	"direction.scope.text": "仅文本",
-
-
-	"tour.open": "Overpowered Canvas 导览",
-	"tour.count": "第 {n} 步，共 {total} 步",
-	"tour.close": "关闭导览",
-	"tour.prev": "上一步",
-	"tour.next": "下一步",
-	"tour.finish": "完成",
-	"tour.welcome.title": "欢迎使用 Overpowered Canvas",
-	"tour.welcome.body": "本导览会逐一介绍每个功能。使用箭头（或 ← → 键）前后切换。你可以随时关闭：下次会从同一步继续。",
-	"tour.cardMenu.title": "底部栏",
-	"tour.cardMenu.body": "画布底部的栏用于添加内容：卡片、笔记、分组，以及我们新增的便签、浮动文本、形状、无限线、绘图和模板。点击按钮，或将其拖到想放置新项目的位置。右键点击某些按钮可获得更多选项。",
-	"tour.selection.title": "选区工具栏",
-	"tour.selection.body": "选中卡片或线条后，上方会出现工具栏：颜色、形状、边框、文本对齐、方向、随文本扩展、锁定等。其大小可在设置中分别为电脑和手机调整。",
-	"tour.controls.title": "侧边控件",
-	"tour.controls.body": "画布侧边的控件包括缩放、撤销，以及我们的小地图、网格（右键选择网格大小）、框架面板和本导览的开关。",
-	"tour.settings.title": "设置",
-	"tour.settings.body": "每个功能都可以在 设置 → Overpowered Canvas 中关闭或调整。使用顶部的搜索框可快速找到设置。",
-	"tour.settings.open": "打开设置",
-	"tour.end.title": "全部介绍完毕",
-	"tour.end.body": "你已经看过所有功能。随时可以从功能区或画布控件再次打开导览。",
-	"tour.module.off": "此功能已关闭。",
-	"tour.module.enable": "开启",
-	"tour.notVisible": "它的按钮目前没有显示在此画布中。",
-	"tour.openCanvas": "打开画布以查看它的位置。",
 	// Plain-language explanations shown under the settings (key: "<setting>.simple").
 	"betterDefaults.simple": "改进新卡片的行为：大小、与网格对齐，以及创建卡片需要多快的双击。",
 	"betterDefaults.alignToGrid.simple": "新卡片会整齐地对齐背景中的点。",
@@ -843,4 +819,5 @@ export const zh: Record<I18nKey, string> = {
 	"layers.button": "图层",
 	"layers.revealed": "“{name}”已隐藏或锁定：已重新显示并解锁，以便新项目可见。",
 	"layers.simple": "就像 Photoshop 的图层：创建图层、把卡片放上去，并决定哪个图层在最上面。可以一次隐藏或锁定整个图层。",
+	...tutorialsZh,
 };

@@ -3,6 +3,7 @@
  * Other locales must define exactly the same keys (enforced by the compiler).
  * Placeholders use {name} syntax.
  */
+import { tutorialsEn } from "./tutorials/en";
 export const en = {
 	"plugin.name": "Overpowered Canvas",
 
@@ -688,31 +689,6 @@ export const en = {
 	"direction.scope.desc": "\"Whole canvas\" mirrors the layout, menus, controls and text. \"Text only\" keeps the canvas left-to-right and only turns the text in cards and labels right-to-left.",
 	"direction.scope.full": "Whole canvas",
 	"direction.scope.text": "Text only",
-
-
-	"tour.open": "Overpowered Canvas tour",
-	"tour.count": "Step {n} of {total}",
-	"tour.close": "Close the tour",
-	"tour.prev": "Back",
-	"tour.next": "Next",
-	"tour.finish": "Finish",
-	"tour.welcome.title": "Welcome to Overpowered Canvas",
-	"tour.welcome.body": "This tour walks through every feature, one at a time. Use the arrows (or the ← → keys) to move back and forth. You can close it any time: it continues from the same step next time.",
-	"tour.cardMenu.title": "The bottom bar",
-	"tour.cardMenu.body": "The bar at the bottom of a canvas adds things: cards, notes, groups, and our additions such as sticky notes, floating text, shapes, infinite lines, drawing and templates. Click a button, or drag it to where you want the new item. Right-click some buttons for more choices.",
-	"tour.selection.title": "The selection toolbar",
-	"tour.selection.body": "Select a card or line and a toolbar appears above it: color, shape, border, text alignment, direction, growing with the text, locking and more. Its size can be changed in settings, separately for computers and phones.",
-	"tour.controls.title": "The side controls",
-	"tour.controls.body": "The controls on the side of the canvas include zoom, undo, and our toggles for the minimap, the grid (right-click it for the grid size), the frames panel and this tour.",
-	"tour.settings.title": "Settings",
-	"tour.settings.body": "Every feature can be switched off or adjusted in Settings → Overpowered Canvas. Use the search box at the top to find a setting quickly.",
-	"tour.settings.open": "Open settings",
-	"tour.end.title": "That's everything",
-	"tour.end.body": "You've seen every feature. Open the tour again from the ribbon or the canvas controls whenever you like.",
-	"tour.module.off": "This feature is off.",
-	"tour.module.enable": "Turn on",
-	"tour.notVisible": "Its button isn't shown in this canvas right now.",
-	"tour.openCanvas": "Open a canvas to see where it is.",
 	// Plain-language explanations shown under the settings (key: "<setting>.simple").
 	"betterDefaults.simple": "Small fixes for how new cards behave: their size, lining up with the grid, and how quick a double-click must be to create one.",
 	"betterDefaults.alignToGrid.simple": "New cards line up neatly with the dots in the background.",
@@ -845,6 +821,7 @@ export const en = {
 	"layers.button": "Layer",
 	"layers.revealed": "\"{name}\" was hidden or locked: it is shown and unlocked again so the new item stays visible.",
 	"layers.simple": "Like layers in Photoshop: make layers, put cards on them, and choose which layer sits on top. Hide or lock a whole layer at once.",
+	...tutorialsEn,
 } as const;
 
 export type I18nKey = keyof typeof en;

@@ -1,4 +1,5 @@
 import type { I18nKey } from "./en";
+import { tutorialsJa } from "./tutorials/ja";
 
 /** Japanese UI strings. Must define every key in en.ts — a missing key is a compile error. */
 export const ja: Record<I18nKey, string> = {
@@ -686,31 +687,6 @@ export const ja: Record<I18nKey, string> = {
 	"direction.scope.desc": "「キャンバス全体」はレイアウト、メニュー、コントロール、テキストを反転します。「テキストのみ」はキャンバスを左から右のままにし、カードとラベルのテキストだけを右から左にします。",
 	"direction.scope.full": "キャンバス全体",
 	"direction.scope.text": "テキストのみ",
-
-
-	"tour.open": "Overpowered Canvas ツアー",
-	"tour.count": "ステップ {n} / {total}",
-	"tour.close": "ツアーを閉じる",
-	"tour.prev": "戻る",
-	"tour.next": "次へ",
-	"tour.finish": "完了",
-	"tour.welcome.title": "Overpowered Canvas へようこそ",
-	"tour.welcome.body": "このツアーでは、すべての機能を 1 つずつ紹介します。矢印（または ← → キー）で前後に移動します。いつでも閉じられ、次回は同じステップから続きます。",
-	"tour.cardMenu.title": "下部バー",
-	"tour.cardMenu.body": "キャンバス下部のバーで項目を追加します：カード、ノート、グループ、そして付箋、フローティングテキスト、図形、無限線、描画、テンプレートなどの追加機能。ボタンをクリックするか、新しい項目を置きたい場所までドラッグします。一部のボタンは右クリックで選択肢が増えます。",
-	"tour.selection.title": "選択ツールバー",
-	"tour.selection.body": "カードや線を選択すると、その上にツールバーが表示されます：色、形、枠線、テキストの配置、方向、テキストに合わせて広げる、ロックなど。サイズは設定で、パソコンとスマートフォン別々に変えられます。",
-	"tour.controls.title": "サイドのコントロール",
-	"tour.controls.body": "キャンバス横のコントロールには、ズーム、取り消し、そしてミニマップ、グリッド（右クリックでサイズ）、フレームパネル、このツアーの切り替えボタンがあります。",
-	"tour.settings.title": "設定",
-	"tour.settings.body": "すべての機能は 設定 → Overpowered Canvas でオフにしたり調整したりできます。上部の検索ボックスで設定をすばやく探せます。",
-	"tour.settings.open": "設定を開く",
-	"tour.end.title": "以上です",
-	"tour.end.body": "すべての機能を見終わりました。リボンやキャンバスのコントロールから、いつでもツアーを開き直せます。",
-	"tour.module.off": "この機能はオフです。",
-	"tour.module.enable": "オンにする",
-	"tour.notVisible": "このキャンバスでは現在ボタンが表示されていません。",
-	"tour.openCanvas": "キャンバスを開くと場所が表示されます。",
 	// Plain-language explanations shown under the settings (key: "<setting>.simple").
 	"betterDefaults.simple": "新しいカードの動きを改善します：サイズ、グリッドへの整列、カードを作るダブルクリックの速さ。",
 	"betterDefaults.alignToGrid.simple": "新しいカードが背景の点にきれいに揃います。",
@@ -843,4 +819,5 @@ export const ja: Record<I18nKey, string> = {
 	"layers.button": "レイヤー",
 	"layers.revealed": "「{name}」は非表示またはロック中でした。新しい項目が見えるよう、表示してロックを解除しました。",
 	"layers.simple": "Photoshop のレイヤーのように、レイヤーを作ってカードを載せ、どのレイヤーを上にするかを決めます。レイヤー全体をまとめて隠したりロックしたりできます。",
+	...tutorialsJa,
 };

@@ -1,0 +1,421 @@
+/* ---------- Tutorials: coach panel on the practice board ---------- */
+.opc-tutorial {
+	position: absolute;
+	top: var(--opc-tutorial-top, var(--size-4-4));
+	left: var(--size-4-4);
+	z-index: calc(var(--layer-popover) - 1);
+	width: min(370px, calc(100% - 2 * var(--size-4-4)));
+	max-height: calc(100% - var(--opc-tutorial-top, var(--size-4-4)) - var(--size-4-4));
+	overflow-y: auto;
+	padding: var(--size-4-3) var(--size-4-4) var(--size-4-4);
+	background: var(--background-primary);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-l);
+	box-shadow: var(--shadow-l);
+	display: flex;
+	flex-direction: column;
+	gap: var(--size-4-2);
+	cursor: default;
+	user-select: text;
+	animation: opc-tutorial-in 220ms ease-out;
+}
+@keyframes opc-tutorial-in {
+	from {
+		opacity: 0;
+		transform: translateY(-6px);
+	}
+}
+.opc-tutorial.is-right {
+	left: auto;
+	right: var(--size-4-4);
+}
+.opc-tutorial.is-minimized {
+	width: auto;
+	max-width: min(370px, calc(100% - 2 * var(--size-4-4)));
+	padding-bottom: var(--size-4-2);
+}
+.opc-tutorial-head {
+	display: flex;
+	align-items: center;
+	gap: var(--size-4-2);
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
+	font-weight: var(--font-semibold);
+}
+.opc-tutorial-icon {
+	display: flex;
+	color: var(--text-accent);
+}
+.opc-tutorial-name {
+	flex: 1;
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+.opc-tutorial-dots {
+	display: flex;
+	align-items: center;
+	gap: 5px;
+	flex-wrap: wrap;
+}
+.opc-tutorial-count {
+	color: var(--text-faint);
+	font-size: var(--font-ui-smaller);
+	margin-inline-end: var(--size-2-2);
+}
+.opc-tutorial .opc-tutorial-dot {
+	width: 10px;
+	height: 10px;
+	min-height: 0;
+	padding: 0;
+	border-radius: 50%;
+	border: none;
+	box-shadow: none;
+	background: var(--background-modifier-border);
+	cursor: pointer;
+	transition: transform 120ms ease, background-color 120ms ease, width 120ms ease;
+}
+.opc-tutorial .opc-tutorial-dot:hover {
+	transform: scale(1.3);
+}
+.opc-tutorial .opc-tutorial-dot.is-done {
+	background: var(--color-green);
+}
+.opc-tutorial .opc-tutorial-dot.is-current {
+	width: 22px;
+	border-radius: 5px;
+	background: var(--interactive-accent);
+}
+.opc-tutorial-title {
+	font-size: var(--font-ui-large);
+	font-weight: var(--font-bold);
+	line-height: var(--line-height-tight);
+}
+.opc-tutorial-body {
+	color: var(--text-normal);
+	font-size: var(--font-ui-small);
+	line-height: var(--line-height-normal);
+}
+.opc-tutorial-body p,
+.opc-tutorial-task p {
+	margin: 0 0 var(--size-2-3);
+}
+.opc-tutorial-body p:last-child,
+.opc-tutorial-task p:last-child {
+	margin-bottom: 0;
+}
+.opc-tutorial kbd {
+	font-size: 0.85em;
+	padding: 1px 6px;
+	border-radius: var(--radius-s);
+	border: 1px solid var(--background-modifier-border);
+	border-bottom-width: 2px;
+	background: var(--background-secondary);
+	font-family: var(--font-interface);
+	white-space: nowrap;
+}
+.opc-tutorial-task {
+	position: relative;
+	display: grid;
+	grid-template-columns: auto 1fr;
+	gap: var(--size-2-3) var(--size-4-2);
+	padding: var(--size-4-2) var(--size-4-3);
+	border-radius: var(--radius-m);
+	background: color-mix(in srgb, var(--interactive-accent) 10%, var(--background-primary));
+	border: 1px solid color-mix(in srgb, var(--interactive-accent) 35%, transparent);
+	font-size: var(--font-ui-small);
+	transition: background-color 250ms ease, border-color 250ms ease;
+}
+.opc-tutorial-task.is-done {
+	background: color-mix(in srgb, var(--color-green) 14%, var(--background-primary));
+	border-color: color-mix(in srgb, var(--color-green) 50%, transparent);
+}
+.opc-tutorial-task.is-celebrating {
+	animation: opc-tutorial-pop 420ms ease-out;
+}
+@keyframes opc-tutorial-pop {
+	40% {
+		transform: scale(1.04);
+	}
+}
+.opc-tutorial-check {
+	display: flex;
+	color: var(--interactive-accent);
+	padding-top: 2px;
+}
+.opc-tutorial-task.is-done .opc-tutorial-check {
+	color: var(--color-green);
+}
+.opc-tutorial-task-label {
+	font-size: var(--font-ui-smaller);
+	font-weight: var(--font-semibold);
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+	color: var(--text-accent);
+	margin-bottom: 2px;
+}
+.opc-tutorial-task.is-done .opc-tutorial-task-label {
+	color: var(--color-green);
+}
+.opc-tutorial-demo {
+	grid-column: 2;
+	justify-self: start;
+	display: inline-flex;
+	align-items: center;
+	gap: var(--size-2-2);
+}
+.opc-tutorial-demo .svg-icon {
+	width: 14px;
+	height: 14px;
+}
+.opc-tutorial-demo:disabled .svg-icon {
+	animation: opc-tutorial-spin 1s linear infinite;
+}
+@keyframes opc-tutorial-spin {
+	to {
+		transform: rotate(360deg);
+	}
+}
+.opc-tutorial-nav {
+	display: flex;
+	justify-content: space-between;
+	gap: var(--size-4-2);
+	margin-top: var(--size-2-2);
+}
+.opc-tutorial-nav.is-column {
+	flex-direction: column;
+}
+.opc-tutorial-nav button {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: var(--size-2-2);
+}
+/* The arrows point the way the steps go. */
+.opc-tutorial-arrow {
+	display: flex;
+}
+.is-rtl .opc-tutorial-arrow svg,
+body.mod-rtl .opc-tutorial-arrow svg {
+	transform: scaleX(-1);
+}
+.opc-tutorial-finished {
+	position: relative;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	text-align: center;
+	gap: var(--size-2-3);
+	padding: var(--size-4-2) 0;
+}
+.opc-tutorial-trophy {
+	display: flex;
+	color: var(--color-yellow);
+	animation: opc-tutorial-pop 600ms ease-out;
+}
+.opc-tutorial-trophy .svg-icon {
+	width: 44px;
+	height: 44px;
+}
+/* Confetti from a finished task. */
+.opc-tutorial-burst {
+	position: absolute;
+	inset-inline-start: 22px;
+	top: 18px;
+	pointer-events: none;
+}
+.opc-tutorial-finished .opc-tutorial-burst {
+	inset-inline-start: 50%;
+	top: 30px;
+}
+.opc-tutorial-burst span {
+	position: absolute;
+	width: 7px;
+	height: 7px;
+	border-radius: 2px;
+	background: var(--opc-c);
+	animation: opc-tutorial-confetti 900ms cubic-bezier(0.2, 0.7, 0.3, 1) forwards;
+}
+@keyframes opc-tutorial-confetti {
+	from {
+		transform: rotate(var(--opc-a)) translateX(0) scale(1);
+		opacity: 1;
+	}
+	to {
+		transform: rotate(var(--opc-a)) translateX(var(--opc-d)) rotate(200deg) scale(0.6);
+		opacity: 0;
+	}
+}
+.opc-tutorial-highlight {
+	position: fixed;
+	z-index: var(--layer-notice);
+	pointer-events: none;
+	border: 2px solid var(--interactive-accent);
+	border-radius: var(--radius-m);
+	box-shadow: 0 0 0 4px color-mix(in srgb, var(--interactive-accent) 25%, transparent);
+	transition: left 150ms ease, top 150ms ease, width 150ms ease, height 150ms ease;
+	animation: opc-tutorial-pulse 1.4s ease-in-out infinite;
+}
+@keyframes opc-tutorial-pulse {
+	50% {
+		box-shadow: 0 0 0 10px color-mix(in srgb, var(--interactive-accent) 6%, transparent);
+	}
+}
+@media (prefers-reduced-motion: reduce) {
+	.opc-tutorial,
+	.opc-tutorial-highlight,
+	.opc-tutorial-task.is-celebrating,
+	.opc-tutorial-trophy,
+	.opc-tutorial-demo:disabled .svg-icon {
+		animation: none;
+	}
+	.opc-tutorial-burst {
+		display: none;
+	}
+}
+
+/* ---------- Tutorials: the list (settings and modal) ---------- */
+.opc-tutorials-modal {
+	width: min(860px, 94vw);
+}
+.opc-tutorials-intro {
+	color: var(--text-muted);
+	font-size: var(--font-ui-small);
+	margin-bottom: var(--size-4-3);
+}
+.opc-settings-tutorials-row {
+	flex-direction: column;
+	align-items: stretch;
+	gap: var(--size-4-2);
+}
+.opc-settings-tutorials-row .setting-item-info {
+	margin-inline-end: 0;
+}
+.opc-tutorials-in-settings {
+	width: 100%;
+}
+.opc-tutorials-progress {
+	display: flex;
+	align-items: center;
+	gap: var(--size-4-3);
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
+	margin-bottom: var(--size-4-3);
+}
+.opc-tutorials-progress-bar {
+	flex: 1;
+	height: 6px;
+	border-radius: 3px;
+	background: var(--background-modifier-border);
+	overflow: hidden;
+}
+.opc-tutorials-progress-bar div {
+	height: 100%;
+	width: var(--opc-progress, 0%);
+	background: var(--color-green);
+	border-radius: 3px;
+	transition: width 300ms ease;
+}
+.opc-tutorials-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+	gap: var(--size-4-3);
+}
+.opc-tutorials-grid .opc-tutorials-card {
+	display: flex;
+	flex-direction: column;
+	align-items: stretch;
+	gap: var(--size-2-3);
+	height: auto;
+	padding: var(--size-4-3);
+	text-align: start;
+	white-space: normal;
+	border-radius: var(--radius-l);
+	border: 1px solid var(--background-modifier-border);
+	background: var(--background-primary);
+	box-shadow: none;
+	cursor: pointer;
+	transition: transform 120ms ease, border-color 120ms ease, box-shadow 120ms ease;
+}
+.opc-tutorials-grid .opc-tutorials-card:hover {
+	transform: translateY(-2px);
+	border-color: var(--interactive-accent);
+	box-shadow: var(--shadow-s);
+}
+.opc-tutorials-card-top {
+	display: flex;
+	align-items: center;
+	gap: var(--size-4-2);
+}
+.opc-tutorials-card-icon {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 36px;
+	height: 36px;
+	border-radius: var(--radius-m);
+	color: var(--text-on-accent);
+	background: var(--interactive-accent);
+}
+.opc-tutorials-card.is-done .opc-tutorials-card-icon {
+	background: var(--color-green);
+}
+.opc-tutorials-card-number {
+	flex: 1;
+	color: var(--text-faint);
+	font-size: var(--font-ui-smaller);
+	font-variant-numeric: tabular-nums;
+}
+.opc-tutorials-card-badge {
+	display: inline-flex;
+	align-items: center;
+	gap: 3px;
+	padding: 1px 8px;
+	border-radius: 10px;
+	font-size: var(--font-ui-smaller);
+	color: var(--color-green);
+	background: color-mix(in srgb, var(--color-green) 15%, transparent);
+}
+.opc-tutorials-card-badge .svg-icon {
+	width: 12px;
+	height: 12px;
+}
+.opc-tutorials-card-title {
+	font-weight: var(--font-semibold);
+	color: var(--text-normal);
+}
+.opc-tutorials-card-summary {
+	flex: 1;
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
+	line-height: var(--line-height-normal);
+}
+.opc-tutorials-card-foot {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--size-2-2) var(--size-4-2);
+	color: var(--text-faint);
+	font-size: var(--font-ui-smaller);
+}
+.opc-tutorials-card-note {
+	color: var(--text-warning);
+}
+.opc-tutorials-card-go {
+	margin-inline-start: auto;
+	display: inline-flex;
+	align-items: center;
+	gap: 3px;
+	color: var(--text-accent);
+	font-weight: var(--font-semibold);
+}
+.opc-tutorials-card-go .svg-icon {
+	width: 14px;
+	height: 14px;
+}
+.is-rtl .opc-tutorials-card-go svg,
+body.mod-rtl .opc-tutorials-card-go svg {
+	transform: scaleX(-1);
+}

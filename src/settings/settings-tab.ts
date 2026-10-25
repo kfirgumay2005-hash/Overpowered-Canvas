@@ -3,6 +3,7 @@ import { SETTINGS_GROUP_ORDER, type AnyModule } from "../core/module";
 import type { ModuleManager } from "../core/module-manager";
 import type { I18nKey, LanguageSetting, Translate } from "../i18n";
 import { en } from "../i18n/locales/en";
+import { renderTutorialList, type TutorialListHost } from "../tutorials/list";
 import type { PluginSettings } from "./settings";
 
 export interface SettingsTabHost {
@@ -11,6 +12,7 @@ export interface SettingsTabHost {
 	t(): Translate;
 	saveSettings(): Promise<void>;
 	setLanguage(language: LanguageSetting): void;
+	readonly tutorials: TutorialListHost;
 }
 
 const COLLAPSED_KEY = "overpowered-canvas:settings-collapsed";
@@ -54,6 +56,12 @@ export class OpcSettingTab extends PluginSettingTab {
 		const { host } = this;
 		const t = host.t();
 		const items: SettingDefinitionItem[] = [
+			{
+				type: "group",
+				heading: t("tutorial.heading"),
+				cls: "opc-settings-tutorials",
+				items: [{ name: t("tutorial.heading"), desc: t("tutorial.intro"), searchable: false, render: (s) => this.renderTutorials(s) }],
+			},
 			{
 				type: "group",
 				cls: "opc-settings-search-group",
@@ -168,7 +176,15 @@ export class OpcSettingTab extends PluginSettingTab {
 		});
 	}
 
-	/** Search box and collapse / expand all, above everything else. */
+	/** The tutorial cards; starting one closes the settings window. */
+	private renderTutorials(s: Setting): void {
+		s.settingEl.addClass("opc-settings-tutorials-row");
+		s.nameEl.remove();
+		const list = s.settingEl.createDiv({ cls: "opc-tutorials-in-settings" });
+		renderTutorialList(list, this.host.tutorials, () => (this.app as unknown as { setting?: { close(): void } }).setting?.close());
+	}
+
+	/** Search box and collapse / expand all, below the tutorials and above everything else. */
 	private renderSearch(s: Setting): void {
 		const t = this.host.t();
 		s.settingEl.addClass("opc-settings-search");

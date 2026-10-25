@@ -2,6 +2,13 @@ import { describe, expect, it } from "vitest";
 import { defaultSettings, mergeWithDefaults, sanitizeSettings } from "./settings";
 
 describe("sanitizeSettings", () => {
+	it("keeps the finished tutorials, without duplicates or junk", () => {
+		expect(sanitizeSettings({ tutorials: { done: ["basics", "layers", "basics", 3, null] } }).tutorials.done).toEqual(["basics", "layers"]);
+		expect(sanitizeSettings({ tutorials: { done: "basics" } }).tutorials.done).toEqual([]);
+		// The old tour's saved step is dropped.
+		expect(sanitizeSettings({ tour: { step: 4 } })).not.toHaveProperty("tour");
+	});
+
 	it("returns defaults for garbage", () => {
 		expect(sanitizeSettings(undefined)).toEqual(defaultSettings());
 		expect(sanitizeSettings("x")).toEqual(defaultSettings());

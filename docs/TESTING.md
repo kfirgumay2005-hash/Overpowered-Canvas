@@ -295,9 +295,18 @@ Automated runtime checks of every item below were run in an isolated Obsidian 1.
    only* → the canvas controls and toolbars stay left-to-right, card text is right-to-left.
 11. **Settings search:** type "sticky" in the search box of Obsidian's settings window → the
    sticky-note module and its options are listed; click one to jump to it.
-12. **Tour:** ribbon compass (or the compass in the canvas controls) → the tour opens; arrows /
-   ← → keys move through ~60 steps, features with a button get highlighted; close it on step 12,
-   reopen → it continues at step 12; *Finish* on the last step resets it.
+12. **Tutorials:** Settings → Overpowered Canvas → the *Tutorials* cards are at the top (also the
+   ribbon graduation cap, the cap in the canvas controls, or the *Tutorials* command). Click a
+   card → settings close, a practice board opens in a new tab ("Overpowered Canvas tutorials/
+   <name>.canvas") with the coach panel opposite the canvas controls (below the minimap when it
+   shares the corner). Do each task by hand: it ticks off with confetti and moves on after a
+   moment (not while a card is being edited). *Show me* does the task live; *Skip* / the dots
+   move freely. Highlights follow the control of each step (bottom-bar button, toolbar, Layers
+   panel eye, a card's branch badge…). Close with ✕ or close the tab → the board and the folder
+   are deleted; minimap and grid go back to how they were. A finished tutorial shows *Done* on
+   its card. Reload the plugin with a tutorial open → the leftover board is deleted on start; a
+   canvas of your own in that folder is kept. Each board is left-to-right whatever the canvas
+   direction setting. During *Presentations*, the panel stays usable in fullscreen.
 13. **Phone controls bar:** on a phone open a canvas → the controls bar sits at the bottom, above
    Obsidian's navigation bar, and starts with the add buttons (card, note, media, text, group,
    sticky, shapes, line, drawing…). Swipe it sideways to reach zoom/undo/grid; tapping an add

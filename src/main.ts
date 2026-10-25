@@ -15,7 +15,9 @@ import type { CanvasLike } from "./internals/types";
 import { MODULES } from "./modules/registry";
 import { OpcSettingTab } from "./settings/settings-tab";
 import { sanitizeSettings, type PluginSettings } from "./settings/settings";
-import { Tour } from "./ui/tour";
+import { TUTORIALS } from "./tutorials/catalog";
+import { TutorialListModal, type TutorialListHost } from "./tutorials/list";
+import { TutorialRunner } from "./tutorials/runner";
 
 export default class OverpoweredCanvasPlugin extends Plugin {
 	declare settings: PluginSettings;
@@ -67,6 +69,7 @@ export default class OverpoweredCanvasPlugin extends Plugin {
 			MODULES,
 		);
 
+		const tutorials = this.setupTutorials(tracker, data, history, hooks);
 		this.addSettingTab(
 			new OpcSettingTab(this.app, this, {
 				settings: this.settings,
@@ -74,10 +77,9 @@ export default class OverpoweredCanvasPlugin extends Plugin {
 				t: () => this.translate,
 				saveSettings: () => this.saveSettings(),
 				setLanguage: (language) => this.setLanguage(language),
+				tutorials,
 			}),
 		);
-
-		this.setupTour(tracker);
 
 		this.app.workspace.onLayoutReady(async () => {
 			await this.modules.startAll();
@@ -89,39 +91,54 @@ export default class OverpoweredCanvasPlugin extends Plugin {
 		void this.modules?.stopAll();
 	}
 
-	/** The guided tour: a ribbon button, a button in every canvas' side controls and a command. */
-	private setupTour(tracker: CanvasTracker): void {
-		const tour = new Tour({
+	/**
+	 * Tutorials: each opens a temporary practice board with a coach panel. Listed at the top of
+	 * the settings and in a modal from the ribbon, a command and every canvas' side controls.
+	 */
+	private setupTutorials(tracker: CanvasTracker, data: CanvasDataApi, history: ReturnType<typeof createHistoryApi>, hooks: CanvasHooks): TutorialListHost {
+		let open = () => {};
+		const runner = new TutorialRunner({
 			app: this.app,
+			pluginId: this.manifest.id,
 			modules: this.modules,
-			definitions: MODULES,
+			data,
+			history,
+			hooks,
+			catalog: TUTORIALS,
 			t: () => this.translate,
-			getStep: () => this.settings.tour.step,
-			setStep: (step) => {
-				this.settings.tour.step = step;
+			openList: () => open(),
+			markDone: (id) => {
+				if (this.settings.tutorials.done.includes(id)) return;
+				this.settings.tutorials.done.push(id);
 				void this.saveSettings();
 			},
-			openSettings: () => {
-				const setting = (this.app as unknown as { setting: { open(): void; openTabById(id: string): void } }).setting;
-				setting.open();
-				setting.openTabById(this.manifest.id);
-			},
 		});
-		this.register(() => tour.close());
-		this.addRibbonIcon("compass", this.translate("tour.open"), () => tour.toggle());
-		this.addCommand({ id: "tour", name: this.translate("tour.open"), icon: "compass", callback: () => tour.toggle() });
+		const list: TutorialListHost = {
+			app: this.app,
+			modules: this.modules,
+			catalog: TUTORIALS,
+			t: () => this.translate,
+			isDone: (id) => this.settings.tutorials.done.includes(id),
+			start: (def) => void runner.start(def),
+		};
+		open = () => new TutorialListModal(this.app, list).open();
+		this.register(() => void runner.stop());
+		this.app.workspace.onLayoutReady(() => void runner.cleanUp());
+		this.addRibbonIcon("graduation-cap", this.translate("tutorial.open"), open);
+		this.addCommand({ id: "tutorials", name: this.translate("tutorial.open"), icon: "graduation-cap", callback: open });
 		this.register(
 			tracker.subscribe((canvas) => {
-				const group = canvas.wrapperEl.querySelector(".canvas-controls")?.createDiv({ cls: "canvas-control-group mod-raised opc-tour-control" });
-				const item = group?.createDiv({ cls: "canvas-control-item", attr: { "aria-label": this.translate("tour.open") } });
+				const group = canvas.wrapperEl.querySelector(".canvas-controls")?.createDiv({ cls: "canvas-control-group mod-raised opc-tutorials-control" });
+				const item = group?.createDiv({ cls: "canvas-control-item", attr: { "aria-label": this.translate("tutorial.open") } });
 				if (item) {
-					setIcon(item, "compass");
-					setTooltip(item, this.translate("tour.open"), { placement: "left" });
-					item.addEventListener("click", () => tour.toggle());
+					setIcon(item, "graduation-cap");
+					setTooltip(item, this.translate("tutorial.open"), { placement: "left" });
+					item.addEventListener("click", open);
 				}
 				return () => group?.remove();
 			}),
 		);
+		return list;
 	}
 
 	/** data.json changed on disk (e.g. synced from another device): adopt it without restarting. */
