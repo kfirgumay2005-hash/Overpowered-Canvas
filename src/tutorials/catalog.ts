@@ -25,7 +25,7 @@ const changedAny = (rt: TutorialRuntime, read: (n: CanvasNodeData) => unknown, t
 	return nodesOf(rt.now()).some((n) => test(n) && before.has(n.id) && before.get(n.id) !== JSON.stringify(read(n) ?? null));
 };
 
-const rootOf = (data: CanvasFileData): Partial<OpcRoot> => extraOf(data) as Partial<OpcRoot>;
+const rootOf = (data: CanvasFileData): Partial<OpcRoot> => extraOf(data);
 const layerOf = (data: CanvasFileData, id: string): LayerInfo | undefined => rootOf(data).layers?.find((l) => l.id === id);
 
 const moved = (rt: TutorialRuntime, id: string, by = 30) => {
