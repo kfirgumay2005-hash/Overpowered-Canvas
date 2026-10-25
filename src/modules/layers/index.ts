@@ -4,7 +4,7 @@ import { SCHEMA_KEY, type LayerInfo } from "../../data/schema";
 import type { CanvasItemLike, CanvasLike, CanvasNodeLike } from "../../internals/types";
 import { ChoiceModal } from "../../ui/choice-modal";
 import { TextPromptModal } from "../../ui/text-prompt";
-import { mutate, nodeType, onlyNodes, randomId, selectedNodes } from "../shared";
+import { mutate, nodeType, onlyNodes, randomId, renderedZ, selectedNodes } from "../shared";
 import { BASE_LAYER, cardZ, groupZ, heirOf, layerIndex, layersOf, MAX_LAYERS, moveLayer, neighborLayer, nextLayerName } from "./logic";
 
 export const LAYERS_VIEW = "opc-layers";
@@ -21,6 +21,9 @@ interface InteractionLayer {
 	render(): void;
 }
 type SnappingCanvas = CanvasLike & { snapContainerEl?: SVGElement | null; renderSnapPoints(...args: unknown[]): void };
+/** The core's geometric queries: hover target, selection box, snapping, edge targets, group contents, virtualization. */
+type HitTestingCanvas = CanvasLike & { hitTestNode(pos: { x: number; y: number }, margin?: number): CanvasNodeLike | null; nodeIndex: { search(bbox: BBoxLike): CanvasNodeLike[] } };
+type BBoxLike = { minX: number; minY: number; maxX: number; maxY: number };
 
 type Ctx = ModuleContext<Record<string, never>>;
 
@@ -126,16 +129,20 @@ class LayersView extends ItemView {
 		this.listEl = root.createDiv({ cls: "opc-layers-list", attr: { role: "list" } });
 		this.footerEl = root.createDiv({ cls: "opc-layers-footer" });
 		this.registerEvent(this.app.workspace.on("active-leaf-change", () => this.track()));
-		this.track();
+		this.track(true);
 	}
 
-	/** Follows the most recently active canvas. */
-	track(): void {
+	/**
+	 * Follows the most recently active canvas. Clicking into the panel makes it the active leaf:
+	 * rebuilding the rows then would swallow that first click, so only a new canvas re-renders.
+	 */
+	track(force = false): void {
+		const prev = this.canvas;
 		const leaf = this.app.workspace.getMostRecentLeaf();
 		const view = leaf?.view as { getViewType(): string; canvas?: CanvasLike } | undefined;
 		if (view?.getViewType() === "canvas" && view.canvas) this.canvas = view.canvas;
 		else if (this.canvas && !this.canvas.wrapperEl.isConnected) this.canvas = null;
-		this.render();
+		if (force || this.canvas !== prev) this.render();
 	}
 
 	refresh(canvas: CanvasLike): void {
@@ -293,6 +300,7 @@ export const layersModule = defineModule({
 			const layer = state.layerOf(node);
 			return !!layer.locked || !!layer.hidden;
 		};
+		const hidden = (node: CanvasNodeLike) => node.canvas.nodes.get(node.id) === node && !!state.layerOf(node).hidden;
 		ctx.intercept("node-pointerdown", (node) => (blocked(node) ? true : undefined));
 		ctx.intercept("node-move", (node) => (blocked(node) ? true : undefined));
 		ctx.intercept("node-start-editing", (node) => (blocked(node) ? true : undefined));
@@ -331,6 +339,8 @@ export const layersModule = defineModule({
 			}
 			decorateEdges(canvas);
 			pruneSelection(canvas);
+			// Shown or hidden layers mount or unmount their cards on the next frame.
+			canvas.markViewportChanged();
 			refreshPanel(canvas);
 		};
 
@@ -425,6 +435,29 @@ export const layersModule = defineModule({
 					}
 				};
 			ctx.patch("canvas.setData/applyHistory (layers)", proto, { setData: guard, applyHistory: guard });
+			// Hidden layers are gone for the core too, like a new board: no hover handles, snapping, edge
+			// targets, selection box or group contents from them (and they are not even mounted).
+			const visible = (nodes: CanvasNodeLike[]) => nodes.filter((n) => !hidden(n));
+			ctx.patch("canvas hit testing (layers)", proto as HitTestingCanvas, {
+				getIntersectingNodes: (next) =>
+					function (this: HitTestingCanvas, bbox: BBoxLike) {
+						const nodes = next.call(this, bbox);
+						return state.layered(this) ? visible(nodes) : nodes;
+					},
+				getContainingNodes: (next) =>
+					function (this: HitTestingCanvas, bbox: BBoxLike) {
+						const nodes = next.call(this, bbox);
+						return state.layered(this) ? visible(nodes) : nodes;
+					},
+				// The core picks the top card by its own counter; layers draw in another order.
+				hitTestNode: (next) =>
+					function (this: HitTestingCanvas, pos: { x: number; y: number }, margin = 0) {
+						if (!state.layered(this)) return next.call(this, pos, margin);
+						const hits = this.nodeIndex.search({ minX: pos.x - margin, minY: pos.y - margin, maxX: pos.x + margin, maxY: pos.y + margin }).filter((n) => !blocked(n));
+						hits.sort((a, b) => renderedZ(b) - renderedZ(a));
+						return hits[0] ?? null;
+					},
+			});
 			ctx.patch("canvas.renderSnapPoints (layers)", proto as SnappingCanvas, {
 				renderSnapPoints: (next) =>
 					function (this: SnappingCanvas, ...args: unknown[]) {
