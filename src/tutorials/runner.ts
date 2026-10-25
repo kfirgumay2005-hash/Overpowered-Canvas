@@ -10,7 +10,7 @@ import type { HistoryApi } from "../core/history";
 import type { ModuleManager } from "../core/module-manager";
 import type { CanvasDataApi } from "../data/access";
 import type { CanvasEdgeData, CanvasFileData, CanvasNodeData } from "../data/json-canvas";
-import { SCHEMA_KEY, SCHEMA_VERSION, type OpcEdge, type OpcNode, type OpcRoot } from "../data/schema";
+import { SCHEMA_KEY, SCHEMA_VERSION, type OpcNode, type OpcRoot } from "../data/schema";
 import { EVENT_PREFIX } from "../core/events";
 import type { Translate } from "../i18n";
 import type { CanvasLike, CanvasNodeLike, CanvasViewLike } from "../internals/types";
@@ -137,7 +137,7 @@ export class TutorialRunner {
 				const raw = JSON.parse(await app.vault.read(child)) as Record<string, unknown>;
 				if (!raw[TUTORIAL_KEY]) continue;
 				for (const leaf of app.workspace.getLeavesOfType("canvas")) if ((leaf.view as CanvasViewLike).file === child) leaf.detach();
-				await app.vault.delete(child);
+				await app.fileManager.trashFile(child);
 			} catch {
 				// Not ours, or unreadable: leave it.
 			}
@@ -167,7 +167,7 @@ export class TutorialRunner {
 	private async removeFile(file: TFile): Promise<void> {
 		try {
 			const current = this.host.app.vault.getAbstractFileByPath(file.path);
-			if (current instanceof TFile) await this.host.app.vault.delete(current);
+			if (current instanceof TFile) await this.host.app.fileManager.trashFile(current);
 		} catch (error) {
 			console.error("[overpowered-canvas] could not delete the tutorial canvas", error);
 		}
@@ -178,7 +178,7 @@ export class TutorialRunner {
 		const folder = this.host.app.vault.getAbstractFileByPath(normalizePath(TUTORIAL_FOLDER));
 		if (folder instanceof TFolder && folder.children.length === 0) {
 			try {
-				await this.host.app.vault.delete(folder, true);
+				await this.host.app.fileManager.trashFile(folder);
 			} catch {
 				// Someone put something there; keep it.
 			}
@@ -531,33 +531,34 @@ class Session {
 	private runtime(): TutorialRuntime {
 		const { app, data, history, pluginId } = this.host;
 		const canvas = this.canvas;
-		const session = this;
+		const host = this.host;
+		const before = () => this.before;
 		const nodeExtra = (id: string): OpcNode => {
 			const node = canvas.nodes.get(id);
-			return node ? (data.node(node).get() as OpcNode) : {};
+			return node ? data.node(node).get() : {};
 		};
 		return {
 			app,
 			canvas,
 			get t() {
-				return session.host.t();
+				return host.t();
 			},
 			data,
 			now: () => canvas.getData(),
 			get before() {
-				return session.before;
+				return before();
 			},
-			seen: (name, test) => session.events.some((e) => e.name === name && e.at >= session.stepStart && (!test || test(...e.args))),
+			seen: (name, test) => this.events.some((e) => e.name === name && e.at >= this.stepStart && (!test || test(...e.args))),
 			node: (id) => canvas.nodes.get(id),
 			extra: nodeExtra,
 			edgeExtra: (id) => {
 				const edge = canvas.edges.get(id);
-				return edge ? (data.edge(edge).get() as OpcEdge) : extraOf(undefined);
+				return edge ? data.edge(edge).get() : extraOf(undefined);
 			},
 			root: () => data.root(canvas).get() as OpcRoot,
 			setting: (module, key) => {
-				const def = session.host.modules.get(module);
-				return def ? (session.host.modules.settingsOf(def) as Record<string, unknown>)[key] : undefined;
+				const def = this.host.modules.get(module);
+				return def ? (this.host.modules.settingsOf(def) as Record<string, unknown>)[key] : undefined;
 			},
 			viewOpen: (type) => app.workspace.getLeavesOfType(type).length > 0,
 			selected: () => [...canvas.selection].map((item) => item.id),
@@ -568,7 +569,7 @@ class Session {
 				else if (items.length > 1) canvas.selectAll(new Set(items));
 			},
 			command: (id) => {
-				session.focusCanvasLeaf();
+				this.focusCanvasLeaf();
 				const full = id.includes(":") && !id.startsWith("app:") && !id.startsWith("canvas:") ? `${pluginId}:${id}` : id;
 				return (app as unknown as { commands: { executeCommandById(id: string): boolean } }).commands.executeCommandById(full);
 			},
@@ -591,7 +592,7 @@ class Session {
 				const maxY = Math.max(...boxes.map((b) => b.maxY));
 				// Leave room for the coach panel on the reading-start side.
 				const room = (maxX - minX + 2 * padding) * 0.55;
-				const right = session.panel.hasClass("is-right");
+				const right = this.panel.hasClass("is-right");
 				canvas.zoomToBbox({ minX: minX - padding - (right ? 0 : room), minY: minY - padding, maxX: maxX + padding + (right ? room : 0), maxY: maxY + padding });
 			},
 			wait: (ms) => sleep(ms),

@@ -82,7 +82,7 @@ export function edgesOf(data: CanvasFileData): CanvasEdgeData[] {
 	return data.edges ?? [];
 }
 
-export function extraOf(item: CanvasNodeData | CanvasEdgeData | undefined): Record<string, unknown> {
+export function extraOf(item: CanvasNodeData | CanvasEdgeData | CanvasFileData | undefined): Record<string, unknown> {
 	const extra = item?.[SCHEMA_KEY];
 	return extra && typeof extra === "object" ? (extra as Record<string, unknown>) : {};
 }

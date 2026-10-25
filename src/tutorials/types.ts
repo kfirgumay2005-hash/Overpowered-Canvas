@@ -52,7 +52,7 @@ export interface TutorialStep {
 	/** Done when this returns true (checked on every change and a few times a second). */
 	check?(rt: TutorialRuntime): boolean;
 	/** "Show me": does the task live on the board. */
-	demo?(rt: TutorialRuntime): void | Promise<void>;
+	demo?: (rt: TutorialRuntime) => void | Promise<void>;
 	/** Control to point at: a selector searched in the canvas first, then the whole window, or a function finding it. */
 	target?: string | ((rt: TutorialRuntime) => HTMLElement | null | undefined);
 	/** Items to frame when the step starts. */
