@@ -1,4 +1,4 @@
-import { MarkdownView, Notice, Setting, type WorkspaceLeaf } from "obsidian";
+import { MarkdownView, Notice, Setting } from "obsidian";
 import { defineModule, type ModuleContext } from "../../core/module";
 import type { EdgeSide } from "../../data/json-canvas";
 import type { CanvasLike, CanvasNodeLike, CanvasViewLike } from "../../internals/types";
@@ -603,7 +603,7 @@ export const noteBlocksModule = defineModule<NoteBlocksSettings>({
 			});
 		};
 		const attachAll = () => {
-			for (const leaf of app.workspace.getLeavesOfType("markdown") as WorkspaceLeaf[]) if (leaf.view instanceof MarkdownView) attach(leaf.view);
+			for (const leaf of app.workspace.getLeavesOfType("markdown")) if (leaf.view instanceof MarkdownView) attach(leaf.view);
 		};
 		app.workspace.onLayoutReady(attachAll);
 		ctx.registerEvent(app.workspace.on("layout-change", attachAll));
@@ -614,7 +614,7 @@ export const noteBlocksModule = defineModule<NoteBlocksSettings>({
 		new Setting(el)
 			.setName(ctx.t("noteBlocks.hold.name"))
 			.setDesc(ctx.t("noteBlocks.hold.desc"))
-			.addSlider((s) => s.setLimits(150, 1500, 50).setValue(ctx.settings.holdMs).setDynamicTooltip().onChange((v) => ctx.updateSettings({ holdMs: v })));
+			.addSlider((s) => s.setLimits(150, 1500, 50).setValue(ctx.settings.holdMs).onChange((v) => ctx.updateSettings({ holdMs: v })));
 		new Setting(el)
 			.setName(ctx.t("noteBlocks.handleSetting.name"))
 			.setDesc(ctx.t("noteBlocks.handleSetting.desc"))

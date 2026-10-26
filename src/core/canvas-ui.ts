@@ -199,13 +199,18 @@ export class CanvasUi {
 						map.get(canvas)?.remove();
 						map.delete(canvas);
 					}
+					markCardMenu(canvas.cardMenuEl);
 				};
 			});
 		} else for (const view of this.tracker.openCanvases()) this.mountCardButton(spec, view.canvas);
 		return () => {
 			const map = this.cardButtons.get(spec);
 			if (!map) return;
-			for (const el of map.values()) el.remove();
+			for (const el of map.values()) {
+				const menu = el.parentElement;
+				el.remove();
+				if (menu) markCardMenu(menu);
+			}
 			this.cardButtons.delete(spec);
 			if (this.cardButtons.size === 0) {
 				this.cardTrackOff?.();
@@ -354,7 +359,13 @@ export class CanvasUi {
 		if (before) canvas.cardMenuEl.insertBefore(el, before);
 		else canvas.cardMenuEl.appendChild(el);
 		map.set(canvas, el);
+		markCardMenu(canvas.cardMenuEl);
 	}
+}
+
+/** Marks a card bar holding our buttons (another plugin may hide the bar; ours keep it). */
+function markCardMenu(menu: HTMLElement): void {
+	menu.toggleClass("opc-has-card-buttons", !!menu.querySelector(":scope > .opc-card-button"));
 }
 
 function comboOf(spec: { modifiers: string[]; key: string }): string {

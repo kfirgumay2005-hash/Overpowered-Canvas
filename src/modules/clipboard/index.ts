@@ -39,24 +39,22 @@ export const clipboardModule = defineModule({
 		};
 
 		/**
-		 * Toolbar buttons: run the browser's own cut / copy, so the clipboard events below fill the
-		 * system clipboard; where the browser refuses, the in-memory copy still works in the app.
+		 * Toolbar buttons: the system clipboard can't take canvas data outside a key press, so the
+		 * selection goes into the in-app buffer and its card text into the clipboard as a marker;
+		 * a later paste of exactly that text pastes the buffer.
 		 */
-		const viaBrowser = (canvas: CanvasLike, command: "cut" | "copy"): boolean => {
+		let bufferText: string | null = null;
+		const viaButton = (canvas: CanvasLike, command: "cut" | "copy"): boolean => {
 			if (canvas.selection.size === 0) return false;
 			buffer = canvas.getSelectionData();
-			let done = false;
-			try {
-				canvas.wrapperEl.focus({ preventScroll: true });
-				done = canvas.wrapperEl.doc.execCommand(command);
-			} catch {
-				done = false;
-			}
-			if (!done && command === "cut" && !canvas.readonly) remove(canvas);
+			const text = buffer.nodes.map((n) => (typeof n.text === "string" ? n.text : "")).filter(Boolean).join("\n\n") || " ";
+			bufferText = text;
+			void navigator.clipboard?.writeText(text).catch(() => undefined);
+			if (command === "cut" && !canvas.readonly) remove(canvas);
 			return true;
 		};
-		const cut = (canvas: CanvasLike) => void viaBrowser(canvas, "cut");
-		const copy = (canvas: CanvasLike) => viaBrowser(canvas, "copy");
+		const cut = (canvas: CanvasLike) => void viaButton(canvas, "cut");
+		const copy = (canvas: CanvasLike) => viaButton(canvas, "copy");
 
 		const paste = (canvas: CanvasLike, clip: Clip, at: Point) => {
 			if (canvas.readonly || !clip.nodes?.length) return;
@@ -83,6 +81,13 @@ export const clipboardModule = defineModule({
 			const onPaste = (e: ClipboardEvent) => {
 				if (e.defaultPrevented || canvas.readonly || wrapper.doc.activeElement !== wrapper) return;
 				const raw = e.clipboardData?.getData(MIME);
+				// What a Cut / Copy button left: its marker text, with the selection in the buffer.
+				if (!raw && buffer && bufferText !== null && e.clipboardData?.getData("text/plain").replace(/\r\n/g, "\n") === bufferText) {
+					e.preventDefault();
+					e.stopImmediatePropagation();
+					paste(canvas, buffer, target(canvas));
+					return;
+				}
 				if (!raw || !pointers.has(canvas)) return;
 				let clip: Clip;
 				try {
@@ -100,6 +105,7 @@ export const clipboardModule = defineModule({
 				if (canvas.readonly || wrapper.doc.activeElement !== wrapper || canvas.selection.size === 0) return;
 				const data = canvas.getSelectionData();
 				buffer = data;
+				bufferText = null;
 				e.clipboardData?.setData(MIME, JSON.stringify(data));
 				e.preventDefault();
 				e.stopImmediatePropagation();
@@ -107,7 +113,10 @@ export const clipboardModule = defineModule({
 			};
 			// Remember native copies too, for the Paste button.
 			const onCopy = () => {
-				if (wrapper.doc.activeElement === wrapper && canvas.selection.size > 0) buffer = canvas.getSelectionData();
+				if (wrapper.doc.activeElement === wrapper && canvas.selection.size > 0) {
+					buffer = canvas.getSelectionData();
+					bufferText = null;
+				}
 			};
 			wrapper.addEventListener("pointermove", onMove);
 			wrapper.addEventListener("pointerleave", onLeave);

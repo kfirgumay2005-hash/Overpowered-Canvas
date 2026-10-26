@@ -26,7 +26,7 @@ export interface ApplyOptions {
 	levelSpacing: number;
 	newId(): string;
 	/** Vault path of the file an `![[embed]]` points to, or null. */
-	resolveFile(linktext: string): string | null;
+	resolveFile: (linktext: string) => string | null;
 	/** Width of new text cards (height follows the text). */
 	textWidth: number;
 	fileSize: { width: number; height: number };
@@ -66,7 +66,7 @@ function contentFields(text: string, resolveFile: ApplyOptions["resolveFile"]): 
 
 function withContent(node: CanvasNodeData, fields: Partial<CanvasNodeData>): CanvasNodeData {
 	const { text: _t, file: _f, subpath: _s, url: _u, ...rest } = node;
-	return { ...rest, ...fields } as CanvasNodeData;
+	return { ...rest, ...fields };
 }
 
 /** The node with the note's text, or itself when the text didn't change (whitespace aside). */
@@ -302,7 +302,7 @@ export async function applyNote(items: OutlineItem[], note: NoteData | null, bas
 	const edgesOut = finalEdges.map((e) => {
 		const touched = freshIds.has(e.id) || (relaid.has(e.fromNode) && relaid.has(e.toNode) && used.has(e.id));
 		if (!touched) return e;
-		const floating = isPlainObject(e[SCHEMA_KEY]) && isPlainObject((e[SCHEMA_KEY] as Record<string, unknown>).floating) ? ((e[SCHEMA_KEY] as Record<string, unknown>).floating as { from?: boolean; to?: boolean }) : {};
+		const floating = isPlainObject(e[SCHEMA_KEY]) && isPlainObject(e[SCHEMA_KEY].floating) ? (e[SCHEMA_KEY].floating as { from?: boolean; to?: boolean }) : {};
 		// Sides for parent → child, from the map's growth direction when it has one.
 		const reversed = placedById.get(e.fromNode)?.parent === e.toNode;
 		const parent = outById.get(reversed ? e.toNode : e.fromNode)!;
@@ -316,7 +316,7 @@ export async function applyNote(items: OutlineItem[], note: NoteData | null, bas
 
 	// 8. Root data: map layouts follow the note; entries of deleted cards go.
 	for (const id of Object.keys(layouts)) if (!outById.has(id)) delete layouts[id];
-	const extra = isPlainObject(rootData[SCHEMA_KEY]) ? { ...(rootData[SCHEMA_KEY] as Record<string, unknown>) } : null;
+	const extra = isPlainObject(rootData[SCHEMA_KEY]) ? { ...rootData[SCHEMA_KEY] } : null;
 	if (Object.keys(layouts).length) rootData[SCHEMA_KEY] = { ...(extra ?? { v: SCHEMA_VERSION }), mapLayouts: layouts };
 	else if (extra) {
 		delete extra.mapLayouts;
