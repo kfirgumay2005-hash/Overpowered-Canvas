@@ -117,3 +117,32 @@ body.opc-mod-note-blocks .opc-inbox-control .canvas-control-item.is-active {
 	color: var(--text-on-accent);
 	background-color: var(--interactive-accent);
 }
+.opc-crop-modal .opc-crop-stage {
+	position: relative;
+	width: 240px;
+	max-width: 100%;
+	aspect-ratio: 1;
+	margin: 0 auto var(--size-4-3);
+	cursor: grab;
+	touch-action: none;
+	user-select: none;
+	background: var(--background-secondary);
+}
+.opc-crop-modal .opc-crop-stage:active {
+	cursor: grabbing;
+}
+.opc-crop-modal .opc-crop-stage canvas {
+	display: block;
+	width: 100%;
+	height: 100%;
+}
+.opc-crop-modal .opc-crop-mask {
+	position: absolute;
+	inset: 0;
+	pointer-events: none;
+	border: 2px solid var(--interactive-accent);
+}
+.opc-crop-modal .opc-crop-mask.is-circle {
+	border: none;
+	background: radial-gradient(circle closest-side, transparent calc(100% - 2px), var(--interactive-accent) calc(100% - 2px), var(--interactive-accent) 100%, rgba(0, 0, 0, 0.55) 100%);
+}
