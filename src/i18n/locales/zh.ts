@@ -153,10 +153,17 @@ export const zh: Record<I18nKey, string> = {
 	"autoResize.button": "随文本扩展",
 
 	"variableBreakpoints.name": "可变断点",
-	"variableBreakpoints.desc": "为每张卡片设置在哪个缩放级别下用占位符代替内容（也可通过 --variable-breakpoint CSS 变量设置）。",
+	"variableBreakpoints.desc": "选择缩小时卡片内容何时被占位块替代：始终显示、为所有卡片使用你自己的缩放级别，或逐张卡片设置（也可通过 --variable-breakpoint CSS 变量，例如在白板 CSS 类中）。",
 	"variableBreakpoints.command": "设置内容缩放断点……",
 	"variableBreakpoints.help": "低于此缩放级别时，卡片显示占位符而不是内容。0 = 100%，-1 = 50%，-2 = 25%。Obsidian 默认值为 -1.7。留空则使用默认值。",
 	"variableBreakpoints.value": "缩放级别",
+	"variableBreakpoints.mode.name": "缩小时的卡片内容",
+	"variableBreakpoints.mode.desc": "适用于没有单独断点的卡片。在所有缩放级别都显示内容会降低大型白板的速度；在非常大的白板上大幅缩小时，细节层级渲染（性能）仍会接管。",
+	"variableBreakpoints.mode.default": "Obsidian 默认（低于约 30% 时显示占位块）",
+	"variableBreakpoints.mode.always": "始终显示内容",
+	"variableBreakpoints.mode.custom": "低于我设定的缩放级别时显示占位块",
+	"variableBreakpoints.percent.name": "占位块的缩放级别",
+	"variableBreakpoints.percent.desc": "缩放低于此值（实际大小的百分比）时，卡片显示占位块。数值越低，文字可见得越久，适合放大字体的情况。",
 
 
 	"customColors.name": "自定义颜色",

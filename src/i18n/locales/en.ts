@@ -155,10 +155,17 @@ export const en = {
 	"autoResize.button": "Grow to fit text",
 
 	"variableBreakpoints.name": "Variable breakpoints",
-	"variableBreakpoints.desc": "Choose per card at which zoom level its content is replaced by a placeholder (also via the --variable-breakpoint CSS variable).",
+	"variableBreakpoints.desc": "Choose when card content is replaced by a placeholder as you zoom out: always show it, use your own zoom level for all cards, or set it per card (also via the --variable-breakpoint CSS variable, e.g. in a canvas CSS class).",
 	"variableBreakpoints.command": "Set content zoom breakpoint…",
 	"variableBreakpoints.help": "Below this zoom level the card shows a placeholder instead of its content. 0 = 100%, -1 = 50%, -2 = 25%. Obsidian's default is -1.7. Leave empty to use the default.",
 	"variableBreakpoints.value": "Zoom level",
+	"variableBreakpoints.mode.name": "Card content when zoomed out",
+	"variableBreakpoints.mode.desc": "For cards without their own breakpoint. Showing content at every zoom level costs speed on large canvases; the level-of-detail renderer (Performance) still takes over when you zoom far out of very large canvases.",
+	"variableBreakpoints.mode.default": "Obsidian's default (placeholder below about 30%)",
+	"variableBreakpoints.mode.always": "Always show content",
+	"variableBreakpoints.mode.custom": "Placeholder below my zoom level",
+	"variableBreakpoints.percent.name": "Zoom level for placeholders",
+	"variableBreakpoints.percent.desc": "Below this zoom (percent of actual size) cards show a placeholder. Lower keeps text visible longer, useful with enlarged fonts.",
 
 
 	"customColors.name": "Custom colors",

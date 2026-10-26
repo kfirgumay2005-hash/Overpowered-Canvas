@@ -153,10 +153,17 @@ export const hi: Record<I18nKey, string> = {
 	"autoResize.button": "टेक्स्ट के अनुसार बढ़ें",
 
 	"variableBreakpoints.name": "परिवर्तनीय ब्रेकपॉइंट",
-	"variableBreakpoints.desc": "हर कार्ड के लिए चुनें कि किस ज़ूम स्तर पर उसकी सामग्री की जगह प्लेसहोल्डर दिखे (--variable-breakpoint CSS वेरिएबल से भी)।",
+	"variableBreakpoints.desc": "ज़ूम आउट करने पर कार्ड की सामग्री कब प्लेसहोल्डर से बदले, यह चुनें: हमेशा दिखाएँ, सभी कार्डों के लिए अपना ज़ूम स्तर रखें, या हर कार्ड के लिए अलग सेट करें (--variable-breakpoint CSS वेरिएबल से भी, जैसे किसी कैनवास CSS क्लास में)।",
 	"variableBreakpoints.command": "सामग्री ज़ूम ब्रेकपॉइंट सेट करें…",
 	"variableBreakpoints.help": "इस ज़ूम स्तर से नीचे कार्ड अपनी सामग्री के बजाय प्लेसहोल्डर दिखाता है। 0 = 100%, -1 = 50%, -2 = 25%। Obsidian का डिफ़ॉल्ट -1.7 है। डिफ़ॉल्ट के लिए खाली छोड़ें।",
 	"variableBreakpoints.value": "ज़ूम स्तर",
+	"variableBreakpoints.mode.name": "ज़ूम आउट पर कार्ड की सामग्री",
+	"variableBreakpoints.mode.desc": "उन कार्डों के लिए जिनका अपना ब्रेकपॉइंट नहीं है। हर ज़ूम स्तर पर सामग्री दिखाने से बड़े कैनवास धीमे होते हैं; बहुत बड़े कैनवास को बहुत दूर ज़ूम आउट करने पर विवरण-स्तर रेंडरर (प्रदर्शन) फिर भी काम संभालता है।",
+	"variableBreakpoints.mode.default": "Obsidian का डिफ़ॉल्ट (लगभग 30% से नीचे प्लेसहोल्डर)",
+	"variableBreakpoints.mode.always": "सामग्री हमेशा दिखाएँ",
+	"variableBreakpoints.mode.custom": "मेरे ज़ूम स्तर से नीचे प्लेसहोल्डर",
+	"variableBreakpoints.percent.name": "प्लेसहोल्डर का ज़ूम स्तर",
+	"variableBreakpoints.percent.desc": "इस ज़ूम (असली आकार का प्रतिशत) से नीचे कार्ड प्लेसहोल्डर दिखाते हैं। कम मान पर टेक्स्ट देर तक दिखता है, बड़े फ़ॉन्ट के साथ उपयोगी।",
 
 
 	"customColors.name": "कस्टम रंग",

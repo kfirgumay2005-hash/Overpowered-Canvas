@@ -1,10 +1,20 @@
 import { Modal, Notice, Setting, type App } from "obsidian";
-import { defineModule } from "../../core/module";
+import { defineModule, type ModuleContext } from "../../core/module";
 import type { Translate } from "../../i18n";
 import type { CanvasNodeLike } from "../../internals/types";
+import { mergeWithDefaults } from "../../settings/settings";
 import { mutate, selectedNodes } from "../shared";
 
 const VAR = "--variable-breakpoint";
+
+interface BreakpointSettings {
+	/** Cards without their own breakpoint: Obsidian's threshold, always full content, or a custom zoom. */
+	mode: "default" | "always" | "custom";
+	/** Custom threshold as a zoom percentage (100 = actual size). */
+	percent: number;
+}
+
+const MODES: BreakpointSettings["mode"][] = ["default", "always", "custom"];
 
 /**
  * Per-node zoom level below which the node's content is replaced by a placeholder.
@@ -12,14 +22,21 @@ const VAR = "--variable-breakpoint";
  * node from the context menu (stored as x-opc.breakpoint and applied as the same variable).
  * Values use the canvas zoom scale: 0 = 100%, -1 = 50%, -2 = 25%… (Obsidian's default is -1.7).
  */
-export const variableBreakpointsModule = defineModule({
+export const variableBreakpointsModule = defineModule<BreakpointSettings>({
 	id: "variable-breakpoints",
 	name: "variableBreakpoints.name",
 	description: "variableBreakpoints.desc",
 	group: "nodes",
 	defaultEnabled: true,
-	defaultSettings: {},
+	defaultSettings: { mode: "default", percent: 15 },
 	overlapsWith: ["advanced-canvas"],
+	sanitizeSettings: (raw, defaults) => {
+		const s = mergeWithDefaults(raw, defaults);
+		return {
+			mode: MODES.includes(s.mode) ? s.mode : defaults.mode,
+			percent: typeof s.percent === "number" && s.percent >= 1 && s.percent <= 100 ? s.percent : defaults.percent,
+		};
+	},
 
 	enable(ctx) {
 		/** Parsed variable per node; null = not set. Cleared whenever the node's data changes. */
@@ -72,10 +89,14 @@ export const variableBreakpointsModule = defineModule({
 		);
 
 		ctx.intercept("node-breakpoint", (node) => {
-			const bp = breakpointOf(node);
-			if (bp === null) return undefined;
+			// A card's own breakpoint wins; then the setting for all cards.
+			const own = breakpointOf(node);
+			const mode = ctx.settings.mode;
+			const bp = own ?? (mode === "custom" ? Math.log2(ctx.settings.percent / 100) : null);
+			if (bp === null) return mode === "always" ? true : undefined;
 			return node.canvas.zoom > bp || node.isEditing;
 		});
+		ctx.onSettingsChange(() => ctx.canvases().forEach((c) => c.rerenderViewport()));
 		// Re-evaluate visible nodes once with the new rule.
 		for (const canvas of ctx.canvases()) canvas.rerenderViewport();
 		ctx.register(() => ctx.canvases().forEach((c) => c.rerenderViewport()));
@@ -100,6 +121,27 @@ export const variableBreakpointsModule = defineModule({
 		ctx.onNodeMenu((menu) =>
 			menu.addItem((item) => item.setSection("canvas").setTitle(ctx.t("variableBreakpoints.command")).setIcon("eye-off").onClick(open)),
 		);
+	},
+
+	renderSettings(el, ctx: ModuleContext<BreakpointSettings>) {
+		let percent: Setting | null = null;
+		new Setting(el)
+			.setName(ctx.t("variableBreakpoints.mode.name"))
+			.setDesc(ctx.t("variableBreakpoints.mode.desc"))
+			.addDropdown((d) =>
+				d
+					.addOptions({ default: ctx.t("variableBreakpoints.mode.default"), always: ctx.t("variableBreakpoints.mode.always"), custom: ctx.t("variableBreakpoints.mode.custom") })
+					.setValue(ctx.settings.mode)
+					.onChange(async (v) => {
+						await ctx.updateSettings({ mode: v as BreakpointSettings["mode"] });
+						percent?.settingEl.toggle(v === "custom");
+					}),
+			);
+		percent = new Setting(el)
+			.setName(ctx.t("variableBreakpoints.percent.name"))
+			.setDesc(ctx.t("variableBreakpoints.percent.desc"))
+			.addSlider((s) => s.setLimits(1, 100, 1).setValue(ctx.settings.percent).setDynamicTooltip().onChange((v) => ctx.updateSettings({ percent: v })));
+		percent.settingEl.toggle(ctx.settings.mode === "custom");
 	},
 });
 

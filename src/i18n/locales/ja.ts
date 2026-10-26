@@ -153,10 +153,17 @@ export const ja: Record<I18nKey, string> = {
 	"autoResize.button": "テキストに合わせて広げる",
 
 	"variableBreakpoints.name": "可変ブレークポイント",
-	"variableBreakpoints.desc": "カードごとに、どのズームレベルで内容をプレースホルダーに置き換えるかを選びます（CSS 変数 --variable-breakpoint でも指定可能）。",
+	"variableBreakpoints.desc": "縮小したときにカードの内容をプレースホルダーに置き換えるタイミングを選びます：常に表示、全カードに独自のズームレベルを使う、またはカードごとに設定（--variable-breakpoint CSS 変数でも可。例：キャンバスの CSS クラス）。",
 	"variableBreakpoints.command": "内容のズームブレークポイントを設定…",
 	"variableBreakpoints.help": "このズームレベルより小さいと、カードは内容の代わりにプレースホルダーを表示します。0 = 100%、-1 = 50%、-2 = 25%。Obsidian のデフォルトは -1.7。空欄ならデフォルトを使います。",
 	"variableBreakpoints.value": "ズームレベル",
+	"variableBreakpoints.mode.name": "縮小時のカードの内容",
+	"variableBreakpoints.mode.desc": "独自のブレークポイントを持たないカードに適用します。どのズームでも内容を表示すると大きなキャンバスでは遅くなります。非常に大きなキャンバスを大きく縮小したときは、詳細度レンダラー（パフォーマンス）が引き続き代わりに描画します。",
+	"variableBreakpoints.mode.default": "Obsidian の既定（約 30% 未満でプレースホルダー）",
+	"variableBreakpoints.mode.always": "常に内容を表示",
+	"variableBreakpoints.mode.custom": "自分のズームレベル未満でプレースホルダー",
+	"variableBreakpoints.percent.name": "プレースホルダーのズームレベル",
+	"variableBreakpoints.percent.desc": "このズーム（実寸に対する割合）未満ではカードがプレースホルダーになります。低いほど長く文字が見え、フォントを大きくしている場合に便利です。",
 
 
 	"customColors.name": "カスタムカラー",
