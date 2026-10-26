@@ -34,7 +34,7 @@ export const SETTINGS_GROUP_ORDER: readonly SettingsGroup[] = [
 ];
 
 /** Community plugins whose features overlap ours (manifest ids). */
-export type OverlappingPlugin = "advanced-canvas" | "canvas-mindmap";
+export type OverlappingPlugin = "advanced-canvas" | "canvas-mindmap" | "cammvas" | "canvas-kit";
 
 /**
  * A feature module. Everything a module registers goes through its ModuleContext and is

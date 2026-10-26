@@ -20,7 +20,7 @@ export const zh: Record<I18nKey, string> = {
 	"settings.module.requires": "需要：{modules}。",
 	"saveGuard.dropped": "Overpowered Canvas：保存前丢弃了一些无效的插件数据。详情见开发者控制台。",
 	"settings.coexistence.name": "功能重叠提示",
-	"settings.coexistence.desc": "下次启动时再次显示关于功能重叠插件（Advanced Canvas、Canvas Mindmap）的提示。",
+	"settings.coexistence.desc": "下次启动时再次显示关于已启用的、功能有重叠的其他白板插件的提示。",
 	"settings.coexistence.button": "再次显示",
 	"settings.coexistence.reset.done": "下次启动时将显示功能重叠提示。",
 	"settings.search.placeholder": "搜索这些设置…",

@@ -35,7 +35,7 @@ export const mindmapModule = defineModule<MindmapSettings>({
 	group: "mindmap",
 	defaultEnabled: true,
 	defaultSettings: { siblingKey: "Enter", direction: "right", mirrorRtl: true },
-	overlapsWith: ["canvas-mindmap"],
+	overlapsWith: ["canvas-mindmap", "cammvas"],
 
 	enable(ctx) {
 		const dirFor = (canvas: CanvasLike, dir: Dir) => (ctx.settings.mirrorRtl ? logical(dir, canvasDirection(canvas) === "rtl") : dir);

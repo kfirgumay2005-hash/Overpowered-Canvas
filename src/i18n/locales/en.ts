@@ -22,7 +22,7 @@ export const en = {
 	"settings.module.requires": "Requires: {modules}.",
 	"saveGuard.dropped": "Overpowered Canvas: some invalid plugin data was dropped before saving. See the developer console.",
 	"settings.coexistence.name": "Overlap notice",
-	"settings.coexistence.desc": "Show the notice about overlapping plugins (Advanced Canvas, Canvas Mindmap) again on next start.",
+	"settings.coexistence.desc": "Show the notice about other enabled canvas plugins that do some of the same things again on next start.",
 	"settings.coexistence.button": "Show again",
 	"settings.coexistence.reset.done": "The overlap notice will be shown on next start.",
 	"settings.search.placeholder": "Search these settings…",

@@ -20,7 +20,7 @@ export const ja: Record<I18nKey, string> = {
 	"settings.module.requires": "必要：{modules}。",
 	"saveGuard.dropped": "Overpowered Canvas：保存前に無効なプラグインデータの一部を破棄しました。詳しくは開発者コンソールを確認してください。",
 	"settings.coexistence.name": "機能重複の通知",
-	"settings.coexistence.desc": "機能が重複するプラグイン（Advanced Canvas、Canvas Mindmap）についての通知を、次回起動時に再表示します。",
+	"settings.coexistence.desc": "機能が重なる、有効な他のキャンバスプラグインについての通知を、次回起動時にもう一度表示します。",
 	"settings.coexistence.button": "再表示",
 	"settings.coexistence.reset.done": "次回起動時に機能重複の通知を表示します。",
 	"settings.search.placeholder": "この設定を検索…",

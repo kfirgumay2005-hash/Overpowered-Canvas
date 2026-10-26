@@ -160,6 +160,7 @@ export const lassoModule = defineModule({
 	group: "interaction",
 	defaultEnabled: true,
 	defaultSettings: {},
+	overlapsWith: ["canvas-kit"],
 
 	enable(ctx) {
 		const sessions = new Map<CanvasLike, LassoSession>();

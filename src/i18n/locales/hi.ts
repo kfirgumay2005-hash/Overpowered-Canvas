@@ -20,7 +20,7 @@ export const hi: Record<I18nKey, string> = {
 	"settings.module.requires": "आवश्यक: {modules}।",
 	"saveGuard.dropped": "Overpowered Canvas: सहेजने से पहले कुछ अमान्य प्लगइन डेटा हटा दिया गया। विवरण डेवलपर कंसोल में देखें।",
 	"settings.coexistence.name": "ओवरलैप सूचना",
-	"settings.coexistence.desc": "मिलती-जुलती सुविधाओं वाले प्लगइन (Advanced Canvas, Canvas Mindmap) के बारे में सूचना अगली बार शुरू होने पर फिर दिखाएँ।",
+	"settings.coexistence.desc": "अगली बार शुरू होने पर उन अन्य सक्षम कैनवास प्लगइन के बारे में सूचना फिर से दिखाएँ जो कुछ एक जैसे काम करते हैं।",
 	"settings.coexistence.button": "फिर से दिखाएँ",
 	"settings.coexistence.reset.done": "ओवरलैप सूचना अगली बार शुरू होने पर दिखाई जाएगी।",
 	"settings.search.placeholder": "इन सेटिंग्स में खोजें…",
