@@ -28,6 +28,8 @@ export interface WriteOptions {
 	indent: string;
 	/** Write the hidden `%%n:id%%` comments. */
 	ids: boolean;
+	/** Write no hidden comment at all, not even the free-cards mark. */
+	clean?: boolean;
 }
 
 const BULLET = /^([ \t]*)([-+*]|\d{1,9}[.)])(?:[ \t](.*))?$/;
@@ -213,6 +215,7 @@ export function parseOutline(md: string): OutlineItem[] {
 export function writeOutline(items: OutlineItem[], opts: WriteOptions): string {
 	const out: string[] = [];
 	const marker = (item: OutlineItem) => {
+		if (opts.clean) return "";
 		if (item.kind === "free") return " %%free%%";
 		if (!opts.ids || !item.id) return "";
 		return ` %%${item.kind === "group" ? "g" : "n"}:${item.id}%%`;

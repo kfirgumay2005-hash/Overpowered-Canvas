@@ -9,8 +9,10 @@ import { disposeElk, getElk } from "../auto-layout/engine";
 import { descendants } from "../mindmap/tree";
 import { canvasDirection, mutate, nodeType, randomId, selectedNodes } from "../shared";
 import { applyNote, type ApplyOptions, type ApplyResult } from "./apply";
-import { exportNote, rootMapLayouts, splitNote } from "./note";
+import { matchOutline } from "./match";
+import { exportClean, exportNote, rootMapLayouts, splitNote, type SplitNote } from "./note";
 import { countItems, isOutline, stripFrontmatter, writeOutline } from "./outline";
+import { DataStore } from "./store";
 import { buildStructure } from "./structure";
 import { TUTORIAL_KEY } from "../../tutorials/runner";
 
@@ -20,9 +22,15 @@ interface CanvasMarkdownSettings {
 	pasteOutlines: boolean;
 	/** Where the switch button shows in the view header. */
 	button: "all" | "canvas" | "off";
+	/** Where a note's canvas data is kept: a separate file (clean note) or inside the note. */
+	storage: "file" | "note";
+	/** Vault folder of the separate data files. */
+	dataFolder: string;
 }
 
 const BUTTONS: CanvasMarkdownSettings["button"][] = ["all", "canvas", "off"];
+const STORAGES: CanvasMarkdownSettings["storage"][] = ["file", "note"];
+const DATA_FOLDER = "Overpowered Canvas data";
 /** Class of the header switch button (tutorials point at it). */
 export const SWITCH_BUTTON_CLASS = "opc-markdown-switch";
 
@@ -106,7 +114,7 @@ export const canvasMarkdownModule = defineModule<CanvasMarkdownSettings>({
 	description: "canvasMarkdown.desc",
 	group: "data",
 	defaultEnabled: true,
-	defaultSettings: { indent: "tab", layout: "right", pasteOutlines: true, button: "all" },
+	defaultSettings: { indent: "tab", layout: "right", pasteOutlines: true, button: "all", storage: "file", dataFolder: DATA_FOLDER },
 	sanitizeSettings: (raw, defaults) => {
 		const s = mergeWithDefaults(raw, defaults);
 		return {
@@ -114,6 +122,8 @@ export const canvasMarkdownModule = defineModule<CanvasMarkdownSettings>({
 			layout: (MAP_LAYOUTS as readonly string[]).includes(s.layout) ? s.layout : defaults.layout,
 			pasteOutlines: typeof s.pasteOutlines === "boolean" ? s.pasteOutlines : defaults.pasteOutlines,
 			button: BUTTONS.includes(s.button) ? s.button : defaults.button,
+			storage: STORAGES.includes(s.storage) ? s.storage : defaults.storage,
+			dataFolder: typeof s.dataFolder === "string" && s.dataFolder.trim() ? normalizePath(s.dataFolder.trim()) : defaults.dataFolder,
 		};
 	},
 
@@ -121,6 +131,7 @@ export const canvasMarkdownModule = defineModule<CanvasMarkdownSettings>({
 		const app = ctx.app;
 		ctx.register(disposeElk);
 		const t = ctx.t;
+		const store = new DataStore(app, () => ctx.settings.dataFolder);
 		const indent = () => INDENTS[ctx.settings.indent];
 		const rtlOf = (canvas: CanvasLike | null) => (canvas ? canvasDirection(canvas) === "rtl" : getComputedStyle(activeDocument.body).direction === "rtl");
 
@@ -281,13 +292,7 @@ export const canvasMarkdownModule = defineModule<CanvasMarkdownSettings>({
 					previous = null;
 				}
 			}
-			const md = exportNote(data, {
-				canvasPath: file.path,
-				rtl: rtlOf(openCanvasFor(file)),
-				freeLabel: t("canvasMarkdown.freeNodes"),
-				indent: indent(),
-				frontmatter: previous !== null ? stripFrontmatter(previous).frontmatter : "",
-			});
+			const md = await noteText(data, file, path, previous !== null ? stripFrontmatter(previous).frontmatter : "");
 			let note: TFile;
 			if (existing instanceof TFile) {
 				await app.vault.modify(existing, md);
@@ -300,7 +305,7 @@ export const canvasMarkdownModule = defineModule<CanvasMarkdownSettings>({
 
 		/** Creates or updates the canvas a note describes; resolves to the canvas file. */
 		const applyNoteFile = async (note: TFile, leaf: WorkspaceLeaf | null = null): Promise<TFile | null> => {
-			const split = splitNote(await readNote(note));
+			const split = await loadNote(note);
 			if (split.dataError) new Notice(t("canvasMarkdown.dataBroken"), 10_000);
 			if (!countItems(split.items, "node") && !split.data) {
 				new Notice(t("canvasMarkdown.noItems"));
@@ -381,18 +386,52 @@ export const canvasMarkdownModule = defineModule<CanvasMarkdownSettings>({
 			return file;
 		};
 
-		/** Rewrites a linked note from its canvas (ids for new lines, fresh layout data); front matter stays. */
+		/**
+		 * The note text for a canvas. A clean note's data goes to its separate file; a note that
+		 * keeps its data inside loses any separate file it had.
+		 */
+		const noteText = async (data: CanvasFileData, canvasFile: TFile, notePath: string, frontmatter: string): Promise<string> => {
+			const opts = { canvasPath: canvasFile.path, rtl: rtlOf(openCanvasFor(canvasFile)), freeLabel: t("canvasMarkdown.freeNodes"), indent: indent(), frontmatter };
+			if (ctx.settings.storage === "file") {
+				const clean = exportClean(data, { ...opts, notePath });
+				await store.save(notePath, clean.data);
+				return clean.md;
+			}
+			await store.remove(notePath);
+			return exportNote(data, opts);
+		};
+
+		/** A note's outline and canvas data: from the note itself, else from its separate file. */
+		const loadNote = async (note: TFile): Promise<SplitNote> => {
+			const split = splitNote(await readNote(note));
+			if (split.data || split.dataError) return split;
+			const data = await store.load(note.path);
+			if (!data) return split;
+			// A clean note has no ids: find each line's card from the outline last written.
+			matchOutline(split.items, data.outline ?? []);
+			return { ...split, data };
+		};
+
+		/** Rewrites a linked note from its canvas (new cards known, fresh layout data); front matter stays. */
 		const syncNote = async (note: TFile, canvasFile: TFile, data: CanvasFileData) => {
 			const previous = await readNote(note);
-			const md = exportNote(data, {
-				canvasPath: canvasFile.path,
-				rtl: rtlOf(openCanvasFor(canvasFile)),
-				freeLabel: t("canvasMarkdown.freeNodes"),
-				indent: indent(),
-				frontmatter: stripFrontmatter(previous).frontmatter,
-			});
+			const md = await noteText(data, canvasFile, note.path, stripFrontmatter(previous).frontmatter);
 			if (md !== previous) await app.vault.modify(note, md);
 		};
+
+		// Separate data files follow their notes and canvases.
+		ctx.registerEvent(
+			app.vault.on("rename", (file, oldPath) => {
+				if (!(file instanceof TFile)) return;
+				if (file.extension === "md") void store.noteRenamed(oldPath, file.path).catch(fail);
+				else if (file.extension === "canvas") void store.canvasRenamed(oldPath, file.path).catch(fail);
+			}),
+		);
+		ctx.registerEvent(
+			app.vault.on("delete", (file) => {
+				if (file instanceof TFile && file.extension === "md") void store.remove(file.path).catch(fail);
+			}),
+		);
 
 		/** The canvas of a file once its view has loaded (null after 3 s). */
 		const waitForCanvas = async (file: TFile): Promise<CanvasLike | null> => {
@@ -413,8 +452,11 @@ export const canvasMarkdownModule = defineModule<CanvasMarkdownSettings>({
 			if (file) void (leaf ?? app.workspace.getLeaf(false)).openFile(file);
 		};
 
-		/** The note mirroring a canvas: the sibling note if it is linked to this canvas. */
+		/** The note mirroring a canvas: the one its separate data names, else the sibling note if it is linked to it. */
 		const noteOf = async (canvasFile: TFile): Promise<TFile | null> => {
+			const clean = await store.noteFor(canvasFile.path);
+			const cleanFile = clean ? app.vault.getAbstractFileByPath(clean) : null;
+			if (cleanFile instanceof TFile) return cleanFile;
 			const note = app.vault.getAbstractFileByPath(siblingPath(canvasFile, "md"));
 			if (note instanceof TFile && splitNote(await readNote(note)).data?.canvas === canvasFile.path) return note;
 			const other = app.vault.getMarkdownFiles().find((f) => f.basename.startsWith(`${canvasFile.basename} (`) && f.parent === canvasFile.parent);
@@ -612,6 +654,24 @@ export const canvasMarkdownModule = defineModule<CanvasMarkdownSettings>({
 					.addOptions({ all: ctx.t("canvasMarkdown.button.all"), canvas: ctx.t("canvasMarkdown.button.canvas"), off: ctx.t("canvasMarkdown.button.off") })
 					.setValue(ctx.settings.button)
 					.onChange((v) => ctx.updateSettings({ button: v as CanvasMarkdownSettings["button"] })),
+			);
+		new Setting(el)
+			.setName(ctx.t("canvasMarkdown.storage.name"))
+			.setDesc(ctx.t("canvasMarkdown.storage.desc"))
+			.addDropdown((d) =>
+				d
+					.addOptions({ file: ctx.t("canvasMarkdown.storage.file"), note: ctx.t("canvasMarkdown.storage.note") })
+					.setValue(ctx.settings.storage)
+					.onChange((v) => ctx.updateSettings({ storage: v as CanvasMarkdownSettings["storage"] })),
+			);
+		new Setting(el)
+			.setName(ctx.t("canvasMarkdown.folder.name"))
+			.setDesc(ctx.t("canvasMarkdown.folder.desc"))
+			.addText((tx) =>
+				tx
+					.setPlaceholder(DATA_FOLDER)
+					.setValue(ctx.settings.dataFolder)
+					.onChange((v) => ctx.updateSettings({ dataFolder: v.trim() ? normalizePath(v.trim()) : DATA_FOLDER })),
 			);
 	},
 });

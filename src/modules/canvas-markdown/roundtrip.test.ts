@@ -4,8 +4,9 @@ import fixture from "../../../test-fixtures/adpkd-outline.md?raw";
 import type { CanvasFileData, CanvasNodeData } from "../../data/json-canvas";
 import type { ElkLike } from "../auto-layout/layout";
 import { applyNote, type ApplyOptions } from "./apply";
-import { exportNote, splitNote } from "./note";
-import { writeOutline, type OutlineItem } from "./outline";
+import { matchOutline, similarity } from "./match";
+import { exportClean, exportNote, formatData, readData, splitNote, type NoteData } from "./note";
+import { parseOutline, writeOutline, type OutlineItem } from "./outline";
 import { buildStructure } from "./structure";
 
 const elk = new ELK() as unknown as ElkLike;
@@ -305,5 +306,119 @@ describe("phase 3: canvas → note → canvas", () => {
 		const stripped = splitNote(md.slice(0, md.indexOf("%%\n## canvas-data")));
 		expect(stripped.data).toBeNull();
 		expect(stripped.dataError).toBe(false);
+	});
+});
+
+describe("clean notes: data in a separate file, lines matched back to cards", () => {
+	const cleanOpts = { ...exportOpts, notePath: "Maps/ADPKD.md" };
+	/** The data as it comes back from its file. */
+	const stored = (data: NoteData) => readData(JSON.parse(formatData(data)))!;
+	const applyClean = (md: string, data: NoteData, base: CanvasFileData | null) => {
+		const { items } = splitNote(md);
+		const note = stored(data);
+		matchOutline(items, note.outline ?? []);
+		return applyNote(items, note, base, elk, options());
+	};
+
+	it("writes the outline with no marks at all", () => {
+		const { md, data } = exportClean(sampleCanvas(), cleanOpts);
+		expect(md).not.toContain("%%");
+		expect(md.startsWith("# Section A\n- loose in group\n")).toBe(true);
+		expect(md).toContain("- Gen\n  second line\n\n  \\- not a child\n");
+		expect(data).toMatchObject({ note: "Maps/ADPKD.md", canvas: "Maps/ADPKD.canvas" });
+		expect(stored(data).outline).toEqual(data.outline);
+	});
+
+	it("an untouched note rebuilds the canvas exactly, and export is stable", async () => {
+		const canvas = sampleCanvas();
+		const { md, data } = exportClean(canvas, cleanOpts);
+		const fromCanvas = await applyClean(md, data, canvas);
+		expect(canon(fromCanvas.data)).toEqual(canon(canvas));
+		expect(fromCanvas).toMatchObject({ added: 0, removed: 0, updated: 0 });
+		const fromData = await applyClean(md, data, null);
+		expect(canon(fromData.data)).toEqual(canon(canvas));
+		expect(exportClean(fromData.data, cleanOpts).md).toBe(md);
+	});
+
+	it("the ADPKD outline keeps every card through a clean round trip", async () => {
+		const built = await applyNote(splitNote(fixture).items, null, null, elk, options());
+		const { md, data } = exportClean(built.data, cleanOpts);
+		const again = await applyClean(md, data, built.data);
+		expect(again).toMatchObject({ added: 0, removed: 0, updated: 0 });
+	});
+
+	it("applies edits: changed text, new, deleted, moved and reordered lines", async () => {
+		const canvas = sampleCanvas();
+		const { md, data } = exportClean(canvas, cleanOpts);
+		const edited = md
+			.replace("Terapia ^mark-1", "Terapia aggiornata ^mark-1")
+			.replace("    - שלום — right-to-left\n", "    - שלום — right-to-left\n    - Nuova terapia 2026\n")
+			.replace("    - ![[docs/pic.png#x]]\n", "")
+			.replace("    - a free idea\n", "- a free idea\n");
+		const result = await applyClean(edited, data, canvas);
+		expect(result).toMatchObject({ added: 1, removed: 1, updated: 1 });
+		const nodes = new Map(result.data.nodes!.map((n) => [n.id, n]));
+		expect(nodes.has("file0001")).toBe(false);
+		expect(nodes.get("kid00002")).toMatchObject({ text: "[[Nefro.pdf#page=4|p.4]] Terapia aggiornata ^mark-1", color: "#ffd43b", x: 300, y: 300 });
+		expect(nodes.get("free0001")).toMatchObject({ text: "a free idea", x: 0, y: 1300 });
+		const e = result.data.edges!.find((x) => x.toNode === "free0001" || x.fromNode === "free0001")!;
+		expect([e.fromNode, e.toNode]).toContain("map20001");
+	});
+
+	it("keeps groups as groups and handles duplicate lines by position", async () => {
+		const canvas: CanvasFileData = {
+			nodes: [
+				{ id: "grp1", type: "group", label: "Week", x: -50, y: -50, width: 900, height: 500 },
+				text("r1", "Plan", 0, 0),
+				text("a1", "Notes", 300, 0),
+				text("a2", "Notes", 300, 100),
+				text("a3", "Notes", 300, 200),
+			],
+			edges: ["a1", "a2", "a3"].map((id, i) => ({ id: `e${i}`, fromNode: "r1", fromSide: "right", toNode: id, toSide: "left" })),
+		};
+		const { md, data } = exportClean(canvas, cleanOpts);
+		const edited = md.replace("# Week", "# Next week").replace(/(- Notes\n)$/, "- Notes changed\n");
+		const result = await applyClean(edited, data, canvas);
+		expect(result).toMatchObject({ added: 0, removed: 0, updated: 2 });
+		const nodes = new Map(result.data.nodes!.map((n) => [n.id, n]));
+		expect(nodes.get("grp1")).toMatchObject({ type: "group", label: "Next week" });
+		expect(nodes.get("a3")!.text).toBe("Notes changed");
+		expect(nodes.get("a1")!.text).toBe("Notes");
+	});
+});
+
+describe("matchOutline", () => {
+	const ids = (items: OutlineItem[]): (string | undefined)[] => items.flatMap((i) => [i.id, ...ids(i.children)]);
+	const prev = parseOutline("# Root %%n:r%%\n- A %%n:a%%\n\t- A1 %%n:a1%%\n- B %%n:b%%\n- C %%n:c%%\n");
+
+	it("pairs a lone edited line with the line it replaced", () => {
+		const items = parseOutline("# Root\n- A\n\t- A1\n- Bee, renamed\n- C\n");
+		matchOutline(items, prev);
+		expect(ids(items)).toEqual(["r", "a", "a1", "b", "c"]);
+	});
+
+	it("leaves added lines without an id and follows reordering", () => {
+		const items = parseOutline("# Root\n- C\n- New one\n- A\n\t- A1\n");
+		matchOutline(items, prev);
+		expect(ids(items)).toEqual(["r", "c", undefined, "a", "a1"]);
+	});
+
+	it("finds a line moved under another parent", () => {
+		const items = parseOutline("# Root\n- A\n- B\n\t- A1\n- C\n");
+		matchOutline(items, prev);
+		expect(ids(items)).toEqual(["r", "a", "b", "a1", "c"]);
+	});
+
+	it("does not pair unrelated lines when several were replaced", () => {
+		const items = parseOutline("# Root\n- A\n\t- A1\n- Xylophone\n- Quartz\n");
+		matchOutline(items, prev);
+		expect(ids(items)).toEqual(["r", "a", "a1", undefined, undefined]);
+	});
+
+	it("keeps ids already written in the note", () => {
+		const items = parseOutline("# Root\n- C %%n:a%%\n");
+		matchOutline(items, prev);
+		expect(ids(items)).toEqual(["r", "a"]);
+		expect(similarity("abc", "abc")).toBe(1);
 	});
 });

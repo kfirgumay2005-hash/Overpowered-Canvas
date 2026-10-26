@@ -333,7 +333,7 @@ export const zh: Record<I18nKey, string> = {
 	"encapsulate.failed": "无法创建新画布。",
 
 	"canvasMarkdown.name": "白板 ⇄ Markdown",
-	"canvasMarkdown.desc": "将思维导图复制为 Markdown 大纲，把大纲和笔记变成思维导图，并在整个白板与 Markdown 笔记之间来回切换（位置、样式和手绘内容保存在隐藏的数据区）。",
+	"canvasMarkdown.desc": "将思维导图复制为 Markdown 大纲，把大纲和笔记变成思维导图，并在整个白板与 Markdown 笔记之间来回切换（位置、样式和手绘内容保存在单独的数据文件中，笔记保持整洁）。",
 	"canvasMarkdown.simple": "同一内容既可以看作白板，也可以看作普通笔记。编辑笔记（手动或借助助手）后再转回白板：卡片保持原来的位置和外观，新增的行变成新卡片。",
 	"canvasMarkdown.cmd.copy": "复制为 Markdown 大纲",
 	"canvasMarkdown.cmd.paste": "将 Markdown 大纲粘贴为思维导图",
@@ -381,6 +381,13 @@ export const zh: Record<I18nKey, string> = {
 	"canvasMarkdown.button.all": "笔记和白板",
 	"canvasMarkdown.button.canvas": "仅白板",
 	"canvasMarkdown.button.off": "隐藏",
+	"canvasMarkdown.storage.name": "白板数据保存位置",
+	"canvasMarkdown.storage.desc": "切换为笔记的白板的位置、样式和手绘内容。保存在单独文件中时，笔记只显示你的文字；保存在笔记内时，每行带一个隐藏的小标识，数据位于笔记末尾的隐藏部分。",
+	"canvasMarkdown.storage.simple": "想要整洁的笔记就保持默认。笔记会在下次写入时改为所选方式。",
+	"canvasMarkdown.storage.file": "单独文件（整洁笔记）",
+	"canvasMarkdown.storage.note": "笔记内",
+	"canvasMarkdown.folder.name": "数据文件夹",
+	"canvasMarkdown.folder.desc": "存放单独数据文件的库文件夹。笔记重命名或删除时，数据文件会随之更新。",
 
 	"pdfAnnotation.name": "PDF 批注",
 	"pdfAnnotation.desc": "将 PDF 卡片固定到某一页（以锁定宽高比的页面显示），并可将整个 PDF 按每页一张固定卡片插入，以便在周围批注。",

@@ -1062,12 +1062,15 @@ const noteTab = (rt: TutorialRuntime) => {
 	return leaf ? { leaf, view: leaf.view as unknown as NoteTab } : null;
 };
 
-/** The note's outline has a bullet without a hidden id: a line the user added. */
-function hasNewBullet(text: string): boolean {
+/** Bullets with text in the note's outline. */
+function bulletCount(text: string): number {
 	const end = text.indexOf("\n%%\n## canvas-data");
 	const outline = end >= 0 ? text.slice(0, end) : text;
-	return outline.split("\n").some((l) => /^\s*(?:[-+*]|\d{1,9}[.)])\s+\S/.test(l) && !l.includes("%%n:"));
+	return outline.split("\n").filter((l) => /^\s*(?:[-+*]|\d{1,9}[.)])\s+\S/.test(l)).length;
 }
+
+/** Bullets in the note when the editing step began (the user is to add one). */
+let bulletsBefore = Infinity;
 
 /** Clicks a header switch button, or runs the command when the buttons are hidden. */
 async function pressSwitch(rt: TutorialRuntime, button: HTMLElement | null | undefined, inNote: boolean): Promise<void> {
@@ -1188,7 +1191,17 @@ const markdown: TutorialDefinition = {
 			title: "tut.markdown.s5.title",
 			body: "tut.markdown.s5.body",
 			task: "tut.markdown.s5.task",
-			check: (rt) => hasNewBullet(noteTab(rt)?.view.editor?.getValue() ?? ""),
+			enter: (rt) => {
+				const text = noteTab(rt)?.view.editor?.getValue();
+				bulletsBefore = text === undefined ? Infinity : bulletCount(text);
+			},
+			check: (rt) => {
+				const text = noteTab(rt)?.view.editor?.getValue();
+				if (text === undefined) return false;
+				// The note may have opened only now (a step skipped back and forth).
+				if (bulletsBefore === Infinity) bulletsBefore = bulletCount(text);
+				return bulletCount(text) > bulletsBefore;
+			},
 			demo: async (rt) => {
 				if (!noteTab(rt)) await pressSwitch(rt, canvasSwitch(rt), false);
 				const editor = noteTab(rt)?.view.editor;
