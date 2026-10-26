@@ -144,7 +144,7 @@ export function enableAnchors(ctx: Ctx): void {
 			getSelectionData: (next) =>
 				function (this: CanvasLike, selection?: Set<CanvasItemLike>) {
 					const items = selection ?? this.selection;
-					const extra = [...items].flatMap((i) => ("nodeEl" in i && byCard.has(i.id) ? carriersOf(i as CanvasNodeLike) : [])).filter((c) => !items.has(c));
+					const extra = [...items].flatMap((i) => ("nodeEl" in i && byCard.has(i.id) ? carriersOf(i) : [])).filter((c) => !items.has(c));
 					return next.call(this, extra.length ? new Set([...items, ...extra]) : selection);
 				},
 		});
@@ -165,7 +165,7 @@ export function enableAnchors(ctx: Ctx): void {
 
 	/** Moves the strokes of free ink drawn over cards into ink stuck to those cards. */
 	const attach = (canvas: CanvasLike) => {
-		const chosen = [...canvas.selection].filter((i): i is CanvasNodeLike => "nodeEl" in i && isInk(ctx, i as CanvasNodeLike));
+		const chosen = [...canvas.selection].filter((i): i is CanvasNodeLike => "nodeEl" in i && isInk(ctx, i));
 		const carriers = (chosen.length ? chosen : [...canvas.nodes.values()].filter((n) => isInk(ctx, n))).filter((c) => !anchorOf(ctx, c));
 		const cards = stickyTargets(ctx, canvas);
 		let count = 0;
@@ -205,7 +205,7 @@ export function enableAnchors(ctx: Ctx): void {
 		return count;
 	};
 	const detach = (canvas: CanvasLike) => {
-		const chosen = [...canvas.selection].filter((i): i is CanvasNodeLike => "nodeEl" in i && isInk(ctx, i as CanvasNodeLike));
+		const chosen = [...canvas.selection].filter((i): i is CanvasNodeLike => "nodeEl" in i && isInk(ctx, i));
 		const carriers = (chosen.length ? chosen : [...canvas.nodes.values()].filter((n) => isInk(ctx, n))).filter((c) => anchorOf(ctx, c));
 		mutate(ctx, canvas, () => {
 			for (const c of carriers) ctx.data.node(c).set({ anchor: undefined });

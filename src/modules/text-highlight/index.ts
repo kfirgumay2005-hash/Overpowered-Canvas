@@ -104,35 +104,43 @@ class HighlightSession {
 
 	/** The text card under a screen point (not one being edited). */
 	private cardAt(x: number, y: number): CanvasNodeLike | null {
-		this.overlay.style.pointerEvents = "none";
-		const el = this.canvas.wrapperEl.doc.elementFromPoint(x, y);
-		this.overlay.style.pointerEvents = "";
+		const el = this.probe(() => this.canvas.wrapperEl.doc.elementFromPoint(x, y));
 		const nodeEl = el?.closest(".canvas-node");
 		if (!nodeEl) return null;
 		for (const n of this.canvas.nodes.values()) if (n.nodeEl === nodeEl) return nodeType(n) === "text" && isTextBox(this.ctx, n) && !n.isEditing && !this.ctx.data.node(n).get().locked ? n : null;
 		return null;
 	}
 
+	/** Hit-tests under the overlay. */
+	private probe<T>(fn: () => T): T {
+		this.overlay.addClass("is-probing");
+		try {
+			return fn();
+		} finally {
+			this.overlay.removeClass("is-probing");
+		}
+	}
+
 	/** Makes a card's rendered text hit-testable for the gesture (the core covers and locks it). */
 	private open(node: CanvasNodeLike): () => void {
-		const blocker = node.nodeEl.querySelector<HTMLElement>(".canvas-node-content-blocker");
-		const els = node.contentEl ? [node.contentEl, ...node.contentEl.querySelectorAll<HTMLElement>("*")] : [];
-		blocker?.setCssStyles({ display: "none" });
-		for (const e of els) e.style.userSelect = "text";
-		return () => {
-			blocker?.setCssStyles({ display: "" });
-			for (const e of els) e.style.userSelect = "";
-		};
+		node.nodeEl.addClass("opc-hl-open");
+		return () => node.nodeEl.removeClass("opc-hl-open");
 	}
 
 	private caretAt(node: CanvasNodeLike, x: number, y: number): Caret | null {
-		const doc = this.canvas.wrapperEl.doc as Document & { caretRangeFromPoint?(x: number, y: number): Range | null };
-		this.overlay.style.pointerEvents = "none";
-		const r = doc.caretRangeFromPoint?.(x, y) ?? null;
-		this.overlay.style.pointerEvents = "";
+		const doc = this.canvas.wrapperEl.doc;
+		const caret = this.probe((): Caret | null => {
+			if (typeof doc.caretPositionFromPoint === "function") {
+				const p = doc.caretPositionFromPoint(x, y);
+				return p ? { node: p.offsetNode, offset: p.offset } : null;
+			}
+			// Older WebKit (tablets) only has the earlier, non-standard call.
+			const legacy = doc as unknown as { caretRangeFromPoint?(x: number, y: number): Range | null };
+			const r = legacy.caretRangeFromPoint?.(x, y);
+			return r ? { node: r.startContainer, offset: r.startOffset } : null;
+		});
 		const root = this.root(node);
-		if (!r || !root || !root.contains(r.startContainer)) return null;
-		return { node: r.startContainer, offset: r.startOffset };
+		return caret && root?.contains(caret.node) ? caret : null;
 	}
 
 	private root(node: CanvasNodeLike): HTMLElement | null {

@@ -52,3 +52,15 @@ body.opc-mod-text-highlight .opc-card-text-highlight.is-active {
 	color: var(--text-on-accent);
 	background-color: var(--interactive-accent);
 }
+body.opc-mod-text-highlight .opc-hl-overlay.is-probing {
+	pointer-events: none;
+}
+/* The card being highlighted: its text can be hit-tested (the core covers and locks it). */
+body.opc-mod-text-highlight .canvas-node.opc-hl-open .canvas-node-content-blocker {
+	display: none;
+}
+body.opc-mod-text-highlight .canvas-node.opc-hl-open .canvas-node-content,
+body.opc-mod-text-highlight .canvas-node.opc-hl-open .canvas-node-content * {
+	user-select: text;
+	-webkit-user-select: text;
+}

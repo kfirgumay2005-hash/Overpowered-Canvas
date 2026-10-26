@@ -1,7 +1,7 @@
 import { MarkdownView, Notice, Setting, setIcon, setTooltip } from "obsidian";
 import { defineModule, type ModuleContext } from "../../core/module";
 import type { EdgeSide } from "../../data/json-canvas";
-import type { CanvasLike, CanvasNodeLike, CanvasViewLike } from "../../internals/types";
+import type { CanvasLike, CanvasNodeLike, CanvasViewLike, SelectionDragLike } from "../../internals/types";
 import { mergeWithDefaults } from "../../settings/settings";
 import { getElk } from "../auto-layout/engine";
 import { layoutMap } from "../canvas-markdown/apply";
@@ -527,6 +527,66 @@ export const noteBlocksModule = defineModule<NoteBlocksSettings>({
 			ctx.events.emit("card-relinked", canvas, root);
 		};
 
+		/** The core's handlers for moving the selection, with child / sibling targets on the way. */
+		const withTargets = (canvas: CanvasLike, drag: SelectionDragLike | undefined): SelectionDragLike | undefined => {
+			if (!drag || !ctx.settings.moveZones || canvas.readonly) return drag;
+			const moving = movedBranch(canvas);
+			if (!moving) return drag;
+			let zones: HTMLElement | null = null;
+			let zoneNode: CanvasNodeLike | null = null;
+			let hot: { kind: Zone; node: CanvasNodeLike } | null = null;
+			// The core cleans up before it ends the gesture: the target stays known until then.
+			const clear = () => {
+				zones?.remove();
+				zones = null;
+				zoneNode = null;
+			};
+			// The moved card is under the pointer: targets are found by their boxes.
+			const zoneAt = (x: number, y: number): Zone | null => {
+				for (const z of zones ? [...zones.children] : []) {
+					const r = z.getBoundingClientRect();
+					if (x >= r.left - 4 && x <= r.right + 4 && y >= r.top - 4 && y <= r.bottom + 4) return (z as HTMLElement).dataset.zone as Zone;
+				}
+				return null;
+			};
+			return {
+				...drag,
+				move: (e: PointerEvent) => {
+					drag.move?.(e);
+					const kind = zoneAt(e.clientX, e.clientY);
+					hot = kind && zoneNode ? { kind, node: zoneNode } : null;
+					zones?.querySelectorAll(".opc-note-blocks-zone").forEach((z) => z.toggleClass("is-hot", (z as HTMLElement).dataset.zone === kind));
+					if (kind) return;
+					const card = cardAt(canvas, canvas.posFromEvt(e), moving.branch);
+					if (card === zoneNode || (!card && nearZones(zones, zoneNode, e.clientX, e.clientY))) return;
+					clear();
+					if (card) {
+						zoneNode = card;
+						zones = renderZones(canvas, card);
+						zones.addClass("is-moving");
+					}
+				},
+				end: (e: PointerEvent) => {
+					const target = hot;
+					hot = null;
+					clear();
+					if (!target) return drag.end?.(e);
+					// The card goes where the link puts it: the drag itself is not a step of its own.
+					drag.cancel?.();
+					relink(canvas, moving.root, moving.branch, target);
+				},
+				cancel: () => {
+					hot = null;
+					clear();
+					drag.cancel?.();
+				},
+				cleanup: () => {
+					clear();
+					drag.cleanup?.();
+				},
+			};
+		};
+
 		const patchedDrag = new WeakSet<object>();
 		ctx.onCanvas((canvas) => {
 			const proto = Object.getPrototypeOf(canvas) as CanvasLike;
@@ -535,64 +595,7 @@ export const noteBlocksModule = defineModule<NoteBlocksSettings>({
 			ctx.patch("canvas.handleSelectionDrag", proto as CanvasLike & Required<Pick<CanvasLike, "handleSelectionDrag">>, {
 				handleSelectionDrag: (next) =>
 					function (this: CanvasLike, evt: PointerEvent, clickEl: HTMLElement, node?: CanvasNodeLike) {
-						const drag = next.call(this, evt, clickEl, node);
-						const canvas = this;
-						if (!drag || !ctx.settings.moveZones || canvas.readonly) return drag;
-						const moving = movedBranch(canvas);
-						if (!moving) return drag;
-						let zones: HTMLElement | null = null;
-						let zoneNode: CanvasNodeLike | null = null;
-						let hot: { kind: Zone; node: CanvasNodeLike } | null = null;
-						// The core cleans up before it ends the gesture: the target stays known until then.
-						const clear = () => {
-							zones?.remove();
-							zones = null;
-							zoneNode = null;
-						};
-						// The moved card is under the pointer: targets are found by their boxes.
-						const zoneAt = (x: number, y: number): Zone | null => {
-							for (const z of zones ? [...zones.children] : []) {
-								const r = z.getBoundingClientRect();
-								if (x >= r.left - 4 && x <= r.right + 4 && y >= r.top - 4 && y <= r.bottom + 4) return (z as HTMLElement).dataset.zone as Zone;
-							}
-							return null;
-						};
-						return {
-							...drag,
-							move: (e: PointerEvent) => {
-								drag.move?.(e);
-								const kind = zoneAt(e.clientX, e.clientY);
-								hot = kind && zoneNode ? { kind, node: zoneNode } : null;
-								zones?.querySelectorAll(".opc-note-blocks-zone").forEach((z) => z.toggleClass("is-hot", (z as HTMLElement).dataset.zone === kind));
-								if (kind) return;
-								const card = cardAt(canvas, canvas.posFromEvt(e), moving.branch);
-								if (card === zoneNode || (!card && nearZones(zones, zoneNode, e.clientX, e.clientY))) return;
-								clear();
-								if (card) {
-									zoneNode = card;
-									zones = renderZones(canvas, card);
-									zones.addClass("is-moving");
-								}
-							},
-							end: (e: PointerEvent) => {
-								const target = hot;
-								hot = null;
-								clear();
-								if (!target) return drag.end?.(e);
-								// The card goes where the link puts it: the drag itself is not a step of its own.
-								drag.cancel?.();
-								relink(canvas, moving.root, moving.branch, target);
-							},
-							cancel: () => {
-								hot = null;
-								clear();
-								drag.cancel?.();
-							},
-							cleanup: () => {
-								clear();
-								drag.cleanup?.();
-							},
-						};
+						return withTargets(this, next.call(this, evt, clickEl, node));
 					},
 			});
 		});
