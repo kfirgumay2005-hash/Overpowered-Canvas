@@ -404,4 +404,10 @@ export const tutorialsZh: Record<keyof typeof tutorialsEn, string> = {
 	"tut.blocks.s4.task": "开启收件箱模式，然后点击笔记中的 **轻装出行：每人一个包。**",
 	"tut.blocks.s5.title": "小贴士",
 	"tut.blocks.s5.body": "触摸和触控笔也能拖动：按住，然后移动。从正在编辑的卡片中拖出的文字，也会出现子项和同级目标。\n\n设置：数据功能 → 笔记块拖到白板——按住时间、拖动手柄、目标和收件箱分组的名称。",
+	"tut.drawing.mark.title": "卡片上的标记",
+	"tut.drawing.mark.body": "在卡片**内部**给文字画下划线、圈出或高亮：画在卡片上的内容会附着在卡片上。它随卡片移动（手动拖动、自动布局或在导图中换位置），随卡片一起复制、剪切和粘贴，也随卡片一起删除。把标记拖出卡片即可脱离。\n\n以前的笔迹：在命令面板中运行**把笔迹附着到下方的卡片**。可在绘图工具栏的选项中关闭此功能。",
+	"tut.drawing.mark.task": "选择钢笔或荧光笔，给 **把我圈起来！** 里的文字画下划线。",
+	"tut.drawing.s7.title": "标记随卡片移动",
+	"tut.drawing.s7.body": "移动你做过标记的卡片：标记会准确地留在文字上。",
+	"tut.drawing.s7.task": "把 **把我圈起来！** 拖到别处。",
 };

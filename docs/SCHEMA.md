@@ -60,6 +60,7 @@ interface OpcNode {
   autoResize?: boolean;                   // grow in height with the text
   autoWidth?: boolean;                    // grow in width (no wrapping) and height
   autoFit?: boolean;                      // width fits the text up to the auto-resize max width, then wraps; height follows
+  anchor?: string;                        // ink carriers: id of the card the strokes are drawn on (moves / copies / deletes with it)
   locked?: boolean; breakpoint?: number; collapsed?: boolean;
   styles?: Record<string, string>;        // custom style attributes → data-* attributes
   fill?: string; stroke?: string; strokeWidth?: number; opacity?: number; rotation?: number;

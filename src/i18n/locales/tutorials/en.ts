@@ -405,4 +405,10 @@ export const tutorialsEn = {
 	"tut.blocks.s4.task": "Turn on inbox mode and click **Pack light: one bag each.** in the note.",
 	"tut.blocks.s5.title": "Good to know",
 	"tut.blocks.s5.body": "Dragging works with touch and a pen too: hold, then move. Text dragged from a card you are editing also gets the child and sibling targets.\n\nSettings: Data features → Note blocks to canvas — hold time, the drag handle, the targets and the name of the inbox group.",
+	"tut.drawing.mark.title": "Marks on a card",
+	"tut.drawing.mark.body": "Underline, circle or highlight words **inside** a card: what you draw over a card sticks to it. It moves with the card (by hand, auto layout or a new place in a map), is copied, cut and pasted with it, and is deleted with it. Drag the marks off the card and they come loose.\n\nOlder drawings: **Stick drawn marks to the cards under them** in the command palette. Turn it off in the drawing bar's options.",
+	"tut.drawing.mark.task": "Pick the pen or highlighter and underline the words in **Circle me!**",
+	"tut.drawing.s7.title": "Marks travel along",
+	"tut.drawing.s7.body": "Move the card you marked: the marks stay exactly on the words.",
+	"tut.drawing.s7.task": "Drag **Circle me!** somewhere else.",
 } as const;

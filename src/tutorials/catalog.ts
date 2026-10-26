@@ -571,6 +571,18 @@ const drawing: TutorialDefinition = {
 			},
 		},
 		{
+			title: "tut.drawing.mark.title",
+			body: "tut.drawing.mark.body",
+			task: "tut.drawing.mark.task",
+			focus: ["d-target"],
+			check: (rt) => nodesOf(rt.now()).some((n) => kindOf(n) === "ink" && extraOf(n).anchor === "d-target"),
+			demo: (rt) => {
+				const data = ink(randomId(), [{ x: 95, y: 62 }, { x: 170, y: 64 }, { x: 245, y: 61 }]);
+				(data[SCHEMA_KEY] as Record<string, unknown>).anchor = "d-target";
+				rt.add([data]);
+			},
+		},
+		{
 			title: "tut.drawing.s5.title",
 			body: "tut.drawing.s5.body",
 			task: "tut.drawing.s5.task",
@@ -584,6 +596,14 @@ const drawing: TutorialDefinition = {
 			focus: ["d-a", "d-b"],
 			check: (rt) => moved(rt, "d-a") || moved(rt, "d-b"),
 			demo: (rt) => glide(rt, "d-b", 0, 220),
+		},
+		{
+			title: "tut.drawing.s7.title",
+			body: "tut.drawing.s7.body",
+			task: "tut.drawing.s7.task",
+			focus: ["d-target"],
+			check: (rt) => moved(rt, "d-target"),
+			demo: (rt) => glide(rt, "d-target", 260, -40),
 		},
 	],
 };

@@ -200,6 +200,8 @@ export interface OpcNode {
 	autoWidth?: boolean;
 	/** Width fits the text up to a maximum (then lines wrap); height follows. */
 	autoFit?: boolean;
+	/** Ink carriers: the card the strokes were drawn on; the ink moves, copies and deletes with it. */
+	anchor?: string;
 	locked?: boolean;
 	breakpoint?: number;
 	collapsed?: boolean;

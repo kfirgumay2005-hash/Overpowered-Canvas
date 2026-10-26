@@ -6,6 +6,8 @@ import { mergeWithDefaults } from "../../settings/settings";
 import { attachTarget } from "../free-lines/attach";
 import { cornersOf, lineNodeData, shapeNodeData, snapEnds, type P } from "../free-lines/model";
 import { capturePointer, mutate, nodeType, randomId } from "../shared";
+import { anchorOf, enableAnchors, stickyTargets } from "./anchors";
+import { cardUnder } from "./stick";
 import { absolutePoints, CARRIER_TEXT, makeStroke, refit, shiftStroke } from "./carriers";
 import { renderInk } from "./render";
 import { DRAWING_DEFAULTS, INK_DEFAULT, InkToolbar, PEN_TOOLS, type DrawingSettings, type InkTool, type PenTool } from "./toolbar";
@@ -302,14 +304,16 @@ class InkSession {
 		if (points.length === 1) points.push({ ...points[0]!, x: points[0]!.x + 0.1 });
 		const style = { tool, color: s.color, size: this.size(tool), smoothing: s.smoothing };
 		const box = bounds(points, style.size);
+		// Drawn on a card: the stroke sticks to it, in that card's own ink.
+		const anchor = s.stickToCards ? cardUnder(points, stickyTargets(this.ctx, this.canvas)) : null;
 		mutate(this.ctx, this.canvas, () => {
-			const near = this.carriersNear(box, 60);
+			const near = this.carriersNear(box, 60).filter((c) => (anchorOf(this.ctx, c) ?? null) === anchor);
 			const carrier = this.lastCarrier && near.includes(this.lastCarrier) ? this.lastCarrier : near.sort((a, b) => b.zIndex - a.zIndex)[0];
 			const id = randomId(8);
 			if (!carrier) {
 				const origin = { x: box.minX, y: box.minY };
 				const fit = refit([makeStroke(id, points, origin, style)], origin)!;
-				const created = this.canvas.importData({ nodes: [{ id: randomId(), type: "text", text: CARRIER_TEXT, ...fit.box, "x-opc": { kind: "ink", strokes: fit.strokes } }], edges: [] }, false);
+				const created = this.canvas.importData({ nodes: [{ id: randomId(), type: "text", text: CARRIER_TEXT, ...fit.box, "x-opc": { kind: "ink", strokes: fit.strokes, ...(anchor ? { anchor } : {}) } }], edges: [] }, false);
 				this.lastCarrier = created ? [...created][0] ?? null : null;
 			} else {
 				const origin = { x: carrier.x, y: carrier.y };
@@ -551,6 +555,7 @@ export const drawingModule = defineModule<DrawingSettings>({
 				if (node.nodeEl.getAttribute("data-opc-kind") === "ink") renderInk(node, undefined, new Set(), forward(node));
 			},
 		});
+		enableAnchors(ctx);
 		// Ink cards are not text to edit.
 		ctx.intercept("node-start-editing", (node) => (isCarrier(ctx, node) ? true : undefined));
 

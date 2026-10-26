@@ -290,9 +290,10 @@ class LassoSession {
 					const keep = refit(outside, origin);
 					const moved = refit(inside, origin);
 					if (!keep || !moved) continue;
+					const anchor = ctx.data.node(carrier).get().anchor;
 					carrier.moveAndResize(keep.box);
 					ctx.data.node(carrier).set({ strokes: keep.strokes });
-					const created = canvas.importData({ nodes: [{ id: randomId(), type: "text", text: CARRIER_TEXT, ...moved.box, "x-opc": { kind: "ink", strokes: moved.strokes } }], edges: [] }, false);
+					const created = canvas.importData({ nodes: [{ id: randomId(), type: "text", text: CARRIER_TEXT, ...moved.box, "x-opc": { kind: "ink", strokes: moved.strokes, ...(anchor ? { anchor } : {}) } }], edges: [] }, false);
 					for (const n of created ?? []) items.add(n);
 				}
 			});
