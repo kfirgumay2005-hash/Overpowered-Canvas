@@ -88,3 +88,12 @@ Choices made where the spec left room. Newest section first.
 23. **Tutorial**: the note opens in a split beside the practice board (the coach panel lives in
     the board's tab, which must keep its file). Typing in a note doesn't hold the coach back the
     way typing in a card does. The note is deleted with the board, also after a crash.
+24. **Clean notes by default** (asked for after daily use: the `%%n:…%%` ids and the JSON section
+    were noise in editing mode). The data moves to one JSON file per note in a visible vault
+    folder (synced like any file; a dot-folder or the plugin folder would not be), named after
+    the note plus a hash of its path. Without ids, lines are matched to cards against the outline
+    last written (kept in that file): text alignment first, then position-based pairing for
+    edits, then text search for moves. Ids win when a note still has them, so old notes keep
+    working and convert on their next write. Trade-off: a line that is both heavily rewritten
+    and moved at the same time becomes a new card (the old one is deleted) — the in-note format
+    stays available for anyone who needs exact identity.

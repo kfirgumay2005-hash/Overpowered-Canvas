@@ -344,7 +344,7 @@ export const tutorialsEn = {
 	"tut.markdown.s4.body": "The **⇄** button at the top of every canvas turns the whole board into a note next to it and opens it. Here the note opens beside the practice board, so this panel stays visible.",
 	"tut.markdown.s4.task": "Click the **⇄** button at the top of the canvas.",
 	"tut.markdown.s5.title": "Edit it as text",
-	"tut.markdown.s5.body": "Each map is a section headed by its main card. The small %%…%% marks at the end of the lines are hidden ids that tell the board which card a line belongs to, so leave them in place. A new line needs no id. Positions and styles are kept in a hidden section at the end of the note.",
+	"tut.markdown.s5.body": "Each map is a section headed by its main card. The note holds only your text; positions and styles are kept in a separate data file, and each line is matched to its card by its text and place. Add, change, move or delete lines freely.",
 	"tut.markdown.s5.task": "In the note, add a line under **Gas giants**, for example **- Saturn 🪐**",
 	"tut.markdown.s6.title": "Switch back",
 	"tut.markdown.s6.body": "The same **⇄** button sits at the top of the note. It updates the board: a new line becomes a card next to its parent, changed text updates its card, deleted lines remove their cards — all as one undo step.",

@@ -142,8 +142,10 @@ export class TutorialRunner {
 		for (const child of [...folder.children]) {
 			if (!(child instanceof TFile) || child.extension !== "md") continue;
 			try {
-				const linked = /\n## canvas-data[ \t]*\n```json[ \t]*\n[\s\S]*?"canvas":\s*("(?:[^"\\]|\\.)*")/.exec(await app.vault.read(child))?.[1];
-				if (!linked || !isBoard(JSON.parse(linked) as string)) continue;
+				// A note with its data inside names its board; a clean note is the board's namesake.
+				const named = /\n## canvas-data[ \t]*\n```json[ \t]*\n[\s\S]*?"canvas":\s*("(?:[^"\\]|\\.)*")/.exec(await app.vault.read(child))?.[1];
+				const linked = named ? (JSON.parse(named) as string) : child.path.replace(/\.md$/, ".canvas");
+				if (!isBoard(linked)) continue;
 				for (const leaf of app.workspace.getLeavesOfType("markdown")) if ((leaf.view as { file?: TFile | null }).file === child) leaf.detach();
 				await app.fileManager.trashFile(child);
 			} catch (error) {

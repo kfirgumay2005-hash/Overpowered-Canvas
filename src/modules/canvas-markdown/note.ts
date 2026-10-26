@@ -1,8 +1,11 @@
 /**
- * Whole canvas ⇄ Markdown note (pure). The note is the readable outline (see outline.ts) plus a
- * hidden `%% ## canvas-data %%` section at the end holding a fenced JSON block with everything
- * visual, keyed by the aliases written in the outline: positions, sizes, colors, styles, edges
- * outside the outline, drawings, map layouts and the canvas root data.
+ * Whole canvas ⇄ Markdown note (pure). The note is the readable outline (see outline.ts); the
+ * canvas data holds everything visual, keyed by card aliases: positions, sizes, colors, styles,
+ * edges outside the outline, drawings, map layouts and the canvas root data.
+ *
+ * The data lives either in a hidden `%% ## canvas-data %%` section at the end of the note (the
+ * outline then carries hidden ids), or in a separate file (a clean note; the data keeps the
+ * outline as written so lines can be matched back to cards, see match.ts).
  */
 import type { CanvasEdgeData, CanvasFileData, CanvasNodeData } from "../../data/json-canvas";
 import { MAP_LAYOUTS, type MapLayout } from "../../data/schema";
@@ -34,6 +37,10 @@ export interface NoteData {
 	drawings?: CanvasNodeData[];
 	/** Node ids in drawing order (the canvas file's order). */
 	order?: string[];
+	/** Separate data file only: the note it belongs to. */
+	note?: string;
+	/** Separate data file only: the outline last written to the note, with ids. */
+	outline?: OutlineItem[];
 }
 
 export interface ExportOptions {
@@ -83,8 +90,8 @@ export function dataBlock(data: NoteData): string {
 	return `%%\n${DATA_HEADING}\n\`\`\`json\n${formatData(data)}\n\`\`\`\n%%\n`;
 }
 
-/** Canvas → note text. */
-export function exportNote(canvas: CanvasFileData, opts: ExportOptions): string {
+/** Canvas → outline items (with ids) and the data block. */
+function build(canvas: CanvasFileData, opts: ExportOptions): { items: OutlineItem[]; data: NoteData } {
 	const s = buildStructure(canvas, { rtl: opts.rtl, freeLabel: opts.freeLabel });
 	const byId = new Map((canvas.nodes ?? []).map((n) => [n.id, n]));
 	const edgeById = new Map((canvas.edges ?? []).map((e) => [e.id, e]));
@@ -112,9 +119,25 @@ export function exportNote(canvas: CanvasFileData, opts: ExportOptions): string 
 		drawings: s.drawings.map((id) => byId.get(id)!),
 		order: (canvas.nodes ?? []).map((n) => n.id),
 	};
-	const outline = s.items.length ? writeOutline(s.items, { indent: opts.indent, ids: true }) : "";
-	const fm = opts.frontmatter ? (opts.frontmatter.endsWith("\n") ? opts.frontmatter : `${opts.frontmatter}\n`) : "";
-	return `${fm}${outline}${outline ? "\n" : ""}${dataBlock(data)}`;
+	return { items: s.items, data };
+}
+
+function frontmatterOf(opts: ExportOptions): string {
+	return opts.frontmatter ? (opts.frontmatter.endsWith("\n") ? opts.frontmatter : `${opts.frontmatter}\n`) : "";
+}
+
+/** Canvas → note text with hidden ids and the data section. */
+export function exportNote(canvas: CanvasFileData, opts: ExportOptions): string {
+	const { items, data } = build(canvas, opts);
+	const outline = items.length ? writeOutline(items, { indent: opts.indent, ids: true }) : "";
+	return `${frontmatterOf(opts)}${outline}${outline ? "\n" : ""}${dataBlock(data)}`;
+}
+
+/** Canvas → a clean note (outline only) and the data for its separate file. */
+export function exportClean(canvas: CanvasFileData, opts: ExportOptions & { notePath: string }): { md: string; data: NoteData } {
+	const { items, data } = build(canvas, opts);
+	const outline = items.length ? writeOutline(items, { indent: opts.indent, ids: false, clean: true }) : "";
+	return { md: `${frontmatterOf(opts)}${outline}`, data: { ...data, note: opts.notePath, outline: items } };
 }
 
 export interface SplitNote {
@@ -180,6 +203,24 @@ export function readData(raw: unknown): NoteData | null {
 	if (Array.isArray(raw.crossEdges)) out.crossEdges = raw.crossEdges.filter(edgeLike);
 	if (Array.isArray(raw.drawings)) out.drawings = raw.drawings.filter(nodeLike);
 	if (Array.isArray(raw.order)) out.order = raw.order.filter((v): v is string => typeof v === "string");
+	if (typeof raw.note === "string") out.note = raw.note;
+	if (Array.isArray(raw.outline)) out.outline = readOutline(raw.outline);
+	return out;
+}
+
+function readOutline(raw: unknown[]): OutlineItem[] {
+	const out: OutlineItem[] = [];
+	for (const v of raw) {
+		if (!isPlainObject(v) || typeof v.text !== "string") continue;
+		const kind = v.kind === "group" || v.kind === "free" ? v.kind : "node";
+		out.push({
+			kind,
+			text: v.text,
+			...(typeof v.id === "string" ? { id: v.id } : {}),
+			...(typeof v.heading === "number" ? { heading: v.heading } : {}),
+			children: Array.isArray(v.children) ? readOutline(v.children) : [],
+		});
+	}
 	return out;
 }
 

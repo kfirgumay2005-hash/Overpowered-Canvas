@@ -1,6 +1,6 @@
 {
 	"name": "overpowered-canvas",
-	"version": "0.6.1",
+	"version": "0.6.2",
 	"private": true,
 	"description": "Turns Obsidian Canvas into a full whiteboard.",
 	"main": "main.js",

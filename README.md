@@ -63,8 +63,9 @@ matching tags, folders, properties or links.
 **Canvas ⇄ Markdown** — copy a mind map (or any connected cards) as a Markdown outline; paste an
 outline onto the board, insert a note, or convert a note card to get a laid-out mind map; and
 switch a whole canvas to a normal Markdown note and back with one command. The note is a readable
-outline (one section per map, groups as headings, links and block references untouched) plus a
-hidden data section with positions, styles, edges and drawings. Edit the note by hand or with an
+outline (one section per map, groups as headings, links and block references untouched) and
+nothing else: positions, styles, edges and drawings are kept in a separate data file (or, if you
+prefer, in a hidden section of the note). Edit the note by hand or with an
 assistant, switch back, and cards keep their place and look while new lines become new cards
 ([docs/canvas-markdown-summary.md](docs/canvas-markdown-summary.md)).
 

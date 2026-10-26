@@ -335,7 +335,7 @@ export const en = {
 	"encapsulate.failed": "Could not create the new canvas.",
 
 	"canvasMarkdown.name": "Canvas ⇄ Markdown",
-	"canvasMarkdown.desc": "Copy a mind map as a Markdown outline, turn outlines and notes into mind maps, and switch a whole canvas to a Markdown note and back (positions, styles and drawings are kept in a hidden data section).",
+	"canvasMarkdown.desc": "Copy a mind map as a Markdown outline, turn outlines and notes into mind maps, and switch a whole canvas to a Markdown note and back (positions, styles and drawings are kept in a separate data file, so the note stays clean).",
 	"canvasMarkdown.simple": "See the same content as a board or as a normal note. Edit the note (by hand or with an assistant) and turn it back into the board: cards keep their place and look, new lines become new cards.",
 	"canvasMarkdown.cmd.copy": "Copy as Markdown outline",
 	"canvasMarkdown.cmd.paste": "Paste Markdown outline as mind map",
@@ -383,6 +383,13 @@ export const en = {
 	"canvasMarkdown.button.all": "Notes and canvases",
 	"canvasMarkdown.button.canvas": "Canvases only",
 	"canvasMarkdown.button.off": "Hidden",
+	"canvasMarkdown.storage.name": "Where the canvas data is kept",
+	"canvasMarkdown.storage.desc": "Positions, styles and drawings of a canvas switched to a note. In a separate file the note shows only your text; inside the note, each line carries a small hidden id and the data sits in a hidden section at the end.",
+	"canvasMarkdown.storage.simple": "Keep the default for a clean note. Notes change to the chosen way the next time they are written.",
+	"canvasMarkdown.storage.file": "Separate file (clean note)",
+	"canvasMarkdown.storage.note": "Inside the note",
+	"canvasMarkdown.folder.name": "Data folder",
+	"canvasMarkdown.folder.desc": "Vault folder for the separate data files. They follow their notes when notes are renamed or deleted.",
 
 	"pdfAnnotation.name": "PDF annotation",
 	"pdfAnnotation.desc": "Pin a PDF card to one page (shown as a page with a locked aspect ratio) and insert whole PDFs as one pinned card per page, to annotate around them.",

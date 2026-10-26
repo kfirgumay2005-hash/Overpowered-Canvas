@@ -15,7 +15,17 @@ as text (by hand or by an assistant inside the vault) and turned back into the b
 
 Settings: outline indentation (tab / 4 / 2 spaces), layout of new mind maps (forward, backward,
 down, up, balanced, radial), paste outlines as mind maps (on/off), switch button (notes and
-canvases / canvases only / hidden).
+canvases / canvases only / hidden), where the canvas data is kept (separate file — the default,
+clean note — or inside the note), data folder (default `Overpowered Canvas data`).
+
+**Clean notes (default):** the note holds only the outline, with no `%%…%%` marks. The data
+(below, plus `note` and `outline`: the outline last written, with ids) goes to
+`<data folder>/<note name> <hash of the note path>.json`. Lines are matched back to cards by
+comparing the note with that outline (`match.ts`): siblings aligned by text, remaining lines in
+the same place paired as edits (one for one, else by text similarity), moved lines found by
+their text. Renaming or deleting a note or canvas updates its data file. The format below (ids
+in the note, data section at the end) is used with the setting "Inside the note", and notes in
+it are always read; each note switches to the chosen format the next time it is written.
 
 **Tutorial:** "Canvas ⇄ Markdown" (the 11th in the tutorials list) walks through copying a map,
 pasting an outline, switching to the note, adding a line and switching back, with "Show me" on

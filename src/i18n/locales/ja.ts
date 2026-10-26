@@ -333,7 +333,7 @@ export const ja: Record<I18nKey, string> = {
 	"encapsulate.failed": "新しいキャンバスを作成できませんでした。",
 
 	"canvasMarkdown.name": "キャンバス ⇄ Markdown",
-	"canvasMarkdown.desc": "マインドマップを Markdown のアウトラインとしてコピーし、アウトラインやノートをマインドマップに変換し、キャンバス全体を Markdown ノートに切り替えて戻せます（位置・スタイル・手描きは隠しデータ欄に保存）。",
+	"canvasMarkdown.desc": "マインドマップを Markdown のアウトラインとしてコピーし、アウトラインやノートをマインドマップに変換し、キャンバス全体を Markdown ノートに切り替えて戻せます（位置・スタイル・手描きは別のデータファイルに保存され、ノートはすっきり保たれます）。",
 	"canvasMarkdown.simple": "同じ内容をボードとしても普通のノートとしても見られます。ノートを（手作業やアシスタントで）編集してボードに戻すと、カードは位置と見た目を保ち、新しい行は新しいカードになります。",
 	"canvasMarkdown.cmd.copy": "Markdown アウトラインとしてコピー",
 	"canvasMarkdown.cmd.paste": "Markdown アウトラインをマインドマップとして貼り付け",
@@ -381,6 +381,13 @@ export const ja: Record<I18nKey, string> = {
 	"canvasMarkdown.button.all": "ノートとキャンバス",
 	"canvasMarkdown.button.canvas": "キャンバスのみ",
 	"canvasMarkdown.button.off": "非表示",
+	"canvasMarkdown.storage.name": "キャンバスデータの保存先",
+	"canvasMarkdown.storage.desc": "ノートに切り替えたキャンバスの位置・スタイル・手描き。別ファイルの場合、ノートにはテキストだけが表示されます。ノート内の場合、各行に小さな隠し ID が付き、データはノート末尾の隠しセクションに入ります。",
+	"canvasMarkdown.storage.simple": "すっきりしたノートにしたいなら既定のままにしてください。ノートは次に書き出すときに選んだ方式に変わります。",
+	"canvasMarkdown.storage.file": "別ファイル（すっきりしたノート）",
+	"canvasMarkdown.storage.note": "ノート内",
+	"canvasMarkdown.folder.name": "データフォルダー",
+	"canvasMarkdown.folder.desc": "別データファイルを置く保管庫のフォルダー。ノートの名前変更や削除に合わせて追従します。",
 
 	"pdfAnnotation.name": "PDF 注釈",
 	"pdfAnnotation.desc": "PDF カードを 1 ページに固定し（縦横比を固定したページとして表示）、PDF 全体をページごとに固定カードとして挿入して、周りに注釈を書けます。",

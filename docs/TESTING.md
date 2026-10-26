@@ -350,8 +350,9 @@ Automated runtime checks of every item below were run in an isolated Obsidian 1.
 1. Open a note with a bullet outline → command **Switch between canvas and Markdown note** → a
    canvas beside the note opens with a laid-out mind map (growing left in right-to-left canvases).
 2. Run the command again → if a note with the canvas's name exists and isn't linked, a dialog
-   offers Replace / Separate note / Cancel. The note shows the outline with hidden `%%n:…%%`
-   ids and a hidden `canvas-data` section at the end.
+   offers Replace / Separate note / Cancel. The note shows only the outline (no `%%` marks); a
+   JSON file appears in `Overpowered Canvas data/`. With the setting "Inside the note", the note
+   gets hidden `%%n:…%%` ids and a `canvas-data` section instead, and the JSON file is removed.
 3. In the note, change a line, add a line without an id under some bullet, delete a line → switch
    back: the changed card keeps its place and look, the new card sits beside its parent, the
    deleted card is gone. Ctrl+Z undoes the whole update in one step.
@@ -363,4 +364,7 @@ Automated runtime checks of every item below were run in an isolated Obsidian 1.
 8. The ⇄ button sits in the header of canvases and notes; Settings → Canvas ⇄ Markdown → Switch
    button: "Canvases only" removes it from notes, "Hidden" from both.
 9. Tutorials → **Canvas ⇄ Markdown**: every step can be done by hand and with "Show me"; the note
-   opens beside the board; closing the tutorial deletes the board and its note.
+   opens beside the board; closing the tutorial deletes the board, its note and its data file.
+10. Clean note: rename the note, then the canvas → switching from the canvas still opens the
+    renamed note (no new note appears). Delete the note → its data file is gone. Switch twice
+    after adding a line → no duplicate cards.
