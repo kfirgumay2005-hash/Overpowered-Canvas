@@ -584,6 +584,8 @@ class Session {
 
 	/** Moves the panel below the minimap when it sits in the same corner. */
 	private avoidOverlaps(): void {
+		// The canvas direction can change while the tutorial runs: stay opposite the controls.
+		this.panel.toggleClass("is-right", getComputedStyle(this.canvas.wrapperEl).direction === "rtl");
 		const wrapper = this.canvas.wrapperEl.getBoundingClientRect();
 		const minimap = this.canvas.wrapperEl.querySelector<HTMLElement>(".opc-minimap");
 		let top = 0;

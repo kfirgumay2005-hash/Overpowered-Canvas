@@ -178,6 +178,10 @@ export const autoResizeModule = defineModule<AutoResizeSettings>({
 		};
 
 		const observeTargets = (node: CanvasNodeLike, w: Watch) => {
+			// Only what the card shows now: the editor of a card that stopped editing stays alive
+			// for the next card, and watching it would refit this one on every change there.
+			w.observer.disconnect();
+			w.mutations.disconnect();
 			for (const el of node.contentEl?.querySelectorAll<HTMLElement>(".markdown-preview-sizer, .cm-content") ?? []) w.observer.observe(el);
 			const cm = node.contentEl?.querySelector<HTMLIFrameElement>("iframe.embed-iframe")?.contentDocument?.querySelector<HTMLElement>(".cm-content");
 			if (cm) {

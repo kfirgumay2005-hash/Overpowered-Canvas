@@ -457,6 +457,10 @@ Automated runtime checks of every item below were run in an isolated Obsidian 1.
    - *Style and reuse*: border, save the Task card as a template (button in the bottom bar), add a
      copy, floating arrow end. After closing, the practice template is gone from the bottom bar.
    - *Big boards*: open the Details portal; move the three Step cards to a new canvas.
+   - *Right-to-left*: fix a card to right to left; the canvas command flips menus, controls and the
+     coach panel to the other side; Tab on the map card adds a child on the left.
+   - *PDF pages*: pin the practice PDF card (shows one page); insert it for annotation (two pinned
+     pages beside it); draw a mark on a page.
    Closing each one deletes the board, its practice files and the canvas split off the board; a
    reload with a tutorial open cleans up on start.
 

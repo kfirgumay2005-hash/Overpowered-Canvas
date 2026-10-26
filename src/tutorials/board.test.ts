@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { checkCanvasFile, hasErrors } from "../data/validate-file";
 import { createTranslator, LOCALE_IDS } from "../i18n";
 import { en } from "../i18n/locales/en";
-import { added, addedEdges, card, count, edge, ellipsePoints, extraOf, ink, kindOf, strokeCount, sticky, title } from "./board";
+import { added, addedEdges, card, count, edge, ellipsePoints, extraOf, ink, kindOf, practicePdf, strokeCount, sticky, title } from "./board";
 import { TUTORIALS } from "./catalog";
 
 describe("board builders", () => {
@@ -85,4 +85,15 @@ describe("tutorial catalog", () => {
 				}
 			}
 		});
+});
+
+describe("practice PDF", () => {
+	it("points startxref and every xref entry at the right place", () => {
+		const pdf = practicePdf(["0 0 1 rg 10 10 100 100 re f", "0 g 1 w 0 0 m 10 10 l S"]);
+		const start = Number(/startxref\n(\d+)/.exec(pdf)![1]);
+		expect(pdf.slice(start, start + 4)).toBe("xref");
+		const entries = [...pdf.matchAll(/^(\d{10}) 00000 n $/gm)].map((m) => Number(m[1]));
+		expect(entries).toHaveLength(6);
+		entries.forEach((o, i) => expect(pdf.slice(o).startsWith(`${i + 1} 0 obj`)).toBe(true));
+	});
 });
