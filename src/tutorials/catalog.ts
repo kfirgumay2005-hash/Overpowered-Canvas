@@ -1479,4 +1479,262 @@ const blocks: TutorialDefinition = {
 };
 
 /** Every tutorial, in the order they are offered. */
-export const TUTORIALS: readonly TutorialDefinition[] = [basics, notes, shapes, edges, drawing, layers, present, mindmap, navigate, organize, markdown, select, blocks];
+// ---------- 14. Notes as cards ----------
+
+/** A card showing a note or canvas. */
+const fileCard = (id: string, file: string, x: number, y: number, width = 260, height = 110): CanvasNodeData => ({ id, type: "file", file, x, y, width, height });
+/** File names can't have these. */
+const fileSafe = (name: string) => name.replace(/[\\/:*?"<>|#^[\]]/g, "");
+
+/** Practice note names, translated (they are the notes' file names). */
+const VAULT_NOTES = { tickets: "tut.vault.note.tickets", passport: "tut.vault.note.passport", hotel: "tut.vault.note.hotel", sunscreen: "tut.vault.note.sunscreen", camera: "tut.vault.note.camera" } as const;
+type VaultNote = keyof typeof VAULT_NOTES;
+const noteName = (t: TutorialRuntime["t"], which: VaultNote) => fileSafe(t(VAULT_NOTES[which]));
+const notePath = (t: TutorialRuntime["t"], folder: string, which: VaultNote) => `${folder}/${noteName(t, which)}.md`;
+/** A tag without spaces. */
+const packingTag = (t: TutorialRuntime["t"]) => t("tut.vault.tag").replace(/[\s#]+/g, "-");
+
+const COL_W = 320;
+const COL_GAP = 40;
+const colX = (i: number) => i * (COL_W + COL_GAP);
+
+/** Edits a practice note's properties the way the properties panel would. */
+async function setProperty(rt: TutorialRuntime, which: VaultNote, key: string, value: unknown): Promise<void> {
+	const file = rt.app.vault.getFileByPath(notePath(rt.t, rt.folder, which));
+	if (file)
+		await rt.app.fileManager.processFrontMatter(file, (fm: Record<string, unknown>) => {
+			fm[key] = value;
+		});
+}
+
+const vault: TutorialDefinition = {
+	id: "vault",
+	icon: "file-stack",
+	title: "tut.vault.title",
+	summary: "tut.vault.summary",
+	modules: ["kanban", "query-groups", "auto-edges"],
+	files: (t) => {
+		const body = t("tut.vault.note.body");
+		const status = (which: VaultNote, value: string) => ({ path: `${noteName(t, which)}.md`, content: `---\nstatus: ${value}\n---\n${body}\n` });
+		const tagged = (which: VaultNote) => ({ path: `${noteName(t, which)}.md`, content: `---\ntags:\n  - ${JSON.stringify(packingTag(t))}\n---\n${body}\n` });
+		return [status("tickets", "todo"), status("passport", "todo"), status("hotel", "doing"), tagged("sunscreen"), tagged("camera")];
+	},
+	board: (t, folder) => ({
+		nodes: [
+			group("k-todo", t("tut.vault.board.todo"), colX(0), 0, COL_W, 520, { [SCHEMA_KEY]: { kanban: { key: "status", value: "todo" } } }),
+			group("k-doing", t("tut.vault.board.doing"), colX(1), 0, COL_W, 520, { [SCHEMA_KEY]: { kanban: { key: "status", value: "doing" } } }),
+			group("k-done", t("tut.vault.board.done"), colX(2), 0, COL_W, 520),
+			fileCard("k-tickets", notePath(t, folder, "tickets"), colX(0) + 30, 40),
+			fileCard("k-pass", notePath(t, folder, "passport"), colX(0) + 30, 180),
+			fileCard("k-hotel", notePath(t, folder, "hotel"), colX(1) + 30, 40),
+			group("q-pack", t("tut.vault.board.packing"), colX(3) + 80, 0, 620, 300),
+		],
+		edges: [],
+	}),
+	steps: [
+		{ title: "tut.vault.s1.title", body: "tut.vault.s1.body" },
+		{
+			title: "tut.vault.s2.title",
+			body: "tut.vault.s2.body",
+			task: "tut.vault.s2.task",
+			focus: ["k-todo", "k-doing", "k-done"],
+			check: (rt) => rt.seen("kanban-moved", (_c, _n, _f, value) => value === "doing"),
+			demo: async (rt) => {
+				const card = rt.node("k-tickets");
+				const doing = rt.node("k-doing");
+				if (card && doing) await glide(rt, "k-tickets", doing.x + 30 - card.x, doing.y + 200 - card.y);
+			},
+		},
+		{
+			title: "tut.vault.s3.title",
+			body: "tut.vault.s3.body",
+			task: "tut.vault.s3.task",
+			target: (rt) => rt.node("k-done")?.labelEl,
+			check: (rt) => !!rt.extra("k-done").kanban,
+			demo: (rt) => setExtra(rt, "k-done", { kanban: { key: "status", value: "done" } }),
+		},
+		{
+			title: "tut.vault.s4.title",
+			body: "tut.vault.s4.body",
+			task: "tut.vault.s4.task",
+			check: (rt) => rt.seen("kanban-moved", (_c, node) => (node as { id?: string } | undefined)?.id === "k-pass"),
+			demo: async (rt) => {
+				if (!rt.extra("k-done").kanban) setExtra(rt, "k-done", { kanban: { key: "status", value: "done" } });
+				await setProperty(rt, "passport", "status", "done");
+			},
+		},
+		{
+			title: "tut.vault.s5.title",
+			body: "tut.vault.s5.body",
+			task: "tut.vault.s5.task",
+			focus: ["q-pack"],
+			target: (rt) => rt.node("q-pack")?.labelEl,
+			check: (rt) => !!rt.extra("q-pack").query && nodesOf(rt.now()).some((n) => n.type === "file" && !findNode(rt.before, n.id)),
+			demo: async (rt) => {
+				// The folder keeps notes with the same tag elsewhere in the vault off the practice board.
+				setExtra(rt, "q-pack", { query: { tags: [packingTag(rt.t)], folder: rt.folder } });
+				await rt.wait(200);
+				rt.command("query-groups:refresh-all");
+			},
+		},
+		{
+			title: "tut.vault.s6.title",
+			body: "tut.vault.s6.body",
+			task: "tut.vault.s6.task",
+			focus: ["k-tickets", "k-hotel"],
+			check: (rt) => edgesOf(rt.now()).some((e) => extraOf(e).auto === true),
+			demo: async (rt) => {
+				const property = rt.setting("auto-edges", "property");
+				const key = typeof property === "string" && property.trim() ? property.trim() : "canvas-edges";
+				await setProperty(rt, "hotel", key, [`[[${noteName(rt.t, "tickets")}]]`]);
+			},
+		},
+	],
+};
+
+// ---------- 15. Style and reuse ----------
+
+let templatesAtStart = 0;
+const templateCount = (rt: TutorialRuntime) => (rt.setting("node-templates", "templates") as unknown[] | undefined)?.length ?? 0;
+const lastTemplateButton = (rt: TutorialRuntime) => [...rt.canvas.cardMenuEl.querySelectorAll<HTMLElement>("[class*='opc-card-template-']")].pop();
+
+const style: TutorialDefinition = {
+	id: "style",
+	icon: "palette",
+	title: "tut.style.title",
+	summary: "tut.style.summary",
+	modules: ["node-borders", "node-templates", "floating-edges"],
+	// Templates saved while practicing are not kept.
+	restoreSettings: [{ module: "node-templates", key: "templates" }],
+	board: (t) => ({
+		nodes: [
+			card("s-idea", t("tut.style.board.idea"), 0, 0, 240, 90, { color: "5" }),
+			card("s-plan", t("tut.style.board.plan"), 420, 0, 240, 90, { color: "4" }),
+			card("s-task", t("tut.style.board.task"), -420, 0, 300, 110, { color: "3", [SCHEMA_KEY]: { border: "dashed" } }),
+		],
+		edges: [edge("s-e1", "s-idea", "right", "s-plan", "left")],
+	}),
+	steps: [
+		{
+			title: "tut.style.s1.title",
+			body: "tut.style.s1.body",
+			task: "tut.style.s1.task",
+			target: ".opc-menu-border",
+			enter: (rt) => rt.select(["s-idea"]),
+			check: (rt) => changedAny(rt, (n) => extraOf(n).border),
+			demo: (rt) => {
+				rt.select(["s-idea"]);
+				setExtra(rt, "s-idea", { border: "dotted" });
+			},
+		},
+		{
+			title: "tut.style.s2.title",
+			body: "tut.style.s2.body",
+			task: "tut.style.s2.task",
+			enter: (rt) => {
+				templatesAtStart = templateCount(rt);
+				rt.select(["s-task"]);
+			},
+			check: (rt) => templateCount(rt) > templatesAtStart,
+			demo: async (rt) => {
+				rt.select(["s-task"]);
+				rt.command("node-templates:save-node-as-template");
+				await rt.wait(400);
+				activeDocument.querySelector<HTMLElement>(".modal .mod-cta")?.click();
+			},
+		},
+		{
+			title: "tut.style.s3.title",
+			body: "tut.style.s3.body",
+			task: "tut.style.s3.task",
+			target: lastTemplateButton,
+			check: (rt) => grew(rt, (n) => n.type === "text" && n.text === rt.t("tut.style.board.task")),
+			demo: (rt) => lastTemplateButton(rt)?.click(),
+		},
+		{
+			title: "tut.style.s4.title",
+			body: "tut.style.s4.body",
+			task: "tut.style.s4.task",
+			focus: ["s-idea", "s-plan"],
+			check: (rt) =>
+				edgesOf(rt.now()).some((e) => {
+					const f = extraOf(e).floating as { from?: boolean; to?: boolean } | undefined;
+					return !!f?.from || !!f?.to;
+				}),
+			demo: async (rt) => {
+				setEdgeExtra(rt, "s-e1", { floating: { to: true } });
+				await rt.wait(400);
+				// Move the card below: the arrow now ends on its top side.
+				const idea = rt.node("s-idea");
+				const plan = rt.node("s-plan");
+				if (idea && plan) await glide(rt, "s-plan", idea.x - plan.x, idea.y + 300 - plan.y);
+			},
+		},
+		{ title: "tut.style.s5.title", body: "tut.style.s5.body" },
+	],
+};
+
+// ---------- 16. Big boards ----------
+
+const detailsName = (t: TutorialRuntime["t"]) => fileSafe(t("tut.big.detailsName"));
+
+const big: TutorialDefinition = {
+	id: "big",
+	icon: "door-open",
+	title: "tut.big.title",
+	summary: "tut.big.summary",
+	modules: ["portals", "encapsulate", "node-links"],
+	files: (t) => [
+		{
+			path: `${detailsName(t)}.canvas`,
+			content: JSON.stringify(
+				{
+					nodes: [card("d-1", t("tut.big.board.d1"), 0, 0, 240, 80, { color: "4" }), card("d-2", t("tut.big.board.d2"), 320, 0, 240, 80), card("d-3", t("tut.big.board.d3"), 320, 120, 240, 80)],
+					edges: [edge("d-e1", "d-1", "right", "d-2", "left"), edge("d-e2", "d-1", "right", "d-3", "left")],
+				},
+				null,
+				"\t",
+			),
+		},
+	],
+	board: (t, folder) => ({
+		nodes: [
+			title("b-title", t("tut.big.board.title"), 0, -140, 700, 80),
+			fileCard("b-portal", `${folder}/${detailsName(t)}.canvas`, 0, 0, 420, 260),
+			card("b-1", t("tut.big.board.c1"), 760, 0, 240, 80, { color: "6" }),
+			card("b-2", t("tut.big.board.c2"), 760, 110, 240, 80, { color: "6" }),
+			card("b-3", t("tut.big.board.c3"), 760, 220, 240, 80, { color: "6" }),
+		],
+		edges: [edge("b-e1", "b-1", "bottom", "b-2", "top"), edge("b-e2", "b-2", "bottom", "b-3", "top")],
+	}),
+	steps: [
+		{
+			title: "tut.big.s1.title",
+			body: "tut.big.s1.body",
+			task: "tut.big.s1.task",
+			target: ".opc-menu-portal",
+			enter: (rt) => rt.select(["b-portal"]),
+			check: (rt) => !!rt.extra("b-portal").portal?.open,
+			demo: (rt) => {
+				rt.select(["b-portal"]);
+				rt.command("portals:toggle-portal");
+			},
+		},
+		{
+			title: "tut.big.s2.title",
+			body: "tut.big.s2.body",
+			task: "tut.big.s2.task",
+			focus: ["b-1", "b-2", "b-3"],
+			check: (rt) => rt.seen("selection-encapsulated"),
+			demo: async (rt) => {
+				rt.select(["b-1", "b-2", "b-3"]);
+				rt.command("encapsulate:encapsulate-selection");
+				await rt.wait(400);
+				activeDocument.querySelector<HTMLElement>(".modal .mod-cta")?.click();
+			},
+		},
+		{ title: "tut.big.s3.title", body: "tut.big.s3.body" },
+	],
+};
+
+export const TUTORIALS: readonly TutorialDefinition[] = [basics, notes, shapes, edges, drawing, layers, present, mindmap, navigate, organize, markdown, select, blocks, vault, style, big];

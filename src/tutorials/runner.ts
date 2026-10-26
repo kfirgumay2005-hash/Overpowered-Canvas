@@ -22,6 +22,11 @@ export const TUTORIAL_FOLDER = "Overpowered Canvas tutorials";
 /** Root key that marks a temporary tutorial canvas (so leftovers can be cleaned up safely). */
 export const TUTORIAL_KEY = "x-opc-tutorial";
 
+/** A tutorial's own folder for its practice files (inside the tutorials folder, which is ours). */
+export function filesFolder(def: TutorialDefinition): string {
+	return normalizePath(`${TUTORIAL_FOLDER}/${def.id}`);
+}
+
 /** Public events steps can wait for. */
 const WATCHED_EVENTS = [
 	"presentation-started",
@@ -49,6 +54,10 @@ const WATCHED_EVENTS = [
 	"outline-inserted",
 	"note-block-dropped",
 	"card-relinked",
+	"kanban-moved",
+	"query-group-refreshed",
+	"selection-encapsulated",
+	"portal-opened",
 	"text-highlighted",
 	"lasso-selected",
 	"selection-cut",
@@ -105,8 +114,10 @@ export class TutorialRunner {
 		}
 
 		let file: TFile;
+		const folder = filesFolder(def);
 		try {
-			file = await this.writeBoard(def);
+			await this.writeFiles(def, folder);
+			file = await this.writeBoard(def, folder);
 		} catch (error) {
 			console.error("[overpowered-canvas] could not create the tutorial canvas", error);
 			new Notice(t("tutorial.createFailed"));
@@ -119,9 +130,10 @@ export class TutorialRunner {
 			new Notice(t("tutorial.createFailed"));
 			leaf.detach();
 			await this.removeFile(file);
+			await this.removeFolder(folder);
 			return;
 		}
-		this.session = new Session(this.host, def, file, leaf, canvas, (finished, next) => void this.stop(finished).then(() => next && this.start(next)));
+		this.session = new Session(this.host, def, file, folder, leaf, canvas, (finished, next) => void this.stop(finished).then(() => next && this.start(next)));
 		this.session.begin();
 	}
 
@@ -136,7 +148,44 @@ export class TutorialRunner {
 		if (session.leaf.view && (session.leaf.view as CanvasViewLike).file === session.file) session.leaf.detach();
 		await this.removeNotesOf((path) => path === session.file.path);
 		await sleep(150);
+		// Files made during the tutorial in the tutorials folder (a canvas split off the board…).
+		for (const path of session.created) await this.removePath(path);
+		await this.removeFolder(session.folder);
 		await this.removeFile(session.file);
+	}
+
+	/** Closes the tabs showing a file (or anything inside a folder) at `path`. */
+	private closeTabs(path: string): void {
+		this.host.app.workspace.iterateAllLeaves((leaf) => {
+			const shown = (leaf.view as { file?: TFile | null }).file?.path;
+			if (shown && (shown === path || shown.startsWith(`${path}/`))) leaf.detach();
+		});
+	}
+
+	private async removePath(path: string): Promise<void> {
+		const item = this.host.app.vault.getAbstractFileByPath(path);
+		if (!item) return;
+		this.closeTabs(path);
+		try {
+			await this.host.app.fileManager.trashFile(item);
+		} catch (error) {
+			console.error("[overpowered-canvas] could not delete a tutorial file", error);
+		}
+	}
+
+	private async removeFolder(path: string): Promise<void> {
+		if (this.host.app.vault.getAbstractFileByPath(path) instanceof TFolder) await this.removePath(path);
+	}
+
+	private async writeFiles(def: TutorialDefinition, folder: string): Promise<void> {
+		const files = def.files?.(this.host.t()) ?? [];
+		// Left over from a crash: start from fresh copies.
+		await this.removeFolder(folder);
+		if (files.length === 0) return;
+		const { vault } = this.host.app;
+		if (!vault.getAbstractFileByPath(normalizePath(TUTORIAL_FOLDER))) await vault.createFolder(normalizePath(TUTORIAL_FOLDER));
+		await vault.createFolder(folder);
+		for (const f of files) await vault.create(normalizePath(`${folder}/${f.path}`), f.content);
 	}
 
 	/**
@@ -178,16 +227,18 @@ export class TutorialRunner {
 				// Not ours, or unreadable: leave it.
 			}
 		}
+		// Practice files of tutorials that are not running.
+		for (const def of this.host.catalog) if (def !== this.session?.def) await this.removeFolder(filesFolder(def));
 		// Notes of practice boards that are gone.
 		const folderPrefix = `${normalizePath(TUTORIAL_FOLDER)}/`;
 		await this.removeNotesOf((path) => path.startsWith(folderPrefix) && path !== this.session?.file.path && !app.vault.getAbstractFileByPath(path));
 		await this.removeFolderIfEmpty();
 	}
 
-	private async writeBoard(def: TutorialDefinition): Promise<TFile> {
+	private async writeBoard(def: TutorialDefinition, folder: string): Promise<TFile> {
 		const { app } = this.host;
 		const t = this.host.t();
-		const board = def.board(t);
+		const board = def.board(t, folder);
 		const folderPath = normalizePath(TUTORIAL_FOLDER);
 		if (!app.vault.getAbstractFileByPath(folderPath)) await app.vault.createFolder(folderPath);
 		const base = t(def.title).replace(/[\\/:*?"<>|#^[\]]/g, "").trim() || def.id;
@@ -246,11 +297,14 @@ class Session {
 	private finishedView = false;
 	private readonly saved = new Map<string, unknown>();
 	private readonly rt: TutorialRuntime;
+	/** Files created in the tutorials folder while the tutorial runs. */
+	readonly created: string[] = [];
 
 	constructor(
 		private readonly host: TutorialHost,
 		readonly def: TutorialDefinition,
 		readonly file: TFile,
+		readonly folder: string,
 		readonly leaf: WorkspaceLeaf,
 		private readonly canvas: CanvasLike,
 		private readonly end: (finished: boolean, next?: TutorialDefinition) => void,
@@ -275,6 +329,10 @@ class Session {
 			if ((this.leaf.view as CanvasViewLike | undefined)?.file !== this.file) this.end(false);
 		});
 		this.cleanups.push(() => app.workspace.offref(layoutRef));
+		const createRef = app.vault.on("create", (file) => {
+			if (file !== this.file && file.path.startsWith(`${normalizePath(TUTORIAL_FOLDER)}/`) && !file.path.startsWith(`${this.folder}/`)) this.created.push(file.path);
+		});
+		this.cleanups.push(() => app.vault.offref(createRef));
 		const tick = window.setInterval(() => {
 			this.evaluate();
 			this.placeHighlight();
@@ -580,6 +638,7 @@ class Session {
 		return {
 			app,
 			canvas,
+			folder: this.folder,
 			get t() {
 				return host.t();
 			},

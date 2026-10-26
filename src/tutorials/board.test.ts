@@ -52,7 +52,12 @@ describe("tutorial catalog", () => {
 		const t = createTranslator(locale);
 		for (const def of TUTORIALS) {
 			it(`${def.id} builds a valid board in ${locale}`, () => {
-				const board = def.board(t);
+				const folder = `tutorials/${def.id}`;
+				const board = def.board(t, folder);
+				// File cards point at the tutorial's own practice files, which have usable names.
+				const files = (def.files?.(t) ?? []).map((f) => `${folder}/${f.path}`);
+				for (const f of files) expect(f).not.toMatch(/[\\:*?"<>|#^[\]]/);
+				for (const n of board.nodes) if (n.type === "file") expect(files).toContain(n.file);
 				const file = { nodes: board.nodes, edges: board.edges, "x-opc": { v: 1, ...board.root } };
 				const problems = checkCanvasFile(file);
 				expect(hasErrors(problems), JSON.stringify(problems)).toBe(false);

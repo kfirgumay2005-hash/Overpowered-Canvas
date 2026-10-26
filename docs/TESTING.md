@@ -450,4 +450,13 @@ Automated runtime checks of every item below were run in an isolated Obsidian 1.
    leaving the last card selected. Tapping a card jumps there. The canvas is read-only meanwhile.
 3. **iPad:** the arrow pad in the corner works with a finger and the pen; one finger still pans.
 4. **Tutorial:** *Mind maps* → "Walk through the map" → Show me completes the step.
+5. **New tutorials** (by hand and with Show me, also in another UI language):
+   - *Notes as cards*: practice notes appear in "Overpowered Canvas tutorials/vault/"; dragging a
+     card to *Doing* sets its status; binding *Done*; changing a note's status moves its card; the
+     packing group fills with the two tagged notes; a `canvas-edges` property draws an arrow.
+   - *Style and reuse*: border, save the Task card as a template (button in the bottom bar), add a
+     copy, floating arrow end. After closing, the practice template is gone from the bottom bar.
+   - *Big boards*: open the Details portal; move the three Step cards to a new canvas.
+   Closing each one deletes the board, its practice files and the canvas split off the board; a
+   reload with a tutorial open cleans up on start.
 
