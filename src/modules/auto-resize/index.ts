@@ -1,9 +1,18 @@
-import { defineModule } from "../../core/module";
+import { Setting } from "obsidian";
+import { defineModule, type ModuleContext } from "../../core/module";
 import type { OpcNode } from "../../data/schema";
 import type { I18nKey } from "../../i18n";
-import type { CanvasNodeLike } from "../../internals/types";
+import type { CanvasLike, CanvasNodeLike } from "../../internals/types";
+import { mergeWithDefaults } from "../../settings/settings";
 import { showPicker } from "../../ui/picker";
-import { common, mutate, nodeType, onlyNodes, onlyTextBoxes } from "../shared";
+import { common, isTextBox, mutate, nodeType, onlyNodes, onlyTextBoxes } from "../shared";
+
+interface AutoResizeSettings {
+	/** "Fit text" cards grow up to this width (canvas units), then their lines wrap. */
+	maxWidth: number;
+	/** New text cards start in "Fit text" mode. */
+	newCards: boolean;
+}
 
 interface Watch {
 	observer: ResizeObserver;
@@ -13,15 +22,24 @@ interface Watch {
 	frame: number;
 }
 
-type Mode = "off" | "height" | "width";
-const MODES: readonly Mode[] = ["off", "height", "width"];
-const ICONS: Record<Mode, string> = { off: "square", height: "fold-vertical", width: "fold-horizontal" };
+type Mode = "off" | "fit" | "height" | "width";
+const MODES: readonly Mode[] = ["off", "fit", "height", "width"];
+const ICONS: Record<Mode, string> = { off: "square", fit: "wrap-text", height: "fold-vertical", width: "fold-horizontal" };
 /** Widest a card grows to by itself. */
 const MAX_WIDTH = 2400;
+/** Narrowest a "Fit text" card shrinks to. */
+const FIT_MIN_WIDTH = 80;
 
 function modeOf(extra: Readonly<OpcNode>): Mode {
-	return extra.autoWidth ? "width" : extra.autoResize ? "height" : "off";
+	return extra.autoFit ? "fit" : extra.autoWidth ? "width" : extra.autoResize ? "height" : "off";
 }
+
+const PATCH: Record<Mode, Partial<OpcNode>> = {
+	off: { autoResize: undefined, autoWidth: undefined, autoFit: undefined },
+	fit: { autoResize: undefined, autoWidth: undefined, autoFit: true },
+	height: { autoResize: true, autoWidth: undefined, autoFit: undefined },
+	width: { autoResize: undefined, autoWidth: true, autoFit: undefined },
+};
 
 /**
  * Measures how tall the node must be to show all of its text, in reading or editing mode.
@@ -83,14 +101,37 @@ function neededWidth(node: CanvasNodeLike): number | null {
 	return node.width + (needed - available) + 1;
 }
 
+/**
+ * How wide a "Fit text" card must be: as wide as its text with one line per paragraph, at most
+ * `max` (then the lines wrap). Measured in reading mode, so custom fonts and CSS count.
+ */
+function fittedWidth(node: CanvasNodeLike, max: number): number | null {
+	const content = node.contentEl;
+	if (!content || !content.isConnected || node.isEditing) return null;
+	const sizer = content.querySelector<HTMLElement>(".markdown-embed-content > .markdown-preview-view > .markdown-preview-sizer");
+	if (!sizer || !sizer.isShown()) return null;
+	const available = sizer.offsetWidth;
+	sizer.setCssStyles({ width: "max-content" });
+	const needed = sizer.offsetWidth;
+	sizer.setCssStyles({ width: "" });
+	return Math.min(max, node.width + (needed - available) + 2);
+}
+
 /** Per-node choice: the card grows and shrinks to fit its text, downwards or sideways. */
-export const autoResizeModule = defineModule({
+export const autoResizeModule = defineModule<AutoResizeSettings>({
 	id: "auto-resize",
 	name: "autoResize.name",
 	description: "autoResize.desc",
 	group: "nodes",
 	defaultEnabled: true,
-	defaultSettings: {},
+	defaultSettings: { maxWidth: 400, newCards: true },
+	sanitizeSettings: (raw, defaults) => {
+		const s = mergeWithDefaults(raw, defaults);
+		return {
+			maxWidth: typeof s.maxWidth === "number" && s.maxWidth >= 100 && s.maxWidth <= MAX_WIDTH ? Math.round(s.maxWidth) : defaults.maxWidth,
+			newCards: typeof s.newCards === "boolean" ? s.newCards : defaults.newCards,
+		};
+	},
 	overlapsWith: ["advanced-canvas"],
 
 	enable(ctx) {
@@ -99,7 +140,16 @@ export const autoResizeModule = defineModule({
 		const fit = (node: CanvasNodeLike) => {
 			const min = node.canvas.config.minContainerDimension;
 			let width = node.width;
-			if (modeOf(ctx.data.node(node).get()) === "width") {
+			const mode = modeOf(ctx.data.node(node).get());
+			if (mode === "fit") {
+				// While editing the width stays; it fits again once the text is shown.
+				const target = fittedWidth(node, ctx.settings.maxWidth);
+				if (target !== null) width = Math.max(Math.min(FIT_MIN_WIDTH, ctx.settings.maxWidth), min, Math.round(target));
+				if (Math.abs(width - node.width) > 1) {
+					node.resize({ width, height: node.height });
+					node.render();
+				}
+			} else if (mode === "width") {
 				const target = neededWidth(node);
 				if (target !== null) width = Math.min(MAX_WIDTH, Math.max(min, Math.round(target)));
 				if (Math.abs(width - node.width) > 1) {
@@ -202,12 +252,70 @@ export const autoResizeModule = defineModule({
 					(id) => {
 						const mode = id as Mode;
 						mutate(ctx, canvas, () => {
-							for (const node of nodes) ctx.data.node(node).set({ autoResize: mode === "height" ? true : undefined, autoWidth: mode === "width" ? true : undefined });
+							for (const node of nodes) ctx.data.node(node).set(PATCH[mode]);
 						});
 						canvas.menu.render(true);
 					},
 				);
 			},
 		});
+
+		// New text cards fit their text.
+		const patched = new WeakSet<object>();
+		ctx.onCanvas((canvas) => {
+			const proto = Object.getPrototypeOf(canvas) as CanvasLike;
+			if (patched.has(proto)) return;
+			patched.add(proto);
+			ctx.patch("canvas.createTextNode", proto, {
+				createTextNode: (next) =>
+					function (this: CanvasLike, ...args: Parameters<CanvasLike["createTextNode"]>) {
+						const node = next.apply(this, args);
+						if (ctx.settings.newCards && node && !this.readonly)
+							try {
+								ctx.data.node(node).set(PATCH.fit, { history: false });
+							} catch (error) {
+								console.error("[overpowered-canvas] auto-resize: fitting a new card failed", error);
+							}
+						return node;
+					},
+			});
+		});
+
+		/** "Fit text" for the selected text cards, or all of them. */
+		const fitAll = (canvas: CanvasLike) => {
+			const chosen = [...canvas.selection].filter((i): i is CanvasNodeLike => "nodeEl" in i);
+			const nodes = (chosen.length ? chosen : [...canvas.nodes.values()]).filter((n) => nodeType(n) === "text" && isTextBox(ctx, n) && !ctx.data.node(n).get().sticky);
+			mutate(ctx, canvas, () => {
+				for (const node of nodes) ctx.data.node(node).set(PATCH.fit);
+			});
+		};
+		ctx.addCommand({
+			id: "fit-cards",
+			name: ctx.t("autoResize.fitAll"),
+			icon: "wrap-text",
+			checkCallback: (checking) => {
+				const canvas = ctx.activeCanvas();
+				if (!canvas || canvas.readonly) return false;
+				if (!checking) fitAll(canvas);
+				return true;
+			},
+		});
+	},
+
+	renderSettings(el, ctx: ModuleContext<AutoResizeSettings>) {
+		new Setting(el)
+			.setName(ctx.t("autoResize.maxWidth.name"))
+			.setDesc(ctx.t("autoResize.maxWidth.desc"))
+			.addText((t) => {
+				t.inputEl.type = "number";
+				t.setValue(String(ctx.settings.maxWidth)).onChange((v) => {
+					const n = Number(v);
+					if (Number.isFinite(n) && n >= 100 && n <= MAX_WIDTH) void ctx.updateSettings({ maxWidth: Math.round(n) });
+				});
+			});
+		new Setting(el)
+			.setName(ctx.t("autoResize.newCards.name"))
+			.setDesc(ctx.t("autoResize.newCards.desc"))
+			.addToggle((t) => t.setValue(ctx.settings.newCards).onChange((v) => ctx.updateSettings({ newCards: v })));
 	},
 });

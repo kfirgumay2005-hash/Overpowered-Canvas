@@ -214,6 +214,7 @@ export const NODE_SHAPE: Shape<OpcNode> = {
 	dir: oneOf(DIRECTIONS),
 	autoResize: bool,
 	autoWidth: bool,
+	autoFit: bool,
 	locked: bool,
 	breakpoint: finite,
 	collapsed: bool,

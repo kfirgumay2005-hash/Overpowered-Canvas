@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { readNode } from "../../data/validate";
-import { absoluteLine, borderPoint, carryBends, carrySquare, cornersOf, isSquare, squareCorners, fitLine, LINE_PAD, lineNodeData, shapeNodeData, snapEnds } from "./model";
+import { absoluteLine, borderPoint, carryBends, carrySquare, cornersOf, isSquare, keepSquareEnds, squareCorners, fitLine, LINE_PAD, lineNodeData, shapeNodeData, snapEnds } from "./model";
 
 describe("free lines", () => {
 	it("fits the box around the points", () => {
@@ -94,5 +94,15 @@ describe("square routes", () => {
 	it("bent ends meet the card straight across from the corner", () => {
 		const box = { x: 0, y: 0, width: 100, height: 50 };
 		expect(snapEnds([{ x: 50, y: 25 }, { x: 30, y: 200 }, { x: 300, y: 200 }], box)[0]).toEqual({ x: 30, y: 50 });
+	});
+});
+
+describe("square routes and resized cards", () => {
+	it("pulls the corner back in front of a card that shrank", () => {
+		const route = [{ x: 96, y: 60 }, { x: 96, y: 454 }, { x: 396, y: 454 }, { x: 396, y: 380 }];
+		const out = keepSquareEnds(route, { x: 0, y: 0, width: 60, height: 60 });
+		expect(out[0]!.x).toBe(out[1]!.x);
+		expect(out[1]!.x).toBeLessThanOrEqual(60);
+		expect(isSquare(out)).toBe(true);
 	});
 });

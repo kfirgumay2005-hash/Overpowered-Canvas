@@ -149,8 +149,16 @@ export const ja: Record<I18nKey, string> = {
 	"betterDefaults.doubleClickMs.desc": "2回のクリックの間隔（ミリ秒、100～2000）。",
 
 	"autoResize.name": "カードの自動サイズ調整",
-	"autoResize.desc": "選択ツールバーでカードごとに選択：入力中にスクロールする代わりに、カードが下方向または横方向に広がってテキストに合わせます。",
+	"autoResize.desc": "選択ツールバーでカードごとに選択：スクロールせず、カードがテキストに合わせます。テキストに合わせる：最大幅までテキストの幅に広がり、その後は折り返して下に伸びます。下方向のみ、横方向のみも選べます。",
 	"autoResize.button": "テキストに合わせて広げる",
+	"autoResize.mode.fit": "テキストに合わせる",
+	"autoResize.fitAll": "カードをテキストに合わせる",
+	"autoResize.maxWidth.name": "テキストに合わせるときの最大幅",
+	"autoResize.maxWidth.desc": "「テキストに合わせる」のカードはこの幅（キャンバス単位）まで横に広がり、その後は行が折り返されます。",
+	"autoResize.maxWidth.simple": "テキストが折り返されるまでにカードがどこまで広がるか。",
+	"autoResize.newCards.name": "新しいカードをテキストに合わせる",
+	"autoResize.newCards.desc": "新しいテキストカードは「テキストに合わせる」で始まります。既存のカードにはコマンド「カードをテキストに合わせる」を使います（選択中のカード、またはすべて）。",
+	"autoResize.newCards.simple": "追加したカードが、書いた内容の大きさになります。",
 
 	"variableBreakpoints.name": "可変ブレークポイント",
 	"variableBreakpoints.desc": "縮小したときにカードの内容をプレースホルダーに置き換えるタイミングを選びます：常に表示、全カードに独自のズームレベルを使う、またはカードごとに設定（--variable-breakpoint CSS 変数でも可。例：キャンバスの CSS クラス）。",

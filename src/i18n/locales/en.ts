@@ -151,8 +151,16 @@ export const en = {
 	"betterDefaults.doubleClickMs.desc": "Milliseconds between the two clicks (100–2000).",
 
 	"autoResize.name": "Auto-resize cards",
-	"autoResize.desc": "Per-card choice in the selection toolbar: instead of scrolling, the card grows downwards or sideways to fit its text as you type.",
+	"autoResize.desc": "Per-card choice in the selection toolbar: instead of scrolling, the card fits its text. Fit text: as wide as the text up to a maximum width, then the lines wrap and the card grows downwards. Or grow only downwards, or only sideways.",
 	"autoResize.button": "Grow to fit text",
+	"autoResize.mode.fit": "Fit text",
+	"autoResize.fitAll": "Fit cards to their text",
+	"autoResize.maxWidth.name": "Maximum width when fitting text",
+	"autoResize.maxWidth.desc": "A card set to “Fit text” grows sideways up to this width (in canvas units), then its lines wrap.",
+	"autoResize.maxWidth.simple": "How wide a card may become before its text wraps to the next line.",
+	"autoResize.newCards.name": "New cards fit their text",
+	"autoResize.newCards.desc": "New text cards start as “Fit text”. Use “Fit cards to their text” (command) for existing cards: the selected ones, or all of them.",
+	"autoResize.newCards.simple": "Cards you add take the size of what you write in them.",
 
 	"variableBreakpoints.name": "Variable breakpoints",
 	"variableBreakpoints.desc": "Choose when card content is replaced by a placeholder as you zoom out: always show it, use your own zoom level for all cards, or set it per card (also via the --variable-breakpoint CSS variable, e.g. in a canvas CSS class).",

@@ -149,8 +149,16 @@ export const zh: Record<I18nKey, string> = {
 	"betterDefaults.doubleClickMs.desc": "两次点击之间的毫秒数（100–2000）。",
 
 	"autoResize.name": "自动调整卡片大小",
-	"autoResize.desc": "在选区工具栏中为每张卡片选择：输入时卡片向下或向侧面扩展以容纳文本，而不是出现滚动条。",
+	"autoResize.desc": "在选择工具栏中逐张设置：卡片不再滚动，而是适应其文本。适应文本：宽度随文本增加到最大宽度，之后换行并向下增长。也可以只向下或只向侧面增长。",
 	"autoResize.button": "随文本扩展",
+	"autoResize.mode.fit": "适应文本",
+	"autoResize.fitAll": "让卡片适应其文本",
+	"autoResize.maxWidth.name": "适应文本时的最大宽度",
+	"autoResize.maxWidth.desc": "设为“适应文本”的卡片会横向增长到此宽度（白板单位），之后文本换行。",
+	"autoResize.maxWidth.simple": "卡片在文本换行之前最多能变多宽。",
+	"autoResize.newCards.name": "新卡片适应其文本",
+	"autoResize.newCards.desc": "新文本卡片默认设为“适应文本”。对已有卡片使用命令“让卡片适应其文本”：作用于选中的卡片，或全部卡片。",
+	"autoResize.newCards.simple": "新添加的卡片会随你写的内容调整大小。",
 
 	"variableBreakpoints.name": "可变断点",
 	"variableBreakpoints.desc": "选择缩小时卡片内容何时被占位块替代：始终显示、为所有卡片使用你自己的缩放级别，或逐张卡片设置（也可通过 --variable-breakpoint CSS 变量，例如在白板 CSS 类中）。",

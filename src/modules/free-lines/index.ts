@@ -8,7 +8,7 @@ import { arrowPreview } from "../edge-styles/geometry";
 import { mergeWithDefaults } from "../../settings/settings";
 import { capturePointer, common, mutate, nodeType, onlyNodes } from "../shared";
 import { attachTarget } from "./attach";
-import { absoluteLine, carryBends, carrySquare, fitLine, isSquare, snapEnds, type P } from "./model";
+import { absoluteLine, carryBends, carrySquare, fitLine, isSquare, keepSquareEnds, snapEnds, type P } from "./model";
 import { CONNECTOR, CONNECTOR_Z, renderLine } from "./render";
 
 interface FreeLinesSettings {
@@ -97,7 +97,7 @@ export const freeLinesModule = defineModule<FreeLinesSettings>({
 				const end = shift(old[old.length - 1]!, to, seen.to);
 				points = isSquare(old) ? carrySquare(old, start, end) : carryBends(old, start, end);
 			}
-			points = snapEnds(points, from && boxOf(from), to && boxOf(to));
+			points = snapEnds(keepSquareEnds(points, from && boxOf(from), to && boxOf(to)), from && boxOf(from), to && boxOf(to));
 			// Ends whose card is gone become free.
 			write(node, points, { from: from ? line.from : undefined, to: to ? line.to : undefined }, false);
 		};

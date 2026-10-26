@@ -123,6 +123,35 @@ export function isSquare(points: P[]): boolean {
 }
 
 /**
+ * A square route whose card changed size: the corner next to an attached end moves back in
+ * front of the card (staying in line with its next corner), so the end can still meet it
+ * straight on.
+ */
+export function keepSquareEnds(points: P[], from?: Box | null, to?: Box | null): P[] {
+	if (!isSquare(points)) return points;
+	const out = points.map((p) => ({ ...p }));
+	const n = out.length;
+	const margin = (size: number) => Math.min(12, size / 2);
+	const fix = (endIdx: number, nextIdx: number, box?: Box | null) => {
+		if (!box) return;
+		const end = out[endIdx]!;
+		const next = out[nextIdx]!;
+		const vertical = Math.abs(next.x - end.x) < 0.5;
+		if (vertical) {
+			const x = Math.max(box.x + margin(box.width), Math.min(box.x + box.width - margin(box.width), next.x));
+			end.x = next.x = x;
+		} else {
+			const y = Math.max(box.y + margin(box.height), Math.min(box.y + box.height - margin(box.height), next.y));
+			end.y = next.y = y;
+		}
+	};
+	// A two-corner route shares its only middle segment: fix one end at a time.
+	fix(0, 1, from);
+	if (isSquare(out)) fix(n - 1, n - 2, to);
+	return isSquare(out) ? out : points;
+}
+
+/**
  * Bend points of a square route follow its ends: the corner next to a moved end slides with it
  * along that segment's direction, so every segment stays horizontal or vertical.
  */

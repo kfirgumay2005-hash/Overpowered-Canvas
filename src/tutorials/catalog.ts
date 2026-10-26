@@ -280,10 +280,10 @@ const notes: TutorialDefinition = {
 			task: "tut.notes.s6.task",
 			target: ".canvas-menu",
 			enter: (rt) => rt.select(["n-long"]),
-			check: (rt) => nodesOf(rt.now()).some((n) => isPlainCard(n) && (extraOf(n).autoResize === true || extraOf(n).autoWidth === true)),
+			check: (rt) => nodesOf(rt.now()).some((n) => n.id === "n-long" && (extraOf(n).autoResize === true || extraOf(n).autoWidth === true || extraOf(n).autoFit === true)),
 			demo: async (rt) => {
 				rt.select(["n-long"]);
-				setExtra(rt, "n-long", { autoResize: true });
+				setExtra(rt, "n-long", { autoFit: true });
 				const node = rt.node("n-long");
 				if (!node) return;
 				const words = rt.t("tut.notes.board.more").split(" ");
