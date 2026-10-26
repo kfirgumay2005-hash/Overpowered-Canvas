@@ -46,6 +46,7 @@ const WATCHED_EVENTS = [
 	"outline-inserted",
 	"note-block-dropped",
 	"lasso-selected",
+	"selection-cut",
 	"note-exported",
 	"canvas-updated-from-note",
 ] as const;

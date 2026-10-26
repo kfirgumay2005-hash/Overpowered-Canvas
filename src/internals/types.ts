@@ -205,6 +205,8 @@ export interface CanvasLike {
 	setData(data: CanvasFileData): void;
 	importData(data: CanvasFileData, clear?: boolean): Set<CanvasNodeLike> | undefined;
 	getSelectionData(selection?: Set<CanvasItemLike>): { nodes: CanvasNodeData[]; edges: CanvasEdgeData[]; center: Point };
+	/** New ids for pasted data, moved by `offset` (the core paste uses it). */
+	cloneData(data: { nodes: CanvasNodeData[]; edges: CanvasEdgeData[] }, offset: Point | null): CanvasFileData;
 	requestSave(pushHistory?: boolean): void;
 	pushHistory(data: CanvasFileData): void;
 	overrideHistory(): void;

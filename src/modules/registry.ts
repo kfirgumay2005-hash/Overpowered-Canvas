@@ -41,6 +41,7 @@ import { boardTemplatesModule } from "./board-templates";
 import { canvasMarkdownModule } from "./canvas-markdown";
 import { noteBlocksModule } from "./note-blocks";
 import { lassoModule } from "./lasso";
+import { clipboardModule } from "./clipboard";
 import { kanbanModule } from "./kanban";
 import { queryGroupsModule } from "./query-groups";
 import { edgeRoutingModule } from "./edge-routing";
@@ -81,6 +82,7 @@ export const MODULES: readonly AnyModule[] = [
 	readonlyPlusModule,
 	imageExportModule,
 	canvasCommandsModule,
+	clipboardModule,
 	toolbarSizeModule,
 	presentationModule,
 	portalsModule,
