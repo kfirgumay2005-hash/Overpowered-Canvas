@@ -253,11 +253,6 @@ export class ModuleManager {
 				component.register(() => el.remove());
 				return el;
 			},
-			addRibbonIcon: (icon, title, onClick) => {
-				const el = host.plugin.addRibbonIcon(icon, title, onClick);
-				component.register(() => el.remove());
-				return el;
-			},
 			addCanvasKey: (spec) => component.register(host.ui.addCanvasKey(spec)),
 			registerView: (type, factory) => {
 				const app = host.plugin.app;

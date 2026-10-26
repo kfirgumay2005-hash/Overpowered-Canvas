@@ -1,4 +1,4 @@
-import { MarkdownView, Notice, Setting } from "obsidian";
+import { MarkdownView, Notice, Setting, setIcon, setTooltip } from "obsidian";
 import { defineModule, type ModuleContext } from "../../core/module";
 import type { EdgeSide } from "../../data/json-canvas";
 import type { CanvasLike, CanvasNodeLike, CanvasViewLike } from "../../internals/types";
@@ -286,15 +286,31 @@ export const noteBlocksModule = defineModule<NoteBlocksSettings>({
 			renderStatus();
 			new Notice(inbox ? t("noteBlocks.inbox.on", { name: ctx.settings.inboxName }) : t("noteBlocks.inbox.off"));
 		};
-		const ribbon = ctx.addRibbonIcon("inbox", t("noteBlocks.ribbon"), toggleInbox);
-		ribbon.addClass("opc-note-blocks-ribbon");
+		// A button in each canvas's side controls.
+		const inboxButtons = new Set<HTMLElement>();
+		ctx.onCanvas((canvas) => {
+			const group = canvas.wrapperEl.querySelector(".canvas-controls")?.createDiv({ cls: "canvas-control-group mod-raised opc-inbox-control" });
+			if (!group) return;
+			const item = group.createDiv({ cls: "canvas-control-item", attr: { "aria-label": t("noteBlocks.inboxButton"), "aria-pressed": String(inbox) } });
+			setIcon(item, "inbox");
+			setTooltip(item, t("noteBlocks.inboxButton"), { placement: "left" });
+			item.toggleClass("is-active", inbox);
+			item.addEventListener("click", toggleInbox);
+			inboxButtons.add(item);
+			return () => {
+				inboxButtons.delete(item);
+				group.remove();
+			};
+		});
 		const status = ctx.addStatusBarItem();
 		status.addClass("opc-note-blocks-status");
 		const renderStatus = () => {
 			status.setText(inbox ? t("noteBlocks.inbox.status", { name: ctx.settings.inboxName }) : "");
 			status.toggle(inbox);
-			ribbon.toggleClass("is-active", inbox);
-			ribbon.setAttr("aria-pressed", String(inbox));
+			for (const b of inboxButtons) {
+				b.toggleClass("is-active", inbox);
+				b.setAttr("aria-pressed", String(inbox));
+			}
 		};
 		status.onClickEvent(() => {
 			inbox = false;

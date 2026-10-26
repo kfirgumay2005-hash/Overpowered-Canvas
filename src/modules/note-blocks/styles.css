@@ -113,7 +113,7 @@ body.opc-mod-note-blocks .opc-note-blocks-ghost.is-compact {
 input.opc-hidden-file {
 	display: none;
 }
-.side-dock-ribbon-action.opc-note-blocks-ribbon.is-active {
+body.opc-mod-note-blocks .opc-inbox-control .canvas-control-item.is-active {
 	color: var(--text-on-accent);
 	background-color: var(--interactive-accent);
 }

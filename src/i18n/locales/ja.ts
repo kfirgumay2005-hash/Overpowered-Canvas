@@ -406,7 +406,7 @@ export const ja: Record<I18nKey, string> = {
 	"noteBlocks.zone.sibling": "兄弟として追加",
 	"noteBlocks.noCanvas": "先にキャンバスを開いてください。",
 	"noteBlocks.cmd.inbox": "受信箱モードの切り替え（ノートのブロックをクリックして受信箱グループへ送る）",
-	"noteBlocks.ribbon": "受信箱モード：クリックしたノートのブロックを受信箱グループへ送る",
+	"noteBlocks.inboxButton": "受信箱モード：クリックしたノートのブロックを受信箱グループへ送る",
 	"noteBlocks.inbox.on": "受信箱モード オン：ノートの段落や箇条書きをクリックすると、グループ「{name}」に送ります。",
 	"noteBlocks.inbox.off": "受信箱モード オフ。",
 	"noteBlocks.inbox.status": "受信箱：{name}",

@@ -124,7 +124,6 @@ export default class OverpoweredCanvasPlugin extends Plugin {
 		open = () => new TutorialListModal(this.app, list).open();
 		this.register(() => void runner.stop());
 		this.app.workspace.onLayoutReady(() => void runner.cleanUp());
-		this.addRibbonIcon("graduation-cap", this.translate("tutorial.open"), open);
 		this.addCommand({ id: "tutorials", name: this.translate("tutorial.open"), icon: "graduation-cap", callback: open });
 		this.register(
 			tracker.subscribe((canvas) => {

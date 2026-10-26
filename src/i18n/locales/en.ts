@@ -408,7 +408,7 @@ export const en = {
 	"noteBlocks.zone.sibling": "Add as sibling",
 	"noteBlocks.noCanvas": "Open a canvas first.",
 	"noteBlocks.cmd.inbox": "Toggle inbox mode (click a block in a note to send it to the inbox group)",
-	"noteBlocks.ribbon": "Inbox mode: send clicked note blocks to the inbox group",
+	"noteBlocks.inboxButton": "Inbox mode: clicked note blocks go to the inbox group",
 	"noteBlocks.inbox.on": "Inbox mode on: click a paragraph or bullet in a note to send it to the group “{name}”.",
 	"noteBlocks.inbox.off": "Inbox mode off.",
 	"noteBlocks.inbox.status": "Inbox: {name}",

@@ -295,8 +295,8 @@ Automated runtime checks of every item below were run in an isolated Obsidian 1.
    only* → the canvas controls and toolbars stay left-to-right, card text is right-to-left.
 11. **Settings search:** type "sticky" in the search box of Obsidian's settings window → the
    sticky-note module and its options are listed; click one to jump to it.
-12. **Tutorials:** Settings → Overpowered Canvas → the *Tutorials* cards are at the top (also the
-   ribbon graduation cap, the cap in the canvas controls, or the *Tutorials* command). Click a
+12. **Tutorials:** Settings → Overpowered Canvas → the *Tutorials* cards are at the top (also
+   the cap in the canvas controls, or the *Tutorials* command). Click a
    card → settings close, a practice board opens in a new tab ("Overpowered Canvas tutorials/
    <name>.canvas") with the coach panel opposite the canvas controls (below the minimap when it
    shares the corner). Do each task by hand: it ticks off with confetti and moves on after a
