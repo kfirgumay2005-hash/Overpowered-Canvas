@@ -394,11 +394,47 @@ Automated runtime checks of every item below were run in an isolated Obsidian 1.
 9. **Zoomed out:** Settings → Variable breakpoints → "Always show content": card text stays
    readable when zoomed far out; "Placeholder below my zoom level" follows the slider.
 10. **Connectors:** select a drawn line attached to two cards: drag a segment's middle dot to add
-    a bend, double-click a bend to remove it; move a card: the bends follow. The line passes
-    under cards.
+    a bend, double-click a bend to remove it; move a card: the bends follow. The line is drawn
+    above the cards (or under them, per the Free lines setting).
 11. **Edge colors:** box-select three connected cards → pick a color: the edges between them
     change too; Ctrl+Z undoes both.
 12. **Coexistence:** with the other canvas plugin that hides the core card bar, our card bar
     buttons stay visible.
 13. **Tutorials:** *Lasso, cut and paste* and *Notes to the board* work by hand and with "Show me";
     closing them deletes the practice board and note.
+
+## Manual — tester feedback, round 2 (0.8)
+
+1. **Sibling order:** a parent with five children. Drag a note block (or press Enter on the first
+   child) and drop it on the first child's "Add as sibling": the new card lands between the first
+   and the second child; the others move down. Same on a map with an automatic layout.
+2. **Lasso stays on:** L, draw a loop → selected, the tool is still on. Press inside the
+   selection and drag → it moves. Tap a card → only it is selected; tap twice → editing (the tool
+   turns off). Tap empty space → cleared. Esc / L / the button turn it off.
+3. **iPad, pen + fingers:** lasso on, draw with the pen → selection; one finger drags the board,
+   two fingers zoom; a resting palm does nothing.
+4. **Quick move (iPad):** select several cards, put a finger on one and drag at once → they move
+   without a long press. A second finger cancels the move. With the pen, a single selected card
+   moves at once too.
+5. **Drawn arrows:** drawing mode → Arrow tool → draw from a card down, across and up into
+   another card: the arrow keeps the two corners, right angles exactly. Shift → straight. Move
+   either card → the route stays square and attached. The arrow is above cards it crosses
+   (setting *Free lines and arrows → Lines attached to cards*).
+6. **Fit text:** a new card shrinks or grows to its text and wraps at the maximum width (Auto-
+   resize setting). Try with a CSS class that enlarges the font. Command *Fit cards to their text*
+   on old cards.
+7. **Move a branch:** drag a card with children onto another card → targets appear; drop on "Add
+   as child" → re-linked, its children follow, an auto-laid-out map re-arranges; one Ctrl+Z
+   undoes all of it.
+8. **Marks on cards:** drawing mode, underline a word inside a card, leave drawing mode. Move the
+   card, auto-layout the map, cut + paste it, Alt-drag a copy: the marks follow every time.
+   Delete the card → its marks go too; Ctrl+Z brings both back. Drag only the marks off the card
+   → they come loose.
+9. **Highlight words:** H (or the bottom-bar highlighter), pick yellow, swipe over words in a card
+   → the card's text gets `<mark>` around them; theme color → `==…==`; across a bold word → the
+   bold stays intact; tap one word → that word. Eraser → removes. Swipe over a highlight in
+   another color → recolored, not nested. iPad: works with the pen; fingers pan once the pen was
+   used.
+10. **Tutorials:** *Lasso, cut and paste*, *Drawing*, *Mind maps*, *Sticky notes and text*: every
+    "Show me" completes its step.
+

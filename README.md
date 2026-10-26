@@ -14,8 +14,9 @@ Includes all the features from both advanced canvas and canvas mindmap plugins ,
 ## Features
 
 **Cards and edges** — flowchart and basic shapes on cards, border styles, start/center/end and
-top/middle/bottom text alignment (new cards can be centered automatically), cards that grow
-downwards or sideways as you type, layers like in image editors (a Layers panel to create,
+top/middle/bottom text alignment (new cards can be centered automatically), cards that fit
+their text up to a maximum width (new cards do by default) or grow downwards or sideways as you
+type, layers like in image editors (a Layers panel to create,
 rename, reorder, hide, lock and delete them; new items go to the active layer; move the
 selection to a layer or one layer up or down), custom colors from CSS, card templates in the bottom bar, empty groups, card
 content at any zoom level (always, below your own zoom, or per card), text that doesn't jump between reading and editing; edge line styles and
@@ -25,15 +26,20 @@ highlight / select connected edges, draggable bend points and labels.
 **Drawing** — pen, pencil, marker and highlighter with pressure and tilt (perfect-freehand),
 palm rejection, pen-only mode, the pen's eraser end, whole-stroke and partial eraser, lasso to
 move / scale / delete / lock strokes, recent colors, smoothing, and shape recognition (hold at
-the end of a stroke). Free lines and arrows whose ends stick to cards, with bend points that keep
-the route's shape when cards move, drawn under the cards they connect. Standalone shapes with
+the end of a stroke). Marks drawn on a card stick to it: they move, copy and delete with the card.
+Highlight words inside a card without editing it (swipe or tap with a pen or the mouse; the
+highlight goes into the card's text). Free lines and arrows whose ends stick to cards and that
+keep the corners you draw; bend points keep the route's shape when cards move (square routes stay
+square), drawn above the cards (or under them). Standalone shapes with
 fill, outline, opacity and rotation. Sticky notes in any color (the last 10 custom colors are
 kept) whose text shrinks to fit. Floating text without a card around it. Infinite
 lines at any angle (turn them live with a slider from the selection toolbar) with their own
 color and thickness. Non-destructive image crop.
 Lock items in place.
 
-**Mind maps** — Tab / Enter to add children and siblings, Alt+arrows to move between cards,
+**Mind maps** — Tab / Enter to add children and siblings (a sibling goes right after its card),
+drag a card onto another card's "Add as child" / "Add as sibling" targets to move it with its
+branch, Alt+arrows to move between cards,
 collapsible branches with child counts, and automatic layout (mind map in any direction,
 collision-free radial that respects every card's size, balanced, layered flowchart, grid) as one
 animated undo step; groups move as rigid blocks and edges re-attach to the facing sides.
@@ -44,7 +50,9 @@ metadata cache; edges from frontmatter links; links and embeds to a single card
 export.
 
 **Interaction and navigation** — a lasso that selects anything on the canvas (cards, groups,
-edges, ink strokes); cut in one undo step and paste under the pointer, with Cut / Copy / Paste
+edges, ink strokes) and stays on: press inside the selection to move it, and once a pen has
+been used, fingers move and zoom the board; on touch screens a selection moves right away,
+without a long press; cut in one undo step and paste under the pointer, with Cut / Copy / Paste
 buttons on tablets; coloring several cards colors the edges between them; presentations along edges or through frames
 (click a slide's name to hide or show its frame), portals into
 other canvases, collapsible groups, focus mode, move a selection to a new canvas, PDF pages as
@@ -93,6 +101,8 @@ still clickable ([docs/BENCHMARKS.md](docs/BENCHMARKS.md)).
 | Key                                   | Action                                                    |
 | ------------------------------------- | --------------------------------------------------------- |
 | P                                     | Drawing mode on/off (Esc leaves it)                       |
+| L                                     | Lasso on/off (Esc leaves it)                              |
+| H                                     | Highlight words in cards on/off (Esc leaves it)           |
 | M                                     | Minimap on/off                                            |
 | Ctrl/Cmd+F                            | Search the canvas                                         |
 | Tab                                   | Mind map: add a child (on a sticky note: the next sticky) |
