@@ -1,0 +1,158 @@
+# Malattia policistica renale autosomica dominante (ADPKD)
+- Gen
+    - Gen
+        - malattia sistemica caratterizzata da numerosi cisti renali bilaterali che determinano un aumento dimensionale significativo dei reni
+            - riducendone il tessuto funzionante
+        - Alle manifestazioni renali si accompagnano altre manifestazioni extrarenali.
+    - Epidemiologia
+        - causa più comune di insufficienza renale cronica di tipo genetico
+            - carattere autosomico dominante con penetranza completa
+                - 90% dei casi si ha una storia familiare di malattia
+                - nel restante 10% dei casi si verificano mutazioni de novo
+        - L'incidenza è piuttosto elevata con 1/200-1/100 nati vivi.
+- Pat
+    - Eziopatogenesi
+        - geni coinvolti sono
+            - PKD1 (16p13);
+            - PKD2 (4q21);
+            - PKD3
+                - localizzazione cromosomica non è stata identificata
+                - in questo gruppo rientrano tutte le altre mutazioni che non sono in PDK1 o PDK2
+            - manifestazioni patologiche associate a queste tre diverse mutazioni sono simili, ma nei pazienti con mutazioni del gene PKD2 si ha una minore severità delle manifestazioni cliniche
+        - proteine mutate coinvolte nella malattia sono:
+            - Policistina 1
+                - localizzata
+                    - ciglia dell'epitelio tubula
+                    - dotti epati
+                    - dotti pancreatici
+                    - coinvolta in interazioni con altre cellule e con la matrice extracellulare
+                - ha possibili funzioni recettoriali;
+            - Policistina 2
+                - proteina integrale di membrana presente ne
+                    - tratto ascendente
+                    - tubuli dista
+                    - dotti collettori
+                - pare sia sovraespressa in alcune cisti
+                - . Ha una probabile funzione di canale del Ca2+
+    - Patogenesi
+        - mutazione della policistina1/policistina2 determina un difetto nell'interazione cellulacellula e cellula-matrice
+            - conseguente alterazione della crescita e del differenziamento delle cellule epiteliali tubulari.
+                - Tutto ciò determina
+                    - Alterazione della matrice extracellulare
+                    - iperproliferazione cellulare
+                    - secrezione tubulare
+        - Implicazioni pat
+            - Ciò determina la formazione di una cisti renale responsabile del danno vascolare e di uno stato infiammatorio interstiziale e fibrosi.
+                - determinando una sovraproduzione di fluido e di matrice e la trasformazione di cellule normali in cist
+            - patologia policistica è, dunque, determinata dalla perdita di integrità delle policistine che trasforma le cellule tubulari in cellule scarsamente differenziate e iperproliferant ^mark-db34131a-6797-6438
+                - Durante lo sviluppo della cisti si verifica produzione di cloro nel lume cistico
+                - l'accumulo di acqua e sodio al suo interno ne determina un notevole aumento di dimensioni
+            - Nell' ambito rene
+                - possono generarsi a partire da tutte le parti del nefrone
+                    - dalla capsula di Bowman
+                    - fino al dotto collettore, ma mai dai tessuti interstiziali
+                - Car ^mark-087ee74e-70ac-6e90
+                    - cavità contengono fluido
+                        - differente aspetto (trasparente o scuro
+                    - variabili
+                        - nel numero (da meno di una decina a centinaia
+                        - nel volume (da microscopiche a oltre 25 cm di diametro
+                    - Quando il diametro è minore di 200 μm sono ancora comunicanti con il tubulo di origine
+                        - in seguito diventano strutture autonome in progressiva espansione per l'accumulo di fluidi (siero, liquido proteinaceo, sangue)
+                    - possono essere intercalate in maniera focale nel tessuto renale sano
+            - e possono essere presenti in tutti gli organi parenchimali, come fegato, pancreas o altre strutture come i dotti biliari
+        - Ipotesi patogenetiche
+            - modello "two hit" (doppio colpo) ^mark-838a1c9e-7832-ef16
+                - più accreditata
+                - O
+                    - soggetto eredita un gene mutato PKD1 o PKD2 dal genitore affetto e un gene normale (wild-type) dal genitore sano
+                    - Durante la vita dell'individuo, il gene wild-type va incontro a mutazione somatica spontanea,
+                        - che può essere causata da una serie di fattori ambientali
+                            - chimici (sostanze tossiche
+                            - fisici (esposizione a radiazioni)
+                            - biologici (infezioni)
+                        - viene inattivato
+                            - L'inattivazione del allele sano comporta una perdita di eterozigosità,
+                            - l'unico allele che rimane attivo e si esprime è quello mutato
+                    - Ogni cisti renale origina da un "second hit
+                        - un alto numero di mutazioni somatiche perché si manifesti la malattia policistica
+                        - è indispensabile un cosiddetto "secondo colpo",
+            - Precisazioni
+                - La patologia viene definita autosomica dominante, in realtà da un punto di vista genetico, di genetica classica è considerabile se ho ben capito autosomica recessiva
+                    - La ragione per cui viene definita autosomica dominante, è che la possibilità di sviluppare una seconda mutazione durante la vita è praticamente nel 100%
+                        - Dal punto di vista medico, quindi si può fermare che ereditare una sola copia mutata porterà prima o poi a sviluppare la patologia, per questo si definisce dominante
+    - Storia della malattia ^mark-5baf2685-7ba7-f757
+        - volume renale aumenta progressivamente negli anni;
+            - Immagine
+        - formazione delle cisti comincia intorno ai 15 anni
+        - Attorno ai 30 anni le cisti cominciano ad essere già piuttosto numerose
+        - Fino ai 40 anni la funzione renale rimane normale, poi cala di 4,5-5,9 ml/min/anno
+            - L'ipertensione si manifesta prima della perdita di funzione
+        - Attorno ai 60 anni tutti i pazienti sviluppano insufficienza renale cronica
+- Diagnosi
+    - Gen
+        - Protocollo
+            - Anamnesi familiare
+                - donazione da vivente da parte di familiari di giovane età.
+            - Diagnosi ecografica
+            - Studio genetic
+                - eseguire in presenza di casi senza familiarit
+                - fenotipo non tipico
+        - Anamnesi
+            - Info utili es
+                - paziente con rene policistico
+                - paziente afferma che nessuno dei due genitori o dei suoi antenati erano affetti dalla stessa patologia, tuttavia i suoi figli sono affetti da rene policistico
+                - mutazione è presente ed è ti tipo fam
+                    - Chiedendo al paziente se i genitori sono ancora vivi
+                        - padre è morto a 30 anni per emorragia cerebrale
+                            - Dunque, è possibile che il padre del paziente fosse affetto dal rene policistico, ma è morto prematuramente per emorragia causata da aneurisma cerebrale prima dell'insorgenza di sintomi renali
+    - Quadro clinico
+        - Manifestazioni primcipali
+            - Cardiaco
+                - Ipertensione arterios
+                    - legata spesso alla compressione da parte delle cisti sull'arteria renale
+            - Renale
+                - Microematuria intermittente
+                - Macroematuria sporadica
+                - Insufficienza renale cronica progressiva
+                - sclerosi tuberosa
+            - Altri
+                - Dolore al fianco
+                - Cisti infette
+                    - per proliferazione batterica all'interno delle cisti;
+        - Altri sintomi non comuni come
+            - Cisti epatiche
+                - 50% dei cas
+                - raramente il paziente con cisti epatiche, oltre alle cisti renali, va incontro ad insufficienza epatica perché il fegato è in grado di rigenerars
+        - prognosi può essere peggiore per pazienti con altre patologie
+            - Aneurisma cerebrale
+                - spesso si accompagna al rene policistico
+            - Prolasso della mitrale;
+            - epatite C
+            - Diverticolosi del colon;
+            - Ernia iatale.
+    - Esami lab
+        - Asp macro
+            - Immagine
+                - notare la differenza dimensionale notevole tra un rene normale e un rene policistico, che va a comprimere gli organi circostanti, com
+                    - fegato
+                    - intestino
+- Terapia
+    - numerose nuove terapie
+        - somministrazione di tolvactan in compress
+            - più attuata
+            - Meccanismo
+                - antagonista del recettore V2 della vasopressina
+                    - Bloccando selettivamente il legame della vasopressina al suo recettore riduce la proliferazione cellulare di cisti e la secrezione di fluidi, riducendo in ultima analisi lo sviluppo delle cisti e gli eventi renali associati alla progressione
+                - ha dimostrato di rallentare l'evoluzione delle cisti e il declino della funzione renale nei pazienti
+                    - con ADPKD con malattia renale cronica (CKD
+                    - nello stadio da 1 a 3 con evidenza di malattia in rapida progression
+            - limiti
+                - necessità di un'assunzione idrica molto elevata, circa 10-12L di acqua al giorno, che spesso riduce la complianza
+    - Quando è necessario espiantare entrambi i reni policistici in un soggetto che ha la malattia ma che ha una funzione renale perfettamente normale (1 di creatinina)?
+        - È possibile che il tessuto renale, in presenza della malattia, mantenga una buona funzione anche per diversi decenni, fino ai 40-50 anni
+        - L'espianto bilaterale diventa necessario quando i reni sono talmente grandi da determinare una sindrome da ingombro
+            - cioè vanno a comprimere l'apparato GI rendendo impossibile anche solo l'alimentazion
+                - . Se non trattato, infatti, il paziente può morire di anoressia o di cachessia
+        - rimozione di entrambi i reni policistici deve essere eseguita, se non contemporaneamente, a distanza di poco tempo
+            - che le cellule del rene policistico sono affette da ciliopatia, per cui se rimuoviamo uno solo dei due reni, il controlaterale non percepisce l'inibizione alla sua crescita e va spesso ad occupare la loggia rimasta vuota aumentando ulteriormente le sue dimension

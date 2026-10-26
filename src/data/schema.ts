@@ -88,6 +88,10 @@ export type EdgeRoute = (typeof EDGE_ROUTES)[number];
 
 export const EDGE_SIDES = ["top", "right", "bottom", "left"] as const satisfies readonly EdgeSide[];
 
+/** How a mind map is arranged (auto layout); "right"/"left" are logical (mirrored in RTL). */
+export const MAP_LAYOUTS = ["right", "left", "down", "up", "balanced", "radial", "layered-right", "layered-left", "layered-down", "layered-up", "grid"] as const;
+export type MapLayout = (typeof MAP_LAYOUTS)[number];
+
 export const STROKE_TOOLS = ["pen", "pencil", "marker", "highlighter"] as const;
 export type StrokeTool = (typeof STROKE_TOOLS)[number];
 
@@ -171,6 +175,8 @@ export interface OpcRoot {
 	layers?: LayerInfo[];
 	/** The layer new items go to; absent or unknown: the bottom layer. */
 	activeLayer?: string;
+	/** Root card id → the auto layout last applied to its map (Markdown round trip re-applies it). */
+	mapLayouts?: Record<string, MapLayout>;
 }
 
 export interface LayerInfo {
