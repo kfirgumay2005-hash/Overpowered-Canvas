@@ -761,7 +761,7 @@ export const en = {
 	"toolbarSize.phoneBar.side": "Side of the screen",
 
 	"floatingText.name": "Floating text",
-	"floatingText.desc": "A text tool in the bottom bar, like Miro's: text without a card around it that grows as you type. Color it from the selection toolbar.",
+	"floatingText.desc": "A text tool in the bottom bar: text without a card around it that grows as you type. Color it from the selection toolbar.",
 	"floatingText.add": "Add text",
 
 	"grid.name": "Grid",
@@ -921,7 +921,7 @@ export const en = {
 	"layers.moveTo": "Move to layer…",
 	"layers.button": "Layer",
 	"layers.revealed": "\"{name}\" was hidden or locked: it is shown and unlocked again so the new item stays visible.",
-	"layers.simple": "Like layers in Photoshop: make layers, put cards on them, and choose which layer sits on top. Hide or lock a whole layer at once.",
+	"layers.simple": "Make layers, put cards on them, and choose which layer sits on top. Hide or lock a whole layer at once.",
 	...tutorialsEn,
 } as const;
 

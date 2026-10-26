@@ -27,7 +27,7 @@ palm rejection, pen-only mode, the pen's eraser end, whole-stroke and partial er
 move / scale / delete / lock strokes, recent colors, smoothing, and shape recognition (hold at
 the end of a stroke). Free lines and arrows whose ends stick to cards. Standalone shapes with
 fill, outline, opacity and rotation. Sticky notes in any color (the last 10 custom colors are
-kept) whose text shrinks to fit. Floating text without a card, like Miro's text tool. Infinite
+kept) whose text shrinks to fit. Floating text without a card around it. Infinite
 lines at any angle (turn them live with a slider from the selection toolbar) with their own
 color and thickness. Non-destructive image crop.
 Lock items in place.

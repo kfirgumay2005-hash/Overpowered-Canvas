@@ -759,7 +759,7 @@ export const zh: Record<I18nKey, string> = {
 	"toolbarSize.phoneBar.side": "屏幕侧边",
 
 	"floatingText.name": "浮动文本",
-	"floatingText.desc": "底部栏中的文本工具，类似 Miro：没有卡片外框的文字，随输入自动变大。可在选区工具栏中设置颜色。",
+	"floatingText.desc": "底部栏中的文本工具：没有卡片外框的文字，随输入自动变大。可在选区工具栏中设置颜色。",
 	"floatingText.add": "添加文本",
 
 	"grid.name": "网格",
@@ -919,6 +919,6 @@ export const zh: Record<I18nKey, string> = {
 	"layers.moveTo": "移到图层…",
 	"layers.button": "图层",
 	"layers.revealed": "“{name}”已隐藏或锁定：已重新显示并解锁，以便新项目可见。",
-	"layers.simple": "就像 Photoshop 的图层：创建图层、把卡片放上去，并决定哪个图层在最上面。可以一次隐藏或锁定整个图层。",
+	"layers.simple": "创建图层、把卡片放上去，并决定哪个图层在最上面。可以一次隐藏或锁定整个图层。",
 	...tutorialsZh,
 };

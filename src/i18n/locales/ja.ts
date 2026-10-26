@@ -759,7 +759,7 @@ export const ja: Record<I18nKey, string> = {
 	"toolbarSize.phoneBar.side": "画面の横",
 
 	"floatingText.name": "フローティングテキスト",
-	"floatingText.desc": "Miro のような、下部バーのテキストツール。カードの枠がないテキストで、入力に合わせて広がります。色は選択ツールバーで変えられます。",
+	"floatingText.desc": "下部バーのテキストツール。カードの枠がないテキストで、入力に合わせて広がります。色は選択ツールバーから設定します。",
 	"floatingText.add": "テキストを追加",
 
 	"grid.name": "グリッド",
@@ -919,6 +919,6 @@ export const ja: Record<I18nKey, string> = {
 	"layers.moveTo": "レイヤーへ移動…",
 	"layers.button": "レイヤー",
 	"layers.revealed": "「{name}」は非表示またはロック中でした。新しい項目が見えるよう、表示してロックを解除しました。",
-	"layers.simple": "Photoshop のレイヤーのように、レイヤーを作ってカードを載せ、どのレイヤーを上にするかを決めます。レイヤー全体をまとめて隠したりロックしたりできます。",
+	"layers.simple": "レイヤーを作ってカードを載せ、どのレイヤーを上にするかを決めます。レイヤー全体をまとめて隠したりロックしたりできます。",
 	...tutorialsJa,
 };
