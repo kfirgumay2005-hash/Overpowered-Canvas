@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { readNode } from "../../data/validate";
-import { absoluteLine, borderPoint, fitLine, LINE_PAD, lineNodeData, shapeNodeData, snapEnds } from "./model";
+import { absoluteLine, borderPoint, carryBends, fitLine, LINE_PAD, lineNodeData, shapeNodeData, snapEnds } from "./model";
 
 describe("free lines", () => {
 	it("fits the box around the points", () => {
@@ -32,5 +32,15 @@ describe("free lines", () => {
 		const data = shapeNodeData("s", "ellipse", { x: 1.4, y: 2.6, width: 10, height: 50 }, { color: "#000000" });
 		expect(data).toMatchObject({ x: 1, y: 3, width: 20, height: 50, color: "#000000" });
 		expect(readNode(data["x-opc"])).toEqual({ kind: "shape", shape: "ellipse" });
+	});
+});
+
+describe("carryBends", () => {
+	it("moves, turns and stretches bends with the ends", () => {
+		const pts = [{ x: 0, y: 0 }, { x: 50, y: 50 }, { x: 100, y: 0 }];
+		expect(carryBends(pts, { x: 10, y: 10 }, { x: 110, y: 10 })[1]).toEqual({ x: 60, y: 60 });
+		const turned = carryBends(pts, { x: 0, y: 0 }, { x: 0, y: 200 })[1]!;
+		expect(turned.x).toBeCloseTo(-100);
+		expect(turned.y).toBeCloseTo(100);
 	});
 });

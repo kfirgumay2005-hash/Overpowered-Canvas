@@ -514,6 +514,7 @@ export const drawingModule = defineModule<DrawingSettings>({
 	group: "drawing",
 	defaultEnabled: true,
 	defaultSettings: DRAWING_DEFAULTS,
+	overlapsWith: ["canvas-kit"],
 	sanitizeSettings: (raw, defaults) => mergeWithDefaults(raw, defaults),
 
 	enable(ctx) {

@@ -10,6 +10,10 @@ export interface LineHandlers {
 	line(evt: PointerEvent): void;
 	/** Pointerdown on an end handle. */
 	end(evt: PointerEvent, end: "from" | "to"): void;
+	/** Pointerdown on a bend point (index into the points), or on a segment's middle (insert after `index`). */
+	bend(evt: PointerEvent, index: number, insert: boolean): void;
+	/** Double-click on a bend point: remove it. */
+	unbend(index: number): void;
 }
 
 function child<K extends keyof SVGElementTagNameMap>(svg: SVGSVGElement, tag: K, cls: string): SVGElementTagNameMap[K] {
@@ -61,9 +65,12 @@ export function renderLine(node: CanvasNodeLike, line: LineData | null, strokeWi
 	if (!line) {
 		svg?.remove();
 		if (node.nodeEl.getAttribute("data-opc-kind") === "line") node.nodeEl.removeAttribute("data-opc-kind");
+		node.nodeEl.removeAttribute("data-opc-connector");
 		return;
 	}
 	node.nodeEl.setAttribute("data-opc-kind", "line");
+	// Lines that connect cards are drawn under the cards, like edges.
+	node.nodeEl.toggleAttribute("data-opc-connector", !!(line.from || line.to));
 	if (!svg) {
 		svg = createSvg("svg");
 		svg.classList.add("opc-line");
@@ -99,5 +106,23 @@ export function renderLine(node: CanvasNodeLike, line: LineData | null, strokeWi
 		h.setAttribute("cx", String(p[0]));
 		h.setAttribute("cy", String(p[1]));
 		h.classList.toggle("is-attached", !!line[end]);
+	}
+	// Bend points (drag to move, double-click to remove) and segment middles (drag to add one).
+	const bends = child(svg, "g", "opc-line-bends");
+	bends.empty();
+	for (let i = 0; i < n - 1; i++) {
+		const [ax, ay] = pts[i]!;
+		const [bx, by] = pts[i + 1]!;
+		const mid = bends.createSvg("circle", { cls: ["opc-line-handle", "opc-line-mid"], attr: { cx: (ax + bx) / 2, cy: (ay + by) / 2 } });
+		mid.addEventListener("pointerdown", (evt) => handlers.bend(evt, i, true));
+	}
+	for (let i = 1; i < n - 1; i++) {
+		const [x, y] = pts[i]!;
+		const h = bends.createSvg("circle", { cls: ["opc-line-handle", "opc-line-bend"], attr: { cx: x, cy: y } });
+		h.addEventListener("pointerdown", (evt) => handlers.bend(evt, i, false));
+		h.addEventListener("dblclick", (evt) => {
+			evt.stopPropagation();
+			handlers.unbend(i);
+		});
 	}
 }

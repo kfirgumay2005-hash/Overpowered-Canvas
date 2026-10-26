@@ -94,3 +94,37 @@ export function shapeNodeData(id: string, shape: string, box: { x: number; y: nu
 		"x-opc": { kind: "shape", shape, ...(style.fill ? { fill: style.fill } : {}), ...(style.strokeWidth ? { strokeWidth: style.strokeWidth } : {}) },
 	};
 }
+
+/**
+ * Bend points follow their line's ends: the transform that takes the old ends to the new ones
+ * (move, turn and stretch) is applied to every point in between, so the route keeps its shape.
+ */
+export function carryBends(points: P[], start: P, end: P): P[] {
+	const n = points.length;
+	if (n < 2) return points;
+	const a = points[0]!;
+	const b = points[n - 1]!;
+	const out = points.slice();
+	out[0] = start;
+	out[n - 1] = end;
+	if (n === 2) return out;
+	const ox = b.x - a.x;
+	const oy = b.y - a.y;
+	const len2 = ox * ox + oy * oy;
+	if (len2 < 1e-6) {
+		// Ends were on top of each other: just move the bends along with the start.
+		for (let i = 1; i < n - 1; i++) out[i] = { x: points[i]!.x + start.x - a.x, y: points[i]!.y + start.y - a.y };
+		return out;
+	}
+	const nx = end.x - start.x;
+	const ny = end.y - start.y;
+	// Complex ratio (new / old) = rotation and scale.
+	const re = (nx * ox + ny * oy) / len2;
+	const im = (ny * ox - nx * oy) / len2;
+	for (let i = 1; i < n - 1; i++) {
+		const dx = points[i]!.x - a.x;
+		const dy = points[i]!.y - a.y;
+		out[i] = { x: start.x + dx * re - dy * im, y: start.y + dx * im + dy * re };
+	}
+	return out;
+}

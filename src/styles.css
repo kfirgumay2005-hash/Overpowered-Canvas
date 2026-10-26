@@ -45,6 +45,8 @@
 @import "./modules/direction/styles.css";
 @import "./modules/performance/styles.css";
 @import "./modules/layers/styles.css";
+@import "./modules/note-blocks/styles.css";
+@import "./modules/lasso/styles.css";
 
 .opc-setting-note {
 	color: var(--text-warning);
@@ -117,4 +119,17 @@
 .opc-collapse-name {
 	cursor: pointer;
 	user-select: none;
+}
+
+/* Coexistence with other canvas plugins (class names are theirs). */
+/* A plugin that hides the core card bar would hide our buttons with it: keep the bar for ours. */
+body.canvas-kit-hide-bottom-bar .canvas-card-menu:has(> .opc-card-button) {
+	display: flex;
+}
+body.canvas-kit-hide-bottom-bar .canvas-card-menu:has(> .opc-card-button) > .canvas-card-menu-button:not(.opc-card-button) {
+	display: none;
+}
+/* Its toolbar sits at the top centre too: ours goes below it. */
+.canvas-wrapper:has(> .canvas-pencil-bar) .opc-ink-toolbar {
+	top: calc(var(--size-4-3) + 56px);
 }

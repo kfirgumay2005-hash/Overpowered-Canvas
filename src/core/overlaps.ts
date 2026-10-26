@@ -4,6 +4,8 @@ import type { OverlappingPlugin } from "./module";
 export const OVERLAPPING_PLUGINS: Readonly<Record<OverlappingPlugin, string>> = {
 	"advanced-canvas": "Advanced Canvas",
 	"canvas-mindmap": "Canvas Mindmap",
+	cammvas: "Cammvas",
+	"canvas-kit": "Canvas Kit",
 };
 
 export interface Overlap {

@@ -3,10 +3,11 @@ import { defineModule, type ModuleContext } from "../../core/module";
 import type { EdgeSide } from "../../data/json-canvas";
 import type { I18nKey, Translate } from "../../i18n";
 import type { CanvasLike, CanvasNodeLike } from "../../internals/types";
-import type { MapLayout } from "../../data/schema";
-import { descendants, directionBetween, logical, roots, type Dir, type TEdge, type TNode } from "../mindmap/tree";
+import { SCHEMA_KEY, type MapLayout } from "../../data/schema";
+import { descendants, directionBetween, logical, type Dir, type TEdge } from "../mindmap/tree";
 import { canvasDirection, mutate, nodeType, selectedNodes } from "../shared";
 import { disposeElk, getElk } from "./engine";
+import { collapseGroups, expandPositions } from "./blocks";
 import { computeLayout, interpolate, type Algorithm, type LayoutDirection, type Positions } from "./layout";
 
 interface LayoutSettings {
@@ -21,11 +22,14 @@ interface LayoutSettings {
 const OPPOSITE: Record<Dir, EdgeSide> = { right: "left", left: "right", down: "top", up: "bottom" };
 const SIDE: Record<Dir, EdgeSide> = { right: "right", left: "left", down: "bottom", up: "top" };
 const ALGORITHMS: Algorithm[] = ["mindmap", "layered", "grid"];
+const DRAWINGS: ReadonlySet<string> = new Set(["ink", "line", "guide"]);
 const DIRECTIONS: LayoutDirection[] = ["right", "left", "down", "up", "balanced", "radial"];
 
 /** Which nodes a layout applies to: the selection (plus subtrees of a single root) or the whole canvas. */
 export function layoutTargets(canvas: CanvasLike, scope: LayoutSettings["scope"]): CanvasNodeLike[] {
-	const usable = (n: CanvasNodeLike) => nodeType(n) !== "group" && !n.id.includes("~") && !n.nodeEl.hasClass("opc-hidden-by-collapse") && !n.nodeEl.hasClass("opc-hidden-by-branch");
+	// Drawings (ink, lines, guides) are not cards to arrange: lines follow the cards they connect.
+	const drawing = (n: CanvasNodeLike) => nodeType(n) === "text" && DRAWINGS.has(String((n.unknownData?.[SCHEMA_KEY] as { kind?: string } | undefined)?.kind ?? ""));
+	const usable = (n: CanvasNodeLike) => nodeType(n) !== "group" && !drawing(n) && !n.id.includes("~") && !n.nodeEl.hasClass("opc-hidden-by-collapse") && !n.nodeEl.hasClass("opc-hidden-by-branch");
 	const all = [...canvas.nodes.values()].filter(usable);
 	const selected = selectedNodes(canvas).filter(usable);
 	if (scope === "canvas" || selected.length === 0) return all;
@@ -88,49 +92,61 @@ export function mapLayoutOf(choice: Pick<LayoutSettings, "algorithm" | "directio
 
 async function runLayout(ctx: ModuleContext<LayoutSettings>, canvas: CanvasLike, choice: LayoutSettings): Promise<void> {
 	const targets = layoutTargets(canvas, choice.scope);
-	if (targets.length < 2) {
+	// Groups move as rigid blocks: the chosen ones, and the outermost group around any target.
+	const whole = choice.scope === "canvas" || selectedNodes(canvas).length === 0;
+	const allNodes = [...canvas.nodes.values()].filter((n) => !n.id.includes("~"));
+	const chosenGroups = new Set((whole ? allNodes : selectedNodes(canvas)).filter((n) => nodeType(n) === "group").map((n) => n.id));
+	const box = (n: CanvasNodeLike) => ({ id: n.id, x: n.x, y: n.y, width: n.width, height: n.height });
+	const allEdges: TEdge[] = [...canvas.edges.values()].map((e) => ({ from: e.from.node.id, to: e.to.node.id }));
+	const blocks = collapseGroups(
+		allNodes.map((n) => ({ ...box(n), group: nodeType(n) === "group" })),
+		new Set(targets.map((n) => n.id)),
+		chosenGroups,
+		allEdges,
+	);
+	if (blocks.nodes.length < 2) {
 		new Notice(ctx.t("autoLayout.nothing"));
 		return;
 	}
 	const rtl = canvasDirection(canvas) === "rtl";
 	// "right" means "forward": mirrored in right-to-left canvases.
 	const direction: LayoutDirection = choice.direction === "right" || choice.direction === "left" ? logical(choice.direction, rtl) : choice.direction;
-	const ids = new Set(targets.map((n) => n.id));
-	const tnodes: TNode[] = targets.map((n) => ({ id: n.id, x: n.x, y: n.y, width: n.width, height: n.height }));
-	const tedges: TEdge[] = [...canvas.edges.values()].filter((e) => ids.has(e.from.node.id) && ids.has(e.to.node.id)).map((e) => ({ from: e.from.node.id, to: e.to.node.id }));
-	let positions: Positions;
+	let laid: Positions;
 	try {
-		positions = await computeLayout(getElk(), tnodes, tedges, { algorithm: choice.algorithm, direction, spacing: choice.spacing, levelSpacing: choice.levelSpacing });
+		laid = await computeLayout(getElk(), blocks.nodes, blocks.edges, { algorithm: choice.algorithm, direction, spacing: choice.spacing, levelSpacing: choice.levelSpacing });
 	} catch (error) {
 		console.error("[overpowered-canvas] layout failed", error);
 		new Notice(ctx.t("autoLayout.failed"));
 		return;
 	}
-	const start: Positions = new Map(targets.map((n) => [n.id, { x: n.x, y: n.y }]));
+	const byId = new Map(allNodes.map((n) => [n.id, n]));
+	const positions = expandPositions(blocks, laid, new Map(allNodes.map((n) => [n.id, box(n)])));
+	const moved = [...positions.keys()].map((id) => byId.get(id)).filter((n): n is CanvasNodeLike => !!n);
+	const start: Positions = new Map(moved.map((n) => [n.id, { x: n.x, y: n.y }]));
 	const ok = mutate(ctx, canvas, () => {
-		for (const n of targets) {
-			const p = positions.get(n.id);
-			if (p) n.moveTo(p);
+		for (const n of moved) n.moveTo(positions.get(n.id)!);
+		// Edges that moved attach to the sides facing each other (floating ends pick their own side).
+		for (const e of canvas.edges.values()) {
+			const from = e.from.node.id;
+			const to = e.to.node.id;
+			if (!positions.has(from) && !positions.has(to)) continue;
+			const sameBlock = blocks.blockOf.get(from) !== undefined && blocks.blockOf.get(from) === blocks.blockOf.get(to);
+			if (sameBlock || from === to) continue;
+			const floating = ctx.data.edge(e).get().floating;
+			const dir = directionBetween(e.from.node, e.to.node);
+			e.update({ ...e.from, side: floating?.from ? e.from.side : SIDE[dir] }, { ...e.to, side: floating?.to ? e.to.side : OPPOSITE[dir] });
 		}
-		// Attach edges to the facing sides (floating ends pick their own side).
-		if (choice.algorithm !== "grid")
-			for (const e of canvas.edges.values()) {
-				if (!ids.has(e.from.node.id) || !ids.has(e.to.node.id)) continue;
-				const floating = ctx.data.edge(e).get().floating;
-				const dir = directionBetween(e.from.node, e.to.node);
-				e.update({ ...e.from, side: floating?.from ? e.from.side : SIDE[dir] }, { ...e.to, side: floating?.to ? e.to.side : OPPOSITE[dir] });
-			}
 	});
 	if (!ok) return;
-	ctx.events.emit("layout-applied", canvas, targets, `${choice.algorithm}/${direction}`);
+	ctx.events.emit("layout-applied", canvas, moved, `${choice.algorithm}/${direction}`);
 	if (!ctx.settings.animate) return;
 	// Animate from the old positions to the saved ones (purely visual).
-	const end: Positions = new Map(targets.map((n) => [n.id, { x: n.x, y: n.y }]));
+	const end: Positions = new Map(moved.map((n) => [n.id, { x: n.x, y: n.y }]));
 	const t0 = performance.now();
 	const frame = (now: number) => {
 		const t = Math.min(1, (now - t0) / 350);
 		const pos = interpolate(start, end, t);
-		for (const n of targets) {
+		for (const n of moved) {
 			const p = pos.get(n.id);
 			if (p) n.moveTo(p);
 		}

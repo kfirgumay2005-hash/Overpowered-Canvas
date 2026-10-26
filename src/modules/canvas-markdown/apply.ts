@@ -86,7 +86,7 @@ function layoutOptions(layout: MapLayout, rtl: boolean, spacing: number, levelSp
 }
 
 /** Directional and balanced maps keep outline order (tidy layout); the rest use ELK. */
-async function layoutMap(elk: ElkLike, nodes: TNode[], edges: TEdge[], root: string, kids: Map<string, string[]>, layout: MapLayout, opts: ApplyOptions) {
+export async function layoutMap(elk: ElkLike, nodes: TNode[], edges: TEdge[], root: string, kids: Map<string, string[]>, layout: MapLayout, opts: Pick<ApplyOptions, "rtl" | "spacing" | "levelSpacing">) {
 	if (layout === "right" || layout === "left" || layout === "down" || layout === "up" || layout === "balanced") {
 		const direction = layout === "right" || layout === "left" ? logical(layout, opts.rtl) : layout;
 		return tidyTree(nodes, kids, root, { direction, spacing: opts.spacing, levelSpacing: opts.levelSpacing, rtl: opts.rtl });

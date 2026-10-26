@@ -6,7 +6,7 @@ import { showPicker } from "../../ui/picker";
 import { arrowPreview } from "../edge-styles/geometry";
 import { capturePointer, common, mutate, nodeType, onlyNodes } from "../shared";
 import { attachTarget } from "./attach";
-import { absoluteLine, fitLine, snapEnds, type P } from "./model";
+import { absoluteLine, carryBends, fitLine, snapEnds, type P } from "./model";
 import { renderLine } from "./render";
 
 type Ctx = ModuleContext<object>;
@@ -39,6 +39,16 @@ export const freeLinesModule = defineModule({
 		/** Lines being repositioned by us (their node-moved must not detach them). */
 		const updating = new Set<CanvasNodeLike>();
 
+		/** Where each line's attached cards were when it was last laid out (to carry its bends). */
+		const cardsAt = new WeakMap<CanvasNodeLike, { from?: { x: number; y: number }; to?: { x: number; y: number } }>();
+		const remember = (node: CanvasNodeLike, line: LineData) => {
+			const at = (a?: { node: string }) => {
+				const n = a ? node.canvas.nodes.get(a.node) : undefined;
+				return n ? { x: n.x, y: n.y } : undefined;
+			};
+			cardsAt.set(node, { from: at(line.from), to: at(line.to) });
+		};
+
 		/** Rewrites a line from absolute points, re-fitting its card. */
 		const write = (node: CanvasNodeLike, points: P[], patch: Partial<LineData>, history: boolean) => {
 			const line = lineOf(ctx, node);
@@ -53,6 +63,7 @@ export const freeLinesModule = defineModule({
 			const next: LineData = { ...line, ...patch, points: rel };
 			for (const end of ["from", "to"] as const) if (next[end] === undefined) delete next[end];
 			ctx.data.node(node).set({ line: next }, { history });
+			remember(node, next);
 		};
 
 		/** Re-snaps the attached ends of `line` to its cards. */
@@ -62,7 +73,16 @@ export const freeLinesModule = defineModule({
 			const canvas = node.canvas;
 			const from = line.from ? canvas.nodes.get(line.from.node) : undefined;
 			const to = line.to ? canvas.nodes.get(line.to.node) : undefined;
-			const points = snapEnds(absoluteLine(line, node), from && boxOf(from), to && boxOf(to));
+			const old = absoluteLine(line, node);
+			let points = old;
+			// Bend points keep the route's shape: the ends move as far as their cards moved since
+			// the line was last laid out, the bends are carried along, then the ends re-snap.
+			const seen = cardsAt.get(node);
+			if (old.length > 2 && seen) {
+				const shift = (p: P, card: CanvasNodeLike | undefined, was: { x: number; y: number } | undefined) => (card && was ? { x: p.x + card.x - was.x, y: p.y + card.y - was.y } : p);
+				points = carryBends(old, shift(old[0]!, from, seen.from), shift(old[old.length - 1]!, to, seen.to));
+			}
+			points = snapEnds(points, from && boxOf(from), to && boxOf(to));
 			// Ends whose card is gone become free.
 			write(node, points, { from: from ? line.from : undefined, to: to ? line.to : undefined }, false);
 		};
@@ -70,13 +90,67 @@ export const freeLinesModule = defineModule({
 		const handlers = (node: CanvasNodeLike) => ({
 			line: (evt: PointerEvent) => (node as unknown as { onPointerdown(e: PointerEvent): void }).onPointerdown(evt),
 			end: (evt: PointerEvent, end: "from" | "to") => dragEnd(node, evt, end),
+			bend: (evt: PointerEvent, index: number, insert: boolean) => dragBend(node, evt, index, insert),
+			unbend: (index: number) => {
+				const line = lineOf(ctx, node);
+				if (!line || node.canvas.readonly || index <= 0 || index >= line.points.length - 1) return;
+				mutate(ctx, node.canvas, () => {
+					const points = absoluteLine(line, node);
+					points.splice(index, 1);
+					write(node, resnap(node, points, line), {}, true);
+				});
+			},
 		});
+
+		/** Attached ends back on their cards' borders, toward their neighbouring point. */
+		const resnap = (node: CanvasNodeLike, points: P[], line: LineData): P[] => {
+			const canvas = node.canvas;
+			const from = line.from ? canvas.nodes.get(line.from.node) : undefined;
+			const to = line.to ? canvas.nodes.get(line.to.node) : undefined;
+			return snapEnds(points, from && boxOf(from), to && boxOf(to));
+		};
+
+		/** Drags a bend point; from a segment's middle, a new bend point is added there first. */
+		const dragBend = (node: CanvasNodeLike, evt: PointerEvent, index: number, insert: boolean) => {
+			const canvas = node.canvas;
+			if (canvas.readonly || (evt.pointerType === "mouse" && evt.button !== 0)) return;
+			evt.preventDefault();
+			evt.stopPropagation();
+			const el = evt.target as SVGElement;
+			capturePointer(el, evt.pointerId);
+			const at = insert ? index + 1 : index;
+			let added = !insert;
+			let changed = false;
+			const move = (e: PointerEvent) => {
+				const line = lineOf(ctx, node);
+				if (!line) return;
+				const points = absoluteLine(line, node);
+				const p = canvas.posFromEvt(e);
+				if (!added) {
+					points.splice(at, 0, p);
+					added = true;
+				} else points[at] = p;
+				write(node, resnap(node, points, line), {}, false);
+				changed = true;
+			};
+			const up = () => {
+				el.removeEventListener("pointermove", move);
+				el.removeEventListener("pointerup", up);
+				el.removeEventListener("pointercancel", up);
+				if (changed) canvas.requestSave(); // one undo step for the gesture
+			};
+			el.addEventListener("pointermove", move);
+			el.addEventListener("pointerup", up);
+			el.addEventListener("pointercancel", up);
+		};
 
 		ctx.decorateNodes({
 			apply: (node, extra) => {
 				const line = extra.kind === "line" && nodeType(node) === "text" ? lineOf(ctx, node) : null;
-				if (line) lines.add(node);
-				else lines.delete(node);
+				if (line) {
+					lines.add(node);
+					if (!cardsAt.has(node)) remember(node, line);
+				} else lines.delete(node);
 				renderLine(node, line, extra.strokeWidth ?? 2, handlers(node));
 			},
 			clear: (node) => {

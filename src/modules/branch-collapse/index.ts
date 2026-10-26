@@ -21,7 +21,7 @@ export const branchCollapseModule = defineModule({
 	group: "mindmap",
 	defaultEnabled: true,
 	defaultSettings: {},
-	overlapsWith: ["canvas-mindmap"],
+	overlapsWith: ["canvas-mindmap", "cammvas"],
 
 	enable(ctx) {
 		const hidden = new WeakMap<CanvasLike, Set<Element>>();

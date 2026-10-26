@@ -3,6 +3,7 @@
  * in-thread ELK build; the plugin passes a worker-backed instance.
  */
 import { balance, childrenOf, descendants, roots, type TEdge, type TNode } from "../mindmap/tree";
+import { radialLayout } from "./radial";
 
 export interface ElkNode {
 	id: string;
@@ -174,17 +175,8 @@ export async function computeLayout(elk: ElkLike, nodes: TNode[], edges: TEdge[]
 	const rootIds = roots(nodes, tree);
 	const firstRoot = rootIds[0] ?? null;
 
-	if (opts.direction === "radial") {
-		const result = await elk.layout(
-			graph(nodes, tree, {
-				"elk.algorithm": "radial",
-				"elk.spacing.nodeNode": String(opts.spacing),
-				"elk.radial.radius": String(opts.levelSpacing + 120),
-				"elk.spacing.componentComponent": String(opts.levelSpacing),
-			}),
-		);
-		return anchor(read(result), nodes, firstRoot);
-	}
+	// Radial: our own collision-free layout (ELK's radial ignores card sizes and overlaps them).
+	if (opts.direction === "radial") return anchor(radialLayout(nodes, tree, rootIds, opts), nodes, firstRoot);
 
 	if (opts.direction === "balanced") {
 		// Lay out each tree as two half-trees (right and left) around its root.

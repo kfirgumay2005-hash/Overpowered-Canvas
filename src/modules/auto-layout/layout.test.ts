@@ -84,3 +84,46 @@ describe("level spacing", () => {
 		expect(left.get("r")!.x - (left.get("a")!.x + 120)).toBe(100);
 	});
 });
+
+describe("radial layout", () => {
+	const sized = (id: string, width: number, height: number, x = 0, y = 0): TNode => ({ id, x, y, width, height });
+
+	it("never overlaps cards of mixed sizes, even in big trees", async () => {
+		const all: TNode[] = [sized("root", 300, 120, 500, 500)];
+		const tree: TEdge[] = [];
+		let k = 0;
+		const grow = (parent: string, depth: number) => {
+			if (depth === 3) return;
+			for (let i = 0; i < (depth === 0 ? 9 : 4); i++) {
+				const id = `n${k++}`;
+				all.push(sized(id, 80 + ((k * 37) % 320), 40 + ((k * 53) % 160)));
+				tree.push({ from: parent, to: id });
+				grow(id, depth + 1);
+			}
+		};
+		grow("root", 0);
+		const pos = await computeLayout(elk, all, tree, { algorithm: "mindmap", direction: "radial", spacing: 30, levelSpacing: 80 });
+		expect(pos.size).toBe(all.length);
+		expect(overlaps(pos, all)).toBe(false);
+		expect(pos.get("root")).toEqual({ x: 500, y: 500 });
+	});
+
+	it("puts children on a ring around the root, in their current order", async () => {
+		const all = [sized("r", 200, 80, 0, 0), sized("top", 120, 50, 40, -300), sized("right", 120, 50, 400, 10), sized("bottom", 120, 50, 40, 300), sized("left", 120, 50, -400, 10)];
+		const tree = ["right", "left", "top", "bottom"].map((to) => ({ from: "r", to }));
+		const pos = await computeLayout(elk, all, tree, { algorithm: "mindmap", direction: "radial", spacing: 30, levelSpacing: 80 });
+		const c = (id: string) => ({ x: pos.get(id)!.x + 60, y: pos.get(id)!.y + 25 });
+		expect(c("top").y).toBeLessThan(0);
+		expect(c("bottom").y).toBeGreaterThan(80);
+		expect(c("right").x).toBeGreaterThan(200);
+		expect(c("left").x).toBeLessThan(0);
+		expect(overlaps(pos, all)).toBe(false);
+	});
+
+	it("lays out several trees side by side without overlap", async () => {
+		const all = [sized("a", 100, 40), sized("a1", 100, 40), sized("a2", 100, 40), sized("b", 100, 40), sized("b1", 300, 200)];
+		const tree = [{ from: "a", to: "a1" }, { from: "a", to: "a2" }, { from: "b", to: "b1" }];
+		const pos = await computeLayout(elk, all, tree, { algorithm: "mindmap", direction: "radial", spacing: 30, levelSpacing: 80 });
+		expect(overlaps(pos, all)).toBe(false);
+	});
+});
