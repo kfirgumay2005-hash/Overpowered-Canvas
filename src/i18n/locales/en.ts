@@ -412,6 +412,10 @@ export const en = {
 	"noteBlocks.zones.desc": "While dragging over a card, show “Add as child” and “Add as sibling”. Dropping there links the new card, and a map with an automatic layout is arranged again.",
 	"noteBlocks.inboxName.name": "Inbox group",
 	"noteBlocks.inboxName.desc": "Name of the group in the open canvas that inbox mode sends blocks to.",
+	"lasso.name": "Lasso selection",
+	"lasso.desc": "Draw a free shape around anything on the canvas to select it: cards, groups, edges, drawn lines and ink strokes. Then move, delete, color or send the selection to a layer as usual. Bottom card bar button, command, or L.",
+	"lasso.simple": "Like the selection box, but you draw the outline yourself, so you can pick exactly the things you want.",
+	"lasso.button": "Lasso select",
 
 	"pdfAnnotation.name": "PDF annotation",
 	"pdfAnnotation.desc": "Pin a PDF card to one page (shown as a page with a locked aspect ratio) and insert whole PDFs as one pinned card per page, to annotate around them.",

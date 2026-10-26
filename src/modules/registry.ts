@@ -40,6 +40,7 @@ import { framesModule } from "./frames";
 import { boardTemplatesModule } from "./board-templates";
 import { canvasMarkdownModule } from "./canvas-markdown";
 import { noteBlocksModule } from "./note-blocks";
+import { lassoModule } from "./lasso";
 import { kanbanModule } from "./kanban";
 import { queryGroupsModule } from "./query-groups";
 import { edgeRoutingModule } from "./edge-routing";
@@ -93,6 +94,7 @@ export const MODULES: readonly AnyModule[] = [
 	branchCollapseModule,
 	autoLayoutModule,
 	drawingModule,
+	lassoModule,
 	freeLinesModule,
 	shapesModule,
 	stickyNotesModule,

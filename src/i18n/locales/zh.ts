@@ -410,6 +410,10 @@ export const zh: Record<I18nKey, string> = {
 	"noteBlocks.zones.desc": "拖到卡片上时显示“添加为子项”和“添加为同级”。放在那里会连接新卡片，并重新排列使用自动布局的导图。",
 	"noteBlocks.inboxName.name": "收件箱分组",
 	"noteBlocks.inboxName.desc": "收件箱模式把块发送到的、当前白板中分组的名称。",
+	"lasso.name": "套索选择",
+	"lasso.desc": "在白板上围绕任意内容画出自由形状即可选中：卡片、分组、连线、绘制的线条和手绘笔迹。然后照常移动、删除、上色或把选区移到某个图层。底部卡片栏按钮、命令或 L 键。",
+	"lasso.simple": "和选择框类似，但轮廓由你自己画，可以准确选中想要的内容。",
+	"lasso.button": "套索选择",
 
 	"pdfAnnotation.name": "PDF 批注",
 	"pdfAnnotation.desc": "将 PDF 卡片固定到某一页（以锁定宽高比的页面显示），并可将整个 PDF 按每页一张固定卡片插入，以便在周围批注。",

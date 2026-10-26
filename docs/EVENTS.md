@@ -63,4 +63,5 @@ read-only unless you know the internals. Payloads are listed below; types are in
 | `outline-inserted` | canvas, nodes |
 | `note-exported` | canvasFile, note |
 | `note-block-dropped` | canvas, node (a block dragged or sent from a note) |
+| `lasso-selected` | canvas, items (what the lasso selected) |
 | `canvas-updated-from-note` | canvasFile, note, added, removed, updated |
