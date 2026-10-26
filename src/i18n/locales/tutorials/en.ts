@@ -411,4 +411,7 @@ export const tutorialsEn = {
 	"tut.drawing.s7.title": "Marks travel along",
 	"tut.drawing.s7.body": "Move the card you marked: the marks stay exactly on the words.",
 	"tut.drawing.s7.task": "Drag **Circle me!** somewhere else.",
+	"tut.drawing.hl.title": "Highlight words",
+	"tut.drawing.hl.body": "For a real text highlight, use the **highlighter button** in the bottom bar (or press **H**): pick a color, then swipe over words in a card, or tap a single word. The card's text gets the highlight, so it stays right even when the card is resized or its text wraps differently. The eraser in the same bar removes highlights; swiping over a highlight in another color recolors it.",
+	"tut.drawing.hl.task": "Turn on the highlighter and swipe over the words in **Circle me!**",
 } as const;

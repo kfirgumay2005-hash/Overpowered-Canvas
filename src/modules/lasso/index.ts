@@ -331,7 +331,7 @@ export const lassoModule = defineModule<LassoSettings>({
 		const toggle = (canvas: CanvasLike) => {
 			if (sessions.has(canvas)) return stop(canvas);
 			// Drawing mode has its own lasso for strokes; leave it first.
-			if (canvas.wrapperEl.hasClass("opc-drawing")) return;
+			if (canvas.wrapperEl.hasClass("opc-drawing") || canvas.wrapperEl.hasClass("opc-highlighting")) return;
 			sessions.set(canvas, new LassoSession(ctx, canvas, () => stop(canvas)));
 			refresh(canvas);
 		};

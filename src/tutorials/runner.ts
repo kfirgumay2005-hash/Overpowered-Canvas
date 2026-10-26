@@ -46,6 +46,7 @@ const WATCHED_EVENTS = [
 	"outline-inserted",
 	"note-block-dropped",
 	"card-relinked",
+	"text-highlighted",
 	"lasso-selected",
 	"selection-cut",
 	"note-exported",

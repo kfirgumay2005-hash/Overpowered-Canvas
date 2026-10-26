@@ -510,7 +510,7 @@ const drawing: TutorialDefinition = {
 	icon: "pen-tool",
 	title: "tut.drawing.title",
 	summary: "tut.drawing.summary",
-	modules: ["drawing", "free-lines", "shapes"],
+	modules: ["drawing", "free-lines", "shapes", "text-highlight"],
 	board: (t) => ({
 		nodes: [
 			title("d-title", t("tut.drawing.board.title"), 0, -170),
@@ -604,6 +604,20 @@ const drawing: TutorialDefinition = {
 			focus: ["d-target"],
 			check: (rt) => moved(rt, "d-target"),
 			demo: (rt) => glide(rt, "d-target", 260, -40),
+		},
+		{
+			title: "tut.drawing.hl.title",
+			body: "tut.drawing.hl.body",
+			task: "tut.drawing.hl.task",
+			target: ".opc-card-text-highlight",
+			focus: ["d-target"],
+			check: (rt) => rt.seen("text-highlighted") || /==|<mark/.test(findNode(rt.now(), "d-target")?.text ?? ""),
+			demo: (rt) => {
+				const node = rt.node("d-target");
+				if (!node) return;
+				const text = node.getData().text ?? "";
+				rt.change(() => node.setData({ ...node.getData(), text: `==${text}==` }));
+			},
 		},
 	],
 };

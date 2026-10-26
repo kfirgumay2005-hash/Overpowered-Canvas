@@ -410,4 +410,7 @@ export const tutorialsZh: Record<keyof typeof tutorialsEn, string> = {
 	"tut.drawing.s7.title": "标记随卡片移动",
 	"tut.drawing.s7.body": "移动你做过标记的卡片：标记会准确地留在文字上。",
 	"tut.drawing.s7.task": "把 **把我圈起来！** 拖到别处。",
+	"tut.drawing.hl.title": "高亮文字",
+	"tut.drawing.hl.body": "想要真正的文本高亮，请使用底部栏的**高亮按钮**（或按 **H**）：选择颜色，然后在卡片中划过文字，或点按一个词。高亮会写入卡片文本，即使卡片大小改变或换行不同也会保持正确。同一工具栏中的橡皮擦可移除高亮；用另一种颜色划过已有高亮会改变它的颜色。",
+	"tut.drawing.hl.task": "打开高亮工具，划过 **把我圈起来！** 中的文字。",
 };
