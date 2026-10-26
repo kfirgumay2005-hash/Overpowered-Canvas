@@ -1,4 +1,4 @@
-import { MarkdownView, Notice, Setting } from "obsidian";
+import { MarkdownView, Notice, Setting, setIcon, setTooltip } from "obsidian";
 import { defineModule, type ModuleContext } from "../../core/module";
 import type { EdgeSide } from "../../data/json-canvas";
 import type { CanvasLike, CanvasNodeLike, CanvasViewLike } from "../../internals/types";
@@ -19,6 +19,10 @@ interface NoteBlocksSettings {
 	dropZones: boolean;
 	/** Label of the group that clicked blocks are sent to (inbox mode). */
 	inboxName: string;
+	/** The handle's look: an emoji or short text ("" = the dot grip). */
+	handleSymbol: string;
+	/** The handle's look as a small image (data URL; wins over the symbol). */
+	handleImage: string;
 }
 
 const SIDE: Record<Dir, EdgeSide> = { right: "right", left: "left", down: "bottom", up: "top" };
@@ -26,6 +30,36 @@ const OPPOSITE: Record<Dir, EdgeSide> = { right: "left", left: "right", down: "t
 /** A press that moves farther than this (px) is a scroll or a selection, not a hold. */
 const SLOP = 8;
 const MAX_WIDTH = 480;
+/** Around a card and its child / sibling targets (px), the targets stay while dragging. */
+const ZONE_MARGIN = 24;
+/** How far left of the text (px) the pointer still counts as on a line: the way to the handle. */
+const HANDLE_REACH = 48;
+/** Custom handle images are scaled down to this size (px) before they are stored. */
+const IMAGE_SIZE = 64;
+/** Longest custom handle symbol (characters). */
+const SYMBOL_MAX = 4;
+
+const shortSymbol = (v: string) => [...v.trim()].slice(0, SYMBOL_MAX).join("");
+
+/** Reads an image file and returns it scaled to fit IMAGE_SIZE, as a PNG data URL. */
+async function shrinkImage(file: File): Promise<string> {
+	const url = URL.createObjectURL(file);
+	try {
+		const img = new Image();
+		img.src = url;
+		await img.decode();
+		const w = img.naturalWidth || IMAGE_SIZE;
+		const h = img.naturalHeight || IMAGE_SIZE;
+		const scale = Math.min(1, IMAGE_SIZE / Math.max(w, h));
+		const canvas = createEl("canvas");
+		canvas.width = Math.max(1, Math.round(w * scale));
+		canvas.height = Math.max(1, Math.round(h * scale));
+		canvas.getContext("2d")?.drawImage(img, 0, 0, canvas.width, canvas.height);
+		return canvas.toDataURL("image/png");
+	} finally {
+		URL.revokeObjectURL(url);
+	}
+}
 
 /** The parts of CodeMirror's EditorView used here (Obsidian's editor exposes it as `cm`). */
 interface CmView {
@@ -73,7 +107,7 @@ export const noteBlocksModule = defineModule<NoteBlocksSettings>({
 	description: "noteBlocks.desc",
 	group: "data",
 	defaultEnabled: true,
-	defaultSettings: { holdMs: 350, handle: true, dropZones: true, inboxName: "Inbox" },
+	defaultSettings: { holdMs: 350, handle: true, dropZones: true, inboxName: "Inbox", handleSymbol: "", handleImage: "" },
 	sanitizeSettings: (raw, defaults) => {
 		const s = mergeWithDefaults(raw, defaults);
 		return {
@@ -81,6 +115,8 @@ export const noteBlocksModule = defineModule<NoteBlocksSettings>({
 			handle: typeof s.handle === "boolean" ? s.handle : defaults.handle,
 			dropZones: typeof s.dropZones === "boolean" ? s.dropZones : defaults.dropZones,
 			inboxName: typeof s.inboxName === "string" && s.inboxName.trim() ? s.inboxName.trim() : defaults.inboxName,
+			handleSymbol: typeof s.handleSymbol === "string" ? shortSymbol(s.handleSymbol) : defaults.handleSymbol,
+			handleImage: typeof s.handleImage === "string" && s.handleImage.startsWith("data:image/") ? s.handleImage : defaults.handleImage,
 		};
 	},
 
@@ -245,11 +281,36 @@ export const noteBlocksModule = defineModule<NoteBlocksSettings>({
 			}
 		};
 
+		const toggleInbox = () => {
+			inbox = !inbox;
+			renderStatus();
+			new Notice(inbox ? t("noteBlocks.inbox.on", { name: ctx.settings.inboxName }) : t("noteBlocks.inbox.off"));
+		};
+		// A button in each canvas's side controls.
+		const inboxButtons = new Set<HTMLElement>();
+		ctx.onCanvas((canvas) => {
+			const group = canvas.wrapperEl.querySelector(".canvas-controls")?.createDiv({ cls: "canvas-control-group mod-raised opc-inbox-control" });
+			if (!group) return;
+			const item = group.createDiv({ cls: "canvas-control-item", attr: { "aria-label": t("noteBlocks.inboxButton"), "aria-pressed": String(inbox) } });
+			setIcon(item, "inbox");
+			setTooltip(item, t("noteBlocks.inboxButton"), { placement: "left" });
+			item.toggleClass("is-active", inbox);
+			item.addEventListener("click", toggleInbox);
+			inboxButtons.add(item);
+			return () => {
+				inboxButtons.delete(item);
+				group.remove();
+			};
+		});
 		const status = ctx.addStatusBarItem();
 		status.addClass("opc-note-blocks-status");
 		const renderStatus = () => {
 			status.setText(inbox ? t("noteBlocks.inbox.status", { name: ctx.settings.inboxName }) : "");
 			status.toggle(inbox);
+			for (const b of inboxButtons) {
+				b.toggleClass("is-active", inbox);
+				b.setAttr("aria-pressed", String(inbox));
+			}
 		};
 		status.onClickEvent(() => {
 			inbox = false;
@@ -260,14 +321,18 @@ export const noteBlocksModule = defineModule<NoteBlocksSettings>({
 			id: "toggle-inbox",
 			name: t("noteBlocks.cmd.inbox"),
 			icon: "inbox",
-			callback: () => {
-				inbox = !inbox;
-				renderStatus();
-				new Notice(inbox ? t("noteBlocks.inbox.on", { name: ctx.settings.inboxName }) : t("noteBlocks.inbox.off"));
-			},
+			callback: toggleInbox,
 		});
 
 		// ---- Dragging --------------------------------------------------------------------
+
+		/** Screen → canvas conversions use a rect the core measures on resize only; a layout
+		 * change around the pane (a toolbar appearing above it) leaves it stale. */
+		const fresh = (canvas: CanvasLike) => {
+			const r = canvas.wrapperEl.getBoundingClientRect();
+			const c = canvas.canvasRect;
+			if (Math.abs(r.top - c.top) > 1 || Math.abs(r.left - c.left) > 1 || Math.abs(r.height - c.height) > 1 || Math.abs(r.width - c.width) > 1) canvas.onResize?.();
+		};
 
 		/** The canvas (and drop zone) under a screen point. */
 		const targetAt = (x: number, y: number, zonesEl: HTMLElement | null): Target | null => {
@@ -277,6 +342,7 @@ export const noteBlocksModule = defineModule<NoteBlocksSettings>({
 			for (const leaf of app.workspace.getLeavesOfType("canvas")) {
 				const canvas = (leaf.view as CanvasViewLike).canvas;
 				if (!canvas || canvas.wrapperEl !== wrapper) continue;
+				fresh(canvas);
 				let zone: Target["zone"] = null;
 				const z = el?.closest<HTMLElement>(".opc-note-blocks-zone");
 				if (z && zonesEl?.contains(z)) {
@@ -297,6 +363,17 @@ export const noteBlocksModule = defineModule<NoteBlocksSettings>({
 				if (p.x >= n.x && p.x <= n.x + n.width && p.y >= n.y && p.y <= n.y + n.height) best = n;
 			}
 			return best;
+		};
+
+		/** Whether a screen point is still around a card and its targets (on the way to one). */
+		const nearZones = (zones: HTMLElement | null, card: CanvasNodeLike | null, x: number, y: number): boolean => {
+			if (!zones || !card) return false;
+			const rects = [card.nodeEl.getBoundingClientRect(), ...[...zones.children].map((z) => z.getBoundingClientRect())];
+			const left = Math.min(...rects.map((r) => r.left)) - ZONE_MARGIN;
+			const right = Math.max(...rects.map((r) => r.right)) + ZONE_MARGIN;
+			const top = Math.min(...rects.map((r) => r.top)) - ZONE_MARGIN;
+			const bottom = Math.max(...rects.map((r) => r.bottom)) + ZONE_MARGIN;
+			return x >= left && x <= right && y >= top && y <= bottom;
 		};
 
 		/** "Add as child" / "Add as sibling" targets around a card, on the side its map grows to. */
@@ -352,6 +429,7 @@ export const noteBlocksModule = defineModule<NoteBlocksSettings>({
 			};
 			const onOver = (e: DragEvent) => {
 				if (!ctx.settings.dropZones || canvas.readonly || !textDrag(e)) return;
+				fresh(canvas);
 				const hot = zoneUnder(e);
 				zones?.querySelectorAll(".opc-note-blocks-zone").forEach((z) => z.toggleClass("is-hot", (z as HTMLElement).dataset.zone === hot?.kind));
 				if (hot) {
@@ -359,7 +437,7 @@ export const noteBlocksModule = defineModule<NoteBlocksSettings>({
 					return;
 				}
 				const card = cardAt(canvas, canvas.posFromClient({ x: e.clientX, y: e.clientY }));
-				if (card === zoneNode) return;
+				if (card === zoneNode || (!card && nearZones(zones, zoneNode, e.clientX, e.clientY))) return;
 				clear();
 				if (card) {
 					zoneNode = card;
@@ -401,9 +479,11 @@ export const noteBlocksModule = defineModule<NoteBlocksSettings>({
 			doc.body.addClass("opc-note-blocks-dragging");
 			doc.getSelection()?.removeAllRanges();
 
-			const showZones = (target: Target | null) => {
+			const showZones = (target: Target | null, mx: number, my: number) => {
 				const card = ctx.settings.dropZones && target ? cardAt(target.canvas, target.pos) : null;
 				if (card === zoneNode && (card || !zones)) return;
+				// Leaving the card towards one of its targets keeps them.
+				if (!card && target && nearZones(zones, zoneNode, mx, my)) return;
 				zones?.remove();
 				zones = null;
 				zoneNode = card;
@@ -418,7 +498,7 @@ export const noteBlocksModule = defineModule<NoteBlocksSettings>({
 				ghost.toggleClass("is-over-canvas", !!target);
 				ghost.toggleClass("is-compact", !!zones);
 				zones?.querySelectorAll(".opc-note-blocks-zone").forEach((z) => z.toggleClass("is-hot", !!target?.zone && (z as HTMLElement).dataset.zone === target.zone.kind));
-				if (!target?.zone) showZones(target);
+				if (!target?.zone) showZones(target, mx, my);
 			};
 
 			const finish = (drop: boolean) => {
@@ -492,6 +572,20 @@ export const noteBlocksModule = defineModule<NoteBlocksSettings>({
 
 		// ---- Editors: hold to pick up, handle on hover, click in inbox mode ----------------
 
+		// The handle's look: the dot grip, or the user's own emoji or image.
+		const handles = new Set<HTMLElement>();
+		const styleHandle = (el: HTMLElement) => {
+			const { handleImage, handleSymbol } = ctx.settings;
+			el.empty();
+			el.toggleClass("mod-image", !!handleImage);
+			el.toggleClass("mod-symbol", !handleImage && !!handleSymbol);
+			if (handleImage) el.createEl("img", { attr: { src: handleImage, alt: "", draggable: "false" } });
+			else if (handleSymbol) el.setText(handleSymbol);
+		};
+		ctx.onSettingsChange((next, prev) => {
+			if (next.handleImage !== prev.handleImage || next.handleSymbol !== prev.handleSymbol) for (const el of handles) styleHandle(el);
+		});
+
 		const attached = new WeakSet<MarkdownView>();
 		const attach = (view: MarkdownView) => {
 			if (attached.has(view)) return;
@@ -499,7 +593,12 @@ export const noteBlocksModule = defineModule<NoteBlocksSettings>({
 			const content = view.contentEl;
 			const handle = content.createDiv({ cls: "opc-note-blocks-handle", attr: { "aria-label": t("noteBlocks.handle") } });
 			handle.hide();
+			handles.add(handle);
+			styleHandle(handle);
 			let handleBlock: Block | null = null;
+			/** Where the shown block's first line starts on screen. */
+			let handleTextLeft = 0;
+			let lastX = 0;
 			let press: { x: number; y: number; id: number; timer: number; type: string } | null = null;
 
 			const editing = () => view.getMode() === "source" && !!cmOf(view);
@@ -511,7 +610,7 @@ export const noteBlocksModule = defineModule<NoteBlocksSettings>({
 			};
 
 			const onDown = (e: PointerEvent) => {
-				if (e.target === handle) return;
+				if (handle.contains(e.target as Node)) return;
 				if (!inText(e) || (e.pointerType === "mouse" && e.button !== 0)) return;
 				cancelPress();
 				const id = e.pointerId;
@@ -536,22 +635,37 @@ export const noteBlocksModule = defineModule<NoteBlocksSettings>({
 				if (press && e.pointerId === press.id && Math.hypot(e.clientX - press.x, e.clientY - press.y) > SLOP) cancelPress();
 				// Handle beside the line under the mouse.
 				if (e.pointerType !== "mouse" || !ctx.settings.handle || active || !editing() || e.buttons) return;
-				if (e.target === handle) return;
-				const block = inText(e) ? blockUnder(view, e.clientX, e.clientY) : null;
+				if (handle.contains(e.target as Node)) return;
 				const cm = cmOf(view);
-				if (!block || !cm) {
+				const text = cm?.contentDOM.getBoundingClientRect();
+				// The line goes by height alone, and the strip left of the text counts too: moving
+				// sideways towards the handle never switches to another line.
+				const near = !!text && e.clientY >= text.top && e.clientY <= text.bottom && e.clientX >= text.left - HANDLE_REACH && e.clientX <= text.right;
+				// On the way to the handle (moving left, or already left of the text), a little up or
+				// down keeps the same line.
+				const towards = e.clientX < lastX || e.clientX < handleTextLeft;
+				lastX = e.clientX;
+				if (near && handleBlock && towards) {
+					const r = handle.getBoundingClientRect();
+					if (Math.abs(e.clientY - (r.top + r.bottom) / 2) <= r.height) return;
+				}
+				const block = near && text ? blockUnder(view, text.left + 1, e.clientY) : null;
+				if (!block || !cm || !text) {
 					handle.hide();
 					handleBlock = null;
 					return;
 				}
 				const coords = cm.coordsAtPos(cm.state.doc.line(block.from + 1).from);
 				if (!coords) return;
-				const box = content.getBoundingClientRect();
-				const left = cm.contentDOM.getBoundingClientRect().left;
-				handle.style.top = `${coords.top - box.top + content.scrollTop}px`;
-				handle.style.left = `${Math.max(0, left - box.left - 22)}px`;
 				handle.show();
+				const parent = (handle.offsetParent as HTMLElement | null) ?? content;
+				const box = parent.getBoundingClientRect();
+				// Centred on the block's first line.
+				const mid = (coords.top + coords.bottom) / 2;
+				handle.style.top = `${mid - box.top + parent.scrollTop - handle.offsetHeight / 2}px`;
+				handle.style.left = `${Math.max(0, text.left - box.left + parent.scrollLeft - handle.offsetWidth - 4)}px`;
 				handleBlock = block;
+				handleTextLeft = coords.left;
 			};
 			const onUp = (e: PointerEvent) => {
 				const wasPress = press && e.pointerId === press.id;
@@ -600,6 +714,7 @@ export const noteBlocksModule = defineModule<NoteBlocksSettings>({
 				content.removeEventListener("scroll", onScroll, true);
 				content.removeEventListener("touchmove", onTouchMove, true);
 				handle.remove();
+				handles.delete(handle);
 			});
 		};
 		const attachAll = () => {
@@ -619,6 +734,57 @@ export const noteBlocksModule = defineModule<NoteBlocksSettings>({
 			.setName(ctx.t("noteBlocks.handleSetting.name"))
 			.setDesc(ctx.t("noteBlocks.handleSetting.desc"))
 			.addToggle((tg) => tg.setValue(ctx.settings.handle).onChange((v) => ctx.updateSettings({ handle: v })));
+		const look = new Setting(el).setName(ctx.t("noteBlocks.handleLook.name")).setDesc(ctx.t("noteBlocks.handleLook.desc"));
+		const preview = look.controlEl.createDiv({ cls: "opc-note-blocks-handle-preview" });
+		const showPreview = () => {
+			const { handleImage, handleSymbol } = ctx.settings;
+			preview.empty();
+			preview.toggleClass("mod-grip", !handleImage && !handleSymbol);
+			if (handleImage) preview.createEl("img", { attr: { src: handleImage, alt: "" } });
+			else if (handleSymbol) preview.setText(handleSymbol);
+		};
+		showPreview();
+		let symbolInput: HTMLInputElement | null = null;
+		look.addText((tx) => {
+			symbolInput = tx.inputEl;
+			tx.setPlaceholder(ctx.t("noteBlocks.handleLook.placeholder"))
+				.setValue(ctx.settings.handleSymbol)
+				.onChange(async (v) => {
+					await ctx.updateSettings({ handleSymbol: shortSymbol(v), handleImage: "" });
+					showPreview();
+				});
+		});
+		look.addButton((b) =>
+			b.setButtonText(ctx.t("noteBlocks.handleLook.image")).onClick(() => {
+				// Created in the settings' own window (it may be a separate one): a file input of
+				// another window gets no file dialog.
+				look.controlEl.querySelector("input[type=file]")?.remove();
+				const input = look.controlEl.createEl("input", { cls: "opc-hidden-file", attr: { type: "file", accept: "image/png,image/jpeg,image/gif,image/webp,image/svg+xml" } });
+				input.addEventListener("cancel", () => input.remove());
+				input.addEventListener("change", () => {
+					const file = input.files?.[0];
+					input.remove();
+					if (!file) return;
+					shrinkImage(file)
+						.then(async (url) => {
+							await ctx.updateSettings({ handleImage: url });
+							showPreview();
+						})
+						.catch(() => new Notice(ctx.t("noteBlocks.handleLook.bad")));
+				});
+				input.click();
+			}),
+		);
+		look.addExtraButton((b) =>
+			b
+				.setIcon("rotate-ccw")
+				.setTooltip(ctx.t("noteBlocks.handleLook.reset"))
+				.onClick(async () => {
+					await ctx.updateSettings({ handleSymbol: "", handleImage: "" });
+					if (symbolInput) symbolInput.value = "";
+					showPreview();
+				}),
+		);
 		new Setting(el)
 			.setName(ctx.t("noteBlocks.zones.name"))
 			.setDesc(ctx.t("noteBlocks.zones.desc"))

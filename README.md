@@ -51,7 +51,7 @@ other canvases, collapsible groups, focus mode, move a selection to a new canvas
 cards for annotation, custom style attributes from CSS snippets, a public events API, a minimap,
 a frames panel to search, reorder and present the groups of a canvas, a line grid behind the
 content (a line every N dots), an adjustable selection toolbar size (separately for computers
-and phones), and thirteen hands-on tutorials (at the top of the settings, in the ribbon and the canvas
+and phones), and thirteen hands-on tutorials (at the top of the settings and in the canvas
 controls). Each tutorial opens a temporary practice board with a coach panel: small tasks that
 tick themselves off as you do them, a "Show me" button that does each task live on the board, and
 highlights on the controls involved. The board is deleted when the tutorial closes. The settings page has its own search box and collapsible sections, a plain-language
@@ -65,7 +65,8 @@ Mind map and Flowchart), kanban columns bound to a frontmatter property with two
 matching tags, folders, properties or links. Drag a block from a note onto a canvas (hold a line,
 or grab its handle): a bullet with its children, a heading with its section or a paragraph
 becomes a card under the pointer, or a linked child or sibling of the card you drop it on;
-inbox mode sends clicked blocks into a named group.
+inbox mode sends clicked blocks into a named group. The handle can be an emoji or a small
+image of your own.
 
 **Canvas ⇄ Markdown** — copy a mind map (or any connected cards) as a Markdown outline; paste an
 outline onto the board, insert a note, or convert a note card to get a laid-out mind map; and

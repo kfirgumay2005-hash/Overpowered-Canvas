@@ -1,6 +1,6 @@
 /**
  * The list of tutorials: cards with an icon, a summary, the step count and whether it's done.
- * Shown at the top of the settings tab and in a modal (ribbon, command, canvas controls).
+ * Shown at the top of the settings tab and in a modal (command, canvas controls).
  */
 import { Modal, setIcon, type App } from "obsidian";
 import type { ModuleManager } from "../core/module-manager";
