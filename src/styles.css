@@ -92,6 +92,32 @@
 	height: var(--icon-xs);
 }
 
+/* Location of the plugin's files folder. */
+.opc-files-folder-pick {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--size-4-1);
+	max-width: 260px;
+}
+.opc-files-folder-pick > span:last-child {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.opc-files-folder-icon {
+	display: inline-flex;
+	flex-shrink: 0;
+}
+.opc-files-folder-preview {
+	margin-top: var(--size-4-1);
+	font-family: var(--font-monospace);
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+}
+.opc-files-folder-preview.is-changed {
+	color: var(--text-accent);
+}
+
 /* Settings search and collapsible sections. */
 .opc-settings-search {
 	gap: var(--size-4-2);

@@ -2,7 +2,7 @@
  * Moving the plugin's files folder (note data, tutorial practice files) to another vault folder,
  * and a folder picker for the setting.
  */
-import { AbstractInputSuggest, TFile, TFolder, normalizePath, type App } from "obsidian";
+import { FuzzySuggestModal, TFile, TFolder, normalizePath, type App } from "obsidian";
 
 export interface MoveResult {
 	moved: number;
@@ -68,32 +68,39 @@ export async function moveFilesFolder(app: App, from: string, to: string): Promi
 	return result;
 }
 
-/** Suggests vault folders while typing a path. */
-export class FolderSuggest extends AbstractInputSuggest<TFolder> {
+/** Parent folder ("" = vault root) and own name of a folder path. */
+export function splitFolder(path: string): { parent: string; name: string } {
+	const i = path.lastIndexOf("/");
+	return i < 0 ? { parent: "", name: path } : { parent: path.slice(0, i), name: path.slice(i + 1) };
+}
+
+/**
+ * Picks a folder of the vault (the vault root first): the full list, narrowed by typing. Folders
+ * inside `exclude` (the plugin's own folder) are left out, since it can't move into itself.
+ */
+export class FolderPickModal extends FuzzySuggestModal<TFolder> {
 	constructor(
 		app: App,
-		private readonly input: HTMLInputElement,
+		private readonly labels: { placeholder: string; root: string },
+		private readonly exclude: string,
 		private readonly onPick: (path: string) => void,
 	) {
-		super(app, input);
+		super(app);
+		this.setPlaceholder(labels.placeholder);
 	}
 
-	protected getSuggestions(query: string): TFolder[] {
-		const q = query.toLowerCase();
-		return this.app.vault
-			.getAllLoadedFiles()
-			.filter((f): f is TFolder => f instanceof TFolder && !f.isRoot() && f.path.toLowerCase().includes(q))
-			.sort((a, b) => a.path.localeCompare(b.path))
-			.slice(0, 50);
+	getItems(): TFolder[] {
+		const inside = (f: TFolder) => f.path === this.exclude || f.path.startsWith(`${this.exclude}/`);
+		const folders = this.app.vault.getAllLoadedFiles().filter((f): f is TFolder => f instanceof TFolder && !f.isRoot() && !inside(f) && !f.path.startsWith("."));
+		folders.sort((a, b) => a.path.localeCompare(b.path));
+		return [this.app.vault.getRoot(), ...folders];
 	}
 
-	renderSuggestion(folder: TFolder, el: HTMLElement): void {
-		el.setText(folder.path);
+	getItemText(folder: TFolder): string {
+		return folder.isRoot() ? this.labels.root : folder.path;
 	}
 
-	override selectSuggestion(folder: TFolder): void {
-		this.input.value = folder.path;
-		this.onPick(folder.path);
-		this.close();
+	onChooseItem(folder: TFolder): void {
+		this.onPick(folder.isRoot() ? "" : folder.path);
 	}
 }
