@@ -3,6 +3,7 @@ import { defineModule, type ModuleContext } from "../../core/module";
 import type { EdgeSide } from "../../data/json-canvas";
 import type { CanvasItemLike, CanvasLike, CanvasNodeLike } from "../../internals/types";
 import { canvasDirection, mutate, nodeType, randomId, selectedNodes } from "../shared";
+import { makeSiblingRoom } from "./room";
 import { childPosition, childrenOf, descendants, directionBetween, logical, neighbor, parentOf, type Dir, type TEdge } from "./tree";
 
 interface MindmapSettings {
@@ -52,11 +53,12 @@ export const mindmapModule = defineModule<MindmapSettings>({
 			window.setTimeout(() => node.startEditing(), 20);
 		};
 
-		const create = (canvas: CanvasLike, pos: { x: number; y: number }, link: { from: CanvasNodeLike; dir: Dir } | null): CanvasNodeLike | null => {
+		/** `pos` may be computed inside the change (when making room moves other cards). */
+		const create = (canvas: CanvasLike, pos: { x: number; y: number } | (() => { x: number; y: number }), link: { from: CanvasNodeLike; dir: Dir } | null): CanvasNodeLike | null => {
 			let created: CanvasNodeLike | null = null;
 			mutate(ctx, canvas, () => {
 				const size = canvas.config.defaultTextNodeDimensions;
-				created = canvas.createTextNode({ pos, size, save: false, focus: false });
+				created = canvas.createTextNode({ pos: typeof pos === "function" ? pos() : pos, size, save: false, focus: false });
 				if (link) {
 					const color = link.from.color;
 					canvas.importData({ nodes: [], edges: [{ id: randomId(), fromNode: link.from.id, fromSide: SIDE[link.dir], toNode: created.id, toSide: OPPOSITE[link.dir], ...(color ? { color } : {}) }] }, false);
@@ -75,7 +77,8 @@ export const mindmapModule = defineModule<MindmapSettings>({
 		const addSibling = (canvas: CanvasLike, node: CanvasNodeLike) => {
 			const parentId = parentOf(edgesOf(canvas), node.id);
 			const parent = parentId ? canvas.nodes.get(parentId) : null;
-			if (parent) return addChild(canvas, parent, directionBetween(parent, node));
+			// Right after this card among its siblings, not after the last one.
+			if (parent) return create(canvas, () => makeSiblingRoom(canvas, parent, node, canvas.config.defaultTextNodeDimensions), { from: parent, dir: directionBetween(parent, node) });
 			const gap = 30;
 			return create(canvas, { x: node.x, y: node.y + node.height + gap }, null);
 		};

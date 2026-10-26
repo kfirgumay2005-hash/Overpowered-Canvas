@@ -6,6 +6,8 @@ import { mergeWithDefaults } from "../../settings/settings";
 import { getElk } from "../auto-layout/engine";
 import { layoutMap } from "../canvas-markdown/apply";
 import { estimateSize } from "../canvas-markdown/size";
+import { orderChildren } from "../canvas-markdown/structure";
+import { makeSiblingRoom } from "../mindmap/room";
 import { childPosition, childrenOf, directionBetween, logical, parentOf, type Dir, type TEdge, type TNode } from "../mindmap/tree";
 import { canvasDirection, mutate, nodeType, randomId } from "../shared";
 import { blockAt, type Block } from "./block";
@@ -128,8 +130,9 @@ export const noteBlocksModule = defineModule<NoteBlocksSettings>({
 			return logical("right", canvasDirection(canvas) === "rtl");
 		};
 
-		/** Re-arranges a map that has a recorded layout (auto layout or built from a note). */
-		const relayout = async (canvas: CanvasLike, start: CanvasNodeLike) => {
+		/** Re-arranges a map that has a recorded layout (auto layout or built from a note). Children
+		 * keep the order they show on the canvas; `after` puts a new card right after a sibling. */
+		const relayout = async (canvas: CanvasLike, start: CanvasNodeLike, after?: string) => {
 			const edges = edgesOf(canvas);
 			let root = start.id;
 			const seen = new Set<string>();
@@ -139,6 +142,7 @@ export const noteBlocksModule = defineModule<NoteBlocksSettings>({
 			}
 			const layout = ctx.data.root(canvas).get().mapLayouts?.[root];
 			if (!layout || layout === "grid" || layout.startsWith("layered")) return;
+			const rtl = canvasDirection(canvas) === "rtl";
 			const kids = new Map<string, string[]>();
 			const ids: string[] = [];
 			const stack = [root];
@@ -148,7 +152,12 @@ export const noteBlocksModule = defineModule<NoteBlocksSettings>({
 				if (visited.has(id)) continue;
 				visited.add(id);
 				ids.push(id);
-				const children = childrenOf(edges, id).filter((c) => !visited.has(c) && canvas.nodes.has(c));
+				const parentNode = canvas.nodes.get(id)!;
+				let children = orderChildren(parentNode, childrenOf(edges, id).filter((c) => !visited.has(c) && canvas.nodes.has(c)).map((c) => canvas.nodes.get(c)!), rtl).map((n) => n.id);
+				if (after && children.includes(after) && children.includes(start.id)) {
+					children = children.filter((c) => c !== start.id);
+					children.splice(children.indexOf(after) + 1, 0, start.id);
+				}
 				kids.set(id, children);
 				stack.push(...children);
 			}
@@ -157,7 +166,7 @@ export const noteBlocksModule = defineModule<NoteBlocksSettings>({
 				return { id, x: n.x, y: n.y, width: n.width, height: n.height };
 			});
 			const tree = ids.flatMap((id) => (kids.get(id) ?? []).map((c) => ({ from: id, to: c })));
-			const pos = await layoutMap(getElk(), nodes, tree, root, kids, layout, { rtl: canvasDirection(canvas) === "rtl", spacing: 30, levelSpacing: 80 });
+			const pos = await layoutMap(getElk(), nodes, tree, root, kids, layout, { rtl, spacing: 30, levelSpacing: 80 });
 			// Keep the root where it is.
 			const r = canvas.nodes.get(root)!;
 			const p0 = pos.get(root);
@@ -188,9 +197,11 @@ export const noteBlocksModule = defineModule<NoteBlocksSettings>({
 				}
 				dir = parent ? (target.zone.kind === "sibling" ? directionBetween(parent, node) : growth(canvas, parent)) : "down";
 			}
+			const sibling = target.zone?.kind === "sibling" ? target.zone.node : null;
 			const ok = mutate(ctx, canvas, () => {
 				let pos: { x: number; y: number };
-				if (parent) {
+				if (parent && sibling) pos = makeSiblingRoom(canvas, parent, sibling, size);
+				else if (parent) {
 					const kids = childrenOf(edgesOf(canvas), parent.id).map((id) => canvas.nodes.get(id)).filter((n): n is CanvasNodeLike => !!n);
 					pos = childPosition(parent, kids, size, dir);
 				} else if (target.zone) {
@@ -206,7 +217,7 @@ export const noteBlocksModule = defineModule<NoteBlocksSettings>({
 			});
 			if (!ok || !created) return null;
 			const card: CanvasNodeLike = created;
-			if (parent) void relayout(canvas, card).catch((e) => console.error("[overpowered-canvas] note-blocks layout", e));
+			if (parent) void relayout(canvas, card, sibling?.id).catch((e) => console.error("[overpowered-canvas] note-blocks layout", e));
 			ctx.events.emit("note-block-dropped", canvas, card);
 			return card;
 		};
