@@ -226,6 +226,8 @@ export const zh: Record<I18nKey, string> = {
 	"edgeTools.selectOutgoing": "选择传出的连线",
 	"edgeTools.highlight.name": "高亮相连的连线",
 	"edgeTools.highlight.desc": "所选卡片的连线会被高亮（可用 .is-opc-highlighted 类设置样式）。",
+	"edgeTools.colorEdges.name": "连线随卡片一起上色",
+	"edgeTools.colorEdges.desc": "给多张选中的卡片上色时，它们之间的连线也会上色（框选只包含卡片，否则这些连线会保留原来的颜色）。",
 
 	"canvasMetadata.name": "画布元数据",
 	"canvasMetadata.desc": "画布在 Obsidian 的元数据缓存中获得出链、标签、标题和属性：出链面板、标签面板、别名和属性搜索都适用于画布。",

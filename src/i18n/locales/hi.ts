@@ -226,6 +226,8 @@ export const hi: Record<I18nKey, string> = {
 	"edgeTools.selectOutgoing": "जाने वाले कनेक्शन चुनें",
 	"edgeTools.highlight.name": "जुड़े कनेक्शन हाइलाइट करें",
 	"edgeTools.highlight.desc": "चुने गए कार्डों के कनेक्शन हाइलाइट होते हैं (.is-opc-highlighted क्लास से शैली दें)।",
+	"edgeTools.colorEdges.name": "किनारों को उनके कार्डों के साथ रंगें",
+	"edgeTools.colorEdges.desc": "कई चुने हुए कार्डों को रंग देने पर उनके बीच के किनारे भी रंगे जाते हैं (बॉक्स चयन में केवल कार्ड होते हैं, इसलिए वे किनारे वरना पुराने रंग में रहते)।",
 
 	"canvasMetadata.name": "कैनवास मेटाडेटा",
 	"canvasMetadata.desc": "कैनवास को Obsidian के मेटाडेटा कैश में बाहरी लिंक, टैग, शीर्षक और प्रॉपर्टी मिलती हैं: आउटगोइंग लिंक पैन, टैग पैन, उपनाम और प्रॉपर्टी खोज कैनवास के लिए भी काम करते हैं।",

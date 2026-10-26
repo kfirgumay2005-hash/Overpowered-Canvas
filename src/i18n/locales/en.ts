@@ -228,6 +228,8 @@ export const en = {
 	"edgeTools.selectOutgoing": "Select outgoing edges",
 	"edgeTools.highlight.name": "Highlight connected edges",
 	"edgeTools.highlight.desc": "Edges of the selected cards are highlighted (style them with the .is-opc-highlighted class).",
+	"edgeTools.colorEdges.name": "Color edges with their cards",
+	"edgeTools.colorEdges.desc": "Giving several selected cards a color also colors the edges between them (a box selection holds cards only, so those edges would keep their old color).",
 
 	"canvasMetadata.name": "Canvas metadata",
 	"canvasMetadata.desc": "Canvases get outgoing links, tags, headings and properties in Obsidian's metadata cache: outgoing-links pane, tag pane, aliases and property search work for canvases.",

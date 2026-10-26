@@ -226,6 +226,8 @@ export const ja: Record<I18nKey, string> = {
 	"edgeTools.selectOutgoing": "出ていくエッジを選択",
 	"edgeTools.highlight.name": "つながっているエッジを強調表示",
 	"edgeTools.highlight.desc": "選択したカードのエッジを強調表示します（.is-opc-highlighted クラスでスタイルを設定できます）。",
+	"edgeTools.colorEdges.name": "エッジもカードと一緒に色付け",
+	"edgeTools.colorEdges.desc": "選択した複数のカードに色を付けると、その間のエッジにも同じ色が付きます（範囲選択はカードしか選ばないため、そのままだとエッジは元の色のままです）。",
 
 	"canvasMetadata.name": "キャンバスのメタデータ",
 	"canvasMetadata.desc": "キャンバスが Obsidian のメタデータキャッシュに発リンク、タグ、見出し、プロパティを持つようになり、発リンクペイン、タグペイン、エイリアス、プロパティ検索がキャンバスでも使えます。",

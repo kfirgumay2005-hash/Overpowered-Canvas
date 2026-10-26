@@ -5,6 +5,8 @@ import { mutate, onlyEdges, selectedEdges, selectedNodes } from "../shared";
 
 interface EdgeToolsSettings {
 	highlightConnected: boolean;
+	/** Coloring several cards also colors the edges between them. */
+	colorEdges: boolean;
 }
 
 const HIGHLIGHT = "is-opc-highlighted";
@@ -37,7 +39,7 @@ export const edgeToolsModule = defineModule<EdgeToolsSettings>({
 	description: "edgeTools.desc",
 	group: "edges",
 	defaultEnabled: true,
-	defaultSettings: { highlightConnected: true },
+	defaultSettings: { highlightConnected: true, colorEdges: true },
 	overlapsWith: ["advanced-canvas"],
 
 	enable(ctx) {
@@ -104,6 +106,39 @@ export const edgeToolsModule = defineModule<EdgeToolsSettings>({
 			},
 		});
 
+		// ---- color the edges between colored cards ----
+		// A box selection holds cards only, so the core color picker leaves the edges between
+		// them as they were; they take the cards' new color too (same undo step: the core saves
+		// the color change with a short delay, and this lands within it).
+		ctx.onCanvas((canvas) => {
+			const menuEl = canvas.menu.menuEl;
+			const after = () =>
+				window.setTimeout(() => {
+					if (!ctx.settings.colorEdges || canvas.readonly) return;
+					const nodes = selectedNodes(canvas);
+					if (nodes.length < 2) return;
+					const color = nodes[0]!.color;
+					if (!nodes.every((n) => n.color === color)) return;
+					const chosen = new Set(nodes);
+					let changed = false;
+					for (const e of canvas.edges.values())
+						if (chosen.has(e.from.node) && chosen.has(e.to.node) && !canvas.selection.has(e) && e.color !== color) {
+							e.setColor(color);
+							changed = true;
+						}
+					if (changed) canvas.requestSave();
+				}, 0);
+			const onClick = (e: MouseEvent) => {
+				if ((e.target as HTMLElement | null)?.closest?.(".canvas-color-picker-item")) after();
+			};
+			menuEl.addEventListener("click", onClick, true);
+			menuEl.addEventListener("change", after, true);
+			return () => {
+				menuEl.removeEventListener("click", onClick, true);
+				menuEl.removeEventListener("change", after, true);
+			};
+		});
+
 		// ---- select connected ----
 		const select = (canvas: CanvasLike, direction: Direction) => {
 			const edges = connectedEdges(canvas, selectedNodes(canvas), direction);
@@ -140,5 +175,9 @@ export const edgeToolsModule = defineModule<EdgeToolsSettings>({
 			.setName(ctx.t("edgeTools.highlight.name"))
 			.setDesc(ctx.t("edgeTools.highlight.desc"))
 			.addToggle((t) => t.setValue(ctx.settings.highlightConnected).onChange((v) => ctx.updateSettings({ highlightConnected: v })));
+		new Setting(el)
+			.setName(ctx.t("edgeTools.colorEdges.name"))
+			.setDesc(ctx.t("edgeTools.colorEdges.desc"))
+			.addToggle((t) => t.setValue(ctx.settings.colorEdges).onChange((v) => ctx.updateSettings({ colorEdges: v })));
 	},
 });
