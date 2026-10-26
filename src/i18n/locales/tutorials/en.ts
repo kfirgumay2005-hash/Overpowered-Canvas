@@ -264,6 +264,9 @@ export const tutorialsEn = {
 	"tut.mindmap.s5.title": "Auto layout",
 	"tut.mindmap.s5.body": "Messy map? **Auto layout** arranges it: balanced, in one direction or radial — or as a flowchart or a grid. It's animated and one undo step.",
 	"tut.mindmap.s5.task": "Run `Ctrl/Cmd+P` → **Auto layout: balanced mind map**.",
+	"tut.mindmap.walk.title": "Walk through the map",
+	"tut.mindmap.walk.body": "To go through a map without making slides, use the **route button** in the bottom bar, `Ctrl/Cmd+P` → **Walk through the map**, or right-click a card → **Walk through the map from here**. The arrow keys follow the links at the zoom you have: toward the children goes to a child, the other way back to the parent, and across the branch to the next or previous sibling. On a touch screen use the arrows in the corner, or tap any card. `+` / `-` zoom, `Esc` ends.",
+	"tut.mindmap.walk.task": "Start walking at **Trip to Japan 🇯🇵** and move to a child with `→`.",
 
 	// ---------- 9. Navigation ----------
 	"tut.navigate.title": "Finding your way",
@@ -398,7 +401,7 @@ export const tutorialsEn = {
 	"tut.blocks.s2.body": "**Hold** a line in the note for a moment until it lifts, then drag it. With a mouse you can also grab the dotted handle that appears at the start of the line. Drop it on an empty spot: a card sized to its text appears under the pointer.",
 	"tut.blocks.s2.task": "Drag **Visit the old town** (or any line) onto the board.",
 	"tut.blocks.s3.title": "Drop it as a child",
-	"tut.blocks.s3.body": "While you drag over a card, two targets appear: **Add as child** and **Add as sibling**. Drop on one and the new card is linked in the right place; a map with an automatic layout is arranged again.",
+	"tut.blocks.s3.body": "While you drag over a card, two targets appear: **Add as child** and **Add as sibling**. Drop on one and the new card is linked in the right place; a map with an automatic layout is arranged again. The view then glides to the new card, so you can keep dropping without moving the board.",
 	"tut.blocks.s3.task": "Drag **Try the night market** onto **Ideas** and drop it on **Add as child**.",
 	"tut.blocks.s4.title": "Inbox mode",
 	"tut.blocks.s4.body": "To collect many lines quickly, run the command **Toggle inbox mode**. Then a simple click on a paragraph or bullet sends it into the group named **Inbox** of the open canvas. Click the status bar entry or run the command again to stop.",

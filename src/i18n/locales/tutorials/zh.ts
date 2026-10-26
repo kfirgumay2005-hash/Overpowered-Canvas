@@ -263,6 +263,9 @@ export const tutorialsZh: Record<keyof typeof tutorialsEn, string> = {
 	"tut.mindmap.s5.title": "自动布局",
 	"tut.mindmap.s5.body": "导图乱了？**自动布局** 会整理它：平衡、单方向或放射状——也可以排成流程图或网格。带动画，并且只占一个撤销步骤。",
 	"tut.mindmap.s5.task": "运行 `Ctrl/Cmd+P` → **自动布局：平衡思维导图**。",
+	"tut.mindmap.walk.title": "浏览导图",
+	"tut.mindmap.walk.body": "不做幻灯片也能浏览导图：使用底部栏的**路线按钮**、`Ctrl/Cmd+P` → **浏览导图**，或右键卡片 → **从这里浏览导图**。方向键沿着连线移动，保持当前缩放：朝子项的方向进入子项，反方向回到父项，横跨分支则到下一个或上一个同级。在触摸屏上使用角落里的箭头，或点按任意卡片。`+` / `-` 缩放，`Esc` 结束。",
+	"tut.mindmap.walk.task": "从 **日本之旅 🇯🇵** 开始浏览，并用 `→` 移到一个子项。",
 
 	// ---------- 9. Navigation ----------
 	"tut.navigate.title": "找到方向",
@@ -397,7 +400,7 @@ export const tutorialsZh: Record<keyof typeof tutorialsEn, string> = {
 	"tut.blocks.s2.body": "在笔记中**按住**一行片刻，直到它被拿起，然后拖动。使用鼠标时，也可以抓住行首出现的点状手柄。放到空白处：指针下方会出现一张大小适合文字的卡片。",
 	"tut.blocks.s2.task": "把 **逛老城区**（或任意一行）拖到白板上。",
 	"tut.blocks.s3.title": "作为子项放下",
-	"tut.blocks.s3.body": "拖到卡片上时会出现两个目标：**添加为子项** 和 **添加为同级**。放在其中一个上，新卡片就会连接到正确的位置；使用自动布局的导图会重新排列。",
+	"tut.blocks.s3.body": "拖到卡片上时会出现两个目标：**添加为子项** 和 **添加为同级**。放在其中一个上，新卡片就会连接到正确的位置；使用自动布局的导图会重新排列。随后视图会平滑移到新卡片，你可以继续放下而不用移动白板。",
 	"tut.blocks.s3.task": "把 **去夜市尝尝** 拖到 **想法** 上，放在 **添加为子项** 上。",
 	"tut.blocks.s4.title": "收件箱模式",
 	"tut.blocks.s4.body": "想快速收集很多行时，运行命令 **切换收件箱模式**。之后只需点击段落或列表项，就会把它发送到当前白板中名为 **Inbox** 的分组。点击状态栏中的条目或再次运行命令即可停止。",

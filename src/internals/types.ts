@@ -185,6 +185,8 @@ export interface CanvasLike {
 	tx: number;
 	ty: number;
 	tZoom: number;
+	/** Screen point a zoom animation keeps still (null: the middle). */
+	zoomCenter?: { x: number; y: number } | null;
 	zIndexCounter: number;
 	isDragging: boolean;
 	config: CanvasConfigLike;

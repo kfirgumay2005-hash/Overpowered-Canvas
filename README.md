@@ -39,7 +39,9 @@ Lock items in place.
 
 **Mind maps** — Tab / Enter to add children and siblings (a sibling goes right after its card),
 drag a card onto another card's "Add as child" / "Add as sibling" targets to move it with its
-branch, Alt+arrows to move between cards,
+branch (the view follows dropped note blocks to the middle of the screen), Alt+arrows to move
+between cards, walk through a map with the arrow keys at your zoom (or with on-screen arrows on
+touch screens) without making slides,
 collapsible branches with child counts, and automatic layout (mind map in any direction,
 collision-free radial that respects every card's size, balanced, layered flowchart, grid) as one
 animated undo step; groups move as rigid blocks and edges re-attach to the facing sides.
@@ -111,6 +113,7 @@ still clickable ([docs/BENCHMARKS.md](docs/BENCHMARKS.md)).
 | Ctrl/Cmd+Arrows                       | Add a card (or sticky) in that direction                  |
 | Ctrl/Cmd+Shift+Arrows                 | Add a child in that direction                             |
 | → / Space / PageDown, ← / PageUp, Esc | Presentations                                             |
+| Arrows, + / −, Home, Esc              | Walking through a map: child, parent, siblings; zoom      |
 
 Every toolbar action is also in the command palette ("Selection: …"), so you can assign your
 own hotkeys to any of them.

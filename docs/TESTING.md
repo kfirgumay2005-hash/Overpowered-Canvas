@@ -438,3 +438,16 @@ Automated runtime checks of every item below were run in an isolated Obsidian 1.
 10. **Tutorials:** *Lasso, cut and paste*, *Drawing*, *Mind maps*, *Sticky notes and text*: every
     "Show me" completes its step.
 
+## Manual — tester feedback, round 3
+
+1. **The view follows drops:** zoom in so a map's card is near the edge, drag a note block onto its
+   "Add as sibling" → after the map re-arranges, the view glides so the new card is in the middle
+   (zoom unchanged). Setting *Center the view on dropped cards*: every drop / never.
+2. **Walk through a map:** select a card, bottom-bar route button (or right-click → *Walk through
+   the map from here*). → goes to the first child (← in a map that grows to the left), back to the
+   parent, ↑/↓ along the siblings and stop at the first and last; back at a parent, → returns to the
+   child you came from. The zoom stays; + / − change it; Home goes back to the start; Esc ends,
+   leaving the last card selected. Tapping a card jumps there. The canvas is read-only meanwhile.
+3. **iPad:** the arrow pad in the corner works with a finger and the pen; one finger still pans.
+4. **Tutorial:** *Mind maps* → "Walk through the map" → Show me completes the step.
+

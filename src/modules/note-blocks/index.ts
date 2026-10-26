@@ -9,9 +9,14 @@ import { estimateSize } from "../canvas-markdown/size";
 import { orderChildren } from "../canvas-markdown/structure";
 import { makeSiblingRoom } from "../mindmap/room";
 import { childPosition, childrenOf, descendants, directionBetween, logical, parentOf, type Dir, type TEdge, type TNode } from "../mindmap/tree";
-import { canvasDirection, isTextBox, mutate, nodeType, randomId, selectedNodes } from "../shared";
+import { canvasDirection, centerOn, isTextBox, mutate, nodeType, randomId, selectedNodes } from "../shared";
 import { blockAt, type Block } from "./block";
 import { CropModal, loadImage } from "./crop";
+
+/** Wait before centering a dropped card; a card that fits its text is measured again once the view
+ * reaches it, so it is centered a second time (unless the board was moved meanwhile). */
+const FOLLOW_DELAY = 200;
+const FOLLOW_AGAIN = 500;
 
 interface NoteBlocksSettings {
 	/** Hold this long (ms) on a line to pick up its block. */
@@ -24,6 +29,8 @@ interface NoteBlocksSettings {
 	dropZones: boolean;
 	/** The same targets while moving a card that is already on the canvas: it is linked again. */
 	moveZones: boolean;
+	/** After a drop, glide the view to the new card: on child/sibling targets, every drop, never. */
+	follow: "targets" | "all" | "off";
 	/** Label of the group that clicked blocks are sent to (inbox mode). */
 	inboxName: string;
 	/** The handle's look: an emoji or short text ("" = the dot grip). */
@@ -92,7 +99,7 @@ export const noteBlocksModule = defineModule<NoteBlocksSettings>({
 	description: "noteBlocks.desc",
 	group: "data",
 	defaultEnabled: true,
-	defaultSettings: { holdMs: 350, handle: true, handleNeedsCanvas: true, dropZones: true, moveZones: true, inboxName: "Inbox", handleSymbol: "", handleImage: "" },
+	defaultSettings: { holdMs: 350, handle: true, handleNeedsCanvas: true, dropZones: true, moveZones: true, follow: "targets", inboxName: "Inbox", handleSymbol: "", handleImage: "" },
 	sanitizeSettings: (raw, defaults) => {
 		const s = mergeWithDefaults(raw, defaults);
 		return {
@@ -101,6 +108,7 @@ export const noteBlocksModule = defineModule<NoteBlocksSettings>({
 			handleNeedsCanvas: typeof s.handleNeedsCanvas === "boolean" ? s.handleNeedsCanvas : defaults.handleNeedsCanvas,
 			dropZones: typeof s.dropZones === "boolean" ? s.dropZones : defaults.dropZones,
 			moveZones: typeof s.moveZones === "boolean" ? s.moveZones : defaults.moveZones,
+			follow: s.follow === "targets" || s.follow === "all" || s.follow === "off" ? s.follow : defaults.follow,
 			inboxName: typeof s.inboxName === "string" && s.inboxName.trim() ? s.inboxName.trim() : defaults.inboxName,
 			handleSymbol: typeof s.handleSymbol === "string" ? shortSymbol(s.handleSymbol) : defaults.handleSymbol,
 			handleImage: typeof s.handleImage === "string" && s.handleImage.startsWith("data:image/") ? s.handleImage : defaults.handleImage,
@@ -200,6 +208,15 @@ export const noteBlocksModule = defineModule<NoteBlocksSettings>({
 			}
 		};
 
+		const followCard = (canvas: CanvasLike, card: CanvasNodeLike) => {
+			if (canvas.nodes.get(card.id) !== card) return;
+			centerOn(canvas, card);
+			const aim = { x: canvas.tx, y: canvas.ty };
+			window.setTimeout(() => {
+				if (canvas.nodes.get(card.id) === card && canvas.tx === aim.x && canvas.ty === aim.y) centerOn(canvas, card);
+			}, FOLLOW_AGAIN);
+		};
+
 		const dropCard = (target: Target, text: string): CanvasNodeLike | null => {
 			const { canvas } = target;
 			if (canvas.readonly) return null;
@@ -236,7 +253,10 @@ export const noteBlocksModule = defineModule<NoteBlocksSettings>({
 			});
 			if (!ok || !created) return null;
 			const card: CanvasNodeLike = created;
-			if (parent) void relayout(canvas, card, sibling?.id).catch((e) => console.error("[overpowered-canvas] note-blocks layout", e));
+			const follow = ctx.settings.follow === "all" || (ctx.settings.follow === "targets" && !!target.zone);
+			// Center the card once the map has made room for it and the card has its final size.
+			const settled = parent ? relayout(canvas, card, sibling?.id).catch((e) => console.error("[overpowered-canvas] note-blocks layout", e)) : Promise.resolve();
+			if (follow) void settled.then(() => window.setTimeout(() => followCard(canvas, card), FOLLOW_DELAY));
 			ctx.events.emit("note-block-dropped", canvas, card);
 			return card;
 		};
@@ -942,6 +962,15 @@ export const noteBlocksModule = defineModule<NoteBlocksSettings>({
 			.setName(ctx.t("noteBlocks.moveZones.name"))
 			.setDesc(ctx.t("noteBlocks.moveZones.desc"))
 			.addToggle((tg) => tg.setValue(ctx.settings.moveZones).onChange((v) => ctx.updateSettings({ moveZones: v })));
+		new Setting(el)
+			.setName(ctx.t("noteBlocks.follow.name"))
+			.setDesc(ctx.t("noteBlocks.follow.desc"))
+			.addDropdown((d) =>
+				d
+					.addOptions({ targets: ctx.t("noteBlocks.follow.targets"), all: ctx.t("noteBlocks.follow.all"), off: ctx.t("noteBlocks.follow.off") })
+					.setValue(ctx.settings.follow)
+					.onChange((v) => ctx.updateSettings({ follow: v as NoteBlocksSettings["follow"] })),
+			);
 		new Setting(el)
 			.setName(ctx.t("noteBlocks.inboxName.name"))
 			.setDesc(ctx.t("noteBlocks.inboxName.desc"))

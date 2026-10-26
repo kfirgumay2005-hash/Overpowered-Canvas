@@ -803,7 +803,7 @@ const mindmap: TutorialDefinition = {
 	icon: "network",
 	title: "tut.mindmap.title",
 	summary: "tut.mindmap.summary",
-	modules: ["mindmap", "branch-collapse", "auto-layout", "note-blocks"],
+	modules: ["mindmap", "branch-collapse", "auto-layout", "note-blocks", "presentation"],
 	board: (t) => ({
 		nodes: [
 			card("m-root", t("tut.mindmap.board.root"), 0, 0, 240, 80, { color: "5" }),
@@ -900,6 +900,29 @@ const mindmap: TutorialDefinition = {
 			demo: (rt) => {
 				rt.select(["m-root"]);
 				rt.command("auto-layout:layout-mindmap");
+			},
+		},
+		{
+			title: "tut.mindmap.walk.title",
+			body: "tut.mindmap.walk.body",
+			task: "tut.mindmap.walk.task",
+			target: ".opc-card-walk",
+			enter: (rt) => rt.select(["m-root"]),
+			// The walk has moved at least once after it started.
+			check: (rt) => {
+				let moves = 0;
+				return rt.seen("map-walk-moved", () => ++moves >= 2);
+			},
+			demo: async (rt) => {
+				if (!rt.canvas.wrapperEl.hasClass("opc-walking")) {
+					rt.select(["m-root"]);
+					rt.command("presentation:walk");
+					await rt.wait(700);
+				}
+				for (const dir of ["right", "down"]) {
+					rt.canvas.wrapperEl.querySelector<HTMLElement>(`.opc-walk-${dir}`)?.click();
+					await rt.wait(700);
+				}
 			},
 		},
 	],
