@@ -60,9 +60,9 @@ function renderArrow(svg: SVGSVGElement, cls: string, style: ArrowStyle | undefi
 	el.classList.toggle("is-outline", !g.filled);
 }
 
-/** Set on a line with an end attached to a card (drawn under the cards). */
+/** Set on a line with an end attached to a card (drawn above or under the cards). */
 export const CONNECTOR = "data-opc-connector";
-/** Their z-index: under every card (cards start at 1), above groups (negative). */
+/** Their z-index when drawn under the cards: under every card (cards start at 1), above groups (negative). */
 export const CONNECTOR_Z = 0;
 
 export function renderLine(node: CanvasNodeLike, line: LineData | null, strokeWidth: number, handlers: LineHandlers): void {
@@ -74,7 +74,7 @@ export function renderLine(node: CanvasNodeLike, line: LineData | null, strokeWi
 		return;
 	}
 	node.nodeEl.setAttribute("data-opc-kind", "line");
-	// Lines that connect cards are drawn under the cards, like edges.
+	// Lines that connect cards are stacked apart from other cards (see the free-lines setting).
 	node.nodeEl.toggleAttribute(CONNECTOR, !!(line.from || line.to));
 	if (!svg) {
 		svg = createSvg("svg");

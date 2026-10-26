@@ -163,7 +163,7 @@ export const tutorialsZh: Record<keyof typeof tutorialsEn, string> = {
 	"tut.drawing.s2.body": "在工具栏中选择**钢笔**，然后用鼠标、手指或手写笔直接画。笔画保存在画布里，可以像其他项目一样移动。",
 	"tut.drawing.s2.task": "在 **把我圈起来！** 周围画一个圈。",
 	"tut.drawing.s3.title": "会粘住的箭头",
-	"tut.drawing.s3.body": "**箭头工具**画出的箭头两端会连接到起点和终点所在的卡片。之后移动卡片，箭头会跟着走。",
+	"tut.drawing.s3.body": "**箭头工具**画出的箭头两端会连接到起点和终点所在的卡片。画的时候**转弯**（例如绕过其他卡片），箭头会保留拐角；几乎笔直的部分会变成完全笔直。按住 **Shift** 画直箭头。之后移动卡片，箭头会跟随。",
 	"tut.drawing.s3.task": "选择箭头工具，从 **从这里** 画到 **……到这里**。",
 	"tut.drawing.s4.title": "橡皮擦",
 	"tut.drawing.s4.body": "橡皮擦会删除它碰到的整条笔画。套索可以选中笔画，一起移动或删除。",
@@ -172,7 +172,7 @@ export const tutorialsZh: Record<keyof typeof tutorialsEn, string> = {
 	"tut.drawing.s5.body": "再按一次 `P`（或工具栏的关闭按钮）即可回到选择和移动卡片。",
 	"tut.drawing.s5.task": "退出绘图模式。",
 	"tut.drawing.s6.title": "看它跟随",
-	"tut.drawing.s6.body": "现在移动箭头连接的一张卡片：箭头会拉伸并保持连接。",
+	"tut.drawing.s6.body": "现在移动箭头连接的某张卡片：箭头会伸缩并保持连接，直角路线仍保持直角。\n\n选中箭头可以微调：拖动线段中间的圆点可添加拐角，拖动拐角可移动，双击拐角可删除。连接卡片的箭头画在卡片上方（设置：自由线条和箭头）。",
 	"tut.drawing.s6.task": "把 **从这里** 或 **……到这里** 拖到别处。",
 
 	// ---------- 6. Layers ----------

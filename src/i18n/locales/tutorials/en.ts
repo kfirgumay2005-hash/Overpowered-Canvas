@@ -164,7 +164,7 @@ export const tutorialsEn = {
 	"tut.drawing.s2.body": "Pick the **pen** in the tool bar and just draw with the mouse, a finger or a stylus. Strokes are saved in the canvas and move like any other item.",
 	"tut.drawing.s2.task": "Draw a circle around **Circle me!**",
 	"tut.drawing.s3.title": "Arrows that stick",
-	"tut.drawing.s3.body": "The **arrow tool** draws arrows whose ends attach to the cards you start and end on. Move a card later and the arrow follows it.",
+	"tut.drawing.s3.body": "The **arrow tool** draws arrows whose ends attach to the cards you start and end on. Draw with **turns** (around other cards, for example) and the arrow keeps its corners; almost-straight parts become exactly straight. Hold **Shift** for a straight arrow. Move a card later and the arrow follows it.",
 	"tut.drawing.s3.task": "Pick the arrow tool and draw from **From here** to **…to here**.",
 	"tut.drawing.s4.title": "The eraser",
 	"tut.drawing.s4.body": "The eraser removes whole strokes it touches. The lasso selects strokes to move or delete them together.",
@@ -173,7 +173,7 @@ export const tutorialsEn = {
 	"tut.drawing.s5.body": "Press `P` again (or the close button of the tool bar) to go back to selecting and moving cards.",
 	"tut.drawing.s5.task": "Leave drawing mode.",
 	"tut.drawing.s6.title": "See it follow",
-	"tut.drawing.s6.body": "Now move a card that the arrow is attached to: the arrow stretches and stays attached.",
+	"tut.drawing.s6.body": "Now move a card that the arrow is attached to: the arrow stretches and stays attached, and a square route stays square.\n\nSelect the arrow to fine-tune it: drag the dot in the middle of a segment to add a corner, drag a corner to move it, double-click a corner to remove it. Arrows attached to cards are drawn above the cards (settings: Free lines and arrows).",
 	"tut.drawing.s6.task": "Drag **From here** or **…to here** somewhere else.",
 
 	// ---------- 6. Layers ----------
