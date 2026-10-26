@@ -19,6 +19,10 @@ interface NoteBlocksSettings {
 	dropZones: boolean;
 	/** Label of the group that clicked blocks are sent to (inbox mode). */
 	inboxName: string;
+	/** The handle's look: an emoji or short text ("" = the dot grip). */
+	handleSymbol: string;
+	/** The handle's look as a small image (data URL; wins over the symbol). */
+	handleImage: string;
 }
 
 const SIDE: Record<Dir, EdgeSide> = { right: "right", left: "left", down: "bottom", up: "top" };
@@ -26,6 +30,34 @@ const OPPOSITE: Record<Dir, EdgeSide> = { right: "left", left: "right", down: "t
 /** A press that moves farther than this (px) is a scroll or a selection, not a hold. */
 const SLOP = 8;
 const MAX_WIDTH = 480;
+/** How far left of the text (px) the pointer still counts as on a line: the way to the handle. */
+const HANDLE_REACH = 48;
+/** Custom handle images are scaled down to this size (px) before they are stored. */
+const IMAGE_SIZE = 64;
+/** Longest custom handle symbol (characters). */
+const SYMBOL_MAX = 4;
+
+const shortSymbol = (v: string) => [...v.trim()].slice(0, SYMBOL_MAX).join("");
+
+/** Reads an image file and returns it scaled to fit IMAGE_SIZE, as a PNG data URL. */
+async function shrinkImage(file: File): Promise<string> {
+	const url = URL.createObjectURL(file);
+	try {
+		const img = new Image();
+		img.src = url;
+		await img.decode();
+		const w = img.naturalWidth || IMAGE_SIZE;
+		const h = img.naturalHeight || IMAGE_SIZE;
+		const scale = Math.min(1, IMAGE_SIZE / Math.max(w, h));
+		const canvas = createEl("canvas");
+		canvas.width = Math.max(1, Math.round(w * scale));
+		canvas.height = Math.max(1, Math.round(h * scale));
+		canvas.getContext("2d")?.drawImage(img, 0, 0, canvas.width, canvas.height);
+		return canvas.toDataURL("image/png");
+	} finally {
+		URL.revokeObjectURL(url);
+	}
+}
 
 /** The parts of CodeMirror's EditorView used here (Obsidian's editor exposes it as `cm`). */
 interface CmView {
@@ -73,7 +105,7 @@ export const noteBlocksModule = defineModule<NoteBlocksSettings>({
 	description: "noteBlocks.desc",
 	group: "data",
 	defaultEnabled: true,
-	defaultSettings: { holdMs: 350, handle: true, dropZones: true, inboxName: "Inbox" },
+	defaultSettings: { holdMs: 350, handle: true, dropZones: true, inboxName: "Inbox", handleSymbol: "", handleImage: "" },
 	sanitizeSettings: (raw, defaults) => {
 		const s = mergeWithDefaults(raw, defaults);
 		return {
@@ -81,6 +113,8 @@ export const noteBlocksModule = defineModule<NoteBlocksSettings>({
 			handle: typeof s.handle === "boolean" ? s.handle : defaults.handle,
 			dropZones: typeof s.dropZones === "boolean" ? s.dropZones : defaults.dropZones,
 			inboxName: typeof s.inboxName === "string" && s.inboxName.trim() ? s.inboxName.trim() : defaults.inboxName,
+			handleSymbol: typeof s.handleSymbol === "string" ? shortSymbol(s.handleSymbol) : defaults.handleSymbol,
+			handleImage: typeof s.handleImage === "string" && s.handleImage.startsWith("data:image/") ? s.handleImage : defaults.handleImage,
 		};
 	},
 
@@ -492,6 +526,20 @@ export const noteBlocksModule = defineModule<NoteBlocksSettings>({
 
 		// ---- Editors: hold to pick up, handle on hover, click in inbox mode ----------------
 
+		// The handle's look: the dot grip, or the user's own emoji or image.
+		const handles = new Set<HTMLElement>();
+		const styleHandle = (el: HTMLElement) => {
+			const { handleImage, handleSymbol } = ctx.settings;
+			el.empty();
+			el.toggleClass("mod-image", !!handleImage);
+			el.toggleClass("mod-symbol", !handleImage && !!handleSymbol);
+			if (handleImage) el.createEl("img", { attr: { src: handleImage, alt: "", draggable: "false" } });
+			else if (handleSymbol) el.setText(handleSymbol);
+		};
+		ctx.onSettingsChange((next, prev) => {
+			if (next.handleImage !== prev.handleImage || next.handleSymbol !== prev.handleSymbol) for (const el of handles) styleHandle(el);
+		});
+
 		const attached = new WeakSet<MarkdownView>();
 		const attach = (view: MarkdownView) => {
 			if (attached.has(view)) return;
@@ -499,7 +547,12 @@ export const noteBlocksModule = defineModule<NoteBlocksSettings>({
 			const content = view.contentEl;
 			const handle = content.createDiv({ cls: "opc-note-blocks-handle", attr: { "aria-label": t("noteBlocks.handle") } });
 			handle.hide();
+			handles.add(handle);
+			styleHandle(handle);
 			let handleBlock: Block | null = null;
+			/** Where the shown block's first line starts on screen. */
+			let handleTextLeft = 0;
+			let lastX = 0;
 			let press: { x: number; y: number; id: number; timer: number; type: string } | null = null;
 
 			const editing = () => view.getMode() === "source" && !!cmOf(view);
@@ -511,7 +564,7 @@ export const noteBlocksModule = defineModule<NoteBlocksSettings>({
 			};
 
 			const onDown = (e: PointerEvent) => {
-				if (e.target === handle) return;
+				if (handle.contains(e.target as Node)) return;
 				if (!inText(e) || (e.pointerType === "mouse" && e.button !== 0)) return;
 				cancelPress();
 				const id = e.pointerId;
@@ -536,22 +589,37 @@ export const noteBlocksModule = defineModule<NoteBlocksSettings>({
 				if (press && e.pointerId === press.id && Math.hypot(e.clientX - press.x, e.clientY - press.y) > SLOP) cancelPress();
 				// Handle beside the line under the mouse.
 				if (e.pointerType !== "mouse" || !ctx.settings.handle || active || !editing() || e.buttons) return;
-				if (e.target === handle) return;
-				const block = inText(e) ? blockUnder(view, e.clientX, e.clientY) : null;
+				if (handle.contains(e.target as Node)) return;
 				const cm = cmOf(view);
-				if (!block || !cm) {
+				const text = cm?.contentDOM.getBoundingClientRect();
+				// The line goes by height alone, and the strip left of the text counts too: moving
+				// sideways towards the handle never switches to another line.
+				const near = !!text && e.clientY >= text.top && e.clientY <= text.bottom && e.clientX >= text.left - HANDLE_REACH && e.clientX <= text.right;
+				// On the way to the handle (moving left, or already left of the text), a little up or
+				// down keeps the same line.
+				const towards = e.clientX < lastX || e.clientX < handleTextLeft;
+				lastX = e.clientX;
+				if (near && handleBlock && towards) {
+					const r = handle.getBoundingClientRect();
+					if (Math.abs(e.clientY - (r.top + r.bottom) / 2) <= r.height) return;
+				}
+				const block = near && text ? blockUnder(view, text.left + 1, e.clientY) : null;
+				if (!block || !cm || !text) {
 					handle.hide();
 					handleBlock = null;
 					return;
 				}
 				const coords = cm.coordsAtPos(cm.state.doc.line(block.from + 1).from);
 				if (!coords) return;
-				const box = content.getBoundingClientRect();
-				const left = cm.contentDOM.getBoundingClientRect().left;
-				handle.style.top = `${coords.top - box.top + content.scrollTop}px`;
-				handle.style.left = `${Math.max(0, left - box.left - 22)}px`;
 				handle.show();
+				const parent = (handle.offsetParent as HTMLElement | null) ?? content;
+				const box = parent.getBoundingClientRect();
+				// Centred on the block's first line.
+				const mid = (coords.top + coords.bottom) / 2;
+				handle.style.top = `${mid - box.top + parent.scrollTop - handle.offsetHeight / 2}px`;
+				handle.style.left = `${Math.max(0, text.left - box.left + parent.scrollLeft - handle.offsetWidth - 4)}px`;
 				handleBlock = block;
+				handleTextLeft = coords.left;
 			};
 			const onUp = (e: PointerEvent) => {
 				const wasPress = press && e.pointerId === press.id;
@@ -600,6 +668,7 @@ export const noteBlocksModule = defineModule<NoteBlocksSettings>({
 				content.removeEventListener("scroll", onScroll, true);
 				content.removeEventListener("touchmove", onTouchMove, true);
 				handle.remove();
+				handles.delete(handle);
 			});
 		};
 		const attachAll = () => {
@@ -619,6 +688,52 @@ export const noteBlocksModule = defineModule<NoteBlocksSettings>({
 			.setName(ctx.t("noteBlocks.handleSetting.name"))
 			.setDesc(ctx.t("noteBlocks.handleSetting.desc"))
 			.addToggle((tg) => tg.setValue(ctx.settings.handle).onChange((v) => ctx.updateSettings({ handle: v })));
+		const look = new Setting(el).setName(ctx.t("noteBlocks.handleLook.name")).setDesc(ctx.t("noteBlocks.handleLook.desc"));
+		const preview = look.controlEl.createDiv({ cls: "opc-note-blocks-handle-preview" });
+		const showPreview = () => {
+			const { handleImage, handleSymbol } = ctx.settings;
+			preview.empty();
+			preview.toggleClass("mod-grip", !handleImage && !handleSymbol);
+			if (handleImage) preview.createEl("img", { attr: { src: handleImage, alt: "" } });
+			else if (handleSymbol) preview.setText(handleSymbol);
+		};
+		showPreview();
+		let symbolInput: HTMLInputElement | null = null;
+		look.addText((tx) => {
+			symbolInput = tx.inputEl;
+			tx.setPlaceholder(ctx.t("noteBlocks.handleLook.placeholder"))
+				.setValue(ctx.settings.handleSymbol)
+				.onChange(async (v) => {
+					await ctx.updateSettings({ handleSymbol: shortSymbol(v), handleImage: "" });
+					showPreview();
+				});
+		});
+		look.addButton((b) =>
+			b.setButtonText(ctx.t("noteBlocks.handleLook.image")).onClick(() => {
+				const input = createEl("input", { attr: { type: "file", accept: "image/png,image/jpeg,image/gif,image/webp,image/svg+xml" } });
+				input.addEventListener("change", () => {
+					const file = input.files?.[0];
+					if (!file) return;
+					shrinkImage(file)
+						.then(async (url) => {
+							await ctx.updateSettings({ handleImage: url });
+							showPreview();
+						})
+						.catch(() => new Notice(ctx.t("noteBlocks.handleLook.bad")));
+				});
+				input.click();
+			}),
+		);
+		look.addExtraButton((b) =>
+			b
+				.setIcon("rotate-ccw")
+				.setTooltip(ctx.t("noteBlocks.handleLook.reset"))
+				.onClick(async () => {
+					await ctx.updateSettings({ handleSymbol: "", handleImage: "" });
+					if (symbolInput) symbolInput.value = "";
+					showPreview();
+				}),
+		);
 		new Setting(el)
 			.setName(ctx.t("noteBlocks.zones.name"))
 			.setDesc(ctx.t("noteBlocks.zones.desc"))

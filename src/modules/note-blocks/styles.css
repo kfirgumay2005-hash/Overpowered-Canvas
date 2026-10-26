@@ -10,6 +10,35 @@ body.opc-mod-note-blocks .opc-note-blocks-handle {
 	background:
 		radial-gradient(circle, currentColor 1.4px, transparent 1.6px) 3px 4px / 6px 6px;
 }
+body.opc-mod-note-blocks .opc-note-blocks-handle.mod-symbol,
+body.opc-mod-note-blocks .opc-note-blocks-handle.mod-image {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 22px;
+	background: none;
+	font-size: 16px;
+	line-height: 1;
+	user-select: none;
+}
+body.opc-mod-note-blocks .opc-note-blocks-handle img,
+.opc-note-blocks-handle-preview img {
+	max-width: 18px;
+	max-height: 18px;
+	pointer-events: none;
+}
+.opc-note-blocks-handle-preview {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 24px;
+	height: 24px;
+	font-size: 16px;
+	color: var(--text-faint);
+}
+.opc-note-blocks-handle-preview.mod-grip {
+	background: radial-gradient(circle, currentColor 1.4px, transparent 1.6px) 6px 5px / 6px 6px;
+}
 body.opc-mod-note-blocks .opc-note-blocks-handle:hover {
 	color: var(--text-accent);
 	background-color: var(--background-modifier-hover);
