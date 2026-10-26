@@ -76,3 +76,15 @@ Choices made where the spec left room. Newest section first.
     carries nothing); in the round trip they are kept because their id resolves.
 19. **Mobile**: only the vault/workspace API and `navigator.clipboard`; the converters are pure
     TypeScript with no Obsidian or Node imports.
+20. **Switch button** in the view header of canvases and notes (setting: notes and canvases /
+    canvases only / hidden). It is shown on every note, because any outline note can become a
+    board. When the other side is already open in another tab, that tab is shown instead of
+    replacing the current one.
+21. **A linked note is rewritten after it updates its canvas** (ids for new lines, fresh data
+    section, outline in the board's order), so switching twice never adds lines twice. A plain
+    note that was never linked is not touched (converting it doesn't rewrite your original).
+22. **Ids are found anywhere in the first line.** In editing mode the hidden id is shown at the
+    end of the line, so text typed after it is common; the text on both sides is the card's text.
+23. **Tutorial**: the note opens in a split beside the practice board (the coach panel lives in
+    the board's tab, which must keep its file). Typing in a note doesn't hold the coach back the
+    way typing in a card does. The note is deleted with the board, also after a crash.
