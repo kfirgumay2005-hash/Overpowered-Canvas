@@ -9,12 +9,15 @@ import { estimateSize } from "../canvas-markdown/size";
 import { childPosition, childrenOf, directionBetween, logical, parentOf, type Dir, type TEdge, type TNode } from "../mindmap/tree";
 import { canvasDirection, mutate, nodeType, randomId } from "../shared";
 import { blockAt, type Block } from "./block";
+import { CropModal, loadImage } from "./crop";
 
 interface NoteBlocksSettings {
 	/** Hold this long (ms) on a line to pick up its block. */
 	holdMs: number;
 	/** A drag handle beside the line under the mouse. */
 	handle: boolean;
+	/** Show the handle only while a canvas is open beside the note. */
+	handleNeedsCanvas: boolean;
 	/** "Add as child" / "Add as sibling" targets over mind-map cards while dragging. */
 	dropZones: boolean;
 	/** Label of the group that clicked blocks are sent to (inbox mode). */
@@ -34,32 +37,10 @@ const MAX_WIDTH = 480;
 const ZONE_MARGIN = 24;
 /** How far left of the text (px) the pointer still counts as on a line: the way to the handle. */
 const HANDLE_REACH = 48;
-/** Custom handle images are scaled down to this size (px) before they are stored. */
-const IMAGE_SIZE = 64;
 /** Longest custom handle symbol (characters). */
 const SYMBOL_MAX = 4;
 
 const shortSymbol = (v: string) => [...v.trim()].slice(0, SYMBOL_MAX).join("");
-
-/** Reads an image file and returns it scaled to fit IMAGE_SIZE, as a PNG data URL. */
-async function shrinkImage(file: File): Promise<string> {
-	const url = URL.createObjectURL(file);
-	try {
-		const img = new Image();
-		img.src = url;
-		await img.decode();
-		const w = img.naturalWidth || IMAGE_SIZE;
-		const h = img.naturalHeight || IMAGE_SIZE;
-		const scale = Math.min(1, IMAGE_SIZE / Math.max(w, h));
-		const canvas = createEl("canvas");
-		canvas.width = Math.max(1, Math.round(w * scale));
-		canvas.height = Math.max(1, Math.round(h * scale));
-		canvas.getContext("2d")?.drawImage(img, 0, 0, canvas.width, canvas.height);
-		return canvas.toDataURL("image/png");
-	} finally {
-		URL.revokeObjectURL(url);
-	}
-}
 
 /** The parts of CodeMirror's EditorView used here (Obsidian's editor exposes it as `cm`). */
 interface CmView {
@@ -107,12 +88,13 @@ export const noteBlocksModule = defineModule<NoteBlocksSettings>({
 	description: "noteBlocks.desc",
 	group: "data",
 	defaultEnabled: true,
-	defaultSettings: { holdMs: 350, handle: true, dropZones: true, inboxName: "Inbox", handleSymbol: "", handleImage: "" },
+	defaultSettings: { holdMs: 350, handle: true, handleNeedsCanvas: true, dropZones: true, inboxName: "Inbox", handleSymbol: "", handleImage: "" },
 	sanitizeSettings: (raw, defaults) => {
 		const s = mergeWithDefaults(raw, defaults);
 		return {
 			holdMs: typeof s.holdMs === "number" && s.holdMs >= 150 && s.holdMs <= 2000 ? s.holdMs : defaults.holdMs,
 			handle: typeof s.handle === "boolean" ? s.handle : defaults.handle,
+			handleNeedsCanvas: typeof s.handleNeedsCanvas === "boolean" ? s.handleNeedsCanvas : defaults.handleNeedsCanvas,
 			dropZones: typeof s.dropZones === "boolean" ? s.dropZones : defaults.dropZones,
 			inboxName: typeof s.inboxName === "string" && s.inboxName.trim() ? s.inboxName.trim() : defaults.inboxName,
 			handleSymbol: typeof s.handleSymbol === "string" ? shortSymbol(s.handleSymbol) : defaults.handleSymbol,
@@ -586,6 +568,13 @@ export const noteBlocksModule = defineModule<NoteBlocksSettings>({
 			if (next.handleImage !== prev.handleImage || next.handleSymbol !== prev.handleSymbol) for (const el of handles) styleHandle(el);
 		});
 
+		/** A canvas showing in the same window as the note (where a block could be dropped). */
+		const canvasBeside = (view: MarkdownView) =>
+			app.workspace.getLeavesOfType("canvas").some((leaf) => {
+				const el = leaf.view.containerEl;
+				return el.doc === view.containerEl.doc && el.isShown();
+			});
+
 		const attached = new WeakSet<MarkdownView>();
 		const attach = (view: MarkdownView) => {
 			if (attached.has(view)) return;
@@ -635,6 +624,11 @@ export const noteBlocksModule = defineModule<NoteBlocksSettings>({
 				if (press && e.pointerId === press.id && Math.hypot(e.clientX - press.x, e.clientY - press.y) > SLOP) cancelPress();
 				// Handle beside the line under the mouse.
 				if (e.pointerType !== "mouse" || !ctx.settings.handle || active || !editing() || e.buttons) return;
+				if (ctx.settings.handleNeedsCanvas && !canvasBeside(view)) {
+					handle.hide();
+					handleBlock = null;
+					return;
+				}
 				if (handle.contains(e.target as Node)) return;
 				const cm = cmOf(view);
 				const text = cm?.contentDOM.getBoundingClientRect();
@@ -734,6 +728,10 @@ export const noteBlocksModule = defineModule<NoteBlocksSettings>({
 			.setName(ctx.t("noteBlocks.handleSetting.name"))
 			.setDesc(ctx.t("noteBlocks.handleSetting.desc"))
 			.addToggle((tg) => tg.setValue(ctx.settings.handle).onChange((v) => ctx.updateSettings({ handle: v })));
+		new Setting(el)
+			.setName(ctx.t("noteBlocks.needsCanvas.name"))
+			.setDesc(ctx.t("noteBlocks.needsCanvas.desc"))
+			.addToggle((tg) => tg.setValue(ctx.settings.handleNeedsCanvas).onChange((v) => ctx.updateSettings({ handleNeedsCanvas: v })));
 		const look = new Setting(el).setName(ctx.t("noteBlocks.handleLook.name")).setDesc(ctx.t("noteBlocks.handleLook.desc"));
 		const preview = look.controlEl.createDiv({ cls: "opc-note-blocks-handle-preview" });
 		const showPreview = () => {
@@ -765,11 +763,13 @@ export const noteBlocksModule = defineModule<NoteBlocksSettings>({
 					const file = input.files?.[0];
 					input.remove();
 					if (!file) return;
-					shrinkImage(file)
-						.then(async (url) => {
-							await ctx.updateSettings({ handleImage: url });
-							showPreview();
-						})
+					loadImage(file)
+						.then((img) =>
+							new CropModal(ctx.app, ctx.t, img, (url) => {
+								if (!url) return;
+								void ctx.updateSettings({ handleImage: url }).then(showPreview);
+							}).open(),
+						)
 						.catch(() => new Notice(ctx.t("noteBlocks.handleLook.bad")));
 				});
 				input.click();

@@ -65,8 +65,8 @@ Mind map and Flowchart), kanban columns bound to a frontmatter property with two
 matching tags, folders, properties or links. Drag a block from a note onto a canvas (hold a line,
 or grab its handle): a bullet with its children, a heading with its section or a paragraph
 becomes a card under the pointer, or a linked child or sibling of the card you drop it on;
-inbox mode sends clicked blocks into a named group. The handle can be an emoji or a small
-image of your own.
+inbox mode sends clicked blocks into a named group. The handle shows while a canvas is open
+beside the note, and can be an emoji or an image of your own, cropped to a circle or a square.
 
 **Canvas ⇄ Markdown** — copy a mind map (or any connected cards) as a Markdown outline; paste an
 outline onto the board, insert a note, or convert a note card to get a laid-out mind map; and
