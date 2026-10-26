@@ -108,7 +108,7 @@ class ReplaceModal extends Modal {
 		new Setting(this.contentEl)
 			.addButton((b) => b.setButtonText(t("common.cancel")).onClick(() => answer(null)))
 			.addButton((b) => b.setButtonText(t("canvasMarkdown.replace.separate")).onClick(() => answer("separate")))
-			.addButton((b) => b.setButtonText(t("canvasMarkdown.replace.replace")).setWarning().onClick(() => answer("replace")));
+			.addButton((b) => b.setButtonText(t("canvasMarkdown.replace.replace")).setDestructive().onClick(() => answer("replace")));
 	}
 	override onClose(): void {
 		this.contentEl.empty();

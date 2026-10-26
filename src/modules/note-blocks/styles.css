@@ -37,10 +37,10 @@ body.opc-mod-note-blocks .opc-note-blocks-ghost.is-over-canvas {
 }
 body.opc-note-blocks-dragging,
 body.opc-note-blocks-dragging * {
-	cursor: grabbing !important;
-	user-select: none !important;
-	-webkit-user-select: none !important;
-	-webkit-touch-callout: none !important;
+	cursor: grabbing;
+	user-select: none;
+	-webkit-user-select: none;
+	-webkit-touch-callout: none;
 }
 body.opc-mod-note-blocks .opc-note-blocks-zones {
 	position: absolute;

@@ -78,6 +78,8 @@ export class InkToolbar {
 		const { t } = this.host;
 		const s = this.host.settings();
 		this.el.empty();
+		// Another plugin's pencil bar sits at the top centre too: ours goes below it.
+		this.el.toggleClass("mod-below-bar", !!this.el.parentElement?.querySelector(":scope > .canvas-pencil-bar"));
 		const button = (icon: string, label: string, onClick: () => void, active = false, cls = "") => {
 			const b = this.el.createEl("button", { cls: `clickable-icon opc-ink-button ${cls}`, attr: { "aria-label": label, "aria-pressed": String(active) } });
 			setIcon(b, icon);

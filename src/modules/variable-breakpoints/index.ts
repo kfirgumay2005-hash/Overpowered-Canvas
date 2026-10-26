@@ -140,7 +140,7 @@ export const variableBreakpointsModule = defineModule<BreakpointSettings>({
 		percent = new Setting(el)
 			.setName(ctx.t("variableBreakpoints.percent.name"))
 			.setDesc(ctx.t("variableBreakpoints.percent.desc"))
-			.addSlider((s) => s.setLimits(1, 100, 1).setValue(ctx.settings.percent).setDynamicTooltip().onChange((v) => ctx.updateSettings({ percent: v })));
+			.addSlider((s) => s.setLimits(1, 100, 1).setValue(ctx.settings.percent).onChange((v) => ctx.updateSettings({ percent: v })));
 		percent.settingEl.toggle(ctx.settings.mode === "custom");
 	},
 });

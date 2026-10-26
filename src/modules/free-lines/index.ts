@@ -7,7 +7,7 @@ import { arrowPreview } from "../edge-styles/geometry";
 import { capturePointer, common, mutate, nodeType, onlyNodes } from "../shared";
 import { attachTarget } from "./attach";
 import { absoluteLine, carryBends, fitLine, snapEnds, type P } from "./model";
-import { renderLine } from "./render";
+import { CONNECTOR, CONNECTOR_Z, renderLine } from "./render";
 
 type Ctx = ModuleContext<object>;
 const WIDTHS = [1, 2, 3, 5, 8, 12];
@@ -144,18 +144,44 @@ export const freeLinesModule = defineModule({
 			el.addEventListener("pointercancel", up);
 		};
 
+		// Connectors sit under the cards but above groups: the core writes z-index inline, so it is
+		// overridden after each write.
+		const patchedProtos = new WeakSet<object>();
+		const patchZ = (node: CanvasNodeLike) => {
+			for (let proto = Object.getPrototypeOf(node) as object | null; proto && proto !== Object.prototype; proto = Object.getPrototypeOf(proto) as object | null) {
+				if (!Object.prototype.hasOwnProperty.call(proto, "renderZIndex") || patchedProtos.has(proto)) continue;
+				patchedProtos.add(proto);
+				ctx.patch("node.renderZIndex", proto as CanvasNodeLike, {
+					renderZIndex: (next) =>
+						function (this: CanvasNodeLike) {
+							(this as unknown as { renderedZIndex?: number }).renderedZIndex = Number.NaN;
+							next.call(this);
+							if (this.nodeEl.hasAttribute(CONNECTOR)) this.nodeEl.style.zIndex = String(CONNECTOR_Z);
+						},
+				});
+			}
+		};
+		const restack = (node: CanvasNodeLike, was: boolean) => {
+			if (node.nodeEl.hasAttribute(CONNECTOR) !== was) node.renderZIndex();
+		};
+
 		ctx.decorateNodes({
 			apply: (node, extra) => {
+				patchZ(node);
 				const line = extra.kind === "line" && nodeType(node) === "text" ? lineOf(ctx, node) : null;
 				if (line) {
 					lines.add(node);
 					if (!cardsAt.has(node)) remember(node, line);
 				} else lines.delete(node);
+				const was = node.nodeEl.hasAttribute(CONNECTOR);
 				renderLine(node, line, extra.strokeWidth ?? 2, handlers(node));
+				restack(node, was);
 			},
 			clear: (node) => {
 				lines.delete(node);
+				const was = node.nodeEl.hasAttribute(CONNECTOR);
 				renderLine(node, null, 0, handlers(node));
+				restack(node, was);
 			},
 		});
 		ctx.intercept("node-start-editing", (node) => (lines.has(node) ? true : undefined));

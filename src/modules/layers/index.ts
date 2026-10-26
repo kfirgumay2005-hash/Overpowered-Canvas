@@ -4,6 +4,7 @@ import { SCHEMA_KEY, type LayerInfo } from "../../data/schema";
 import type { CanvasItemLike, CanvasLike, CanvasNodeLike } from "../../internals/types";
 import { ChoiceModal } from "../../ui/choice-modal";
 import { TextPromptModal } from "../../ui/text-prompt";
+import { CONNECTOR, CONNECTOR_Z } from "../free-lines/render";
 import { mutate, nodeType, onlyNodes, randomId, renderedZ, selectedNodes } from "../shared";
 import { BASE_LAYER, cardZ, groupZ, heirOf, layerIndex, layersOf, MAX_LAYERS, moveLayer, neighborLayer, nextLayerName } from "./logic";
 
@@ -359,11 +360,14 @@ export const layersModule = defineModule({
 							next.call(this);
 							if (!state.layered(this.canvas)) return;
 							const index = state.indexOf(this);
-							const z = this.nodeEl.hasClass("is-dragging")
-								? ABOVE_LAYERS
-								: nodeType(this) === "group"
-									? groupZ(index, this.width * this.height)
-									: cardZ(index, this.canvas.selection.size === 1 && this.canvas.selection.has(this) ? this.canvas.zIndexCounter + 1 : this.zIndex);
+							// Drawn connectors stay under all cards (see free-lines).
+							const z = this.nodeEl.hasAttribute(CONNECTOR)
+								? CONNECTOR_Z
+								: this.nodeEl.hasClass("is-dragging")
+									? ABOVE_LAYERS
+									: nodeType(this) === "group"
+										? groupZ(index, this.width * this.height)
+										: cardZ(index, this.canvas.selection.size === 1 && this.canvas.selection.has(this) ? this.canvas.zIndexCounter + 1 : this.zIndex);
 							this.nodeEl.style.zIndex = String(z);
 						},
 				});

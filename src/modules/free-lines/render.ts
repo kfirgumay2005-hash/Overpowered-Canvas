@@ -60,17 +60,22 @@ function renderArrow(svg: SVGSVGElement, cls: string, style: ArrowStyle | undefi
 	el.classList.toggle("is-outline", !g.filled);
 }
 
+/** Set on a line with an end attached to a card (drawn under the cards). */
+export const CONNECTOR = "data-opc-connector";
+/** Their z-index: under every card (cards start at 1), above groups (negative). */
+export const CONNECTOR_Z = 0;
+
 export function renderLine(node: CanvasNodeLike, line: LineData | null, strokeWidth: number, handlers: LineHandlers): void {
 	let svg = node.nodeEl.querySelector<SVGSVGElement>(":scope > svg.opc-line");
 	if (!line) {
 		svg?.remove();
 		if (node.nodeEl.getAttribute("data-opc-kind") === "line") node.nodeEl.removeAttribute("data-opc-kind");
-		node.nodeEl.removeAttribute("data-opc-connector");
+		node.nodeEl.removeAttribute(CONNECTOR);
 		return;
 	}
 	node.nodeEl.setAttribute("data-opc-kind", "line");
 	// Lines that connect cards are drawn under the cards, like edges.
-	node.nodeEl.toggleAttribute("data-opc-connector", !!(line.from || line.to));
+	node.nodeEl.toggleAttribute(CONNECTOR, !!(line.from || line.to));
 	if (!svg) {
 		svg = createSvg("svg");
 		svg.classList.add("opc-line");

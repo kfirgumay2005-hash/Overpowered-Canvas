@@ -160,7 +160,7 @@ export function splitNote(md: string): SplitNote {
 	let dataError = false;
 	let outline = body;
 	if (last) {
-		outline = body.slice(0, last.index) + body.slice(last.index! + last[0].length);
+		outline = body.slice(0, last.index) + body.slice(last.index + last[0].length);
 		try {
 			const parsed: unknown = JSON.parse(last[1]!);
 			data = readData(parsed);
@@ -187,7 +187,7 @@ export function readData(raw: unknown): NoteData | null {
 	if (isPlainObject(raw.root)) out.root = raw.root;
 	if (isPlainObject(raw.maps)) {
 		out.maps = {};
-		for (const [k, v] of Object.entries(raw.maps)) if (isPlainObject(v) && (v.layout === "free" || isMapLayout(v.layout))) out.maps[k] = { layout: v.layout as MapLayout | "free" };
+		for (const [k, v] of Object.entries(raw.maps)) if (isPlainObject(v) && (v.layout === "free" || isMapLayout(v.layout))) out.maps[k] = { layout: v.layout };
 	}
 	if (isPlainObject(raw.nodes)) {
 		out.nodes = {};

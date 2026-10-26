@@ -89,7 +89,7 @@ function splitMarker(raw: string): { text: string; kind?: ItemKind; id?: string 
 	const m = [...raw.matchAll(MARKER)].pop();
 	if (!m) return { text: raw };
 	const before = raw.slice(0, m.index);
-	const after = raw.slice(m.index! + m[0].length);
+	const after = raw.slice(m.index + m[0].length);
 	const text = after ? `${before}${before ? " " : ""}${after}` : before;
 	if (m[3]) return { text, kind: "free" };
 	return { text, kind: m[1] === "g" ? "group" : "node", id: m[2] };
@@ -183,7 +183,7 @@ export function parseOutline(md: string): OutlineItem[] {
 		}
 
 		// Plain text line.
-		const o = open as Open | null;
+		const o = open;
 		const col = columns(leading(line));
 		const continues =
 			o !== null &&
