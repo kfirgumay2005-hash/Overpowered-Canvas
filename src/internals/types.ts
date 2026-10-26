@@ -190,6 +190,8 @@ export interface CanvasLike {
 	readonly zoomBreakpoint: number;
 	readonly gridSpacing: number;
 	canvasRect: { width: number; height: number; cx: number; cy: number; left: number; top: number };
+	/** Re-measures canvasRect (the core calls it on resize only). */
+	onResize?(): void;
 	wrapperEl: HTMLElement;
 	canvasEl: HTMLElement;
 	cardMenuEl: HTMLElement;

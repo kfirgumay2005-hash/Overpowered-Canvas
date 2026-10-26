@@ -30,6 +30,8 @@ const OPPOSITE: Record<Dir, EdgeSide> = { right: "left", left: "right", down: "t
 /** A press that moves farther than this (px) is a scroll or a selection, not a hold. */
 const SLOP = 8;
 const MAX_WIDTH = 480;
+/** Around a card and its child / sibling targets (px), the targets stay while dragging. */
+const ZONE_MARGIN = 24;
 /** How far left of the text (px) the pointer still counts as on a line: the way to the handle. */
 const HANDLE_REACH = 48;
 /** Custom handle images are scaled down to this size (px) before they are stored. */
@@ -303,6 +305,14 @@ export const noteBlocksModule = defineModule<NoteBlocksSettings>({
 
 		// ---- Dragging --------------------------------------------------------------------
 
+		/** Screen → canvas conversions use a rect the core measures on resize only; a layout
+		 * change around the pane (a toolbar appearing above it) leaves it stale. */
+		const fresh = (canvas: CanvasLike) => {
+			const r = canvas.wrapperEl.getBoundingClientRect();
+			const c = canvas.canvasRect;
+			if (Math.abs(r.top - c.top) > 1 || Math.abs(r.left - c.left) > 1 || Math.abs(r.height - c.height) > 1 || Math.abs(r.width - c.width) > 1) canvas.onResize?.();
+		};
+
 		/** The canvas (and drop zone) under a screen point. */
 		const targetAt = (x: number, y: number, zonesEl: HTMLElement | null): Target | null => {
 			const el = activeDocument.elementFromPoint(x, y);
@@ -311,6 +321,7 @@ export const noteBlocksModule = defineModule<NoteBlocksSettings>({
 			for (const leaf of app.workspace.getLeavesOfType("canvas")) {
 				const canvas = (leaf.view as CanvasViewLike).canvas;
 				if (!canvas || canvas.wrapperEl !== wrapper) continue;
+				fresh(canvas);
 				let zone: Target["zone"] = null;
 				const z = el?.closest<HTMLElement>(".opc-note-blocks-zone");
 				if (z && zonesEl?.contains(z)) {
@@ -331,6 +342,17 @@ export const noteBlocksModule = defineModule<NoteBlocksSettings>({
 				if (p.x >= n.x && p.x <= n.x + n.width && p.y >= n.y && p.y <= n.y + n.height) best = n;
 			}
 			return best;
+		};
+
+		/** Whether a screen point is still around a card and its targets (on the way to one). */
+		const nearZones = (zones: HTMLElement | null, card: CanvasNodeLike | null, x: number, y: number): boolean => {
+			if (!zones || !card) return false;
+			const rects = [card.nodeEl.getBoundingClientRect(), ...[...zones.children].map((z) => z.getBoundingClientRect())];
+			const left = Math.min(...rects.map((r) => r.left)) - ZONE_MARGIN;
+			const right = Math.max(...rects.map((r) => r.right)) + ZONE_MARGIN;
+			const top = Math.min(...rects.map((r) => r.top)) - ZONE_MARGIN;
+			const bottom = Math.max(...rects.map((r) => r.bottom)) + ZONE_MARGIN;
+			return x >= left && x <= right && y >= top && y <= bottom;
 		};
 
 		/** "Add as child" / "Add as sibling" targets around a card, on the side its map grows to. */
@@ -386,6 +408,7 @@ export const noteBlocksModule = defineModule<NoteBlocksSettings>({
 			};
 			const onOver = (e: DragEvent) => {
 				if (!ctx.settings.dropZones || canvas.readonly || !textDrag(e)) return;
+				fresh(canvas);
 				const hot = zoneUnder(e);
 				zones?.querySelectorAll(".opc-note-blocks-zone").forEach((z) => z.toggleClass("is-hot", (z as HTMLElement).dataset.zone === hot?.kind));
 				if (hot) {
@@ -393,7 +416,7 @@ export const noteBlocksModule = defineModule<NoteBlocksSettings>({
 					return;
 				}
 				const card = cardAt(canvas, canvas.posFromClient({ x: e.clientX, y: e.clientY }));
-				if (card === zoneNode) return;
+				if (card === zoneNode || (!card && nearZones(zones, zoneNode, e.clientX, e.clientY))) return;
 				clear();
 				if (card) {
 					zoneNode = card;
@@ -435,9 +458,11 @@ export const noteBlocksModule = defineModule<NoteBlocksSettings>({
 			doc.body.addClass("opc-note-blocks-dragging");
 			doc.getSelection()?.removeAllRanges();
 
-			const showZones = (target: Target | null) => {
+			const showZones = (target: Target | null, mx: number, my: number) => {
 				const card = ctx.settings.dropZones && target ? cardAt(target.canvas, target.pos) : null;
 				if (card === zoneNode && (card || !zones)) return;
+				// Leaving the card towards one of its targets keeps them.
+				if (!card && target && nearZones(zones, zoneNode, mx, my)) return;
 				zones?.remove();
 				zones = null;
 				zoneNode = card;
@@ -452,7 +477,7 @@ export const noteBlocksModule = defineModule<NoteBlocksSettings>({
 				ghost.toggleClass("is-over-canvas", !!target);
 				ghost.toggleClass("is-compact", !!zones);
 				zones?.querySelectorAll(".opc-note-blocks-zone").forEach((z) => z.toggleClass("is-hot", !!target?.zone && (z as HTMLElement).dataset.zone === target.zone.kind));
-				if (!target?.zone) showZones(target);
+				if (!target?.zone) showZones(target, mx, my);
 			};
 
 			const finish = (drop: boolean) => {
@@ -710,9 +735,14 @@ export const noteBlocksModule = defineModule<NoteBlocksSettings>({
 		});
 		look.addButton((b) =>
 			b.setButtonText(ctx.t("noteBlocks.handleLook.image")).onClick(() => {
-				const input = createEl("input", { attr: { type: "file", accept: "image/png,image/jpeg,image/gif,image/webp,image/svg+xml" } });
+				// Created in the settings' own window (it may be a separate one): a file input of
+				// another window gets no file dialog.
+				look.controlEl.querySelector("input[type=file]")?.remove();
+				const input = look.controlEl.createEl("input", { cls: "opc-hidden-file", attr: { type: "file", accept: "image/png,image/jpeg,image/gif,image/webp,image/svg+xml" } });
+				input.addEventListener("cancel", () => input.remove());
 				input.addEventListener("change", () => {
 					const file = input.files?.[0];
+					input.remove();
 					if (!file) return;
 					shrinkImage(file)
 						.then(async (url) => {

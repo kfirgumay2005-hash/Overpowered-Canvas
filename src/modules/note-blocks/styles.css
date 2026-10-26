@@ -110,3 +110,6 @@ body.opc-mod-note-blocks .opc-note-blocks-ghost.is-compact {
 	max-width: 200px;
 	opacity: 0.75;
 }
+input.opc-hidden-file {
+	display: none;
+}
