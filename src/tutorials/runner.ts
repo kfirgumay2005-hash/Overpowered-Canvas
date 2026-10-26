@@ -44,6 +44,7 @@ const WATCHED_EVENTS = [
 	"item-lock-changed",
 	"outline-copied",
 	"outline-inserted",
+	"note-block-dropped",
 	"note-exported",
 	"canvas-updated-from-note",
 ] as const;

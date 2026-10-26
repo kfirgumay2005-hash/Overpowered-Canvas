@@ -1,0 +1,83 @@
+body.opc-mod-note-blocks .opc-note-blocks-handle {
+	position: absolute;
+	z-index: 5;
+	width: 18px;
+	height: 22px;
+	border-radius: var(--radius-s);
+	cursor: grab;
+	color: var(--text-faint);
+	touch-action: none;
+	background:
+		radial-gradient(circle, currentColor 1.4px, transparent 1.6px) 3px 4px / 6px 6px;
+}
+body.opc-mod-note-blocks .opc-note-blocks-handle:hover {
+	color: var(--text-accent);
+	background-color: var(--background-modifier-hover);
+}
+body.opc-mod-note-blocks .opc-note-blocks-ghost {
+	position: fixed;
+	left: 0;
+	top: 0;
+	z-index: var(--layer-dragged-item, 1000);
+	max-width: 320px;
+	max-height: 160px;
+	overflow: hidden;
+	padding: var(--size-4-2) var(--size-4-3);
+	border-radius: var(--radius-m);
+	border: 1px solid var(--background-modifier-border);
+	background: var(--background-primary);
+	box-shadow: var(--shadow-l);
+	font-size: var(--font-ui-small);
+	white-space: pre-wrap;
+	pointer-events: none;
+	opacity: 0.92;
+}
+body.opc-mod-note-blocks .opc-note-blocks-ghost.is-over-canvas {
+	border-color: var(--interactive-accent);
+}
+body.opc-note-blocks-dragging,
+body.opc-note-blocks-dragging * {
+	cursor: grabbing !important;
+	user-select: none !important;
+	-webkit-user-select: none !important;
+	-webkit-touch-callout: none !important;
+}
+body.opc-mod-note-blocks .opc-note-blocks-zones {
+	position: absolute;
+	inset: 0;
+	pointer-events: none;
+	z-index: 30;
+}
+body.opc-mod-note-blocks .opc-note-blocks-zone {
+	position: absolute;
+	transform: translate(0, -50%);
+	pointer-events: auto;
+	padding: 4px 10px;
+	border-radius: var(--radius-l);
+	border: 1.5px dashed var(--interactive-accent);
+	background: var(--background-primary);
+	color: var(--text-accent);
+	font-size: var(--font-ui-smaller);
+	white-space: nowrap;
+}
+body.opc-mod-note-blocks .opc-note-blocks-zones[data-dir="left"] .opc-note-blocks-zone.is-child {
+	transform: translate(-100%, -50%);
+}
+body.opc-mod-note-blocks .opc-note-blocks-zones[data-dir="down"] .opc-note-blocks-zone.is-child,
+body.opc-mod-note-blocks .opc-note-blocks-zones[data-dir="right"] .opc-note-blocks-zone.is-sibling,
+body.opc-mod-note-blocks .opc-note-blocks-zones[data-dir="left"] .opc-note-blocks-zone.is-sibling {
+	transform: translate(-50%, 0);
+}
+body.opc-mod-note-blocks .opc-note-blocks-zones[data-dir="up"] .opc-note-blocks-zone.is-child {
+	transform: translate(-50%, -100%);
+}
+body.opc-mod-note-blocks .opc-note-blocks-zone.is-hot {
+	background: var(--interactive-accent);
+	color: var(--text-on-accent);
+	border-style: solid;
+}
+body.opc-mod-note-blocks .opc-note-blocks-ghost.is-compact {
+	max-height: 2.6em;
+	max-width: 200px;
+	opacity: 0.75;
+}

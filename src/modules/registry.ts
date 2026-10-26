@@ -39,6 +39,7 @@ import { gridModule } from "./grid";
 import { framesModule } from "./frames";
 import { boardTemplatesModule } from "./board-templates";
 import { canvasMarkdownModule } from "./canvas-markdown";
+import { noteBlocksModule } from "./note-blocks";
 import { kanbanModule } from "./kanban";
 import { queryGroupsModule } from "./query-groups";
 import { edgeRoutingModule } from "./edge-routing";
@@ -105,6 +106,7 @@ export const MODULES: readonly AnyModule[] = [
 	framesModule,
 	boardTemplatesModule,
 	canvasMarkdownModule,
+	noteBlocksModule,
 	kanbanModule,
 	queryGroupsModule,
 	diagnosticsModule,

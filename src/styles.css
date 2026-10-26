@@ -45,6 +45,7 @@
 @import "./modules/direction/styles.css";
 @import "./modules/performance/styles.css";
 @import "./modules/layers/styles.css";
+@import "./modules/note-blocks/styles.css";
 
 .opc-setting-note {
 	color: var(--text-warning);
