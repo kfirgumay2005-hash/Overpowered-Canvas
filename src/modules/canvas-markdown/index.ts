@@ -1,4 +1,4 @@
-import { FuzzySuggestModal, MarkdownView, Modal, Notice, Setting, TFile, normalizePath, type App, type MenuItem, type WorkspaceLeaf } from "obsidian";
+import { FuzzySuggestModal, MarkdownView, Modal, Notice, Setting, TFile, normalizePath, type App, type ItemView, type MenuItem, type WorkspaceLeaf } from "obsidian";
 import { defineModule, type ModuleContext } from "../../core/module";
 import type { CanvasFileData } from "../../data/json-canvas";
 import { MAP_LAYOUTS, type MapLayout } from "../../data/schema";
@@ -12,12 +12,19 @@ import { applyNote, type ApplyOptions, type ApplyResult } from "./apply";
 import { exportNote, rootMapLayouts, splitNote } from "./note";
 import { countItems, isOutline, stripFrontmatter, writeOutline } from "./outline";
 import { buildStructure } from "./structure";
+import { TUTORIAL_KEY } from "../../tutorials/runner";
 
 interface CanvasMarkdownSettings {
 	indent: "tab" | "4" | "2";
 	layout: MapLayout;
 	pasteOutlines: boolean;
+	/** Where the switch button shows in the view header. */
+	button: "all" | "canvas" | "off";
 }
+
+const BUTTONS: CanvasMarkdownSettings["button"][] = ["all", "canvas", "off"];
+/** Class of the header switch button (tutorials point at it). */
+export const SWITCH_BUTTON_CLASS = "opc-markdown-switch";
 
 /** Layouts offered for new maps (the auto layout's mind-map directions). */
 const NEW_MAP_LAYOUTS: MapLayout[] = ["right", "left", "down", "up", "balanced", "radial"];
@@ -99,13 +106,14 @@ export const canvasMarkdownModule = defineModule<CanvasMarkdownSettings>({
 	description: "canvasMarkdown.desc",
 	group: "data",
 	defaultEnabled: true,
-	defaultSettings: { indent: "tab", layout: "right", pasteOutlines: true },
+	defaultSettings: { indent: "tab", layout: "right", pasteOutlines: true, button: "all" },
 	sanitizeSettings: (raw, defaults) => {
 		const s = mergeWithDefaults(raw, defaults);
 		return {
 			indent: s.indent in INDENTS ? s.indent : defaults.indent,
 			layout: (MAP_LAYOUTS as readonly string[]).includes(s.layout) ? s.layout : defaults.layout,
 			pasteOutlines: typeof s.pasteOutlines === "boolean" ? s.pasteOutlines : defaults.pasteOutlines,
+			button: BUTTONS.includes(s.button) ? s.button : defaults.button,
 		};
 	},
 
@@ -176,10 +184,10 @@ export const canvasMarkdownModule = defineModule<CanvasMarkdownSettings>({
 				new Notice(t("canvasMarkdown.nothingToCopy"));
 				return;
 			}
-			navigator.clipboard.writeText(md).then(
-				() => new Notice(t("canvasMarkdown.copied", { count })),
-				fail,
-			);
+			navigator.clipboard.writeText(md).then(() => {
+				new Notice(t("canvasMarkdown.copied", { count }));
+				ctx.events.emit("outline-copied", canvas, count);
+			}, fail);
 		};
 
 		// ---- Phase 2: outline → mind map --------------------------------------------------
@@ -222,6 +230,7 @@ export const canvasMarkdownModule = defineModule<CanvasMarkdownSettings>({
 				canvas.zoomToSelection();
 			}
 			new Notice(t("canvasMarkdown.inserted", { count: nodes.length }));
+			ctx.events.emit("outline-inserted", canvas, [...(added ?? [])]);
 		};
 
 		const pasteOutline = (canvas: CanvasLike) =>
@@ -285,6 +294,7 @@ export const canvasMarkdownModule = defineModule<CanvasMarkdownSettings>({
 				note = existing;
 			} else note = await app.vault.create(path, md);
 			new Notice(t("canvasMarkdown.exported", { name: note.basename }));
+			ctx.events.emit("note-exported", file, note);
 			return note;
 		};
 
@@ -336,7 +346,10 @@ export const canvasMarkdownModule = defineModule<CanvasMarkdownSettings>({
 						return null;
 					}
 				}
+				// Write the ids of new cards back, so the same lines aren't added again next time.
+				await syncNote(note, target, live ? live.getData() : result.data);
 				new Notice(t("canvasMarkdown.updated", { added: result.added, removed: result.removed, updated: result.updated }));
+				ctx.events.emit("canvas-updated-from-note", target, note, result.added, result.removed, result.updated);
 				return target;
 			}
 
@@ -361,8 +374,24 @@ export const canvasMarkdownModule = defineModule<CanvasMarkdownSettings>({
 				});
 				live.zoomToFit();
 			} else await app.vault.modify(file, JSON.stringify(result.data, null, "\t"));
+			// A note that already mirrored a canvas follows the new one; a plain outline note is left as it is.
+			if (split.data) await syncNote(note, file, live ? live.getData() : result.data);
 			new Notice(t("canvasMarkdown.created", { name: file.basename, count: result.data.nodes?.length ?? 0 }));
+			ctx.events.emit("canvas-updated-from-note", file, note, result.added, 0, 0);
 			return file;
+		};
+
+		/** Rewrites a linked note from its canvas (ids for new lines, fresh layout data); front matter stays. */
+		const syncNote = async (note: TFile, canvasFile: TFile, data: CanvasFileData) => {
+			const previous = await readNote(note);
+			const md = exportNote(data, {
+				canvasPath: canvasFile.path,
+				rtl: rtlOf(openCanvasFor(canvasFile)),
+				freeLabel: t("canvasMarkdown.freeNodes"),
+				indent: indent(),
+				frontmatter: stripFrontmatter(previous).frontmatter,
+			});
+			if (md !== previous) await app.vault.modify(note, md);
 		};
 
 		/** The canvas of a file once its view has loaded (null after 3 s). */
@@ -397,6 +426,73 @@ export const canvasMarkdownModule = defineModule<CanvasMarkdownSettings>({
 			const view = app.workspace.getActiveViewOfType(MarkdownView);
 			return view?.file ?? null;
 		};
+
+		/** A tab already showing `file`, if any. */
+		const leafShowing = (file: TFile): WorkspaceLeaf | null =>
+			app.workspace.getLeavesOfType(file.extension === "canvas" ? "canvas" : "markdown").find((l) => (l.view as { file?: TFile | null }).file === file) ?? null;
+
+		/**
+		 * Canvas → its note, in the same tab. When the note is already open elsewhere, that tab is
+		 * shown instead; a tutorial's practice board keeps its tab (the coach lives there) and the
+		 * note opens beside it.
+		 */
+		const switchFromCanvas = async (leaf: WorkspaceLeaf, canvas: CanvasLike) => {
+			const file = canvas.view.file;
+			if (!file) return;
+			const note = await exportCanvas(file);
+			if (!note) return;
+			const open = leafShowing(note);
+			if (open) {
+				app.workspace.setActiveLeaf(open, { focus: true });
+				return;
+			}
+			const target = canvas.data[TUTORIAL_KEY] ? app.workspace.getLeaf("split", "vertical") : leaf;
+			await target.openFile(note, { active: true });
+		};
+
+		/** Note → its canvas (created or updated), in the same tab unless it is open elsewhere. */
+		const switchFromNote = async (leaf: WorkspaceLeaf, note: TFile) => {
+			const file = await applyNoteFile(note, leaf);
+			if (!file) return;
+			const open = leafShowing(file);
+			if (open) app.workspace.setActiveLeaf(open, { focus: true });
+			else await leaf.openFile(file, { active: true });
+		};
+
+		// Switch button in the header of canvases and (by default) notes.
+		const buttons = new Map<ItemView, HTMLElement>();
+		const refreshButtons = () => {
+			const mode = ctx.settings.button;
+			for (const [view, el] of buttons)
+				if (!view.containerEl.isConnected || mode === "off" || (mode === "canvas" && view.getViewType() !== "canvas")) {
+					el.remove();
+					buttons.delete(view);
+				}
+			if (mode === "off") return;
+			const leaves = [...app.workspace.getLeavesOfType("canvas"), ...(mode === "all" ? app.workspace.getLeavesOfType("markdown") : [])];
+			for (const leaf of leaves) {
+				const view = leaf.view as ItemView;
+				if (buttons.has(view) || typeof view.addAction !== "function") continue;
+				const isCanvas = view.getViewType() === "canvas";
+				if (!isCanvas && !(view instanceof MarkdownView)) continue;
+				const el = view.addAction("arrow-left-right", t("canvasMarkdown.cmd.toggle"), () => {
+					if (isCanvas) {
+						const canvas = (view as CanvasViewLike).canvas;
+						if (canvas) void run(switchFromCanvas(leaf, canvas));
+					} else if (view instanceof MarkdownView && view.file) void run(switchFromNote(leaf, view.file));
+				});
+				el.addClass(SWITCH_BUTTON_CLASS);
+				buttons.set(view, el);
+			}
+		};
+		app.workspace.onLayoutReady(refreshButtons);
+		ctx.registerEvent(app.workspace.on("layout-change", refreshButtons));
+		ctx.registerEvent(app.workspace.on("active-leaf-change", refreshButtons));
+		ctx.onSettingsChange((next, prev) => next.button !== prev.button && refreshButtons());
+		ctx.register(() => {
+			for (const el of buttons.values()) el.remove();
+			buttons.clear();
+		});
 
 		// ---- Commands and menus ----------------------------------------------------------
 
@@ -454,9 +550,9 @@ export const canvasMarkdownModule = defineModule<CanvasMarkdownSettings>({
 				const note = canvas ? null : activeNote();
 				if (!canvas?.view.file && !note) return false;
 				if (checking) return true;
-				const leaf = app.workspace.getMostRecentLeaf();
-				if (canvas?.view.file) void run(exportCanvas(canvas.view.file).then((f) => openIn(leaf, f)));
-				else if (note) void run(applyNoteFile(note, leaf).then((f) => openIn(leaf, f)));
+				const leaf = app.workspace.getMostRecentLeaf() ?? app.workspace.getLeaf(false);
+				if (canvas) void run(switchFromCanvas(leaf, canvas));
+				else if (note) void run(switchFromNote(leaf, note));
 				return true;
 			},
 		});
@@ -508,5 +604,14 @@ export const canvasMarkdownModule = defineModule<CanvasMarkdownSettings>({
 			.setName(ctx.t("canvasMarkdown.paste.name"))
 			.setDesc(ctx.t("canvasMarkdown.paste.desc"))
 			.addToggle((tg) => tg.setValue(ctx.settings.pasteOutlines).onChange((v) => ctx.updateSettings({ pasteOutlines: v })));
+		new Setting(el)
+			.setName(ctx.t("canvasMarkdown.button.name"))
+			.setDesc(ctx.t("canvasMarkdown.button.desc"))
+			.addDropdown((d) =>
+				d
+					.addOptions({ all: ctx.t("canvasMarkdown.button.all"), canvas: ctx.t("canvasMarkdown.button.canvas"), off: ctx.t("canvasMarkdown.button.off") })
+					.setValue(ctx.settings.button)
+					.onChange((v) => ctx.updateSettings({ button: v as CanvasMarkdownSettings["button"] })),
+			);
 	},
 });

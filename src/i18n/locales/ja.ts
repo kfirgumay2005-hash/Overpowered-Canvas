@@ -375,6 +375,12 @@ export const ja: Record<I18nKey, string> = {
 	"canvasMarkdown.paste.name": "アウトラインをマインドマップとして貼り付け",
 	"canvasMarkdown.paste.desc": "入れ子の箇条書きや見出しをボードに（カードの中ではなく）貼り付けると、1 枚のカードではなくマインドマップを作ります。",
 	"canvasMarkdown.paste.simple": "貼り付けたリストを 1 枚のカードのままにしたい場合はオフにします。",
+	"canvasMarkdown.button.name": "切り替えボタン",
+	"canvasMarkdown.button.desc": "ヘッダーの ⇄ ボタンで、キャンバスと対応するノートを切り替えます。",
+	"canvasMarkdown.button.simple": "キャンバスで押すとボードをノートとして表示し、ノートで押すとノートをボードにします。",
+	"canvasMarkdown.button.all": "ノートとキャンバス",
+	"canvasMarkdown.button.canvas": "キャンバスのみ",
+	"canvasMarkdown.button.off": "非表示",
 
 	"pdfAnnotation.name": "PDF 注釈",
 	"pdfAnnotation.desc": "PDF カードを 1 ページに固定し（縦横比を固定したページとして表示）、PDF 全体をページごとに固定カードとして挿入して、周りに注釈を書けます。",

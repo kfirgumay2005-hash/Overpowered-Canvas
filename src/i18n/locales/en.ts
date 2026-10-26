@@ -377,6 +377,12 @@ export const en = {
 	"canvasMarkdown.paste.name": "Paste outlines as mind maps",
 	"canvasMarkdown.paste.desc": "Pasting nested bullets or headings onto the board (not into a card) builds a mind map instead of one card.",
 	"canvasMarkdown.paste.simple": "Turn this off if you want pasted lists to stay a single card.",
+	"canvasMarkdown.button.name": "Switch button",
+	"canvasMarkdown.button.desc": "A ⇄ button in the header that switches between a canvas and its note.",
+	"canvasMarkdown.button.simple": "Click it in a canvas to see the board as a note, and in a note to turn it into a board.",
+	"canvasMarkdown.button.all": "Notes and canvases",
+	"canvasMarkdown.button.canvas": "Canvases only",
+	"canvasMarkdown.button.off": "Hidden",
 
 	"pdfAnnotation.name": "PDF annotation",
 	"pdfAnnotation.desc": "Pin a PDF card to one page (shown as a page with a locked aspect ratio) and insert whole PDFs as one pinned card per page, to annotate around them.",

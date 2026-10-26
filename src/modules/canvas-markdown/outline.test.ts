@@ -48,6 +48,11 @@ describe("parseOutline", () => {
 		]);
 	});
 
+	it("keeps the id when text was typed after it", () => {
+		const items = parseOutline("# R %%n:r1r1%%\n- Gas giants %%n:g1g1%%Saturn\n- Mars %%n:m1m1%% red\n");
+		expect(shape(items)).toEqual([["node", "R", "r1r1", [["node", "Gas giants Saturn", "g1g1", []], ["node", "Mars red", "m1m1", []]]]]);
+	});
+
 	it("treats plain paragraphs as items, and text right under a card heading as its text", () => {
 		const md = "Intro line\nsame paragraph\n\nSecond\n# Root\nmore root text\n\n- child\n\nAfter the list\n";
 		expect(shape(parseOutline(md))).toEqual([
