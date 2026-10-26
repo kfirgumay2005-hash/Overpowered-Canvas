@@ -17,15 +17,16 @@ Includes all the features from both advanced canvas and canvas mindmap plugins ,
 top/middle/bottom text alignment (new cards can be centered automatically), cards that grow
 downwards or sideways as you type, layers like in image editors (a Layers panel to create,
 rename, reorder, hide, lock and delete them; new items go to the active layer; move the
-selection to a layer or one layer up or down), custom colors from CSS, card templates in the bottom bar, empty groups, per-card zoom
-breakpoints, text that doesn't jump between reading and editing; edge line styles and
+selection to a layer or one layer up or down), custom colors from CSS, card templates in the bottom bar, empty groups, card
+content at any zoom level (always, below your own zoom, or per card), text that doesn't jump between reading and editing; edge line styles and
 arrowheads, routing (curved, straight, right-angle, A\* around cards), floating edge ends, flip /
 highlight / select connected edges, draggable bend points and labels.
 
 **Drawing** — pen, pencil, marker and highlighter with pressure and tilt (perfect-freehand),
 palm rejection, pen-only mode, the pen's eraser end, whole-stroke and partial eraser, lasso to
 move / scale / delete / lock strokes, recent colors, smoothing, and shape recognition (hold at
-the end of a stroke). Free lines and arrows whose ends stick to cards. Standalone shapes with
+the end of a stroke). Free lines and arrows whose ends stick to cards, with bend points that keep
+the route's shape when cards move, drawn under the cards they connect. Standalone shapes with
 fill, outline, opacity and rotation. Sticky notes in any color (the last 10 custom colors are
 kept) whose text shrinks to fit. Floating text without a card around it. Infinite
 lines at any angle (turn them live with a slider from the selection toolbar) with their own
@@ -33,21 +34,24 @@ color and thickness. Non-destructive image crop.
 Lock items in place.
 
 **Mind maps** — Tab / Enter to add children and siblings, Alt+arrows to move between cards,
-collapsible branches with child counts, and automatic layout with elkjs (mind map in any
-direction, radial, balanced, layered flowchart, grid) as one animated undo step.
+collapsible branches with child counts, and automatic layout (mind map in any direction,
+collision-free radial that respects every card's size, balanced, layered flowchart, grid) as one
+animated undo step; groups move as rigid blocks and edges re-attach to the facing sides.
 
 **Vault integration** — canvases get properties, tags, aliases and outgoing links in Obsidian's
 metadata cache; edges from frontmatter links; links and embeds to a single card
 (`[[file.canvas#card-id]]`); search inside a canvas (Ctrl/Cmd+F); read-only options; PNG/SVG
 export.
 
-**Interaction and navigation** — presentations along edges or through frames
+**Interaction and navigation** — a lasso that selects anything on the canvas (cards, groups,
+edges, ink strokes); cut in one undo step and paste under the pointer, with Cut / Copy / Paste
+buttons on tablets; coloring several cards colors the edges between them; presentations along edges or through frames
 (click a slide's name to hide or show its frame), portals into
 other canvases, collapsible groups, focus mode, move a selection to a new canvas, PDF pages as
 cards for annotation, custom style attributes from CSS snippets, a public events API, a minimap,
 a frames panel to search, reorder and present the groups of a canvas, a line grid behind the
 content (a line every N dots), an adjustable selection toolbar size (separately for computers
-and phones), and eleven hands-on tutorials (at the top of the settings, in the ribbon and the canvas
+and phones), and thirteen hands-on tutorials (at the top of the settings, in the ribbon and the canvas
 controls). Each tutorial opens a temporary practice board with a coach panel: small tasks that
 tick themselves off as you do them, a "Show me" button that does each task live on the board, and
 highlights on the controls involved. The board is deleted when the tutorial closes. The settings page has its own search box and collapsible sections, a plain-language
@@ -58,7 +62,10 @@ settings search. A double-click on the empty canvas creates a card at a speed yo
 **Data features** — board templates (your own, plus Kanban, SWOT, Retrospective, Weekly plan,
 Mind map and Flowchart), kanban columns bound to a frontmatter property with two-way sync
 (rules: [docs/KANBAN.md](docs/KANBAN.md)), and query groups that fill themselves with notes
-matching tags, folders, properties or links.
+matching tags, folders, properties or links. Drag a block from a note onto a canvas (hold a line,
+or grab its handle): a bullet with its children, a heading with its section or a paragraph
+becomes a card under the pointer, or a linked child or sibling of the card you drop it on;
+inbox mode sends clicked blocks into a named group.
 
 **Canvas ⇄ Markdown** — copy a mind map (or any connected cards) as a Markdown outline; paste an
 outline onto the board, insert a note, or convert a note card to get a laid-out mind map; and

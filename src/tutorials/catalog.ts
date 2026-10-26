@@ -1235,5 +1235,163 @@ const markdown: TutorialDefinition = {
 	],
 };
 
+// ---------- 12. Lasso, cut and paste ----------
+
+const select: TutorialDefinition = {
+	id: "select",
+	icon: "lasso-select",
+	title: "tut.select.title",
+	summary: "tut.select.summary",
+	modules: ["lasso", "clipboard", "edge-tools"],
+	board: (t) => ({
+		nodes: [
+			card("sel-root", t("tut.select.board.root"), 0, 0, 240, 80, { color: "5" }),
+			card("sel-a", t("tut.select.board.a"), 340, -110, 220, 60),
+			card("sel-b", t("tut.select.board.b"), 340, 40, 220, 60),
+			card("sel-c", t("tut.select.board.c"), 340, 190, 220, 60),
+			ink("sel-ink", ellipsePoints(450, -80, 140, 55), "#e03131", 4),
+			group("sel-later", t("tut.select.board.later"), 760, -140, 460, 420, { color: "4" }),
+		],
+		edges: [edge("sel-e1", "sel-root", "right", "sel-a", "left"), edge("sel-e2", "sel-root", "right", "sel-b", "left"), edge("sel-e3", "sel-root", "right", "sel-c", "left")],
+	}),
+	steps: [
+		{ title: "tut.select.s1.title", body: "tut.select.s1.body" },
+		{
+			title: "tut.select.s2.title",
+			body: "tut.select.s2.body",
+			task: "tut.select.s2.task",
+			target: ".opc-card-lasso",
+			enter: (rt) => rt.canvas.deselectAll(),
+			check: (rt) => rt.seen("lasso-selected", (_c, items) => Array.isArray(items) && items.length >= 2) || rt.selected().filter((id) => id.startsWith("sel-")).length >= 3,
+			demo: async (rt) => {
+				rt.command("lasso:lasso");
+				await rt.wait(700);
+				rt.command("lasso:lasso");
+				rt.select(["sel-root", "sel-a", "sel-b", "sel-e1", "sel-e2", "sel-ink"]);
+			},
+		},
+		{
+			title: "tut.select.s3.title",
+			body: "tut.select.s3.body",
+			task: "tut.select.s3.task",
+			check: (rt) => {
+				const before = new Map(edgesOf(rt.before).map((e) => [e.id, e.color ?? ""]));
+				return edgesOf(rt.now()).some((e) => before.has(e.id) && before.get(e.id) !== (e.color ?? ""));
+			},
+			demo: (rt) => {
+				rt.change(() => {
+					for (const id of ["sel-root", "sel-a", "sel-b"]) rt.node(id)?.setColor("6");
+					for (const id of ["sel-e1", "sel-e2"]) rt.canvas.edges.get(id)?.setColor("6");
+				});
+			},
+		},
+		{
+			title: "tut.select.s4.title",
+			body: "tut.select.s4.body",
+			task: "tut.select.s4.task",
+			check: (rt) => rt.seen("selection-cut"),
+			demo: (rt) => {
+				if (rt.selected().length === 0) rt.select(["sel-a", "sel-b"]);
+				rt.command("clipboard:cut");
+			},
+		},
+		{
+			title: "tut.select.s5.title",
+			body: "tut.select.s5.body",
+			task: "tut.select.s5.task",
+			focus: ["sel-later"],
+			check: (rt) => added(rt.before, rt.now()).length >= 1,
+			demo: (rt) => {
+				const later = rt.node("sel-later");
+				if (later) rt.canvas.panTo(later.x + later.width / 2, later.y + later.height / 2);
+				rt.command("clipboard:paste-here");
+			},
+		},
+		{ title: "tut.select.s6.title", body: "tut.select.s6.body" },
+	],
+};
+
+// ---------- 13. Notes to the board ----------
+
+/** Opens the practice note beside the board (written on first use; deleted with the board). */
+async function openPracticeNote(rt: TutorialRuntime): Promise<void> {
+	if (noteTab(rt)) return;
+	const file = rt.canvas.view.file;
+	if (!file) return;
+	const path = file.path.replace(/\.canvas$/, ".md");
+	const vault = rt.app.vault;
+	const body = ["# " + rt.t("tut.blocks.note.title"), "", rt.t("tut.blocks.note.para"), "", "- " + rt.t("tut.blocks.note.b1"), "\t- " + rt.t("tut.blocks.note.b1a"), "\t- " + rt.t("tut.blocks.note.b1b"), "- " + rt.t("tut.blocks.note.b2"), "- " + rt.t("tut.blocks.note.b3"), ""].join("\n");
+	const existing = vault.getAbstractFileByPath(path);
+	const note = existing ?? (await vault.create(path, body));
+	const boardLeaf = rt.app.workspace.getLeavesOfType("canvas").find((l) => (l.view as unknown as { canvas?: unknown }).canvas === rt.canvas);
+	if (!boardLeaf) return;
+	const leaf = rt.app.workspace.createLeafBySplit(boardLeaf, "vertical");
+	await leaf.openFile(note as Parameters<typeof leaf.openFile>[0], { active: false });
+	await rt.wait(400);
+	frameClearOfPanel(rt);
+}
+
+/** Texts a dragged block from the practice note can have. */
+const practiceTexts = (rt: TutorialRuntime) => ["b1", "b1a", "b1b", "b2", "b3"].map((k) => rt.t(`tut.blocks.note.${k}` as Parameters<TutorialRuntime["t"]>[0])).concat(rt.t("tut.blocks.note.para"));
+const fromNote = (rt: TutorialRuntime, n: CanvasNodeData) => n.type === "text" && practiceTexts(rt).some((p) => (n.text ?? "").includes(p));
+
+const blocks: TutorialDefinition = {
+	id: "blocks",
+	icon: "grip-vertical",
+	title: "tut.blocks.title",
+	summary: "tut.blocks.summary",
+	modules: ["note-blocks"],
+	board: (t) => ({
+		nodes: [
+			card("bl-root", t("tut.blocks.board.root"), 0, 0, 240, 80, { color: "5" }),
+			card("bl-ideas", t("tut.blocks.board.ideas"), 340, 0, 220, 70, { color: "2" }),
+			group("bl-inbox", t("tut.blocks.board.inbox"), 0, 220, 560, 260, { color: "3" }),
+		],
+		edges: [edge("bl-e1", "bl-root", "right", "bl-ideas", "left")],
+	}),
+	steps: [
+		{
+			title: "tut.blocks.s1.title",
+			body: "tut.blocks.s1.body",
+			enter: (rt) => void openPracticeNote(rt),
+		},
+		{
+			title: "tut.blocks.s2.title",
+			body: "tut.blocks.s2.body",
+			task: "tut.blocks.s2.task",
+			enter: (rt) => void openPracticeNote(rt),
+			check: (rt) => rt.seen("note-block-dropped") || added(rt.before, rt.now()).some((n) => fromNote(rt, n)),
+			demo: (rt) => {
+				rt.add([card(randomId(), rt.t("tut.blocks.note.b2"), 0, -180, 200, 60)]);
+			},
+		},
+		{
+			title: "tut.blocks.s3.title",
+			body: "tut.blocks.s3.body",
+			task: "tut.blocks.s3.task",
+			focus: ["bl-ideas"],
+			check: (rt) => addedEdges(rt.before, rt.now()).some((e) => e.fromNode === "bl-ideas" || e.toNode === "bl-ideas" || e.fromNode === "bl-root"),
+			demo: (rt) => {
+				const id = randomId();
+				rt.add([card(id, rt.t("tut.blocks.note.b3"), 660, 0, 200, 60)], [edge(randomId(), "bl-ideas", "right", id, "left")]);
+			},
+		},
+		{
+			title: "tut.blocks.s4.title",
+			body: "tut.blocks.s4.body",
+			task: "tut.blocks.s4.task",
+			focus: ["bl-inbox"],
+			check: (rt) => {
+				const g = findNode(rt.now(), "bl-inbox");
+				return !!g && added(rt.before, rt.now()).some((n) => n.type !== "group" && n.x >= g.x && n.y >= g.y && n.x + n.width <= g.x + g.width && n.y + n.height <= g.y + g.height);
+			},
+			demo: (rt) => {
+				rt.add([card(randomId(), rt.t("tut.blocks.note.para"), 20, 240, 300, 80)]);
+			},
+		},
+		{ title: "tut.blocks.s5.title", body: "tut.blocks.s5.body" },
+	],
+};
+
 /** Every tutorial, in the order they are offered. */
-export const TUTORIALS: readonly TutorialDefinition[] = [basics, notes, shapes, edges, drawing, layers, present, mindmap, navigate, organize, markdown];
+export const TUTORIALS: readonly TutorialDefinition[] = [basics, notes, shapes, edges, drawing, layers, present, mindmap, navigate, organize, markdown, select, blocks];

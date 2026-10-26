@@ -368,3 +368,37 @@ Automated runtime checks of every item below were run in an isolated Obsidian 1.
 10. Clean note: rename the note, then the canvas → switching from the canvas still opens the
     renamed note (no new note appears). Delete the note → its data file is gone. Switch twice
     after adding a line → no duplicate cards.
+
+## Manual — power-user feedback (0.7)
+
+1. **Radial layout:** a map with cards of very different sizes → Auto layout → Radial: no card
+   overlaps another; running it again keeps the arrangement.
+2. **Groups in layouts:** a map whose child sits inside a group → Auto layout (whole canvas):
+   the group moves as one block, its cards keep their places inside it, nothing overlaps it.
+3. **Edge sides:** after any layout (grid too), edges attach on the sides facing each other.
+4. **Note blocks:** note and canvas side by side. Hold a bullet with children ~0.35 s and drag it
+   onto the board: one card with the whole block, sized to its text, under the pointer. With a
+   mouse, the dotted handle left of a line drags at once. Over a card: "Add as child" / "Add as
+   sibling" appear; dropping links the card. iPad: hold with a finger, then drag — the page must
+   not scroll or start a text selection.
+5. **Inbox:** a group named "Inbox" → command *Toggle inbox mode* → click lines in a note: cards
+   stack inside the group, which grows.
+6. **Convert to mind map:** right-click a note card or a text card holding bullets → *Convert to
+   mind map…* → pick Radial: a map beside the card, rooted at the note's title.
+7. **Lasso:** press L (or the bottom-bar button), draw around two cards, their edge and part of an
+   ink drawing: exactly those are selected (the caught strokes become their own drawing). Move,
+   delete, recolor and *Move to layer* work on the selection.
+8. **Cut and paste:** select, Ctrl/Cmd+X (one undo step), point elsewhere, Ctrl/Cmd+V: the cards
+   land under the pointer with their edges. Tablet: Cut / Copy in the selection toolbar, Paste
+   in the bottom bar.
+9. **Zoomed out:** Settings → Variable breakpoints → "Always show content": card text stays
+   readable when zoomed far out; "Placeholder below my zoom level" follows the slider.
+10. **Connectors:** select a drawn line attached to two cards: drag a segment's middle dot to add
+    a bend, double-click a bend to remove it; move a card: the bends follow. The line passes
+    under cards.
+11. **Edge colors:** box-select three connected cards → pick a color: the edges between them
+    change too; Ctrl+Z undoes both.
+12. **Coexistence:** with the other canvas plugin that hides the core card bar, our card bar
+    buttons stay visible.
+13. **Tutorials:** *Lasso, cut and paste* and *Notes to the board* work by hand and with "Show me";
+    closing them deletes the practice board and note.
