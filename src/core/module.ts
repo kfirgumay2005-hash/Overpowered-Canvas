@@ -77,6 +77,8 @@ export interface ModuleContext<S extends object> {
 	/** Command id is prefixed with "<module-id>:". */
 	addCommand(command: Command): Command;
 	addStatusBarItem(): HTMLElement;
+	/** A button in the left ribbon, removed with the module. */
+	addRibbonIcon(icon: string, title: string, onClick: (evt: MouseEvent) => void): HTMLElement;
 	registerEvent(ref: EventRef): void;
 	registerDomEvent<K extends keyof HTMLElementEventMap>(
 		el: HTMLElement,

@@ -406,6 +406,7 @@ export const hi: Record<I18nKey, string> = {
 	"noteBlocks.zone.sibling": "साथी के रूप में जोड़ें",
 	"noteBlocks.noCanvas": "पहले एक कैनवास खोलें।",
 	"noteBlocks.cmd.inbox": "इनबॉक्स मोड चालू/बंद करें (नोट में ब्लॉक पर क्लिक करके उसे इनबॉक्स समूह में भेजें)",
+	"noteBlocks.ribbon": "इनबॉक्स मोड: क्लिक किए गए नोट ब्लॉक इनबॉक्स समूह में भेजें",
 	"noteBlocks.inbox.on": "इनबॉक्स मोड चालू: नोट में किसी अनुच्छेद या बुलेट पर क्लिक करें, वह समूह “{name}” में चला जाएगा।",
 	"noteBlocks.inbox.off": "इनबॉक्स मोड बंद।",
 	"noteBlocks.inbox.status": "इनबॉक्स: {name}",

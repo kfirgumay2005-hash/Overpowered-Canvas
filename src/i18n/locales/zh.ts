@@ -406,6 +406,7 @@ export const zh: Record<I18nKey, string> = {
 	"noteBlocks.zone.sibling": "添加为同级",
 	"noteBlocks.noCanvas": "请先打开一个白板。",
 	"noteBlocks.cmd.inbox": "切换收件箱模式（点击笔记中的块即发送到收件箱分组）",
+	"noteBlocks.ribbon": "收件箱模式：将点击的笔记段落发送到收件箱分组",
 	"noteBlocks.inbox.on": "收件箱模式已开启：点击笔记中的段落或列表项，即可发送到分组“{name}”。",
 	"noteBlocks.inbox.off": "收件箱模式已关闭。",
 	"noteBlocks.inbox.status": "收件箱：{name}",

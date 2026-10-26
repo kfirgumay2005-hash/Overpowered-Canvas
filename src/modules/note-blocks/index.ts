@@ -281,11 +281,20 @@ export const noteBlocksModule = defineModule<NoteBlocksSettings>({
 			}
 		};
 
+		const toggleInbox = () => {
+			inbox = !inbox;
+			renderStatus();
+			new Notice(inbox ? t("noteBlocks.inbox.on", { name: ctx.settings.inboxName }) : t("noteBlocks.inbox.off"));
+		};
+		const ribbon = ctx.addRibbonIcon("inbox", t("noteBlocks.ribbon"), toggleInbox);
+		ribbon.addClass("opc-note-blocks-ribbon");
 		const status = ctx.addStatusBarItem();
 		status.addClass("opc-note-blocks-status");
 		const renderStatus = () => {
 			status.setText(inbox ? t("noteBlocks.inbox.status", { name: ctx.settings.inboxName }) : "");
 			status.toggle(inbox);
+			ribbon.toggleClass("is-active", inbox);
+			ribbon.setAttr("aria-pressed", String(inbox));
 		};
 		status.onClickEvent(() => {
 			inbox = false;
@@ -296,11 +305,7 @@ export const noteBlocksModule = defineModule<NoteBlocksSettings>({
 			id: "toggle-inbox",
 			name: t("noteBlocks.cmd.inbox"),
 			icon: "inbox",
-			callback: () => {
-				inbox = !inbox;
-				renderStatus();
-				new Notice(inbox ? t("noteBlocks.inbox.on", { name: ctx.settings.inboxName }) : t("noteBlocks.inbox.off"));
-			},
+			callback: toggleInbox,
 		});
 
 		// ---- Dragging --------------------------------------------------------------------
