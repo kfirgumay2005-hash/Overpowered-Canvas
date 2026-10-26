@@ -42,7 +42,13 @@ interface OpcRoot {                       // file root "x-opc"
   frameOrder?: string[];                  // group ids, Frames panel order
   layers?: { id: string; name: string; hidden?: boolean; locked?: boolean }[];  // bottom to top
   activeLayer?: string;                   // layer id that new items go to
+  mapLayouts?: Record<string, MapLayout>; // root card id → auto layout last applied to its map
 }
+
+// "right" | "left" | "down" | "up" | "balanced" | "radial" | "layered-right" | "layered-left" |
+// "layered-down" | "layered-up" | "grid". "right"/"left" are logical (mirrored in RTL canvases).
+// Written by Auto layout and by Canvas ⇄ Markdown; read when a note changes a map's structure,
+// so the map is re-arranged the same way. A map without an entry is hand-arranged.
 
 interface OpcNode {
   kind?: "sticky" | "shape" | "line" | "ink" | "text" | "guide";  // absent = ordinary node
