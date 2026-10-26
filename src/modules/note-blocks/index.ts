@@ -299,6 +299,98 @@ export const noteBlocksModule = defineModule<NoteBlocksSettings>({
 			return best;
 		};
 
+		/** "Add as child" / "Add as sibling" targets around a card, on the side its map grows to. */
+		const renderZones = (canvas: CanvasLike, card: CanvasNodeLike): HTMLElement => {
+			const dir = growth(canvas, card);
+			const r = card.nodeEl.getBoundingClientRect();
+			const host = canvas.wrapperEl.getBoundingClientRect();
+			const zones = canvas.wrapperEl.createDiv({ cls: "opc-note-blocks-zones" });
+			zones.dataset.node = card.id;
+			zones.dataset.dir = dir;
+			const add = (kind: Zone, label: string, left: number, top: number) => {
+				const z = zones.createDiv({ cls: `opc-note-blocks-zone is-${kind}`, text: label });
+				z.dataset.zone = kind;
+				z.style.left = `${left - host.left}px`;
+				z.style.top = `${top - host.top}px`;
+				// Keep it inside the canvas pane (a card at the edge would push it out of sight).
+				const zr = z.getBoundingClientRect();
+				const shiftX = zr.right > host.right - 4 ? host.right - 4 - zr.right : zr.left < host.left + 4 ? host.left + 4 - zr.left : 0;
+				const shiftY = zr.bottom > host.bottom - 4 ? host.bottom - 4 - zr.bottom : zr.top < host.top + 4 ? host.top + 4 - zr.top : 0;
+				if (shiftX || shiftY) {
+					z.style.left = `${left - host.left + shiftX}px`;
+					z.style.top = `${top - host.top + shiftY}px`;
+				}
+			};
+			// Child on the side the map grows to; sibling after the card along its siblings.
+			const cx = dir === "right" ? r.right + 8 : dir === "left" ? r.left - 8 : r.left + r.width / 2;
+			const cy = dir === "down" ? r.bottom + 8 : dir === "up" ? r.top - 8 : r.top + r.height / 2;
+			add("child", t("noteBlocks.zone.child"), cx, cy);
+			const horizontal = dir === "right" || dir === "left";
+			add("sibling", t("noteBlocks.zone.sibling"), horizontal ? r.left + r.width / 2 : r.right + 8, horizontal ? r.bottom + 8 : r.top + r.height / 2);
+			return zones;
+		};
+
+		/** Text dragged the usual way (from a card being edited, or selected text in a note) gets
+		 * the same targets: dropped on one, it becomes a linked card; elsewhere the core handles it. */
+		ctx.onCanvas((canvas) => {
+			const wrapper = canvas.wrapperEl;
+			let zones: HTMLElement | null = null;
+			let zoneNode: CanvasNodeLike | null = null;
+			const clear = () => {
+				zones?.remove();
+				zones = null;
+				zoneNode = null;
+			};
+			const textDrag = (e: DragEvent) => {
+				const types = e.dataTransfer?.types ?? [];
+				return types.includes("text/plain") && !types.includes("Files") && !types.includes("obsidian/canvas");
+			};
+			const zoneUnder = (e: DragEvent): { kind: Zone; node: CanvasNodeLike } | null => {
+				const z = (activeDocument.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null)?.closest<HTMLElement>(".opc-note-blocks-zone");
+				const node = zoneNode;
+				return z && node && zones?.contains(z) ? { kind: z.dataset.zone as Zone, node } : null;
+			};
+			const onOver = (e: DragEvent) => {
+				if (!ctx.settings.dropZones || canvas.readonly || !textDrag(e)) return;
+				const hot = zoneUnder(e);
+				zones?.querySelectorAll(".opc-note-blocks-zone").forEach((z) => z.toggleClass("is-hot", (z as HTMLElement).dataset.zone === hot?.kind));
+				if (hot) {
+					e.preventDefault();
+					return;
+				}
+				const card = cardAt(canvas, canvas.posFromClient({ x: e.clientX, y: e.clientY }));
+				if (card === zoneNode) return;
+				clear();
+				if (card) {
+					zoneNode = card;
+					zones = renderZones(canvas, card);
+				}
+			};
+			const onDrop = (e: DragEvent) => {
+				const hot = textDrag(e) ? zoneUnder(e) : null;
+				const text = e.dataTransfer?.getData("text/plain") ?? "";
+				clear();
+				if (!hot || !text.trim()) return;
+				e.preventDefault();
+				e.stopPropagation();
+				dropCard({ canvas, pos: canvas.posFromClient({ x: e.clientX, y: e.clientY }), zone: hot }, text.trim());
+			};
+			const onLeave = (e: DragEvent) => {
+				if (!e.relatedTarget || !wrapper.contains(e.relatedTarget as Node)) clear();
+			};
+			wrapper.addEventListener("dragover", onOver, true);
+			wrapper.addEventListener("drop", onDrop, true);
+			wrapper.addEventListener("dragleave", onLeave, true);
+			wrapper.addEventListener("dragend", clear, true);
+			return () => {
+				clear();
+				wrapper.removeEventListener("dragover", onOver, true);
+				wrapper.removeEventListener("drop", onDrop, true);
+				wrapper.removeEventListener("dragleave", onLeave, true);
+				wrapper.removeEventListener("dragend", clear, true);
+			};
+		});
+
 		const startDrag = (block: Block, source: MarkdownView, x: number, y: number, pointerId: number | null) => {
 			const doc = activeDocument;
 			const ghost = doc.body.createDiv({ cls: "opc-note-blocks-ghost" });
@@ -316,33 +408,7 @@ export const noteBlocksModule = defineModule<NoteBlocksSettings>({
 				zones = null;
 				zoneNode = card;
 				if (!card || !target) return;
-				const canvas = target.canvas;
-				const dir = growth(canvas, card);
-				const r = card.nodeEl.getBoundingClientRect();
-				const host = canvas.wrapperEl.getBoundingClientRect();
-				zones = canvas.wrapperEl.createDiv({ cls: "opc-note-blocks-zones" });
-				zones.dataset.node = card.id;
-				const add = (kind: Zone, label: string, left: number, top: number) => {
-					const z = zones!.createDiv({ cls: `opc-note-blocks-zone is-${kind}`, text: label });
-					z.dataset.zone = kind;
-					z.style.left = `${left - host.left}px`;
-					z.style.top = `${top - host.top}px`;
-					// Keep it inside the canvas pane (a card at the edge would push it out of sight).
-					const zr = z.getBoundingClientRect();
-					const shiftX = zr.right > host.right - 4 ? host.right - 4 - zr.right : zr.left < host.left + 4 ? host.left + 4 - zr.left : 0;
-					const shiftY = zr.bottom > host.bottom - 4 ? host.bottom - 4 - zr.bottom : zr.top < host.top + 4 ? host.top + 4 - zr.top : 0;
-					if (shiftX || shiftY) {
-						z.style.left = `${left - host.left + shiftX}px`;
-						z.style.top = `${top - host.top + shiftY}px`;
-					}
-				};
-				// Child on the side the map grows to; sibling after the card along its siblings.
-				const cx = dir === "right" ? r.right + 8 : dir === "left" ? r.left - 8 : r.left + r.width / 2;
-				const cy = dir === "down" ? r.bottom + 8 : dir === "up" ? r.top - 8 : r.top + r.height / 2;
-				add("child", t("noteBlocks.zone.child"), cx, cy);
-				const horizontal = dir === "right" || dir === "left";
-				add("sibling", t("noteBlocks.zone.sibling"), horizontal ? r.left + r.width / 2 : r.right + 8, horizontal ? r.bottom + 8 : r.top + r.height / 2);
-				zones.dataset.dir = dir;
+				zones = renderZones(target.canvas, card);
 			};
 
 			const move = (mx: number, my: number) => {
