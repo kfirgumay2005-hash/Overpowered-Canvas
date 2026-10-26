@@ -67,3 +67,20 @@ body.opc-mod-free-lines svg.opc-line .opc-line-handle.is-attached {
 body.opc-mod-free-lines .canvas-node[data-opc-kind="line"].is-focused svg.opc-line .opc-line-handle {
 	display: block;
 }
+/* Connectors (an end attached to a card) sit under the cards but above groups. */
+body.opc-mod-free-lines .canvas-node[data-opc-kind="line"][data-opc-connector] {
+	z-index: 0 !important;
+}
+body.opc-mod-free-lines svg.opc-line .opc-line-bend {
+	r: calc(5px * var(--zoom-multiplier, 1));
+	fill: var(--color-accent);
+}
+body.opc-mod-free-lines svg.opc-line .opc-line-mid {
+	r: calc(4px * var(--zoom-multiplier, 1));
+	fill: var(--background-primary);
+	opacity: 0.8;
+	cursor: copy;
+}
+body.opc-mod-free-lines .canvas-node[data-opc-kind="line"].is-focused svg.opc-line .opc-line-bends .opc-line-handle {
+	display: block;
+}

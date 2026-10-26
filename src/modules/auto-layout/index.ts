@@ -3,7 +3,7 @@ import { defineModule, type ModuleContext } from "../../core/module";
 import type { EdgeSide } from "../../data/json-canvas";
 import type { I18nKey, Translate } from "../../i18n";
 import type { CanvasLike, CanvasNodeLike } from "../../internals/types";
-import type { MapLayout } from "../../data/schema";
+import { SCHEMA_KEY, type MapLayout } from "../../data/schema";
 import { descendants, directionBetween, logical, type Dir, type TEdge } from "../mindmap/tree";
 import { canvasDirection, mutate, nodeType, selectedNodes } from "../shared";
 import { disposeElk, getElk } from "./engine";
@@ -22,11 +22,14 @@ interface LayoutSettings {
 const OPPOSITE: Record<Dir, EdgeSide> = { right: "left", left: "right", down: "top", up: "bottom" };
 const SIDE: Record<Dir, EdgeSide> = { right: "right", left: "left", down: "bottom", up: "top" };
 const ALGORITHMS: Algorithm[] = ["mindmap", "layered", "grid"];
+const DRAWINGS: ReadonlySet<string> = new Set(["ink", "line", "guide"]);
 const DIRECTIONS: LayoutDirection[] = ["right", "left", "down", "up", "balanced", "radial"];
 
 /** Which nodes a layout applies to: the selection (plus subtrees of a single root) or the whole canvas. */
 export function layoutTargets(canvas: CanvasLike, scope: LayoutSettings["scope"]): CanvasNodeLike[] {
-	const usable = (n: CanvasNodeLike) => nodeType(n) !== "group" && !n.id.includes("~") && !n.nodeEl.hasClass("opc-hidden-by-collapse") && !n.nodeEl.hasClass("opc-hidden-by-branch");
+	// Drawings (ink, lines, guides) are not cards to arrange: lines follow the cards they connect.
+	const drawing = (n: CanvasNodeLike) => nodeType(n) === "text" && DRAWINGS.has(String((n.unknownData?.[SCHEMA_KEY] as { kind?: string } | undefined)?.kind ?? ""));
+	const usable = (n: CanvasNodeLike) => nodeType(n) !== "group" && !drawing(n) && !n.id.includes("~") && !n.nodeEl.hasClass("opc-hidden-by-collapse") && !n.nodeEl.hasClass("opc-hidden-by-branch");
 	const all = [...canvas.nodes.values()].filter(usable);
 	const selected = selectedNodes(canvas).filter(usable);
 	if (scope === "canvas" || selected.length === 0) return all;
