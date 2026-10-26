@@ -225,6 +225,7 @@ export class ModuleManager {
 			get settings() {
 				return mod.current;
 			},
+			filesFolder: () => host.settings.filesFolder,
 			updateSettings: async (patch) => {
 				const next = this.resolveSettings(def, { ...mod.current, ...patch });
 				this.state(def).settings = { ...next };

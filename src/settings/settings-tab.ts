@@ -1,10 +1,11 @@
-import { Notice, PluginSettingTab, Setting, setIcon, type App, type ExtraButtonComponent, type Plugin, type SettingDefinitionItem } from "obsidian";
+import { Notice, PluginSettingTab, Setting, setIcon, type App, type ButtonComponent, type ExtraButtonComponent, type Plugin, type SettingDefinitionItem } from "obsidian";
 import { SETTINGS_GROUP_ORDER, type AnyModule } from "../core/module";
 import type { ModuleManager } from "../core/module-manager";
 import type { I18nKey, LanguageSetting, Translate } from "../i18n";
 import { en } from "../i18n/locales/en";
 import { renderTutorialList, type TutorialListHost } from "../tutorials/list";
-import type { PluginSettings } from "./settings";
+import { FolderSuggest, type MoveResult } from "./files-folder";
+import { cleanFolderPath, DEFAULT_FILES_FOLDER, type PluginSettings } from "./settings";
 
 export interface SettingsTabHost {
 	readonly settings: PluginSettings;
@@ -13,6 +14,8 @@ export interface SettingsTabHost {
 	saveSettings(): Promise<void>;
 	setLanguage(language: LanguageSetting): void;
 	readonly tutorials: TutorialListHost;
+	/** Moves the plugin's files to `to` and makes it the files folder. */
+	applyFilesFolder(to: string): Promise<MoveResult>;
 }
 
 const COLLAPSED_KEY = "overpowered-canvas:settings-collapsed";
@@ -66,6 +69,11 @@ export class OpcSettingTab extends PluginSettingTab {
 				type: "group",
 				cls: "opc-settings-search-group",
 				items: [{ name: t("settings.search.placeholder"), searchable: false, render: (s) => this.renderSearch(s) }],
+			},
+			{
+				name: t("settings.filesFolder.name"),
+				desc: t("settings.filesFolder.desc"),
+				render: (s) => this.renderFilesFolder(s),
 			},
 			{
 				name: t("settings.language.name"),
@@ -174,6 +182,55 @@ export class OpcSettingTab extends PluginSettingTab {
 			nameEl.addClass("opc-collapse-name");
 			nameEl.addEventListener("click", toggle);
 		});
+	}
+
+	/** The folder for the plugin's files: type or pick one, then Apply moves the files there. */
+	private renderFilesFolder(s: Setting): void {
+		const { host } = this;
+		const t = host.t();
+		s.settingEl.setAttr("data-opc-search", searchText(t, ["settings.filesFolder.name", "settings.filesFolder.desc", "settings.filesFolder.simple"]));
+		addSimpleLine(s.descEl, t("settings.filesFolder.simple"));
+		let value = host.settings.filesFolder;
+		let apply: ButtonComponent | null = null;
+		const refresh = () => {
+			const clean = cleanFolderPath(value);
+			apply?.setDisabled(!clean || clean === host.settings.filesFolder);
+		};
+		s.addText((text) => {
+			text.setPlaceholder(DEFAULT_FILES_FOLDER)
+				.setValue(value)
+				.onChange((v) => {
+					value = v;
+					refresh();
+				});
+			new FolderSuggest(this.app, text.inputEl, (path) => {
+				value = path;
+				refresh();
+			});
+		});
+		s.addButton((b) => {
+			apply = b;
+			b.setButtonText(t("settings.filesFolder.apply"))
+				.setCta()
+				.onClick(async () => {
+					const to = cleanFolderPath(value);
+					if (!to) {
+						new Notice(t("settings.filesFolder.invalid"));
+						return;
+					}
+					b.setDisabled(true);
+					try {
+						const result = await host.applyFilesFolder(to);
+						const kept = result.kept ? ` ${t("settings.filesFolder.kept", { count: result.kept })}` : "";
+						new Notice(t("settings.filesFolder.done", { path: to, count: result.moved }) + kept);
+					} catch (error) {
+						console.error("[overpowered-canvas] could not move the plugin's files", error);
+						new Notice(t("settings.filesFolder.failed"));
+					}
+					this.update();
+				});
+		});
+		refresh();
 	}
 
 	/** The tutorial cards; starting one closes the settings window. */

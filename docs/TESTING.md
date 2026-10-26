@@ -297,7 +297,7 @@ Automated runtime checks of every item below were run in an isolated Obsidian 1.
    sticky-note module and its options are listed; click one to jump to it.
 12. **Tutorials:** Settings → Overpowered Canvas → the *Tutorials* cards are at the top (also
    the cap in the canvas controls, or the *Tutorials* command). Click a
-   card → settings close, a practice board opens in a new tab ("Overpowered Canvas tutorials/
+   card → settings close, a practice board opens in a new tab ("<files folder>/Tutorials/
    <name>.canvas") with the coach panel opposite the canvas controls (below the minimap when it
    shares the corner). Do each task by hand: it ticks off with confetti and moves on after a
    moment (not while a card is being edited). *Show me* does the task live; *Skip* / the dots
@@ -351,7 +351,7 @@ Automated runtime checks of every item below were run in an isolated Obsidian 1.
    canvas beside the note opens with a laid-out mind map (growing left in right-to-left canvases).
 2. Run the command again → if a note with the canvas's name exists and isn't linked, a dialog
    offers Replace / Separate note / Cancel. The note shows only the outline (no `%%` marks); a
-   JSON file appears in `Overpowered Canvas data/`. With the setting "Inside the note", the note
+   JSON file appears in the files folder (default `Overpowered Canvas data/`). With the setting "Inside the note", the note
    gets hidden `%%n:…%%` ids and a `canvas-data` section instead, and the JSON file is removed.
 3. In the note, change a line, add a line without an id under some bullet, delete a line → switch
    back: the changed card keeps its place and look, the new card sits beside its parent, the
@@ -451,7 +451,7 @@ Automated runtime checks of every item below were run in an isolated Obsidian 1.
 3. **iPad:** the arrow pad in the corner works with a finger and the pen; one finger still pans.
 4. **Tutorial:** *Mind maps* → "Walk through the map" → Show me completes the step.
 5. **New tutorials** (by hand and with Show me, also in another UI language):
-   - *Notes as cards*: practice notes appear in "Overpowered Canvas tutorials/vault/"; dragging a
+   - *Notes as cards*: practice notes appear in "<files folder>/Tutorials/vault/"; dragging a
      card to *Doing* sets its status; binding *Done*; changing a note's status moves its card; the
      packing group fills with the two tagged notes; a `canvas-edges` property draws an arrow.
    - *Style and reuse*: border, save the Task card as a template (button in the bottom bar), add a
@@ -464,3 +464,15 @@ Automated runtime checks of every item below were run in an isolated Obsidian 1.
    Closing each one deletes the board, its practice files and the canvas split off the board; a
    reload with a tutorial open cleans up on start.
 
+## Manual — files folder
+
+1. Settings → Overpowered Canvas: the first setting is *Folder for the plugin's files* (default
+   `Overpowered Canvas data`). Apply is greyed out until a different, usable folder is typed;
+   typing suggests vault folders. `.hidden`, `/` and the top level are refused.
+2. Type `System/Canvas files` → Apply → notice "… now in “System/Canvas files” (N moved)"; the data
+   files moved, the old folder is gone. A clean note still switches to its canvas with its layout.
+3. Start a tutorial → its board and practice files are in `System/Canvas files/Tutorials/`; closing
+   it removes them.
+4. Apply back to `Overpowered Canvas data` → files return. A file whose name already exists in the
+   target stays where it was, and the notice says how many.
+5. An older settings file with the Canvas ⇄ Markdown *Data folder* option takes that folder over.

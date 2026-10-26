@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { defaultSettings, mergeWithDefaults, sanitizeSettings } from "./settings";
+import { cleanFolderPath, DEFAULT_FILES_FOLDER, defaultSettings, mergeWithDefaults, sanitizeSettings } from "./settings";
 
 describe("sanitizeSettings", () => {
 	it("keeps the finished tutorials, without duplicates or junk", () => {
@@ -54,5 +54,19 @@ describe("mergeWithDefaults", () => {
 		const stored = { list: [7] };
 		const merged = mergeWithDefaults(stored, defaults);
 		expect(merged.list).not.toBe(stored.list);
+	});
+});
+
+describe("files folder", () => {
+	it("cleans up typed paths and refuses unusable ones", () => {
+		expect(cleanFolderPath(" /Plugins//Canvas data/ ")).toBe("Plugins/Canvas data");
+		expect(cleanFolderPath("a\\b")).toBe("a/b");
+		for (const bad of ["", "/", ".obsidian/x", "a/../b", "a:b", "a/#b"]) expect(cleanFolderPath(bad)).toBeNull();
+	});
+	it("defaults, keeps a valid folder and takes over the old Canvas ⇄ Markdown setting", () => {
+		expect(sanitizeSettings({}).filesFolder).toBe(DEFAULT_FILES_FOLDER);
+		expect(sanitizeSettings({ filesFolder: "System/Canvas" }).filesFolder).toBe("System/Canvas");
+		expect(sanitizeSettings({ filesFolder: ".hidden" }).filesFolder).toBe(DEFAULT_FILES_FOLDER);
+		expect(sanitizeSettings({ modules: { "canvas-markdown": { enabled: true, settings: { dataFolder: "Old/data" } } } }).filesFolder).toBe("Old/data");
 	});
 });

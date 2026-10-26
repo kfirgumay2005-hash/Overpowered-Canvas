@@ -18,13 +18,20 @@ import { extraOf } from "./board";
 import { renderRich } from "./rich";
 import type { TutorialDefinition, TutorialRuntime, TutorialStep } from "./types";
 
-export const TUTORIAL_FOLDER = "Overpowered Canvas tutorials";
+/** The tutorials' folder inside the plugin's files folder (a plugin setting). */
+export const TUTORIALS_FOLDER_NAME = "Tutorials";
+/** Where earlier versions kept the practice boards; leftovers there are cleaned up too. */
+const LEGACY_FOLDER = "Overpowered Canvas tutorials";
+
+export function tutorialsFolder(filesFolder: string): string {
+	return normalizePath(`${filesFolder}/${TUTORIALS_FOLDER_NAME}`);
+}
 /** Root key that marks a temporary tutorial canvas (so leftovers can be cleaned up safely). */
 export const TUTORIAL_KEY = "x-opc-tutorial";
 
 /** A tutorial's own folder for its practice files (inside the tutorials folder, which is ours). */
-export function filesFolder(def: TutorialDefinition): string {
-	return normalizePath(`${TUTORIAL_FOLDER}/${def.id}`);
+function practiceFolder(root: string, def: TutorialDefinition): string {
+	return normalizePath(`${root}/${def.id}`);
 }
 
 /** Public events steps can wait for. */
@@ -76,6 +83,8 @@ export interface TutorialHost {
 	readonly history: HistoryApi;
 	readonly hooks: CanvasHooks;
 	t(): Translate;
+	/** The plugin's files folder; the tutorials folder is inside it. */
+	filesFolder(): string;
 	markDone(id: string): void;
 	/** Shows the list of tutorials. */
 	openList(): void;
@@ -92,6 +101,10 @@ export class TutorialRunner {
 	private session: Session | null = null;
 
 	constructor(private readonly host: TutorialHost) {}
+
+	private get root(): string {
+		return tutorialsFolder(this.host.filesFolder());
+	}
 
 	get running(): TutorialDefinition | null {
 		return this.session?.def ?? null;
@@ -114,7 +127,7 @@ export class TutorialRunner {
 		}
 
 		let file: TFile;
-		const folder = filesFolder(def);
+		const folder = practiceFolder(this.root, def);
 		try {
 			await this.writeFiles(def, folder);
 			file = await this.writeBoard(def, folder);
@@ -183,7 +196,7 @@ export class TutorialRunner {
 		await this.removeFolder(folder);
 		if (files.length === 0) return;
 		const { vault } = this.host.app;
-		if (!vault.getAbstractFileByPath(normalizePath(TUTORIAL_FOLDER))) await vault.createFolder(normalizePath(TUTORIAL_FOLDER));
+		if (!vault.getAbstractFileByPath(this.root)) await vault.createFolder(this.root);
 		await vault.createFolder(folder);
 		for (const f of files) await vault.create(normalizePath(`${folder}/${f.path}`), f.content);
 	}
@@ -192,9 +205,9 @@ export class TutorialRunner {
 	 * Deletes notes in the tutorials folder that mirror a practice board (written by the
 	 * Markdown tutorial), closing their tabs first.
 	 */
-	private async removeNotesOf(isBoard: (canvasPath: string) => boolean): Promise<void> {
+	private async removeNotesOf(isBoard: (canvasPath: string) => boolean, root = this.root): Promise<void> {
 		const { app } = this.host;
-		const folder = app.vault.getAbstractFileByPath(normalizePath(TUTORIAL_FOLDER));
+		const folder = app.vault.getAbstractFileByPath(root);
 		if (!(folder instanceof TFolder)) return;
 		for (const child of [...folder.children]) {
 			if (!(child instanceof TFile) || child.extension !== "md") continue;
@@ -213,8 +226,13 @@ export class TutorialRunner {
 
 	/** Deletes tutorial canvases left over from a crash or a restart. */
 	async cleanUp(): Promise<void> {
+		await this.cleanUpIn(this.root);
+		await this.cleanUpIn(LEGACY_FOLDER);
+	}
+
+	private async cleanUpIn(root: string): Promise<void> {
 		const { app } = this.host;
-		const folder = app.vault.getAbstractFileByPath(normalizePath(TUTORIAL_FOLDER));
+		const folder = app.vault.getAbstractFileByPath(root);
 		if (!(folder instanceof TFolder)) return;
 		for (const child of [...folder.children]) {
 			if (!(child instanceof TFile) || child.extension !== "canvas" || child === this.session?.file) continue;
@@ -228,18 +246,17 @@ export class TutorialRunner {
 			}
 		}
 		// Practice files of tutorials that are not running.
-		for (const def of this.host.catalog) if (def !== this.session?.def) await this.removeFolder(filesFolder(def));
+		for (const def of this.host.catalog) if (def !== this.session?.def) await this.removeFolder(practiceFolder(root, def));
 		// Notes of practice boards that are gone.
-		const folderPrefix = `${normalizePath(TUTORIAL_FOLDER)}/`;
-		await this.removeNotesOf((path) => path.startsWith(folderPrefix) && path !== this.session?.file.path && !app.vault.getAbstractFileByPath(path));
-		await this.removeFolderIfEmpty();
+		await this.removeNotesOf((path) => path.startsWith(`${root}/`) && path !== this.session?.file.path && !app.vault.getAbstractFileByPath(path), root);
+		await this.removeFolderIfEmpty(root);
 	}
 
 	private async writeBoard(def: TutorialDefinition, folder: string): Promise<TFile> {
 		const { app } = this.host;
 		const t = this.host.t();
 		const board = def.board(t, folder);
-		const folderPath = normalizePath(TUTORIAL_FOLDER);
+		const folderPath = this.root;
 		if (!app.vault.getAbstractFileByPath(folderPath)) await app.vault.createFolder(folderPath);
 		const base = t(def.title).replace(/[\\/:*?"<>|#^[\]]/g, "").trim() || def.id;
 		let path = normalizePath(`${folderPath}/${base}.canvas`);
@@ -264,13 +281,17 @@ export class TutorialRunner {
 		await this.removeFolderIfEmpty();
 	}
 
-	private async removeFolderIfEmpty(): Promise<void> {
-		const folder = this.host.app.vault.getAbstractFileByPath(normalizePath(TUTORIAL_FOLDER));
-		if (folder instanceof TFolder && folder.children.length === 0) {
+	/** Removes the tutorials folder when it is empty, and then the plugin's files folder if that is empty too. */
+	private async removeFolderIfEmpty(root = this.root): Promise<void> {
+		const files = this.host.filesFolder();
+		for (const path of root === this.root ? [root, files] : [root]) {
+			const folder = this.host.app.vault.getAbstractFileByPath(path);
+			if (!(folder instanceof TFolder) || folder.children.length > 0) return;
 			try {
 				await this.host.app.fileManager.trashFile(folder);
 			} catch {
 				// Someone put something there; keep it.
+				return;
 			}
 		}
 	}
@@ -330,7 +351,7 @@ class Session {
 		});
 		this.cleanups.push(() => app.workspace.offref(layoutRef));
 		const createRef = app.vault.on("create", (file) => {
-			if (file !== this.file && file.path.startsWith(`${normalizePath(TUTORIAL_FOLDER)}/`) && !file.path.startsWith(`${this.folder}/`)) this.created.push(file.path);
+			if (file !== this.file && file.path.startsWith(`${tutorialsFolder(this.host.filesFolder())}/`) && !file.path.startsWith(`${this.folder}/`)) this.created.push(file.path);
 		});
 		this.cleanups.push(() => app.vault.offref(createRef));
 		const tick = window.setInterval(() => {
