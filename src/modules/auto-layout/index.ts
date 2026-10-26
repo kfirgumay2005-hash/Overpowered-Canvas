@@ -3,7 +3,8 @@ import { defineModule, type ModuleContext } from "../../core/module";
 import type { EdgeSide } from "../../data/json-canvas";
 import type { I18nKey, Translate } from "../../i18n";
 import type { CanvasLike, CanvasNodeLike } from "../../internals/types";
-import { descendants, directionBetween, logical, type Dir, type TEdge, type TNode } from "../mindmap/tree";
+import type { MapLayout } from "../../data/schema";
+import { descendants, directionBetween, logical, roots, type Dir, type TEdge, type TNode } from "../mindmap/tree";
 import { canvasDirection, mutate, nodeType, selectedNodes } from "../shared";
 import { disposeElk, getElk } from "./engine";
 import { computeLayout, interpolate, type Algorithm, type LayoutDirection, type Positions } from "./layout";
@@ -76,6 +77,13 @@ class LayoutModal extends Modal {
 	override onClose(): void {
 		this.contentEl.empty();
 	}
+}
+
+/** The stored name of a layout choice (logical direction, as chosen). */
+export function mapLayoutOf(choice: Pick<LayoutSettings, "algorithm" | "direction">): MapLayout {
+	if (choice.algorithm === "grid") return "grid";
+	if (choice.algorithm === "layered") return `layered-${choice.direction === "radial" || choice.direction === "balanced" ? "right" : choice.direction}`;
+	return choice.direction;
 }
 
 async function runLayout(ctx: ModuleContext<LayoutSettings>, canvas: CanvasLike, choice: LayoutSettings): Promise<void> {

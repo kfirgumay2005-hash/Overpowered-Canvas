@@ -60,6 +60,14 @@ Mind map and Flowchart), kanban columns bound to a frontmatter property with two
 (rules: [docs/KANBAN.md](docs/KANBAN.md)), and query groups that fill themselves with notes
 matching tags, folders, properties or links.
 
+**Canvas ⇄ Markdown** — copy a mind map (or any connected cards) as a Markdown outline; paste an
+outline onto the board, insert a note, or convert a note card to get a laid-out mind map; and
+switch a whole canvas to a normal Markdown note and back with one command. The note is a readable
+outline (one section per map, groups as headings, links and block references untouched) plus a
+hidden data section with positions, styles, edges and drawings. Edit the note by hand or with an
+assistant, switch back, and cards keep their place and look while new lines become new cards
+([docs/canvas-markdown-summary.md](docs/canvas-markdown-summary.md)).
+
 **Languages and right-to-left** — the UI is available in English, Chinese (Mandarin), Japanese
 and Hindi. A canvas can be right-to-left (globally or per canvas): mind maps grow to the left,
 templates and frames run right to left, menus and panels mirror — or, in "text only" mode, only

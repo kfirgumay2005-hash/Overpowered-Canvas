@@ -344,3 +344,19 @@ Automated runtime checks of every item below were run in an isolated Obsidian 1.
    English); the arrows in each section heading (or the heading itself) collapse it; the two
    buttons next to the search collapse / expand all; the state is remembered.
 6. **No "Stable text rendering" setting:** the behavior is always on.
+
+## Manual — Canvas ⇄ Markdown
+
+1. Open a note with a bullet outline → command **Switch between canvas and Markdown note** → a
+   canvas beside the note opens with a laid-out mind map (growing left in right-to-left canvases).
+2. Run the command again → if a note with the canvas's name exists and isn't linked, a dialog
+   offers Replace / Separate note / Cancel. The note shows the outline with hidden `%%n:…%%`
+   ids and a hidden `canvas-data` section at the end.
+3. In the note, change a line, add a line without an id under some bullet, delete a line → switch
+   back: the changed card keeps its place and look, the new card sits beside its parent, the
+   deleted card is gone. Ctrl+Z undoes the whole update in one step.
+4. On any canvas: export → update with no edits → the file is unchanged (compare before/after).
+5. Select a card with children → **Copy as Markdown outline** → paste in a note: the subtree.
+6. Click the empty board and paste a nested outline → a mind map appears at the view center.
+   Paste a single sentence → one normal card.
+7. Right-click a note card → **Convert note to mind map here** → a map beside the card.

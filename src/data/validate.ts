@@ -7,6 +7,7 @@ import {
 	ARROW_STYLES,
 	BORDER_STYLES,
 	DIRECTIONS,
+	MAP_LAYOUTS,
 	EDGE_PATH_STYLES,
 	EDGE_ROUTES,
 	EDGE_SIDES,
@@ -201,6 +202,7 @@ export const ROOT_SHAPE: Shape<OpcRoot> = {
 	frameOrder: arrayOf(nonEmptyStr),
 	layers: arrayOf(objectOf<LayerInfo>({ id: nonEmptyStr, name: str, hidden: bool, locked: bool }, { required: ["id", "name"] }), { min: 1 }),
 	activeLayer: nonEmptyStr,
+	mapLayouts: recordOf(oneOf(MAP_LAYOUTS)),
 };
 
 export const NODE_SHAPE: Shape<OpcNode> = {
