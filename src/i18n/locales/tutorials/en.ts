@@ -178,7 +178,7 @@ export const tutorialsEn = {
 
 	// ---------- 6. Layers ----------
 	"tut.layers.title": "Layers",
-	"tut.layers.summary": "Like Photoshop: hide, show and lock whole layers, move items between them and add new ones.",
+	"tut.layers.summary": "Hide, show and lock whole layers, move items between them and add new ones.",
 	"tut.layers.board.title": "Living room",
 	"tut.layers.board.bg": "Background",
 	"tut.layers.board.furn": "Furniture",

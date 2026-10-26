@@ -177,7 +177,7 @@ export const tutorialsZh: Record<keyof typeof tutorialsEn, string> = {
 
 	// ---------- 6. Layers ----------
 	"tut.layers.title": "图层",
-	"tut.layers.summary": "像 Photoshop 一样：隐藏、显示和锁定整个图层，在图层之间移动项目，添加新图层。",
+	"tut.layers.summary": "隐藏、显示和锁定整个图层，在图层之间移动项目，添加新图层。",
 	"tut.layers.board.title": "客厅",
 	"tut.layers.board.bg": "背景",
 	"tut.layers.board.furn": "家具",

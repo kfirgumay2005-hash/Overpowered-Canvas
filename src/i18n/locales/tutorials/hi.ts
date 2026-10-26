@@ -177,7 +177,7 @@ export const tutorialsHi: Record<keyof typeof tutorialsEn, string> = {
 
 	// ---------- 6. Layers ----------
 	"tut.layers.title": "लेयर",
-	"tut.layers.summary": "Photoshop की तरह: पूरी लेयर छिपाएँ, दिखाएँ और लॉक करें, चीज़ें लेयरों के बीच ले जाएँ और नई लेयर जोड़ें।",
+	"tut.layers.summary": "पूरी लेयर छिपाएँ, दिखाएँ और लॉक करें, चीज़ें लेयरों के बीच ले जाएँ और नई लेयर जोड़ें।",
 	"tut.layers.board.title": "बैठक",
 	"tut.layers.board.bg": "पृष्ठभूमि",
 	"tut.layers.board.furn": "फ़र्नीचर",

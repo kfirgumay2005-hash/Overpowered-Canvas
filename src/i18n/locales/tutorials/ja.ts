@@ -177,7 +177,7 @@ export const tutorialsJa: Record<keyof typeof tutorialsEn, string> = {
 
 	// ---------- 6. Layers ----------
 	"tut.layers.title": "レイヤー",
-	"tut.layers.summary": "Photoshop のように：レイヤー全体を隠す・表示する・ロックする、項目をレイヤー間で移す、新しいレイヤーを追加する。",
+	"tut.layers.summary": "レイヤー全体を隠す・表示する・ロックする、項目をレイヤー間で移す、新しいレイヤーを追加する。",
 	"tut.layers.board.title": "リビングルーム",
 	"tut.layers.board.bg": "背景",
 	"tut.layers.board.furn": "家具",
