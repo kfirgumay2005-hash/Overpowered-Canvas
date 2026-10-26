@@ -32,7 +32,7 @@ export interface WriteOptions {
 
 const BULLET = /^([ \t]*)([-+*]|\d{1,9}[.)])(?:[ \t](.*))?$/;
 const HEADING = /^ {0,3}(#{1,6})(?:[ \t]+(.*?))?[ \t]*$/;
-const MARKER = /^(.*?)[ \t]*%%(?:(n|g):([A-Za-z0-9_-]+)|(free))%%[ \t]*$/;
+const MARKER = /[ \t]*%%(?:(n|g):([A-Za-z0-9_-]+)|(free))%%[ \t]*/g;
 const FENCE = /^[ \t]*(`{3,}|~{3,})/;
 /** Text that would be read as structure at the start of a continuation line. */
 const NEEDS_ESCAPE = /^[ \t]*(?:[-+*](?:[ \t]|$)|\d{1,9}[.)](?:[ \t]|$)|#{1,6}(?:[ \t]|$)|\\|`{3,}|~{3,})/;
@@ -79,11 +79,18 @@ function unescapeLine(line: string): string {
 }
 
 /** Splits a first line into text and its trailing id comment. */
+/**
+ * Splits a first line into text and its id comment. The comment is written at the end, but
+ * text typed after it (easy to do while it is shown in the editor) still belongs to the line.
+ */
 function splitMarker(raw: string): { text: string; kind?: ItemKind; id?: string } {
-	const m = MARKER.exec(raw);
+	const m = [...raw.matchAll(MARKER)].pop();
 	if (!m) return { text: raw };
-	if (m[4]) return { text: m[1]!, kind: "free" };
-	return { text: m[1]!, kind: m[2] === "g" ? "group" : "node", id: m[3] };
+	const before = raw.slice(0, m.index);
+	const after = raw.slice(m.index! + m[0].length);
+	const text = after ? `${before}${before ? " " : ""}${after}` : before;
+	if (m[3]) return { text, kind: "free" };
+	return { text, kind: m[1] === "g" ? "group" : "node", id: m[2] };
 }
 
 /** Removes a leading YAML front matter block. */

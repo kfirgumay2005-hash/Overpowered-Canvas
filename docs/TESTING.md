@@ -360,3 +360,7 @@ Automated runtime checks of every item below were run in an isolated Obsidian 1.
 6. Click the empty board and paste a nested outline → a mind map appears at the view center.
    Paste a single sentence → one normal card.
 7. Right-click a note card → **Convert note to mind map here** → a map beside the card.
+8. The ⇄ button sits in the header of canvases and notes; Settings → Canvas ⇄ Markdown → Switch
+   button: "Canvases only" removes it from notes, "Hidden" from both.
+9. Tutorials → **Canvas ⇄ Markdown**: every step can be done by hand and with "Show me"; the note
+   opens beside the board; closing the tutorial deletes the board and its note.

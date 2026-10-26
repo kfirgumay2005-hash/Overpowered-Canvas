@@ -1043,5 +1043,184 @@ const organize: TutorialDefinition = {
 	],
 };
 
+// ---------- 11. Canvas ⇄ Markdown ----------
+
+/** The header switch button of the Canvas ⇄ Markdown module. */
+const SWITCH_BUTTON = ".opc-markdown-switch";
+
+/** The parts of a note tab the tutorial reads and types into (no Obsidian import: tests load this file). */
+interface NoteTab {
+	file?: { path: string } | null;
+	containerEl: HTMLElement;
+	editor?: { getValue(): string; getLine(line: number): string; lineCount(): number; replaceRange(text: string, from: { line: number; ch: number }): void; setCursor(line: number, ch?: number): void };
+}
+
+/** The tab showing the note written from the practice board. */
+const noteTab = (rt: TutorialRuntime) => {
+	const path = rt.canvas.view.file?.path.replace(/\.canvas$/, ".md");
+	const leaf = rt.app.workspace.getLeavesOfType("markdown").find((l) => (l.view as unknown as NoteTab).file?.path === path);
+	return leaf ? { leaf, view: leaf.view as unknown as NoteTab } : null;
+};
+
+/** The note's outline has a bullet without a hidden id: a line the user added. */
+function hasNewBullet(text: string): boolean {
+	const end = text.indexOf("\n%%\n## canvas-data");
+	const outline = end >= 0 ? text.slice(0, end) : text;
+	return outline.split("\n").some((l) => /^\s*(?:[-+*]|\d{1,9}[.)])\s+\S/.test(l) && !l.includes("%%n:"));
+}
+
+/** Clicks a header switch button, or runs the command when the buttons are hidden. */
+async function pressSwitch(rt: TutorialRuntime, button: HTMLElement | null | undefined, inNote: boolean): Promise<void> {
+	if (button) button.click();
+	else if (!inNote) rt.command("canvas-markdown:toggle-view");
+	else {
+		const tab = noteTab(rt);
+		if (!tab) return;
+		rt.app.workspace.setActiveLeaf(tab.leaf, { focus: true });
+		const commands = (rt.app as unknown as { commands: { commands: Record<string, unknown>; executeCommandById(id: string): boolean } }).commands;
+		const id = Object.keys(commands.commands).find((k) => k.endsWith(":canvas-markdown:toggle-view"));
+		if (id) commands.executeCommandById(id);
+	}
+	await rt.wait(1500);
+}
+
+/**
+ * Frames the whole board clear of the coach panel, measured on screen: beside it or below it,
+ * whichever shows the board bigger (narrow canvases leave little room beside it).
+ */
+function frameClearOfPanel(rt: TutorialRuntime, pad = 60): void {
+	const panel = rt.canvas.wrapperEl.querySelector<HTMLElement>(".opc-tutorial");
+	const boxes = [...rt.canvas.nodes.values()].map((n) => n.getBBox());
+	if (!panel || boxes.length === 0) return rt.look();
+	const minX = Math.min(...boxes.map((b) => b.minX)) - pad;
+	const minY = Math.min(...boxes.map((b) => b.minY)) - pad;
+	const maxX = Math.max(...boxes.map((b) => b.maxX)) + pad;
+	const maxY = Math.max(...boxes.map((b) => b.maxY)) + pad;
+	const w = rt.canvas.wrapperEl.getBoundingClientRect();
+	const p = panel.getBoundingClientRect();
+	// Shares of the view taken by the panel (beside / above the board) and by the bottom card bar.
+	const fx = Math.min(0.7, (p.width + 24) / w.width);
+	const fy = Math.min(0.6, (p.bottom - w.top + 24) / w.height);
+	const bar = rt.canvas.cardMenuEl.getBoundingClientRect();
+	const fb = bar.height > 0 ? Math.min(0.3, (w.bottom - bar.top + 12) / w.height) : 0;
+	const bw = maxX - minX;
+	const bh = maxY - minY;
+	const beside = Math.min((w.width * (1 - fx)) / bw, (w.height * (1 - fb)) / bh);
+	const below = Math.min(w.width / bw, (w.height * (1 - fy - fb)) / bh);
+	if (beside >= below) {
+		const extra = (bw * fx) / (1 - fx);
+		const right = panel.hasClass("is-right");
+		rt.canvas.zoomToBbox({ minX: right ? minX : minX - extra, minY, maxX: right ? maxX + extra : maxX, maxY: maxY + (bh * fb) / (1 - fb) });
+	} else rt.canvas.zoomToBbox({ minX, minY: minY - (bh * fy) / (1 - fy - fb), maxX, maxY: maxY + (bh * fb) / (1 - fy - fb) });
+}
+
+const canvasSwitch = (rt: TutorialRuntime) => rt.canvas.view.containerEl.querySelector<HTMLElement>(SWITCH_BUTTON);
+const noteSwitch = (rt: TutorialRuntime) => noteTab(rt)?.view.containerEl.querySelector<HTMLElement>(SWITCH_BUTTON);
+
+const markdown: TutorialDefinition = {
+	id: "markdown",
+	icon: "arrow-left-right",
+	title: "tut.markdown.title",
+	summary: "tut.markdown.summary",
+	modules: ["canvas-markdown"],
+	board: (t) => ({
+		nodes: [
+			card("md-root", t("tut.markdown.board.root"), 0, 0, 240, 80, { color: "5" }),
+			card("md-rocky", t("tut.markdown.board.rocky"), 340, -120, 220, 60, { color: "2" }),
+			card("md-giants", t("tut.markdown.board.giants"), 340, 140, 220, 60, { color: "6" }),
+			card("md-earth", t("tut.markdown.board.earth"), 660, -190, 200, 60),
+			card("md-mars", t("tut.markdown.board.mars"), 660, -60, 200, 60),
+			card("md-jupiter", t("tut.markdown.board.jupiter"), 660, 140, 200, 60),
+		],
+		edges: [
+			edge("md-e1", "md-root", "right", "md-rocky", "left"),
+			edge("md-e2", "md-root", "right", "md-giants", "left"),
+			edge("md-e3", "md-rocky", "right", "md-earth", "left"),
+			edge("md-e4", "md-rocky", "right", "md-mars", "left"),
+			edge("md-e5", "md-giants", "right", "md-jupiter", "left"),
+		],
+	}),
+	steps: [
+		{ title: "tut.markdown.s1.title", body: "tut.markdown.s1.body" },
+		{
+			title: "tut.markdown.s2.title",
+			body: "tut.markdown.s2.body",
+			task: "tut.markdown.s2.task",
+			enter: (rt) => {
+				rt.select(["md-root"]);
+				// The card to right-click is on the panel's side of the map; measure the panel once
+				// this step's text is in it.
+				void rt.wait(60).then(() => frameClearOfPanel(rt));
+			},
+			check: (rt) => rt.seen("outline-copied"),
+			demo: (rt) => {
+				rt.select(["md-root"]);
+				rt.command("canvas-markdown:copy-outline");
+			},
+		},
+		{
+			title: "tut.markdown.s3.title",
+			body: "tut.markdown.s3.body",
+			task: "tut.markdown.s3.task",
+			check: (rt) => rt.seen("outline-inserted") || (added(rt.before, rt.now()).length >= 3 && addedEdges(rt.before, rt.now()).length >= 2),
+			demo: async (rt) => {
+				rt.select(["md-root"]);
+				rt.command("canvas-markdown:copy-outline");
+				await rt.wait(400);
+				rt.canvas.deselectAll();
+				// Paste lands in the middle of the view: look at the empty space below the map first.
+				rt.canvas.panTo(330, 600);
+				await rt.wait(300);
+				rt.command("canvas-markdown:paste-outline");
+				await rt.wait(900);
+				frameClearOfPanel(rt);
+			},
+		},
+		{
+			title: "tut.markdown.s4.title",
+			body: "tut.markdown.s4.body",
+			task: "tut.markdown.s4.task",
+			target: canvasSwitch,
+			check: (rt) => !!noteTab(rt),
+			demo: (rt) => pressSwitch(rt, canvasSwitch(rt), false),
+		},
+		{
+			title: "tut.markdown.s5.title",
+			body: "tut.markdown.s5.body",
+			task: "tut.markdown.s5.task",
+			check: (rt) => hasNewBullet(noteTab(rt)?.view.editor?.getValue() ?? ""),
+			demo: async (rt) => {
+				if (!noteTab(rt)) await pressSwitch(rt, canvasSwitch(rt), false);
+				const editor = noteTab(rt)?.view.editor;
+				if (!editor) return;
+				const label = rt.t("tut.markdown.board.giants");
+				let line = -1;
+				for (let i = 0; i < editor.lineCount(); i++)
+					if (editor.getLine(i).includes(label)) {
+						line = i;
+						break;
+					}
+				if (line < 0) return;
+				const indent = /^\s*/.exec(editor.getLine(line))![0];
+				const text = `${indent}\t- ${rt.t("tut.markdown.board.saturn")}\n`;
+				editor.replaceRange(text, { line: line + 1, ch: 0 });
+				editor.setCursor(line + 1, text.length - 1);
+			},
+		},
+		{
+			title: "tut.markdown.s6.title",
+			body: "tut.markdown.s6.body",
+			task: "tut.markdown.s6.task",
+			target: noteSwitch,
+			check: (rt) => rt.seen("canvas-updated-from-note"),
+			demo: async (rt) => {
+				await pressSwitch(rt, noteSwitch(rt), true);
+				frameClearOfPanel(rt);
+			},
+		},
+		{ title: "tut.markdown.s7.title", body: "tut.markdown.s7.body" },
+	],
+};
+
 /** Every tutorial, in the order they are offered. */
-export const TUTORIALS: readonly TutorialDefinition[] = [basics, notes, shapes, edges, drawing, layers, present, mindmap, navigate, organize];
+export const TUTORIALS: readonly TutorialDefinition[] = [basics, notes, shapes, edges, drawing, layers, present, mindmap, navigate, organize, markdown];

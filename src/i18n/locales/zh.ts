@@ -375,6 +375,12 @@ export const zh: Record<I18nKey, string> = {
 	"canvasMarkdown.paste.name": "将大纲粘贴为思维导图",
 	"canvasMarkdown.paste.desc": "把嵌套列表或标题粘贴到白板上（而不是卡片内）时，生成思维导图而不是单张卡片。",
 	"canvasMarkdown.paste.simple": "如果希望粘贴的列表保持为单张卡片，请关闭此项。",
+	"canvasMarkdown.button.name": "切换按钮",
+	"canvasMarkdown.button.desc": "标题栏中的 ⇄ 按钮，用于在白板和对应笔记之间切换。",
+	"canvasMarkdown.button.simple": "在白板中点击可把白板看作笔记，在笔记中点击可把笔记变成白板。",
+	"canvasMarkdown.button.all": "笔记和白板",
+	"canvasMarkdown.button.canvas": "仅白板",
+	"canvasMarkdown.button.off": "隐藏",
 
 	"pdfAnnotation.name": "PDF 批注",
 	"pdfAnnotation.desc": "将 PDF 卡片固定到某一页（以锁定宽高比的页面显示），并可将整个 PDF 按每页一张固定卡片插入，以便在周围批注。",

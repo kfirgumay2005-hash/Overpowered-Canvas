@@ -375,6 +375,12 @@ export const hi: Record<I18nKey, string> = {
 	"canvasMarkdown.paste.name": "आउटलाइन को माइंड मैप के रूप में पेस्ट करें",
 	"canvasMarkdown.paste.desc": "नेस्टेड बुलेट या शीर्षकों को बोर्ड पर (कार्ड के अंदर नहीं) पेस्ट करने पर एक कार्ड के बजाय माइंड मैप बनता है।",
 	"canvasMarkdown.paste.simple": "अगर आप चाहते हैं कि पेस्ट की गई सूचियाँ एक ही कार्ड रहें, तो इसे बंद करें।",
+	"canvasMarkdown.button.name": "बदलने का बटन",
+	"canvasMarkdown.button.desc": "हेडर में ⇄ बटन, जो कैनवास और उसके नोट के बीच बदलता है।",
+	"canvasMarkdown.button.simple": "कैनवास में क्लिक करने पर बोर्ड नोट के रूप में दिखता है, और नोट में क्लिक करने पर नोट बोर्ड बन जाता है।",
+	"canvasMarkdown.button.all": "नोट और कैनवास",
+	"canvasMarkdown.button.canvas": "केवल कैनवास",
+	"canvasMarkdown.button.off": "छिपा हुआ",
 
 	"pdfAnnotation.name": "PDF टिप्पणी",
 	"pdfAnnotation.desc": "PDF कार्ड को एक पेज पर पिन करें (स्थिर अनुपात वाले पेज के रूप में दिखता है) और पूरे PDF को हर पेज के लिए एक पिन किए कार्ड के रूप में डालें, ताकि आसपास टिप्पणियाँ लिख सकें।",

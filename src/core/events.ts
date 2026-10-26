@@ -61,6 +61,10 @@ export interface PublicEventMap {
 	"board-template-applied": [canvas: CanvasLike, templateName: string];
 	"kanban-moved": [canvas: CanvasLike, node: CanvasNodeLike, file: TFile, value: string];
 	"query-group-refreshed": [canvas: CanvasLike, group: CanvasNodeLike, added: number, removed: number];
+	"outline-copied": [canvas: CanvasLike, cards: number];
+	"outline-inserted": [canvas: CanvasLike, nodes: CanvasNodeLike[]];
+	"note-exported": [canvasFile: TFile, note: TFile];
+	"canvas-updated-from-note": [canvasFile: TFile, note: TFile, added: number, removed: number, updated: number];
 }
 
 export type PublicEventName = keyof PublicEventMap;

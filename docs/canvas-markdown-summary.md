@@ -11,10 +11,15 @@ as text (by hand or by an assistant inside the vault) and turned back into the b
 |---|---|---|
 | 1 | Copy as Markdown outline | Select a card (its whole subtree is copied), several cards, or nothing (whole canvas) → command **Copy as Markdown outline**, or the selection / card context menu. Root → `#` heading, children → nested `-` bullets; text verbatim. |
 | 2 | Outline → mind map | **Paste** nested bullets/headings onto the board (not into a card); command **Paste Markdown outline as mind map**; **Insert note as mind map…**; right-click a note card → **Convert note to mind map here**; in a note: **Create or update canvas from this note** (also in the file menu). Laid out by the plugin's own layout (setting *Layout of new mind maps*). |
-| 3 | Whole canvas ⇄ note | In a canvas: **Export canvas to Markdown note**, **Update canvas from its Markdown note**. Anywhere: **Switch between canvas and Markdown note** (one command, both directions, same tab). |
+| 3 | Whole canvas ⇄ note | The **⇄ button** in the header of every canvas and note, or the command **Switch between canvas and Markdown note** (both directions, same tab; if the other side is already open in another tab, that tab is shown). In a canvas also: **Export canvas to Markdown note**, **Update canvas from its Markdown note**. |
 
 Settings: outline indentation (tab / 4 / 2 spaces), layout of new mind maps (forward, backward,
-down, up, balanced, radial), paste outlines as mind maps (on/off).
+down, up, balanced, radial), paste outlines as mind maps (on/off), switch button (notes and
+canvases / canvases only / hidden).
+
+**Tutorial:** "Canvas ⇄ Markdown" (the 11th in the tutorials list) walks through copying a map,
+pasting an outline, switching to the note, adding a line and switching back, with "Show me" on
+every task. Its note opens beside the practice board and is deleted with it.
 
 ## The note format
 
@@ -74,7 +79,10 @@ down, up, balanced, radial), paste outlines as mind maps (on/off).
 | Data section missing or broken | Canvas built from the outline alone with automatic layout, with a notice |
 | Cards added on the canvas after the export, drawings | Untouched |
 
-An update of an open canvas is one undo step. Updating a closed canvas opens it first.
+An update of an open canvas is one undo step. Updating a closed canvas opens it first. After the
+update the note is rewritten from the board, so new lines get their ids (switching again never
+adds them twice) and the outline follows the board's order. Text typed after an id on the same
+line still belongs to that card.
 
 ## Verification
 

@@ -59,3 +59,7 @@ read-only unless you know the internals. Payloads are listed below; types are in
 | `board-template-applied` | canvas, templateName |
 | `kanban-moved` | canvas, node, file, value |
 | `query-group-refreshed` | canvas, group, added, removed |
+| `outline-copied` | canvas, cards |
+| `outline-inserted` | canvas, nodes |
+| `note-exported` | canvasFile, note |
+| `canvas-updated-from-note` | canvasFile, note, added, removed, updated |

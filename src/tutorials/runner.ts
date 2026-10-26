@@ -42,6 +42,10 @@ const WATCHED_EVENTS = [
 	"shape-created",
 	"sticky-created",
 	"item-lock-changed",
+	"outline-copied",
+	"outline-inserted",
+	"note-exported",
+	"canvas-updated-from-note",
 ] as const;
 
 /** Seconds a finished step waits before moving on by itself. */
@@ -122,8 +126,30 @@ export class TutorialRunner {
 		if (finished) this.host.markDone(session.def.id);
 		// Close the tab first, so its last save can't bring the file back.
 		if (session.leaf.view && (session.leaf.view as CanvasViewLike).file === session.file) session.leaf.detach();
+		await this.removeNotesOf((path) => path === session.file.path);
 		await sleep(150);
 		await this.removeFile(session.file);
+	}
+
+	/**
+	 * Deletes notes in the tutorials folder that mirror a practice board (written by the
+	 * Markdown tutorial), closing their tabs first.
+	 */
+	private async removeNotesOf(isBoard: (canvasPath: string) => boolean): Promise<void> {
+		const { app } = this.host;
+		const folder = app.vault.getAbstractFileByPath(normalizePath(TUTORIAL_FOLDER));
+		if (!(folder instanceof TFolder)) return;
+		for (const child of [...folder.children]) {
+			if (!(child instanceof TFile) || child.extension !== "md") continue;
+			try {
+				const linked = /\n## canvas-data[ \t]*\n```json[ \t]*\n[\s\S]*?"canvas":\s*("(?:[^"\\]|\\.)*")/.exec(await app.vault.read(child))?.[1];
+				if (!linked || !isBoard(JSON.parse(linked) as string)) continue;
+				for (const leaf of app.workspace.getLeavesOfType("markdown")) if ((leaf.view as { file?: TFile | null }).file === child) leaf.detach();
+				await app.fileManager.trashFile(child);
+			} catch (error) {
+				console.error("[overpowered-canvas] could not delete a tutorial note", error);
+			}
+		}
 	}
 
 	/** Deletes tutorial canvases left over from a crash or a restart. */
@@ -142,6 +168,9 @@ export class TutorialRunner {
 				// Not ours, or unreadable: leave it.
 			}
 		}
+		// Notes of practice boards that are gone.
+		const folderPrefix = `${normalizePath(TUTORIAL_FOLDER)}/`;
+		await this.removeNotesOf((path) => path.startsWith(folderPrefix) && path !== this.session?.file.path && !app.vault.getAbstractFileByPath(path));
 		await this.removeFolderIfEmpty();
 	}
 
@@ -304,7 +333,8 @@ class Session {
 	private typing(): boolean {
 		if ([...this.canvas.nodes.values()].some((n) => n.isEditing)) return true;
 		const el = activeDocument.activeElement;
-		return !!el?.closest("input, textarea, [contenteditable=true]") && !el.closest(".opc-tutorial");
+		// A note open beside the board (the Markdown tutorial) is a task of its own, not typing on the board.
+		return !!el?.closest("input, textarea, [contenteditable=true]") && !el.closest(".opc-tutorial") && !el.closest(".workspace-leaf-content[data-type='markdown']");
 	}
 
 	/** The whole board is on screen (e.g. not pushed aside by a sidebar that just opened). */
