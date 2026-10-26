@@ -1271,6 +1271,16 @@ const select: TutorialDefinition = {
 			},
 		},
 		{
+			title: "tut.select.move.title",
+			body: "tut.select.move.body",
+			task: "tut.select.move.task",
+			check: (rt) => moved(rt, "sel-a") || moved(rt, "sel-b") || moved(rt, "sel-root"),
+			demo: async (rt) => {
+				if (rt.selected().length === 0) rt.select(["sel-root", "sel-a", "sel-b", "sel-e1", "sel-e2", "sel-ink"]);
+				await Promise.all(["sel-root", "sel-a", "sel-b", "sel-ink"].map((id) => glide(rt, id, 0, 60)));
+			},
+		},
+		{
 			title: "tut.select.s3.title",
 			body: "tut.select.s3.body",
 			task: "tut.select.s3.task",
