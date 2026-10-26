@@ -1,4 +1,4 @@
-import { FuzzySuggestModal, MarkdownView, Modal, Notice, Setting, TFile, normalizePath, type App, type ItemView, type MenuItem, type WorkspaceLeaf } from "obsidian";
+import { FuzzySuggestModal, MarkdownView, Modal, Notice, Setting, SuggestModal, TFile, normalizePath, type App, type ItemView, type MenuItem, type WorkspaceLeaf } from "obsidian";
 import { defineModule, type ModuleContext } from "../../core/module";
 import type { CanvasFileData } from "../../data/json-canvas";
 import { MAP_LAYOUTS, type MapLayout } from "../../data/schema";
@@ -55,6 +55,33 @@ class NotePicker extends FuzzySuggestModal<TFile> {
 	}
 	onChooseItem(file: TFile): void {
 		this.onPick(file);
+	}
+}
+
+/** Picks the layout of a new mind map (the setting's layout first). */
+class LayoutPicker extends SuggestModal<MapLayout> {
+	constructor(
+		app: App,
+		private readonly t: Translate,
+		private readonly first: MapLayout,
+		private readonly onPick: (layout: MapLayout) => void,
+	) {
+		super(app);
+		this.setPlaceholder(t("canvasMarkdown.pickLayout"));
+	}
+	getSuggestions(query: string): MapLayout[] {
+		const all = [this.first, ...NEW_MAP_LAYOUTS.filter((l) => l !== this.first)];
+		const q = query.toLowerCase();
+		return all.filter((l) => this.label(l).toLowerCase().includes(q));
+	}
+	private label(l: MapLayout): string {
+		return this.t(`autoLayout.direction.${l}` as I18nKey);
+	}
+	renderSuggestion(l: MapLayout, el: HTMLElement): void {
+		el.setText(this.label(l));
+	}
+	onChooseSuggestion(l: MapLayout): void {
+		this.onPick(l);
 	}
 }
 
@@ -203,17 +230,22 @@ export const canvasMarkdownModule = defineModule<CanvasMarkdownSettings>({
 
 		// ---- Phase 2: outline → mind map --------------------------------------------------
 
-		/** Adds the outline's maps to the canvas; `at` is the top-left corner (default: view center). */
-		const insertOutline = async (canvas: CanvasLike, md: string, sourcePath: string, at?: Point & { end?: boolean }) => {
+		/**
+		 * Adds the outline's maps to the canvas; `at` is the top-left corner (default: view center).
+		 * `layout` overrides the setting; with `title`, several top-level items hang under one root
+		 * card of that title instead of becoming separate maps.
+		 */
+		const insertOutline = async (canvas: CanvasLike, md: string, sourcePath: string, at?: Point & { end?: boolean }, opts: { layout?: MapLayout; title?: string } = {}) => {
 			if (canvas.readonly) return;
-			const { items } = splitNote(md);
+			let { items } = splitNote(md);
 			if (!countItems(items, "node")) {
 				new Notice(t("canvasMarkdown.noItems"));
 				return;
 			}
+			if (opts.title && items.filter((i) => i.kind === "node").length > 1) items = [{ kind: "node", text: opts.title, children: items }];
 			let result: ApplyResult;
 			try {
-				result = await applyNote(items, null, null, getElk(), applyOptions(canvas, sourcePath));
+				result = await applyNote(items, null, null, getElk(), { ...applyOptions(canvas, sourcePath), ...(opts.layout ? { layout: opts.layout } : {}) });
 			} catch (error) {
 				fail(error);
 				return;
@@ -250,8 +282,8 @@ export const canvasMarkdownModule = defineModule<CanvasMarkdownSettings>({
 				else void insertOutline(canvas, text, canvas.view.file?.path ?? "");
 			}, fail);
 
-		const insertNote = (canvas: CanvasLike, file: TFile, at?: Point & { end?: boolean }) =>
-			void readNote(file).then((md) => insertOutline(canvas, md, file.path, at), fail);
+		const insertNote = (canvas: CanvasLike, file: TFile, at?: Point & { end?: boolean }, layout?: MapLayout) =>
+			void readNote(file).then((md) => insertOutline(canvas, md, file.path, at, { layout, title: file.basename }), fail);
 
 		// Pasting an outline onto the board (not into a card) builds a mind map.
 		ctx.onCanvas((canvas) => {
@@ -604,15 +636,26 @@ export const canvasMarkdownModule = defineModule<CanvasMarkdownSettings>({
 		ctx.onNodeMenu((menu, node) => {
 			const canvas = node.canvas;
 			if (nodeType(node) !== "group") menu.addItem(copyItem(canvas));
+			// Convert a note card (or a text card holding an outline) into a mind map beside it,
+			// in a layout picked from a list.
 			const file = node.file;
-			if (nodeType(node) === "file" && file instanceof TFile && file.extension === "md" && !canvas.readonly)
+			const noteCard = nodeType(node) === "file" && file instanceof TFile && file.extension === "md";
+			const outlineCard = nodeType(node) === "text" && isOutline(node.text ?? "", 1);
+			if ((noteCard || outlineCard) && !canvas.readonly) {
+				const at = rtlOf(canvas) ? { x: node.x - 120, y: node.y, end: true } : { x: node.x + node.width + 120, y: node.y };
 				menu.addItem((item) =>
 					item
 						.setSection("action")
 						.setTitle(t("canvasMarkdown.menu.convertHere"))
 						.setIcon("git-fork")
-						.onClick(() => insertNote(canvas, file, rtlOf(canvas) ? { x: node.x - 120, y: node.y, end: true } : { x: node.x + node.width + 120, y: node.y })),
+						.onClick(() =>
+							new LayoutPicker(app, t, ctx.settings.layout, (layout) => {
+								if (noteCard) insertNote(canvas, file, at, layout);
+								else void insertOutline(canvas, node.text ?? "", canvas.view.file?.path ?? "", at, { layout });
+							}).open(),
+						),
 				);
+			}
 		});
 		ctx.registerEvent(
 			app.workspace.on("file-menu", (menu, file) => {

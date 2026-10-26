@@ -350,5 +350,5 @@ export const tutorialsEn = {
 	"tut.markdown.s6.body": "The same **⇄** button sits at the top of the note. It updates the board: a new line becomes a card next to its parent, changed text updates its card, deleted lines remove their cards — all as one undo step.",
 	"tut.markdown.s6.task": "Click the **⇄** button at the top of the note.",
 	"tut.markdown.s7.title": "Good to know",
-	"tut.markdown.s7.body": "Any outline note becomes a new mind map with **⇄** or **Create or update canvas from this note** (command palette or file menu). On a board, right-click a note card → **Convert note to mind map here**.\n\nSettings: Data features → Canvas ⇄ Markdown — indentation, layout of new maps, where the **⇄** buttons show, and pasting outlines.",
+	"tut.markdown.s7.body": "Any outline note becomes a new mind map with **⇄** or **Create or update canvas from this note** (command palette or file menu). On a board, right-click a note card → **Convert to mind map…**.\n\nSettings: Data features → Canvas ⇄ Markdown — indentation, layout of new maps, where the **⇄** buttons show, and pasting outlines.",
 } as const;
