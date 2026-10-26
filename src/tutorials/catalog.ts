@@ -769,7 +769,7 @@ const mindmap: TutorialDefinition = {
 	icon: "network",
 	title: "tut.mindmap.title",
 	summary: "tut.mindmap.summary",
-	modules: ["mindmap", "branch-collapse", "auto-layout"],
+	modules: ["mindmap", "branch-collapse", "auto-layout", "note-blocks"],
 	board: (t) => ({
 		nodes: [
 			card("m-root", t("tut.mindmap.board.root"), 0, 0, 240, 80, { color: "5" }),
@@ -838,6 +838,24 @@ const mindmap: TutorialDefinition = {
 			target: (rt) => rt.node("m-tokyo")?.nodeEl.querySelector<HTMLElement>(".opc-branch-toggle"),
 			check: (rt) => !rt.extra("m-tokyo").collapsed && (!!extraOf(findNode(rt.before, "m-tokyo")).collapsed || rt.seen("undo")),
 			demo: (rt) => setExtra(rt, "m-tokyo", { collapsed: undefined }),
+		},
+		{
+			title: "tut.mindmap.move.title",
+			body: "tut.mindmap.move.body",
+			task: "tut.mindmap.move.task",
+			focus: ["m-tower", "m-kyoto"],
+			check: (rt) => rt.seen("card-relinked") || edgesOf(rt.now()).some((e) => e.toNode === "m-tower" && e.fromNode !== "m-tokyo"),
+			demo: async (rt) => {
+				const tower = rt.node("m-tower");
+				const kyoto = rt.node("m-kyoto");
+				if (!tower || !kyoto) return;
+				await glide(rt, "m-tower", kyoto.x + kyoto.width + 120 - tower.x, kyoto.y - tower.y);
+				rt.change(() => {
+					const old = rt.canvas.edges.get("m-e4");
+					if (old) rt.canvas.removeEdge(old);
+					rt.canvas.importData({ nodes: [], edges: [edge("m-e5", "m-kyoto", "right", "m-tower", "left")] }, false);
+				});
+			},
 		},
 		{
 			title: "tut.mindmap.s5.title",

@@ -66,6 +66,7 @@ export interface PublicEventMap {
 	"note-exported": [canvasFile: TFile, note: TFile];
 	"canvas-updated-from-note": [canvasFile: TFile, note: TFile, added: number, removed: number, updated: number];
 	"note-block-dropped": [canvas: CanvasLike, node: CanvasNodeLike];
+	"card-relinked": [canvas: CanvasLike, node: CanvasNodeLike];
 	"lasso-selected": [canvas: CanvasLike, items: CanvasItemLike[]];
 	"selection-cut": [canvas: CanvasLike, count: number];
 }

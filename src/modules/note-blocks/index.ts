@@ -8,8 +8,8 @@ import { layoutMap } from "../canvas-markdown/apply";
 import { estimateSize } from "../canvas-markdown/size";
 import { orderChildren } from "../canvas-markdown/structure";
 import { makeSiblingRoom } from "../mindmap/room";
-import { childPosition, childrenOf, directionBetween, logical, parentOf, type Dir, type TEdge, type TNode } from "../mindmap/tree";
-import { canvasDirection, mutate, nodeType, randomId } from "../shared";
+import { childPosition, childrenOf, descendants, directionBetween, logical, parentOf, type Dir, type TEdge, type TNode } from "../mindmap/tree";
+import { canvasDirection, isTextBox, mutate, nodeType, randomId, selectedNodes } from "../shared";
 import { blockAt, type Block } from "./block";
 import { CropModal, loadImage } from "./crop";
 
@@ -22,6 +22,8 @@ interface NoteBlocksSettings {
 	handleNeedsCanvas: boolean;
 	/** "Add as child" / "Add as sibling" targets over mind-map cards while dragging. */
 	dropZones: boolean;
+	/** The same targets while moving a card that is already on the canvas: it is linked again. */
+	moveZones: boolean;
 	/** Label of the group that clicked blocks are sent to (inbox mode). */
 	inboxName: string;
 	/** The handle's look: an emoji or short text ("" = the dot grip). */
@@ -90,7 +92,7 @@ export const noteBlocksModule = defineModule<NoteBlocksSettings>({
 	description: "noteBlocks.desc",
 	group: "data",
 	defaultEnabled: true,
-	defaultSettings: { holdMs: 350, handle: true, handleNeedsCanvas: true, dropZones: true, inboxName: "Inbox", handleSymbol: "", handleImage: "" },
+	defaultSettings: { holdMs: 350, handle: true, handleNeedsCanvas: true, dropZones: true, moveZones: true, inboxName: "Inbox", handleSymbol: "", handleImage: "" },
 	sanitizeSettings: (raw, defaults) => {
 		const s = mergeWithDefaults(raw, defaults);
 		return {
@@ -98,6 +100,7 @@ export const noteBlocksModule = defineModule<NoteBlocksSettings>({
 			handle: typeof s.handle === "boolean" ? s.handle : defaults.handle,
 			handleNeedsCanvas: typeof s.handleNeedsCanvas === "boolean" ? s.handleNeedsCanvas : defaults.handleNeedsCanvas,
 			dropZones: typeof s.dropZones === "boolean" ? s.dropZones : defaults.dropZones,
+			moveZones: typeof s.moveZones === "boolean" ? s.moveZones : defaults.moveZones,
 			inboxName: typeof s.inboxName === "string" && s.inboxName.trim() ? s.inboxName.trim() : defaults.inboxName,
 			handleSymbol: typeof s.handleSymbol === "string" ? shortSymbol(s.handleSymbol) : defaults.handleSymbol,
 			handleImage: typeof s.handleImage === "string" && s.handleImage.startsWith("data:image/") ? s.handleImage : defaults.handleImage,
@@ -173,12 +176,28 @@ export const noteBlocksModule = defineModule<NoteBlocksSettings>({
 			if (!p0) return;
 			const dx = r.x - p0.x;
 			const dy = r.y - p0.y;
-			mutate(ctx, canvas, () => {
+			if (canvas.readonly) return;
+			const apply = () => {
 				for (const id of ids) {
 					const p = pos.get(id);
 					if (p) canvas.nodes.get(id)!.moveTo({ x: Math.round(p.x + dx), y: Math.round(p.y + dy) });
 				}
-			});
+				// Links inside the map attach to the sides facing each other (floating ends keep theirs).
+				const inMap = new Set(ids);
+				for (const e of canvas.edges.values()) {
+					if (!inMap.has(e.from.node.id) || !inMap.has(e.to.node.id) || e.from.node === e.to.node) continue;
+					const floating = ctx.data.edge(e).get().floating;
+					const d = directionBetween(e.from.node, e.to.node);
+					e.update({ ...e.from, side: floating?.from ? e.from.side : SIDE[d] }, { ...e.to, side: floating?.to ? e.to.side : OPPOSITE[d] });
+				}
+			};
+			try {
+				apply();
+			} finally {
+				// Part of the step that added or linked the card: one undo takes both back.
+				canvas.requestPushHistory.cancel();
+				canvas.overrideHistory();
+			}
 		};
 
 		const dropCard = (target: Target, text: string): CanvasNodeLike | null => {
@@ -347,12 +366,12 @@ export const noteBlocksModule = defineModule<NoteBlocksSettings>({
 			return null;
 		};
 
-		/** The card under a canvas point that can take a child or a sibling. */
-		const cardAt = (canvas: CanvasLike, p: { x: number; y: number }): CanvasNodeLike | null => {
+		/** The card under a canvas point that can take a child or a sibling (not one of `skip`). */
+		const cardAt = (canvas: CanvasLike, p: { x: number; y: number }, skip?: Set<CanvasNodeLike>): CanvasNodeLike | null => {
 			let best: CanvasNodeLike | null = null;
 			for (const n of canvas.nodes.values()) {
 				const type = nodeType(n);
-				if (type === "group" || n.id.includes("~") || ctx.data.node(n).get().kind === "ink") continue;
+				if (type === "group" || n.id.includes("~") || skip?.has(n) || !isTextBox(ctx, n) || n.nodeEl.hasClass("opc-layer-hidden")) continue;
 				if (p.x >= n.x && p.x <= n.x + n.width && p.y >= n.y && p.y <= n.y + n.height) best = n;
 			}
 			return best;
@@ -460,6 +479,122 @@ export const noteBlocksModule = defineModule<NoteBlocksSettings>({
 				wrapper.removeEventListener("dragleave", onLeave, true);
 				wrapper.removeEventListener("dragend", clear, true);
 			};
+		});
+
+		// ---- Moving cards that are already on the canvas ---------------------------------------
+
+		/** The card being moved and its branch, when the selection is one card or one whole branch. */
+		const movedBranch = (canvas: CanvasLike): { root: CanvasNodeLike; branch: Set<CanvasNodeLike> } | null => {
+			const nodes = selectedNodes(canvas);
+			if (!nodes.length) return null;
+			const edges = edgesOf(canvas);
+			const ids = new Set(nodes.map((n) => n.id));
+			const tops = nodes.filter((n) => !ids.has(parentOf(edges, n.id) ?? ""));
+			if (tops.length !== 1) return null;
+			const root = tops[0]!;
+			if (!isTextBox(ctx, root) && nodeType(root) !== "link") return null;
+			const branch = new Set([root, ...descendants(edges, root.id).map((id) => canvas.nodes.get(id)).filter((n): n is CanvasNodeLike => !!n)]);
+			// Anything else selected (another card, a group…) makes it an ordinary move.
+			if (nodes.some((n) => !branch.has(n))) return null;
+			return { root, branch };
+		};
+
+		/** Links a moved card (and its branch) as a child or sibling of `zone.node`. */
+		const relink = (canvas: CanvasLike, root: CanvasNodeLike, branch: Set<CanvasNodeLike>, zone: { kind: Zone; node: CanvasNodeLike }) => {
+			const edges = edgesOf(canvas);
+			const target = zone.node;
+			const parentId = zone.kind === "child" ? target.id : parentOf(edges, target.id);
+			const parent = parentId ? (canvas.nodes.get(parentId) ?? null) : null;
+			if (!parent || branch.has(parent)) return;
+			const dir: Dir = zone.kind === "sibling" ? directionBetween(parent, target) : growth(canvas, parent);
+			const size = { width: root.width, height: root.height };
+			const ok = mutate(ctx, canvas, () => {
+				for (const e of [...canvas.edges.values()]) if (e.to.node === root && !branch.has(e.from.node)) canvas.removeEdge(e);
+				let pos: { x: number; y: number };
+				if (zone.kind === "sibling") pos = makeSiblingRoom(canvas, parent, target, size);
+				else {
+					const kids = childrenOf(edgesOf(canvas), parent.id).map((id) => canvas.nodes.get(id)).filter((n): n is CanvasNodeLike => !!n && !branch.has(n));
+					pos = childPosition(parent, kids, size, dir);
+				}
+				const dx = Math.round(pos.x) - root.x;
+				const dy = Math.round(pos.y) - root.y;
+				for (const n of branch) n.moveTo({ x: n.x + dx, y: n.y + dy });
+				const color = parent.color;
+				canvas.importData({ nodes: [], edges: [{ id: randomId(), fromNode: parent.id, fromSide: SIDE[dir], toNode: root.id, toSide: OPPOSITE[dir], ...(color ? { color } : {}) }] }, false);
+			});
+			if (!ok) return;
+			void relayout(canvas, root, zone.kind === "sibling" ? target.id : undefined).catch((e) => console.error("[overpowered-canvas] note-blocks layout", e));
+			ctx.events.emit("card-relinked", canvas, root);
+		};
+
+		const patchedDrag = new WeakSet<object>();
+		ctx.onCanvas((canvas) => {
+			const proto = Object.getPrototypeOf(canvas) as CanvasLike;
+			if (patchedDrag.has(proto) || typeof proto.handleSelectionDrag !== "function") return;
+			patchedDrag.add(proto);
+			ctx.patch("canvas.handleSelectionDrag", proto as CanvasLike & Required<Pick<CanvasLike, "handleSelectionDrag">>, {
+				handleSelectionDrag: (next) =>
+					function (this: CanvasLike, evt: PointerEvent, clickEl: HTMLElement, node?: CanvasNodeLike) {
+						const drag = next.call(this, evt, clickEl, node);
+						const canvas = this;
+						if (!drag || !ctx.settings.moveZones || canvas.readonly) return drag;
+						const moving = movedBranch(canvas);
+						if (!moving) return drag;
+						let zones: HTMLElement | null = null;
+						let zoneNode: CanvasNodeLike | null = null;
+						let hot: { kind: Zone; node: CanvasNodeLike } | null = null;
+						// The core cleans up before it ends the gesture: the target stays known until then.
+						const clear = () => {
+							zones?.remove();
+							zones = null;
+							zoneNode = null;
+						};
+						// The moved card is under the pointer: targets are found by their boxes.
+						const zoneAt = (x: number, y: number): Zone | null => {
+							for (const z of zones ? [...zones.children] : []) {
+								const r = z.getBoundingClientRect();
+								if (x >= r.left - 4 && x <= r.right + 4 && y >= r.top - 4 && y <= r.bottom + 4) return (z as HTMLElement).dataset.zone as Zone;
+							}
+							return null;
+						};
+						return {
+							...drag,
+							move: (e: PointerEvent) => {
+								drag.move?.(e);
+								const kind = zoneAt(e.clientX, e.clientY);
+								hot = kind && zoneNode ? { kind, node: zoneNode } : null;
+								zones?.querySelectorAll(".opc-note-blocks-zone").forEach((z) => z.toggleClass("is-hot", (z as HTMLElement).dataset.zone === kind));
+								if (kind) return;
+								const card = cardAt(canvas, canvas.posFromEvt(e), moving.branch);
+								if (card === zoneNode || (!card && nearZones(zones, zoneNode, e.clientX, e.clientY))) return;
+								clear();
+								if (card) {
+									zoneNode = card;
+									zones = renderZones(canvas, card);
+									zones.addClass("is-moving");
+								}
+							},
+							end: (e: PointerEvent) => {
+								const target = hot;
+								hot = null;
+								clear();
+								if (!target) return drag.end?.(e);
+								// The card goes where the link puts it: the drag itself is not a step of its own.
+								drag.cancel?.();
+								relink(canvas, moving.root, moving.branch, target);
+							},
+							cancel: () => {
+								hot = null;
+								clear();
+								drag.cancel?.();
+							},
+							cleanup: () => {
+								clear();
+								drag.cleanup?.();
+							},
+						};
+					},
+			});
 		});
 
 		const startDrag = (block: Block, source: MarkdownView, x: number, y: number, pointerId: number | null) => {
@@ -800,6 +935,10 @@ export const noteBlocksModule = defineModule<NoteBlocksSettings>({
 			.setName(ctx.t("noteBlocks.zones.name"))
 			.setDesc(ctx.t("noteBlocks.zones.desc"))
 			.addToggle((tg) => tg.setValue(ctx.settings.dropZones).onChange((v) => ctx.updateSettings({ dropZones: v })));
+		new Setting(el)
+			.setName(ctx.t("noteBlocks.moveZones.name"))
+			.setDesc(ctx.t("noteBlocks.moveZones.desc"))
+			.addToggle((tg) => tg.setValue(ctx.settings.moveZones).onChange((v) => ctx.updateSettings({ moveZones: v })));
 		new Setting(el)
 			.setName(ctx.t("noteBlocks.inboxName.name"))
 			.setDesc(ctx.t("noteBlocks.inboxName.desc"))
