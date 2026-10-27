@@ -466,13 +466,15 @@ Automated runtime checks of every item below were run in an isolated Obsidian 1.
 
 ## Manual — files folder
 
-1. Settings → Overpowered Canvas: the first setting is *Folder for the plugin's files* (default
-   `Overpowered Canvas data`). Apply is greyed out until a different, usable folder is typed;
-   typing suggests vault folders. `.hidden`, `/` and the top level are refused.
-2. Type `System/Canvas files` → Apply → notice "… now in “System/Canvas files” (N moved)"; the data
-   files moved, the old folder is gone. A clean note still switches to its canvas with its layout.
-3. Start a tutorial → its board and practice files are in `System/Canvas files/Tutorials/`; closing
+1. Settings → Overpowered Canvas: the first setting is *Location of the plugin's folder*. The folder
+   button shows where it is now (*Vault root* by default) and the line below shows the plugin
+   folder (`Overpowered Canvas data`). Apply is greyed out.
+2. Click the folder button → every vault folder is listed (the vault root first, hidden folders and
+   the plugin folder itself left out); typing searches them. Pick `real` → the line reads
+   `real/Overpowered Canvas data` in the accent color; Apply → notice "… now in “real/Overpowered
+   Canvas data” (N moved)"; the old folder is gone. A clean note still switches to its canvas.
+3. Start a tutorial → its board and practice files are in `<plugin folder>/Tutorials/`; closing
    it removes them.
-4. Apply back to `Overpowered Canvas data` → files return. A file whose name already exists in the
-   target stays where it was, and the notice says how many.
+4. Move it back to the vault root → files return. A file whose name already exists in the target
+   stays where it was, and the notice says how many.
 5. An older settings file with the Canvas ⇄ Markdown *Data folder* option takes that folder over.
