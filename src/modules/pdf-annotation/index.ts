@@ -200,8 +200,14 @@ export const pdfAnnotationModule = defineModule<PdfSettings>({
 				const pages = new Map<CanvasNodeLike, number>();
 				for (const node of nodes) {
 					// Pin the page the viewer is showing right now.
-					const viewer = (node.child as { viewer?: Promise<{ pdfViewer?: { pdfViewer?: { currentPageNumber?: number } } }> } | null)?.viewer;
-					const current = viewer ? (await viewer.catch(() => null))?.pdfViewer?.pdfViewer?.currentPageNumber : undefined;
+					// The viewer is a thenable without catch(), not a full promise.
+					const viewer = (node.child as { viewer?: PromiseLike<{ pdfViewer?: { pdfViewer?: { currentPageNumber?: number } } }> } | null)?.viewer;
+					let current: number | undefined;
+					try {
+						current = viewer ? (await viewer)?.pdfViewer?.pdfViewer?.currentPageNumber : undefined;
+					} catch {
+						current = undefined;
+					}
 					pages.set(node, current ?? pageFromSubpath(node.subpath));
 				}
 				mutate(ctx, canvas, () => {

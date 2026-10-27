@@ -7,6 +7,21 @@ import { isPlainObject } from "../data/validate";
 
 export const SETTINGS_VERSION = 1;
 
+/** Where the plugin keeps its files in the vault (note data, practice boards of the tutorials). */
+export const DEFAULT_FILES_FOLDER = "Overpowered Canvas data";
+
+/**
+ * A vault folder path as typed by the user, cleaned up ("/a//b/ " → "a/b"), or null when it can't
+ * hold the plugin's files: empty (the vault root), hidden (".obsidian"…), "." / "..", or with
+ * characters file names can't have.
+ */
+export function cleanFolderPath(raw: string): string | null {
+	const parts = raw.replace(/\\/g, "/").split("/").map((p) => p.trim()).filter(Boolean);
+	if (parts.length === 0) return null;
+	if (parts.some((p) => p.startsWith(".") || /[:*?"<>|#^[\]]/.test(p))) return null;
+	return parts.join("/");
+}
+
 export interface ModuleState {
 	enabled: boolean;
 	settings: Record<string, unknown>;
@@ -24,10 +39,12 @@ export interface PluginSettings {
 		/** Ids of the tutorials finished at least once. */
 		done: string[];
 	};
+	/** Folder for the plugin's files (see DEFAULT_FILES_FOLDER). */
+	filesFolder: string;
 }
 
 export function defaultSettings(): PluginSettings {
-	return { settingsVersion: SETTINGS_VERSION, language: "auto", modules: {}, coexistence: { acknowledged: [] }, tutorials: { done: [] } };
+	return { settingsVersion: SETTINGS_VERSION, language: "auto", modules: {}, coexistence: { acknowledged: [] }, tutorials: { done: [] }, filesFolder: DEFAULT_FILES_FOLDER };
 }
 
 const LANGUAGES: readonly LanguageSetting[] = ["auto", "en", "zh", "ja", "hi"];
@@ -54,6 +71,11 @@ export function sanitizeSettings(raw: unknown): PluginSettings {
 
 	if (isPlainObject(raw.tutorials) && Array.isArray(raw.tutorials.done))
 		out.tutorials.done = [...new Set(raw.tutorials.done.filter((x): x is string => typeof x === "string"))];
+
+	// Before it was global, the folder was a setting of Canvas ⇄ Markdown.
+	const legacy = out.modules["canvas-markdown"]?.settings.dataFolder;
+	const folder = typeof raw.filesFolder === "string" ? raw.filesFolder : typeof legacy === "string" ? legacy : "";
+	out.filesFolder = cleanFolderPath(folder) ?? DEFAULT_FILES_FOLDER;
 
 	return out;
 }

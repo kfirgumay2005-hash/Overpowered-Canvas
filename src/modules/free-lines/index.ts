@@ -1,15 +1,24 @@
+import { Setting } from "obsidian";
 import { defineModule, type ModuleContext } from "../../core/module";
 import { ARROW_STYLES, type ArrowStyle, type LineData } from "../../data/schema";
 import type { I18nKey } from "../../i18n";
 import type { CanvasLike, CanvasNodeLike } from "../../internals/types";
 import { showPicker } from "../../ui/picker";
 import { arrowPreview } from "../edge-styles/geometry";
+import { mergeWithDefaults } from "../../settings/settings";
 import { capturePointer, common, mutate, nodeType, onlyNodes } from "../shared";
 import { attachTarget } from "./attach";
-import { absoluteLine, carryBends, fitLine, snapEnds, type P } from "./model";
+import { absoluteLine, carryBends, carrySquare, fitLine, isSquare, keepSquareEnds, snapEnds, type P } from "./model";
 import { CONNECTOR, CONNECTOR_Z, renderLine } from "./render";
 
-type Ctx = ModuleContext<object>;
+interface FreeLinesSettings {
+	/** Lines attached to cards: drawn above the cards (never hidden by one they cross) or under them. */
+	connectors: "above" | "below";
+}
+
+type Ctx = ModuleContext<FreeLinesSettings>;
+/** Lifts a connector above the cards of its layer (layer bands are 2^24 apart, card values stay far below this). */
+const ABOVE_CARDS = 2 ** 22;
 const WIDTHS = [1, 2, 3, 5, 8, 12];
 
 function lineOf(ctx: Ctx, node: CanvasNodeLike): LineData | null {
@@ -26,13 +35,17 @@ const boxOf = (n: CanvasNodeLike) => ({ x: n.x, y: n.y, width: n.width, height: 
  * into empty space to detach. Color comes from the card color; arrowheads and width are
  * set from the selection toolbar.
  */
-export const freeLinesModule = defineModule({
+export const freeLinesModule = defineModule<FreeLinesSettings>({
 	id: "free-lines",
 	name: "freeLines.name",
 	description: "freeLines.desc",
 	group: "drawing",
 	defaultEnabled: true,
-	defaultSettings: {},
+	defaultSettings: { connectors: "above" },
+	sanitizeSettings: (raw, defaults) => {
+		const s = mergeWithDefaults(raw, defaults);
+		return { connectors: s.connectors === "below" ? "below" : defaults.connectors };
+	},
 
 	enable(ctx) {
 		const lines = new Set<CanvasNodeLike>();
@@ -80,9 +93,11 @@ export const freeLinesModule = defineModule({
 			const seen = cardsAt.get(node);
 			if (old.length > 2 && seen) {
 				const shift = (p: P, card: CanvasNodeLike | undefined, was: { x: number; y: number } | undefined) => (card && was ? { x: p.x + card.x - was.x, y: p.y + card.y - was.y } : p);
-				points = carryBends(old, shift(old[0]!, from, seen.from), shift(old[old.length - 1]!, to, seen.to));
+				const start = shift(old[0]!, from, seen.from);
+				const end = shift(old[old.length - 1]!, to, seen.to);
+				points = isSquare(old) ? carrySquare(old, start, end) : carryBends(old, start, end);
 			}
-			points = snapEnds(points, from && boxOf(from), to && boxOf(to));
+			points = snapEnds(keepSquareEnds(points, from && boxOf(from), to && boxOf(to)), from && boxOf(from), to && boxOf(to));
 			// Ends whose card is gone become free.
 			write(node, points, { from: from ? line.from : undefined, to: to ? line.to : undefined }, false);
 		};
@@ -144,8 +159,8 @@ export const freeLinesModule = defineModule({
 			el.addEventListener("pointercancel", up);
 		};
 
-		// Connectors sit under the cards but above groups: the core writes z-index inline, so it is
-		// overridden after each write.
+		// Connectors sit above the cards (or under them, above groups): the core writes z-index
+		// inline, so it is overridden after each write.
 		const patchedProtos = new WeakSet<object>();
 		const patchZ = (node: CanvasNodeLike) => {
 			for (let proto = Object.getPrototypeOf(node) as object | null; proto && proto !== Object.prototype; proto = Object.getPrototypeOf(proto) as object | null) {
@@ -156,7 +171,9 @@ export const freeLinesModule = defineModule({
 						function (this: CanvasNodeLike) {
 							(this as unknown as { renderedZIndex?: number }).renderedZIndex = Number.NaN;
 							next.call(this);
-							if (this.nodeEl.hasAttribute(CONNECTOR)) this.nodeEl.style.zIndex = String(CONNECTOR_Z);
+							if (!this.nodeEl.hasAttribute(CONNECTOR)) return;
+							const z = Number.parseInt(this.nodeEl.style.zIndex, 10);
+							this.nodeEl.style.zIndex = String(ctx.settings.connectors === "below" ? CONNECTOR_Z : (Number.isFinite(z) ? z : this.zIndex) + ABOVE_CARDS);
 						},
 				});
 			}
@@ -185,6 +202,9 @@ export const freeLinesModule = defineModule({
 			},
 		});
 		ctx.intercept("node-start-editing", (node) => (lines.has(node) ? true : undefined));
+		ctx.onSettingsChange((next, prev) => {
+			if (next.connectors !== prev.connectors) for (const node of lines) node.renderZIndex();
+		});
 		ctx.on("node-removed", (node) => {
 			lines.delete(node);
 		});
@@ -318,5 +338,17 @@ export const freeLinesModule = defineModule({
 			onClick: ({ canvas, selection }) =>
 				setLine(canvas, selectedLines(selection) ?? [], (l) => ({ points: l.points.slice().reverse(), from: l.to, to: l.from, startArrow: l.endArrow, endArrow: l.startArrow })),
 		});
+	},
+
+	renderSettings(el, ctx: ModuleContext<FreeLinesSettings>) {
+		new Setting(el)
+			.setName(ctx.t("freeLines.connectors.name"))
+			.setDesc(ctx.t("freeLines.connectors.desc"))
+			.addDropdown((d) =>
+				d
+					.addOptions({ above: ctx.t("freeLines.connectors.above"), below: ctx.t("freeLines.connectors.below") })
+					.setValue(ctx.settings.connectors)
+					.onChange((v) => ctx.updateSettings({ connectors: v as FreeLinesSettings["connectors"] })),
+			);
 	},
 });

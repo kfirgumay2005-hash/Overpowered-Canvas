@@ -16,7 +16,8 @@ as text (by hand or by an assistant inside the vault) and turned back into the b
 Settings: outline indentation (tab / 4 / 2 spaces), layout of new mind maps (forward, backward,
 down, up, balanced, radial), paste outlines as mind maps (on/off), switch button (notes and
 canvases / canvases only / hidden), where the canvas data is kept (separate file — the default,
-clean note — or inside the note), data folder (default `Overpowered Canvas data`).
+clean note — or inside the note). The data files go to the plugin-wide files folder (setting at the
+top of the settings page, default `Overpowered Canvas data`; Apply moves existing files).
 
 **Clean notes (default):** the note holds only the outline, with no `%%…%%` marks. The data
 (below, plus `note` and `outline`: the outline last written, with ids) goes to

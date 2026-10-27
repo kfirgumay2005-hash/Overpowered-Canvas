@@ -6,6 +6,7 @@ import type { CanvasLike, CanvasNodeLike } from "../../internals/types";
 import { NumberPromptModal } from "../../ui/number-prompt";
 import { mutate, nodeType, selectedEdges, selectedNodes } from "../shared";
 import { nextSlide, slideOrder, type SlideEdge } from "./path";
+import { enableWalk } from "./walker";
 
 interface PresentationSettings {
 	slideWidth: number;
@@ -60,6 +61,7 @@ export const presentationModule = defineModule<PresentationSettings>({
 
 	enable(ctx) {
 		const sessions = new Map<CanvasLike, Session>();
+		const walker = enableWalk(ctx, (canvas) => sessions.has(canvas));
 
 		const show = (canvas: CanvasLike, session: Session) => {
 			const id = session.history[session.history.length - 1]!;
@@ -94,7 +96,7 @@ export const presentationModule = defineModule<PresentationSettings>({
 		};
 
 		const start = (canvas: CanvasLike, from: "start" | "last" | "selection") => {
-			if (sessions.has(canvas)) return;
+			if (sessions.has(canvas) || walker.walking(canvas)) return;
 			const root = ctx.data.root(canvas).get().presentation;
 			const id = from === "selection" ? selectedNodes(canvas)[0]?.id : from === "last" ? (root?.last ?? root?.start) : root?.start;
 			const node = id ? canvas.nodes.get(id) : undefined;
@@ -188,6 +190,9 @@ export const presentationModule = defineModule<PresentationSettings>({
 		command("next", ctx.t("presentation.next"), "arrow-right", (c) => sessions.has(c), (c) => step(c, 1));
 		command("previous", ctx.t("presentation.previous"), "arrow-left", (c) => sessions.has(c), (c) => step(c, -1));
 		command("end", ctx.t("presentation.end"), "x", (c) => sessions.has(c), exit);
+		const idle = (c: CanvasLike) => !sessions.has(c) && !walker.walking(c);
+		command("walk", ctx.t("presentation.walk.start"), "route", idle, (c) => walker.start(c));
+		command("walk-end", ctx.t("presentation.walk.end"), "x", walker.walking, walker.stop);
 		command("set-start", ctx.t("presentation.setStart"), "flag", (c) => !c.readonly && selectedNodes(c).length === 1, (c) => setStart(c, selectedNodes(c)[0]!));
 		command("set-edge-order", ctx.t("presentation.edgeOrder"), "list-ordered", (c) => !c.readonly && selectedEdges(c).length === 1, (c) => promptOrder(c, selectedEdges(c)[0]!));
 
@@ -197,6 +202,7 @@ export const presentationModule = defineModule<PresentationSettings>({
 			).open();
 
 		ctx.onNodeMenu((menu, node) => {
+			if (idle(node.canvas)) menu.addItem((item) => item.setSection("canvas").setTitle(ctx.t("presentation.walk.fromHere")).setIcon("route").onClick(() => walker.start(node.canvas, node)));
 			if (node.canvas.readonly) return;
 			const isStart = ctx.data.root(node.canvas).get().presentation?.start === node.id;
 			menu.addItem((item) => item.setSection("canvas").setTitle(ctx.t("presentation.setStart")).setIcon("flag").setChecked(isStart).onClick(() => setStart(node.canvas, node)));
@@ -265,6 +271,13 @@ export const presentationModule = defineModule<PresentationSettings>({
 				});
 				ctx.data.node(slide).set({ slide: true });
 			});
+		ctx.addCardMenuButton({
+			id: "walk",
+			icon: "route",
+			tooltip: () => ctx.t("presentation.walk.start"),
+			order: 111,
+			onClick: (canvas) => walker.start(canvas),
+		});
 		ctx.addCardMenuButton({
 			id: "add-slide",
 			icon: "presentation",

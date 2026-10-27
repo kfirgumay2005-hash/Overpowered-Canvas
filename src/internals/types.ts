@@ -138,6 +138,8 @@ export interface CanvasMenuLike {
 	readonly canvas: CanvasLike;
 	containerEl: HTMLElement;
 	menuEl: HTMLElement;
+	/** The frame drawn around a multi-selection. */
+	selection?: { selectionEl: HTMLElement };
 	/** rebuild = true recreates the buttons; false only repositions. */
 	render(rebuild: boolean): void;
 }
@@ -183,6 +185,8 @@ export interface CanvasLike {
 	tx: number;
 	ty: number;
 	tZoom: number;
+	/** Screen point a zoom animation keeps still (null: the middle). */
+	zoomCenter?: { x: number; y: number } | null;
 	zIndexCounter: number;
 	isDragging: boolean;
 	config: CanvasConfigLike;
@@ -250,9 +254,20 @@ export interface CanvasLike {
 	createFileNode(opts: { pos: Point; size?: { width: number; height: number }; position?: string; file: TFile; subpath?: string; save?: boolean; focus?: boolean }): CanvasNodeLike;
 	createGroupNode(opts: { pos: Point; size?: { width: number; height: number }; position?: string; label?: string; save?: boolean; focus?: boolean }): CanvasNodeLike;
 	dragTempNode(evt: PointerEvent, size: { width: number; height: number }, onDrop: (pos: Point) => void): void;
+	/** Starts moving the selection (with `node` selected first): returns the gesture's handlers. */
+	handleSelectionDrag?(evt: PointerEvent, clickEl: HTMLElement, node?: CanvasNodeLike): SelectionDragLike | undefined;
+	/** The topmost node under a canvas point. */
+	hitTestNode?(pos: Point, margin: number): CanvasNodeLike | null;
 	setReadonly(readonly: boolean): void;
 	getZIndex(): number;
 	rerenderViewport(): void;
+}
+
+export interface SelectionDragLike {
+	move?(evt: PointerEvent): void;
+	end?(evt: PointerEvent): void;
+	cancel?(): void;
+	cleanup?(): void;
 }
 
 export interface CanvasViewLike extends ItemView {

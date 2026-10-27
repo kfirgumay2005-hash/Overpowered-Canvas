@@ -198,6 +198,10 @@ export interface OpcNode {
 	autoResize?: boolean;
 	/** Grow and shrink in width to fit the longest line (lines don't wrap). */
 	autoWidth?: boolean;
+	/** Width fits the text up to a maximum (then lines wrap); height follows. */
+	autoFit?: boolean;
+	/** Ink carriers: the card the strokes were drawn on; the ink moves, copies and deletes with it. */
+	anchor?: string;
 	locked?: boolean;
 	breakpoint?: number;
 	collapsed?: boolean;
@@ -246,6 +250,7 @@ export const NODE_DEFAULTS: Readonly<Partial<OpcNode>> = {
 	align: "start",
 	autoResize: false,
 	autoWidth: false,
+	autoFit: false,
 	locked: false,
 	collapsed: false,
 	opacity: 1,

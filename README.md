@@ -14,8 +14,9 @@ Includes all the features from both advanced canvas and canvas mindmap plugins ,
 ## Features
 
 **Cards and edges** — flowchart and basic shapes on cards, border styles, start/center/end and
-top/middle/bottom text alignment (new cards can be centered automatically), cards that grow
-downwards or sideways as you type, layers like in image editors (a Layers panel to create,
+top/middle/bottom text alignment (new cards can be centered automatically), cards that fit
+their text up to a maximum width (new cards do by default) or grow downwards or sideways as you
+type, layers like in image editors (a Layers panel to create,
 rename, reorder, hide, lock and delete them; new items go to the active layer; move the
 selection to a layer or one layer up or down), custom colors from CSS, card templates in the bottom bar, empty groups, card
 content at any zoom level (always, below your own zoom, or per card), text that doesn't jump between reading and editing; edge line styles and
@@ -25,15 +26,22 @@ highlight / select connected edges, draggable bend points and labels.
 **Drawing** — pen, pencil, marker and highlighter with pressure and tilt (perfect-freehand),
 palm rejection, pen-only mode, the pen's eraser end, whole-stroke and partial eraser, lasso to
 move / scale / delete / lock strokes, recent colors, smoothing, and shape recognition (hold at
-the end of a stroke). Free lines and arrows whose ends stick to cards, with bend points that keep
-the route's shape when cards move, drawn under the cards they connect. Standalone shapes with
+the end of a stroke). Marks drawn on a card stick to it: they move, copy and delete with the card.
+Highlight words inside a card without editing it (swipe or tap with a pen or the mouse; the
+highlight goes into the card's text). Free lines and arrows whose ends stick to cards and that
+keep the corners you draw; bend points keep the route's shape when cards move (square routes stay
+square), drawn above the cards (or under them). Standalone shapes with
 fill, outline, opacity and rotation. Sticky notes in any color (the last 10 custom colors are
 kept) whose text shrinks to fit. Floating text without a card around it. Infinite
 lines at any angle (turn them live with a slider from the selection toolbar) with their own
 color and thickness. Non-destructive image crop.
 Lock items in place.
 
-**Mind maps** — Tab / Enter to add children and siblings, Alt+arrows to move between cards,
+**Mind maps** — Tab / Enter to add children and siblings (a sibling goes right after its card),
+drag a card onto another card's "Add as child" / "Add as sibling" targets to move it with its
+branch (the view follows dropped note blocks to the middle of the screen), Alt+arrows to move
+between cards, walk through a map with the arrow keys at your zoom (or with on-screen arrows on
+touch screens) without making slides,
 collapsible branches with child counts, and automatic layout (mind map in any direction,
 collision-free radial that respects every card's size, balanced, layered flowchart, grid) as one
 animated undo step; groups move as rigid blocks and edges re-attach to the facing sides.
@@ -44,17 +52,20 @@ metadata cache; edges from frontmatter links; links and embeds to a single card
 export.
 
 **Interaction and navigation** — a lasso that selects anything on the canvas (cards, groups,
-edges, ink strokes); cut in one undo step and paste under the pointer, with Cut / Copy / Paste
+edges, ink strokes) and stays on: press inside the selection to move it, and once a pen has
+been used, fingers move and zoom the board; on touch screens a selection moves right away,
+without a long press; cut in one undo step and paste under the pointer, with Cut / Copy / Paste
 buttons on tablets; coloring several cards colors the edges between them; presentations along edges or through frames
 (click a slide's name to hide or show its frame), portals into
 other canvases, collapsible groups, focus mode, move a selection to a new canvas, PDF pages as
 cards for annotation, custom style attributes from CSS snippets, a public events API, a minimap,
 a frames panel to search, reorder and present the groups of a canvas, a line grid behind the
 content (a line every N dots), an adjustable selection toolbar size (separately for computers
-and phones), and thirteen hands-on tutorials (at the top of the settings and in the canvas
+and phones), and eighteen hands-on tutorials (at the top of the settings and in the canvas
 controls). Each tutorial opens a temporary practice board with a coach panel: small tasks that
 tick themselves off as you do them, a "Show me" button that does each task live on the board, and
-highlights on the controls involved. The board is deleted when the tutorial closes. The settings page has its own search box and collapsible sections, a plain-language
+highlights on the controls involved. The board (and any practice notes it uses) is deleted when the tutorial closes. At the top of the settings you choose the vault folder for the plugin's own files (note data and
+tutorial practice boards); Apply moves the files already there. The settings page has its own search box and collapsible sections, a plain-language
 explanation under every setting, and every module and option also shows up in Obsidian's
 settings search. A double-click on the empty canvas creates a card at a speed you choose
 (fast, regular, slow or your own); dragging never creates one.
@@ -93,6 +104,8 @@ still clickable ([docs/BENCHMARKS.md](docs/BENCHMARKS.md)).
 | Key                                   | Action                                                    |
 | ------------------------------------- | --------------------------------------------------------- |
 | P                                     | Drawing mode on/off (Esc leaves it)                       |
+| L                                     | Lasso on/off (Esc leaves it)                              |
+| H                                     | Highlight words in cards on/off (Esc leaves it)           |
 | M                                     | Minimap on/off                                            |
 | Ctrl/Cmd+F                            | Search the canvas                                         |
 | Tab                                   | Mind map: add a child (on a sticky note: the next sticky) |
@@ -101,6 +114,7 @@ still clickable ([docs/BENCHMARKS.md](docs/BENCHMARKS.md)).
 | Ctrl/Cmd+Arrows                       | Add a card (or sticky) in that direction                  |
 | Ctrl/Cmd+Shift+Arrows                 | Add a child in that direction                             |
 | → / Space / PageDown, ← / PageUp, Esc | Presentations                                             |
+| Arrows, + / −, Home, Esc              | Walking through a map: child, parent, siblings; zoom      |
 
 Every toolbar action is also in the command palette ("Selection: …"), so you can assign your
 own hotkeys to any of them.

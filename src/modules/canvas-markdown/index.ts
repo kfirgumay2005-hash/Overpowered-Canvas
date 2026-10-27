@@ -24,13 +24,10 @@ interface CanvasMarkdownSettings {
 	button: "all" | "canvas" | "off";
 	/** Where a note's canvas data is kept: a separate file (clean note) or inside the note. */
 	storage: "file" | "note";
-	/** Vault folder of the separate data files. */
-	dataFolder: string;
 }
 
 const BUTTONS: CanvasMarkdownSettings["button"][] = ["all", "canvas", "off"];
 const STORAGES: CanvasMarkdownSettings["storage"][] = ["file", "note"];
-const DATA_FOLDER = "Overpowered Canvas data";
 /** Class of the header switch button (tutorials point at it). */
 export const SWITCH_BUTTON_CLASS = "opc-markdown-switch";
 
@@ -141,7 +138,7 @@ export const canvasMarkdownModule = defineModule<CanvasMarkdownSettings>({
 	description: "canvasMarkdown.desc",
 	group: "data",
 	defaultEnabled: true,
-	defaultSettings: { indent: "tab", layout: "right", pasteOutlines: true, button: "all", storage: "file", dataFolder: DATA_FOLDER },
+	defaultSettings: { indent: "tab", layout: "right", pasteOutlines: true, button: "all", storage: "file" },
 	sanitizeSettings: (raw, defaults) => {
 		const s = mergeWithDefaults(raw, defaults);
 		return {
@@ -150,7 +147,6 @@ export const canvasMarkdownModule = defineModule<CanvasMarkdownSettings>({
 			pasteOutlines: typeof s.pasteOutlines === "boolean" ? s.pasteOutlines : defaults.pasteOutlines,
 			button: BUTTONS.includes(s.button) ? s.button : defaults.button,
 			storage: STORAGES.includes(s.storage) ? s.storage : defaults.storage,
-			dataFolder: typeof s.dataFolder === "string" && s.dataFolder.trim() ? normalizePath(s.dataFolder.trim()) : defaults.dataFolder,
 		};
 	},
 
@@ -158,7 +154,7 @@ export const canvasMarkdownModule = defineModule<CanvasMarkdownSettings>({
 		const app = ctx.app;
 		ctx.register(disposeElk);
 		const t = ctx.t;
-		const store = new DataStore(app, () => ctx.settings.dataFolder);
+		const store = new DataStore(app, () => ctx.filesFolder());
 		const indent = () => INDENTS[ctx.settings.indent];
 		const rtlOf = (canvas: CanvasLike | null) => (canvas ? canvasDirection(canvas) === "rtl" : getComputedStyle(activeDocument.body).direction === "rtl");
 
@@ -706,15 +702,6 @@ export const canvasMarkdownModule = defineModule<CanvasMarkdownSettings>({
 					.addOptions({ file: ctx.t("canvasMarkdown.storage.file"), note: ctx.t("canvasMarkdown.storage.note") })
 					.setValue(ctx.settings.storage)
 					.onChange((v) => ctx.updateSettings({ storage: v as CanvasMarkdownSettings["storage"] })),
-			);
-		new Setting(el)
-			.setName(ctx.t("canvasMarkdown.folder.name"))
-			.setDesc(ctx.t("canvasMarkdown.folder.desc"))
-			.addText((tx) =>
-				tx
-					.setPlaceholder(DATA_FOLDER)
-					.setValue(ctx.settings.dataFolder)
-					.onChange((v) => ctx.updateSettings({ dataFolder: v.trim() ? normalizePath(v.trim()) : DATA_FOLDER })),
 			);
 	},
 });

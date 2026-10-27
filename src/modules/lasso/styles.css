@@ -1,7 +1,8 @@
 body.opc-mod-lasso .opc-lasso-overlay {
 	position: absolute;
 	inset: 0;
-	z-index: 40;
+	/* Under the card bar, the controls and the selection menu, which stay usable. */
+	z-index: 14;
 	cursor: crosshair;
 	touch-action: none;
 }

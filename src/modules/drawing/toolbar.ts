@@ -21,6 +21,8 @@ export interface DrawingSettings {
 	penOnly: boolean;
 	recognize: boolean;
 	holdMs: number;
+	/** Strokes drawn on a card stick to it (move, copy and delete with it). */
+	stickToCards: boolean;
 }
 
 export const DRAWING_DEFAULTS: DrawingSettings = {
@@ -34,6 +36,7 @@ export const DRAWING_DEFAULTS: DrawingSettings = {
 	penOnly: false,
 	recognize: true,
 	holdMs: 600,
+	stickToCards: true,
 };
 
 const TOOLS: { tool: InkTool; icon: string; key: I18nKey }[] = [
@@ -150,5 +153,6 @@ export class InkToolbar {
 		};
 		toggle(t("drawing.penOnly"), s.penOnly, (v) => this.host.update({ penOnly: v }));
 		toggle(t("drawing.recognize"), s.recognize, (v) => this.host.update({ recognize: v }));
+		toggle(t("drawing.stickToCards"), s.stickToCards, (v) => this.host.update({ stickToCards: v }));
 	}
 }

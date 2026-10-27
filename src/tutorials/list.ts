@@ -15,6 +15,8 @@ export interface TutorialListHost {
 	isDone(id: string): boolean;
 	/** Starts a tutorial (after the caller closed whatever showed the list). */
 	start(def: TutorialDefinition): void;
+	/** Ends the running tutorial, if any (its practice files are deleted). */
+	stop(): Promise<void>;
 }
 
 export function renderTutorialList(el: HTMLElement, host: TutorialListHost, beforeStart: () => void = () => {}): void {

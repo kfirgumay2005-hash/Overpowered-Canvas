@@ -13,6 +13,7 @@ import { SCHEMA_VERSION } from "./data/schema";
 import { createTranslator, resolveLocale, type LanguageSetting, type Translate } from "./i18n";
 import type { CanvasLike } from "./internals/types";
 import { MODULES } from "./modules/registry";
+import { moveFilesFolder } from "./settings/files-folder";
 import { OpcSettingTab } from "./settings/settings-tab";
 import { sanitizeSettings, type PluginSettings } from "./settings/settings";
 import { TUTORIALS } from "./tutorials/catalog";
@@ -78,6 +79,14 @@ export default class OverpoweredCanvasPlugin extends Plugin {
 				saveSettings: () => this.saveSettings(),
 				setLanguage: (language) => this.setLanguage(language),
 				tutorials,
+				applyFilesFolder: async (to) => {
+					// Practice boards live in that folder: end a running tutorial first.
+					await tutorials.stop();
+					const result = await moveFilesFolder(this.app, this.settings.filesFolder, to);
+					this.settings.filesFolder = to;
+					await this.saveSettings();
+					return result;
+				},
 			}),
 		);
 
@@ -106,6 +115,7 @@ export default class OverpoweredCanvasPlugin extends Plugin {
 			hooks,
 			catalog: TUTORIALS,
 			t: () => this.translate,
+			filesFolder: () => this.settings.filesFolder,
 			openList: () => open(),
 			markDone: (id) => {
 				if (this.settings.tutorials.done.includes(id)) return;
@@ -120,6 +130,7 @@ export default class OverpoweredCanvasPlugin extends Plugin {
 			t: () => this.translate,
 			isDone: (id) => this.settings.tutorials.done.includes(id),
 			start: (def) => void runner.start(def),
+			stop: () => runner.stop(),
 		};
 		open = () => new TutorialListModal(this.app, list).open();
 		this.register(() => void runner.stop());

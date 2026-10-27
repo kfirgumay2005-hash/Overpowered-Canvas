@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { checkCanvasFile, hasErrors } from "../data/validate-file";
 import { createTranslator, LOCALE_IDS } from "../i18n";
 import { en } from "../i18n/locales/en";
-import { added, addedEdges, card, count, edge, ellipsePoints, extraOf, ink, kindOf, strokeCount, sticky, title } from "./board";
+import { added, addedEdges, card, count, edge, ellipsePoints, extraOf, ink, kindOf, practicePdf, strokeCount, sticky, title } from "./board";
 import { TUTORIALS } from "./catalog";
 
 describe("board builders", () => {
@@ -52,7 +52,12 @@ describe("tutorial catalog", () => {
 		const t = createTranslator(locale);
 		for (const def of TUTORIALS) {
 			it(`${def.id} builds a valid board in ${locale}`, () => {
-				const board = def.board(t);
+				const folder = `tutorials/${def.id}`;
+				const board = def.board(t, folder);
+				// File cards point at the tutorial's own practice files, which have usable names.
+				const files = (def.files?.(t) ?? []).map((f) => `${folder}/${f.path}`);
+				for (const f of files) expect(f).not.toMatch(/[\\:*?"<>|#^[\]]/);
+				for (const n of board.nodes) if (n.type === "file") expect(files).toContain(n.file);
 				const file = { nodes: board.nodes, edges: board.edges, "x-opc": { v: 1, ...board.root } };
 				const problems = checkCanvasFile(file);
 				expect(hasErrors(problems), JSON.stringify(problems)).toBe(false);
@@ -80,4 +85,15 @@ describe("tutorial catalog", () => {
 				}
 			}
 		});
+});
+
+describe("practice PDF", () => {
+	it("points startxref and every xref entry at the right place", () => {
+		const pdf = practicePdf(["0 0 1 rg 10 10 100 100 re f", "0 g 1 w 0 0 m 10 10 l S"]);
+		const start = Number(/startxref\n(\d+)/.exec(pdf)![1]);
+		expect(pdf.slice(start, start + 4)).toBe("xref");
+		const entries = [...pdf.matchAll(/^(\d{10}) 00000 n $/gm)].map((m) => Number(m[1]));
+		expect(entries).toHaveLength(6);
+		entries.forEach((o, i) => expect(pdf.slice(o).startsWith(`${i + 1} 0 obj`)).toBe(true));
+	});
 });

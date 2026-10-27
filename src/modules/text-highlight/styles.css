@@ -1,0 +1,66 @@
+/* Highlighting words: an overlay under the bars takes the pen / mouse over cards. */
+body.opc-mod-text-highlight .opc-hl-overlay {
+	position: absolute;
+	inset: 0;
+	z-index: 14;
+	cursor: text;
+	touch-action: none;
+}
+body.opc-mod-text-highlight .opc-hl-marks {
+	position: absolute;
+	inset: 0;
+	z-index: 13;
+	pointer-events: none;
+}
+body.opc-mod-text-highlight .opc-hl-mark {
+	position: absolute;
+	border-radius: 3px;
+	opacity: 0.55;
+}
+body.opc-mod-text-highlight .opc-hl-bar {
+	position: absolute;
+	top: var(--size-4-3);
+	left: 50%;
+	transform: translateX(-50%);
+	z-index: 16;
+	display: flex;
+	gap: var(--size-4-1);
+	align-items: center;
+	padding: var(--size-4-1) var(--size-4-2);
+	background: var(--background-primary);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-m);
+	box-shadow: var(--shadow-s);
+}
+body.opc-mod-text-highlight .opc-hl-swatch {
+	width: 26px;
+	height: 26px;
+	padding: 0;
+	border-radius: 50%;
+	background: var(--opc-hl-color);
+	border: 2px solid transparent;
+}
+body.opc-mod-text-highlight .opc-hl-swatch.is-theme {
+	background: var(--text-highlight-bg, rgba(255, 208, 0, 0.4));
+}
+body.opc-mod-text-highlight .opc-hl-swatch.is-active,
+body.opc-mod-text-highlight .opc-hl-eraser.is-active {
+	border-color: var(--interactive-accent);
+	box-shadow: 0 0 0 1px var(--interactive-accent);
+}
+body.opc-mod-text-highlight .opc-card-text-highlight.is-active {
+	color: var(--text-on-accent);
+	background-color: var(--interactive-accent);
+}
+body.opc-mod-text-highlight .opc-hl-overlay.is-probing {
+	pointer-events: none;
+}
+/* The card being highlighted: its text can be hit-tested (the core covers and locks it). */
+body.opc-mod-text-highlight .canvas-node.opc-hl-open .canvas-node-content-blocker {
+	display: none;
+}
+body.opc-mod-text-highlight .canvas-node.opc-hl-open .canvas-node-content,
+body.opc-mod-text-highlight .canvas-node.opc-hl-open .canvas-node-content * {
+	user-select: text;
+	-webkit-user-select: text;
+}

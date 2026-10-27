@@ -41,6 +41,7 @@ import { boardTemplatesModule } from "./board-templates";
 import { canvasMarkdownModule } from "./canvas-markdown";
 import { noteBlocksModule } from "./note-blocks";
 import { lassoModule } from "./lasso";
+import { textHighlightModule } from "./text-highlight";
 import { clipboardModule } from "./clipboard";
 import { kanbanModule } from "./kanban";
 import { queryGroupsModule } from "./query-groups";
@@ -97,6 +98,7 @@ export const MODULES: readonly AnyModule[] = [
 	autoLayoutModule,
 	drawingModule,
 	lassoModule,
+	textHighlightModule,
 	freeLinesModule,
 	shapesModule,
 	stickyNotesModule,

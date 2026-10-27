@@ -297,7 +297,7 @@ Automated runtime checks of every item below were run in an isolated Obsidian 1.
    sticky-note module and its options are listed; click one to jump to it.
 12. **Tutorials:** Settings → Overpowered Canvas → the *Tutorials* cards are at the top (also
    the cap in the canvas controls, or the *Tutorials* command). Click a
-   card → settings close, a practice board opens in a new tab ("Overpowered Canvas tutorials/
+   card → settings close, a practice board opens in a new tab ("<files folder>/Tutorials/
    <name>.canvas") with the coach panel opposite the canvas controls (below the minimap when it
    shares the corner). Do each task by hand: it ticks off with confetti and moves on after a
    moment (not while a card is being edited). *Show me* does the task live; *Skip* / the dots
@@ -351,7 +351,7 @@ Automated runtime checks of every item below were run in an isolated Obsidian 1.
    canvas beside the note opens with a laid-out mind map (growing left in right-to-left canvases).
 2. Run the command again → if a note with the canvas's name exists and isn't linked, a dialog
    offers Replace / Separate note / Cancel. The note shows only the outline (no `%%` marks); a
-   JSON file appears in `Overpowered Canvas data/`. With the setting "Inside the note", the note
+   JSON file appears in the files folder (default `Overpowered Canvas data/`). With the setting "Inside the note", the note
    gets hidden `%%n:…%%` ids and a `canvas-data` section instead, and the JSON file is removed.
 3. In the note, change a line, add a line without an id under some bullet, delete a line → switch
    back: the changed card keeps its place and look, the new card sits beside its parent, the
@@ -394,11 +394,87 @@ Automated runtime checks of every item below were run in an isolated Obsidian 1.
 9. **Zoomed out:** Settings → Variable breakpoints → "Always show content": card text stays
    readable when zoomed far out; "Placeholder below my zoom level" follows the slider.
 10. **Connectors:** select a drawn line attached to two cards: drag a segment's middle dot to add
-    a bend, double-click a bend to remove it; move a card: the bends follow. The line passes
-    under cards.
+    a bend, double-click a bend to remove it; move a card: the bends follow. The line is drawn
+    above the cards (or under them, per the Free lines setting).
 11. **Edge colors:** box-select three connected cards → pick a color: the edges between them
     change too; Ctrl+Z undoes both.
 12. **Coexistence:** with the other canvas plugin that hides the core card bar, our card bar
     buttons stay visible.
 13. **Tutorials:** *Lasso, cut and paste* and *Notes to the board* work by hand and with "Show me";
     closing them deletes the practice board and note.
+
+## Manual — tester feedback, round 2 (0.8)
+
+1. **Sibling order:** a parent with five children. Drag a note block (or press Enter on the first
+   child) and drop it on the first child's "Add as sibling": the new card lands between the first
+   and the second child; the others move down. Same on a map with an automatic layout.
+2. **Lasso stays on:** L, draw a loop → selected, the tool is still on. Press inside the
+   selection and drag → it moves. Tap a card → only it is selected; tap twice → editing (the tool
+   turns off). Tap empty space → cleared. Esc / L / the button turn it off.
+3. **iPad, pen + fingers:** lasso on, draw with the pen → selection; one finger drags the board,
+   two fingers zoom; a resting palm does nothing.
+4. **Quick move (iPad):** select several cards, put a finger on one and drag at once → they move
+   without a long press. A second finger cancels the move. With the pen, a single selected card
+   moves at once too.
+5. **Drawn arrows:** drawing mode → Arrow tool → draw from a card down, across and up into
+   another card: the arrow keeps the two corners, right angles exactly. Shift → straight. Move
+   either card → the route stays square and attached. The arrow is above cards it crosses
+   (setting *Free lines and arrows → Lines attached to cards*).
+6. **Fit text:** a new card shrinks or grows to its text and wraps at the maximum width (Auto-
+   resize setting). Try with a CSS class that enlarges the font. Command *Fit cards to their text*
+   on old cards.
+7. **Move a branch:** drag a card with children onto another card → targets appear; drop on "Add
+   as child" → re-linked, its children follow, an auto-laid-out map re-arranges; one Ctrl+Z
+   undoes all of it.
+8. **Marks on cards:** drawing mode, underline a word inside a card, leave drawing mode. Move the
+   card, auto-layout the map, cut + paste it, Alt-drag a copy: the marks follow every time.
+   Delete the card → its marks go too; Ctrl+Z brings both back. Drag only the marks off the card
+   → they come loose.
+9. **Highlight words:** H (or the bottom-bar highlighter), pick yellow, swipe over words in a card
+   → the card's text gets `<mark>` around them; theme color → `==…==`; across a bold word → the
+   bold stays intact; tap one word → that word. Eraser → removes. Swipe over a highlight in
+   another color → recolored, not nested. iPad: works with the pen; fingers pan once the pen was
+   used.
+10. **Tutorials:** *Lasso, cut and paste*, *Drawing*, *Mind maps*, *Sticky notes and text*: every
+    "Show me" completes its step.
+
+## Manual — tester feedback, round 3
+
+1. **The view follows drops:** zoom in so a map's card is near the edge, drag a note block onto its
+   "Add as sibling" → after the map re-arranges, the view glides so the new card is in the middle
+   (zoom unchanged). Setting *Center the view on dropped cards*: every drop / never.
+2. **Walk through a map:** select a card, bottom-bar route button (or right-click → *Walk through
+   the map from here*). → goes to the first child (← in a map that grows to the left), back to the
+   parent, ↑/↓ along the siblings and stop at the first and last; back at a parent, → returns to the
+   child you came from. The zoom stays; + / − change it; Home goes back to the start; Esc ends,
+   leaving the last card selected. Tapping a card jumps there. The canvas is read-only meanwhile.
+3. **iPad:** the arrow pad in the corner works with a finger and the pen; one finger still pans.
+4. **Tutorial:** *Mind maps* → "Walk through the map" → Show me completes the step.
+5. **New tutorials** (by hand and with Show me, also in another UI language):
+   - *Notes as cards*: practice notes appear in "<files folder>/Tutorials/vault/"; dragging a
+     card to *Doing* sets its status; binding *Done*; changing a note's status moves its card; the
+     packing group fills with the two tagged notes; a `canvas-edges` property draws an arrow.
+   - *Style and reuse*: border, save the Task card as a template (button in the bottom bar), add a
+     copy, floating arrow end. After closing, the practice template is gone from the bottom bar.
+   - *Big boards*: open the Details portal; move the three Step cards to a new canvas.
+   - *Right-to-left*: fix a card to right to left; the canvas command flips menus, controls and the
+     coach panel to the other side; Tab on the map card adds a child on the left.
+   - *PDF pages*: pin the practice PDF card (shows one page); insert it for annotation (two pinned
+     pages beside it); draw a mark on a page.
+   Closing each one deletes the board, its practice files and the canvas split off the board; a
+   reload with a tutorial open cleans up on start.
+
+## Manual — files folder
+
+1. Settings → Overpowered Canvas: the first setting is *Location of the plugin's folder*. The folder
+   button shows where it is now (*Vault root* by default) and the line below shows the plugin
+   folder (`Overpowered Canvas data`). Apply is greyed out.
+2. Click the folder button → every vault folder is listed (the vault root first, hidden folders and
+   the plugin folder itself left out); typing searches them. Pick `real` → the line reads
+   `real/Overpowered Canvas data` in the accent color; Apply → notice "… now in “real/Overpowered
+   Canvas data” (N moved)"; the old folder is gone. A clean note still switches to its canvas.
+3. Start a tutorial → its board and practice files are in `<plugin folder>/Tutorials/`; closing
+   it removes them.
+4. Move it back to the vault root → files return. A file whose name already exists in the target
+   stays where it was, and the notice says how many.
+5. An older settings file with the Canvas ⇄ Markdown *Data folder* option takes that folder over.

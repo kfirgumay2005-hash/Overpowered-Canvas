@@ -4,8 +4,10 @@ import { bounds, eraseFrom, hitsStroke, lassoed, recognize, strokePath, transfor
 import type { CanvasLike, CanvasNodeLike } from "../../internals/types";
 import { mergeWithDefaults } from "../../settings/settings";
 import { attachTarget } from "../free-lines/attach";
-import { lineNodeData, shapeNodeData, snapEnds, type P } from "../free-lines/model";
+import { cornersOf, lineNodeData, shapeNodeData, snapEnds, type P } from "../free-lines/model";
 import { capturePointer, mutate, nodeType, randomId } from "../shared";
+import { anchorOf, enableAnchors, stickyTargets } from "./anchors";
+import { cardUnder } from "./stick";
 import { absolutePoints, CARRIER_TEXT, makeStroke, refit, shiftStroke } from "./carriers";
 import { renderInk } from "./render";
 import { DRAWING_DEFAULTS, INK_DEFAULT, InkToolbar, PEN_TOOLS, type DrawingSettings, type InkTool, type PenTool } from "./toolbar";
@@ -52,6 +54,8 @@ class InkSession {
 		origin?: P;
 		originals?: Map<CanvasNodeLike, Stroke[]>;
 		box?: { minX: number; minY: number; maxX: number; maxY: number };
+		/** Line tool: Shift held, draw a straight line. */
+		straight?: boolean;
 	} | null = null;
 	private penUntil = 0;
 	private lastCarrier: CanvasNodeLike | null = null;
@@ -148,7 +152,7 @@ class InkSession {
 			return;
 		}
 		if (this.tool === "line" || this.tool === "arrow") {
-			this.current = { ...base, mode: "line", points: [{ ...p, p: 0.5 }, { ...p, p: 0.5 }] };
+			this.current = { ...base, mode: "line", points: [{ ...p, p: 0.5 }] };
 			this.drawPreview();
 			return;
 		}
@@ -171,7 +175,9 @@ class InkSession {
 		}
 		if (cur.mode === "move" || cur.mode === "scale") return this.applyTransform(p);
 		if (cur.mode === "line") {
-			cur.points[1] = { ...p, p: 0.5 };
+			// The whole trail: its corners become the line's bend points (Shift: straight).
+			for (const e of events.length ? events : [evt]) cur.points.push({ ...this.canvas.posFromEvt(e), p: 0.5 });
+			cur.straight = evt.shiftKey;
 			this.drawPreview();
 			return;
 		}
@@ -191,7 +197,7 @@ class InkSession {
 		this.preview.querySelectorAll(".opc-ink-live").forEach((el) => el.remove());
 		try {
 			if (cur.mode === "draw") this.commitStroke(cur.points, cur.recognized);
-			else if (cur.mode === "line") this.commitLine(cur.points[0]!, cur.points[1]!);
+			else if (cur.mode === "line") this.commitLine(cur.points, !!cur.straight);
 			else if (cur.mode === "lasso") this.finishLasso(cur.points);
 			else if ((cur.mode === "erase" || cur.mode === "move" || cur.mode === "scale") && cur.changed) {
 				// One undo step for the whole gesture.
@@ -258,9 +264,9 @@ class InkSession {
 			return;
 		}
 		if (cur.mode === "line") {
-			const [a, b] = cur.points;
-			const l = this.preview.createSvg("line", { cls: ["opc-ink-live", "opc-ink-line-preview"] });
-			l.setAttrs({ x1: a!.x, y1: a!.y, x2: b!.x, y2: b!.y, stroke: s.color, "stroke-width": s.sizes.pen });
+			const l = this.preview.createSvg("polyline", { cls: ["opc-ink-live", "opc-ink-line-preview"] });
+			const pts = this.lineCorners(cur.points, !!cur.straight);
+			l.setAttrs({ points: pts.map((q) => `${q.x},${q.y}`).join(" "), stroke: s.color, "stroke-width": s.sizes.pen, fill: "none" });
 			return;
 		}
 		if (cur.mode !== "draw") return;
@@ -298,14 +304,16 @@ class InkSession {
 		if (points.length === 1) points.push({ ...points[0]!, x: points[0]!.x + 0.1 });
 		const style = { tool, color: s.color, size: this.size(tool), smoothing: s.smoothing };
 		const box = bounds(points, style.size);
+		// Drawn on a card: the stroke sticks to it, in that card's own ink.
+		const anchor = s.stickToCards ? cardUnder(points, stickyTargets(this.ctx, this.canvas)) : null;
 		mutate(this.ctx, this.canvas, () => {
-			const near = this.carriersNear(box, 60);
+			const near = this.carriersNear(box, 60).filter((c) => (anchorOf(this.ctx, c) ?? null) === anchor);
 			const carrier = this.lastCarrier && near.includes(this.lastCarrier) ? this.lastCarrier : near.sort((a, b) => b.zIndex - a.zIndex)[0];
 			const id = randomId(8);
 			if (!carrier) {
 				const origin = { x: box.minX, y: box.minY };
 				const fit = refit([makeStroke(id, points, origin, style)], origin)!;
-				const created = this.canvas.importData({ nodes: [{ id: randomId(), type: "text", text: CARRIER_TEXT, ...fit.box, "x-opc": { kind: "ink", strokes: fit.strokes } }], edges: [] }, false);
+				const created = this.canvas.importData({ nodes: [{ id: randomId(), type: "text", text: CARRIER_TEXT, ...fit.box, "x-opc": { kind: "ink", strokes: fit.strokes, ...(anchor ? { anchor } : {}) } }], edges: [] }, false);
 				this.lastCarrier = created ? [...created][0] ?? null : null;
 			} else {
 				const origin = { x: carrier.x, y: carrier.y };
@@ -334,13 +342,25 @@ class InkSession {
 		});
 	}
 
-	private commitLine(a: P, b: P): void {
-		if (Math.hypot(a.x - b.x, a.y - b.y) < 4) return;
+	/** The drawn trail as a line: its ends and the corners where it turns. */
+	private lineCorners(trail: P[], straight: boolean): P[] {
+		const a = trail[0]!;
+		const b = trail[trail.length - 1]!;
+		if (straight || trail.length < 3) return [a, b];
+		const box = (n: CanvasNodeLike | null) => n && { x: n.x, y: n.y, width: n.width, height: n.height };
+		return cornersOf(trail, 14 / this.canvas.scale, box(attachTarget(this.ctx, this.canvas, a)), box(attachTarget(this.ctx, this.canvas, b)));
+	}
+
+	private commitLine(trail: P[], straight: boolean): void {
+		const a = trail[0]!;
+		const b = trail[trail.length - 1]!;
+		if (trail.length < 2 || Math.hypot(a.x - b.x, a.y - b.y) < 4) return;
 		const s = this.ctx.settings;
 		const from = attachTarget(this.ctx, this.canvas, a);
 		const to = attachTarget(this.ctx, this.canvas, b);
+		const points = this.lineCorners(trail, straight);
 		mutate(this.ctx, this.canvas, () => {
-			this.canvas.importData({ nodes: [lineNodeData(randomId(), snapEnds([a, b], from, to), { from: from?.id, to: to?.id }, { color: cardColor(s.color), strokeWidth: Math.max(2, Math.round(s.sizes.pen / 2)), ...(this.tool === "arrow" ? { endArrow: "triangle" } : {}) })], edges: [] }, false);
+			this.canvas.importData({ nodes: [lineNodeData(randomId(), snapEnds(points, from, to), { from: from?.id, to: to?.id }, { color: cardColor(s.color), strokeWidth: Math.max(2, Math.round(s.sizes.pen / 2)), ...(this.tool === "arrow" ? { endArrow: "triangle" } : {}) })], edges: [] }, false);
 		});
 	}
 
@@ -535,6 +555,7 @@ export const drawingModule = defineModule<DrawingSettings>({
 				if (node.nodeEl.getAttribute("data-opc-kind") === "ink") renderInk(node, undefined, new Set(), forward(node));
 			},
 		});
+		enableAnchors(ctx);
 		// Ink cards are not text to edit.
 		ctx.intercept("node-start-editing", (node) => (isCarrier(ctx, node) ? true : undefined));
 

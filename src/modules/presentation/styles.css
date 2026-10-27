@@ -24,3 +24,55 @@ body.opc-mod-presentation .canvas-node.opc-start-slide::before {
 	font-size: calc(14px * var(--zoom-multiplier));
 	color: var(--color-accent);
 }
+body.opc-mod-presentation .canvas-wrapper.opc-walking :is(.canvas-controls, .canvas-card-menu, .canvas-menu-container) {
+	display: none;
+}
+body.opc-mod-presentation .canvas-node.opc-walk-current .canvas-node-container {
+	box-shadow: 0 0 0 calc(4px * var(--zoom-multiplier)) var(--color-accent);
+}
+body.opc-mod-presentation .opc-walk-pad {
+	position: absolute;
+	bottom: var(--size-4-4);
+	inset-inline-end: var(--size-4-4);
+	z-index: var(--layer-popover);
+	display: grid;
+	grid-template-columns: repeat(3, 44px);
+	grid-template-rows: repeat(3, 44px);
+	grid-template-areas: "zin up close" "left zout right" ". down .";
+	gap: var(--size-2-2);
+	padding: var(--size-2-3);
+	background-color: var(--background-primary);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-l);
+	box-shadow: var(--shadow-s);
+	touch-action: none;
+}
+body.opc-mod-presentation .opc-walk-pad button {
+	width: 44px;
+	height: 44px;
+	padding: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+body.opc-mod-presentation .opc-walk-up {
+	grid-area: up;
+}
+body.opc-mod-presentation .opc-walk-down {
+	grid-area: down;
+}
+body.opc-mod-presentation .opc-walk-left {
+	grid-area: left;
+}
+body.opc-mod-presentation .opc-walk-right {
+	grid-area: right;
+}
+body.opc-mod-presentation .opc-walk-zoom-in {
+	grid-area: zin;
+}
+body.opc-mod-presentation .opc-walk-zoom-out {
+	grid-area: zout;
+}
+body.opc-mod-presentation .opc-walk-close {
+	grid-area: close;
+}

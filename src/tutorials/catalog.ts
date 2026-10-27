@@ -7,7 +7,7 @@ import { SCHEMA_KEY, type LayerInfo, type OpcRoot } from "../data/schema";
 import { builtinTemplate } from "../modules/board-templates/builtins";
 import { reid, translate as shiftData } from "../modules/board-templates/logic";
 import { STICKY_COLORS } from "../modules/sticky-notes/logic";
-import { added, addedEdges, arrow, card, count, edge, edgesOf, ellipsePoints, extraOf, findNode, group, ink, kindOf, nodesOf, randomId, shape, sticky, strokeCount, title } from "./board";
+import { added, addedEdges, arrow, card, count, edge, edgesOf, ellipsePoints, extraOf, findNode, group, ink, kindOf, nodesOf, practicePdf, randomId, shape, sticky, strokeCount, title } from "./board";
 import type { TutorialDefinition, TutorialRuntime } from "./types";
 
 // ---------- shared helpers ----------
@@ -280,10 +280,10 @@ const notes: TutorialDefinition = {
 			task: "tut.notes.s6.task",
 			target: ".canvas-menu",
 			enter: (rt) => rt.select(["n-long"]),
-			check: (rt) => nodesOf(rt.now()).some((n) => isPlainCard(n) && (extraOf(n).autoResize === true || extraOf(n).autoWidth === true)),
+			check: (rt) => nodesOf(rt.now()).some((n) => n.id === "n-long" && (extraOf(n).autoResize === true || extraOf(n).autoWidth === true || extraOf(n).autoFit === true)),
 			demo: async (rt) => {
 				rt.select(["n-long"]);
-				setExtra(rt, "n-long", { autoResize: true });
+				setExtra(rt, "n-long", { autoFit: true });
 				const node = rt.node("n-long");
 				if (!node) return;
 				const words = rt.t("tut.notes.board.more").split(" ");
@@ -510,7 +510,7 @@ const drawing: TutorialDefinition = {
 	icon: "pen-tool",
 	title: "tut.drawing.title",
 	summary: "tut.drawing.summary",
-	modules: ["drawing", "free-lines", "shapes"],
+	modules: ["drawing", "free-lines", "shapes", "text-highlight"],
 	board: (t) => ({
 		nodes: [
 			title("d-title", t("tut.drawing.board.title"), 0, -170),
@@ -571,6 +571,18 @@ const drawing: TutorialDefinition = {
 			},
 		},
 		{
+			title: "tut.drawing.mark.title",
+			body: "tut.drawing.mark.body",
+			task: "tut.drawing.mark.task",
+			focus: ["d-target"],
+			check: (rt) => nodesOf(rt.now()).some((n) => kindOf(n) === "ink" && extraOf(n).anchor === "d-target"),
+			demo: (rt) => {
+				const data = ink(randomId(), [{ x: 95, y: 62 }, { x: 170, y: 64 }, { x: 245, y: 61 }]);
+				(data[SCHEMA_KEY] as Record<string, unknown>).anchor = "d-target";
+				rt.add([data]);
+			},
+		},
+		{
 			title: "tut.drawing.s5.title",
 			body: "tut.drawing.s5.body",
 			task: "tut.drawing.s5.task",
@@ -584,6 +596,28 @@ const drawing: TutorialDefinition = {
 			focus: ["d-a", "d-b"],
 			check: (rt) => moved(rt, "d-a") || moved(rt, "d-b"),
 			demo: (rt) => glide(rt, "d-b", 0, 220),
+		},
+		{
+			title: "tut.drawing.s7.title",
+			body: "tut.drawing.s7.body",
+			task: "tut.drawing.s7.task",
+			focus: ["d-target"],
+			check: (rt) => moved(rt, "d-target"),
+			demo: (rt) => glide(rt, "d-target", 260, -40),
+		},
+		{
+			title: "tut.drawing.hl.title",
+			body: "tut.drawing.hl.body",
+			task: "tut.drawing.hl.task",
+			target: ".opc-card-text-highlight",
+			focus: ["d-target"],
+			check: (rt) => rt.seen("text-highlighted") || /==|<mark/.test(findNode(rt.now(), "d-target")?.text ?? ""),
+			demo: (rt) => {
+				const node = rt.node("d-target");
+				if (!node) return;
+				const text = node.getData().text ?? "";
+				rt.change(() => node.setData({ ...node.getData(), text: `==${text}==` }));
+			},
 		},
 	],
 };
@@ -769,7 +803,7 @@ const mindmap: TutorialDefinition = {
 	icon: "network",
 	title: "tut.mindmap.title",
 	summary: "tut.mindmap.summary",
-	modules: ["mindmap", "branch-collapse", "auto-layout"],
+	modules: ["mindmap", "branch-collapse", "auto-layout", "note-blocks", "presentation"],
 	board: (t) => ({
 		nodes: [
 			card("m-root", t("tut.mindmap.board.root"), 0, 0, 240, 80, { color: "5" }),
@@ -840,6 +874,24 @@ const mindmap: TutorialDefinition = {
 			demo: (rt) => setExtra(rt, "m-tokyo", { collapsed: undefined }),
 		},
 		{
+			title: "tut.mindmap.move.title",
+			body: "tut.mindmap.move.body",
+			task: "tut.mindmap.move.task",
+			focus: ["m-tower", "m-kyoto"],
+			check: (rt) => rt.seen("card-relinked") || edgesOf(rt.now()).some((e) => e.toNode === "m-tower" && e.fromNode !== "m-tokyo"),
+			demo: async (rt) => {
+				const tower = rt.node("m-tower");
+				const kyoto = rt.node("m-kyoto");
+				if (!tower || !kyoto) return;
+				await glide(rt, "m-tower", kyoto.x + kyoto.width + 120 - tower.x, kyoto.y - tower.y);
+				rt.change(() => {
+					const old = rt.canvas.edges.get("m-e4");
+					if (old) rt.canvas.removeEdge(old);
+					rt.canvas.importData({ nodes: [], edges: [edge("m-e5", "m-kyoto", "right", "m-tower", "left")] }, false);
+				});
+			},
+		},
+		{
 			title: "tut.mindmap.s5.title",
 			body: "tut.mindmap.s5.body",
 			task: "tut.mindmap.s5.task",
@@ -848,6 +900,29 @@ const mindmap: TutorialDefinition = {
 			demo: (rt) => {
 				rt.select(["m-root"]);
 				rt.command("auto-layout:layout-mindmap");
+			},
+		},
+		{
+			title: "tut.mindmap.walk.title",
+			body: "tut.mindmap.walk.body",
+			task: "tut.mindmap.walk.task",
+			target: ".opc-card-walk",
+			enter: (rt) => rt.select(["m-root"]),
+			// The walk has moved at least once after it started.
+			check: (rt) => {
+				let moves = 0;
+				return rt.seen("map-walk-moved", () => ++moves >= 2);
+			},
+			demo: async (rt) => {
+				if (!rt.canvas.wrapperEl.hasClass("opc-walking")) {
+					rt.select(["m-root"]);
+					rt.command("presentation:walk");
+					await rt.wait(700);
+				}
+				for (const dir of ["right", "down"]) {
+					rt.canvas.wrapperEl.querySelector<HTMLElement>(`.opc-walk-${dir}`)?.click();
+					await rt.wait(700);
+				}
 			},
 		},
 	],
@@ -1271,6 +1346,16 @@ const select: TutorialDefinition = {
 			},
 		},
 		{
+			title: "tut.select.move.title",
+			body: "tut.select.move.body",
+			task: "tut.select.move.task",
+			check: (rt) => moved(rt, "sel-a") || moved(rt, "sel-b") || moved(rt, "sel-root"),
+			demo: async (rt) => {
+				if (rt.selected().length === 0) rt.select(["sel-root", "sel-a", "sel-b", "sel-e1", "sel-e2", "sel-ink"]);
+				await Promise.all(["sel-root", "sel-a", "sel-b", "sel-ink"].map((id) => glide(rt, id, 0, 60)));
+			},
+		},
+		{
 			title: "tut.select.s3.title",
 			body: "tut.select.s3.body",
 			task: "tut.select.s3.task",
@@ -1394,4 +1479,413 @@ const blocks: TutorialDefinition = {
 };
 
 /** Every tutorial, in the order they are offered. */
-export const TUTORIALS: readonly TutorialDefinition[] = [basics, notes, shapes, edges, drawing, layers, present, mindmap, navigate, organize, markdown, select, blocks];
+// ---------- 14. Notes as cards ----------
+
+/** A card showing a note or canvas. */
+const fileCard = (id: string, file: string, x: number, y: number, width = 260, height = 110): CanvasNodeData => ({ id, type: "file", file, x, y, width, height });
+/** File names can't have these. */
+const fileSafe = (name: string) => name.replace(/[\\/:*?"<>|#^[\]]/g, "");
+
+/** Practice note names, translated (they are the notes' file names). */
+const VAULT_NOTES = { tickets: "tut.vault.note.tickets", passport: "tut.vault.note.passport", hotel: "tut.vault.note.hotel", sunscreen: "tut.vault.note.sunscreen", camera: "tut.vault.note.camera" } as const;
+type VaultNote = keyof typeof VAULT_NOTES;
+const noteName = (t: TutorialRuntime["t"], which: VaultNote) => fileSafe(t(VAULT_NOTES[which]));
+const notePath = (t: TutorialRuntime["t"], folder: string, which: VaultNote) => `${folder}/${noteName(t, which)}.md`;
+/** A tag without spaces. */
+const packingTag = (t: TutorialRuntime["t"]) => t("tut.vault.tag").replace(/[\s#]+/g, "-");
+
+const COL_W = 320;
+const COL_GAP = 40;
+const colX = (i: number) => i * (COL_W + COL_GAP);
+
+/** Edits a practice note's properties the way the properties panel would. */
+async function setProperty(rt: TutorialRuntime, which: VaultNote, key: string, value: unknown): Promise<void> {
+	const file = rt.app.vault.getFileByPath(notePath(rt.t, rt.folder, which));
+	if (file)
+		await rt.app.fileManager.processFrontMatter(file, (fm: Record<string, unknown>) => {
+			fm[key] = value;
+		});
+}
+
+const vault: TutorialDefinition = {
+	id: "vault",
+	icon: "file-stack",
+	title: "tut.vault.title",
+	summary: "tut.vault.summary",
+	modules: ["kanban", "query-groups", "auto-edges"],
+	files: (t) => {
+		const body = t("tut.vault.note.body");
+		const status = (which: VaultNote, value: string) => ({ path: `${noteName(t, which)}.md`, content: `---\nstatus: ${value}\n---\n${body}\n` });
+		const tagged = (which: VaultNote) => ({ path: `${noteName(t, which)}.md`, content: `---\ntags:\n  - ${JSON.stringify(packingTag(t))}\n---\n${body}\n` });
+		return [status("tickets", "todo"), status("passport", "todo"), status("hotel", "doing"), tagged("sunscreen"), tagged("camera")];
+	},
+	board: (t, folder) => ({
+		nodes: [
+			group("k-todo", t("tut.vault.board.todo"), colX(0), 0, COL_W, 520, { [SCHEMA_KEY]: { kanban: { key: "status", value: "todo" } } }),
+			group("k-doing", t("tut.vault.board.doing"), colX(1), 0, COL_W, 520, { [SCHEMA_KEY]: { kanban: { key: "status", value: "doing" } } }),
+			group("k-done", t("tut.vault.board.done"), colX(2), 0, COL_W, 520),
+			fileCard("k-tickets", notePath(t, folder, "tickets"), colX(0) + 30, 40),
+			fileCard("k-pass", notePath(t, folder, "passport"), colX(0) + 30, 180),
+			fileCard("k-hotel", notePath(t, folder, "hotel"), colX(1) + 30, 40),
+			group("q-pack", t("tut.vault.board.packing"), colX(3) + 80, 0, 620, 300),
+		],
+		edges: [],
+	}),
+	steps: [
+		{ title: "tut.vault.s1.title", body: "tut.vault.s1.body" },
+		{
+			title: "tut.vault.s2.title",
+			body: "tut.vault.s2.body",
+			task: "tut.vault.s2.task",
+			focus: ["k-todo", "k-doing", "k-done"],
+			check: (rt) => rt.seen("kanban-moved", (_c, _n, _f, value) => value === "doing"),
+			demo: async (rt) => {
+				const card = rt.node("k-tickets");
+				const doing = rt.node("k-doing");
+				if (card && doing) await glide(rt, "k-tickets", doing.x + 30 - card.x, doing.y + 200 - card.y);
+			},
+		},
+		{
+			title: "tut.vault.s3.title",
+			body: "tut.vault.s3.body",
+			task: "tut.vault.s3.task",
+			target: (rt) => rt.node("k-done")?.labelEl,
+			check: (rt) => !!rt.extra("k-done").kanban,
+			demo: (rt) => setExtra(rt, "k-done", { kanban: { key: "status", value: "done" } }),
+		},
+		{
+			title: "tut.vault.s4.title",
+			body: "tut.vault.s4.body",
+			task: "tut.vault.s4.task",
+			check: (rt) => rt.seen("kanban-moved", (_c, node) => (node as { id?: string } | undefined)?.id === "k-pass"),
+			demo: async (rt) => {
+				if (!rt.extra("k-done").kanban) setExtra(rt, "k-done", { kanban: { key: "status", value: "done" } });
+				await setProperty(rt, "passport", "status", "done");
+			},
+		},
+		{
+			title: "tut.vault.s5.title",
+			body: "tut.vault.s5.body",
+			task: "tut.vault.s5.task",
+			focus: ["q-pack"],
+			target: (rt) => rt.node("q-pack")?.labelEl,
+			check: (rt) => !!rt.extra("q-pack").query && nodesOf(rt.now()).some((n) => n.type === "file" && !findNode(rt.before, n.id)),
+			demo: async (rt) => {
+				// The folder keeps notes with the same tag elsewhere in the vault off the practice board.
+				setExtra(rt, "q-pack", { query: { tags: [packingTag(rt.t)], folder: rt.folder } });
+				await rt.wait(200);
+				rt.command("query-groups:refresh-all");
+			},
+		},
+		{
+			title: "tut.vault.s6.title",
+			body: "tut.vault.s6.body",
+			task: "tut.vault.s6.task",
+			focus: ["k-tickets", "k-hotel"],
+			check: (rt) => edgesOf(rt.now()).some((e) => extraOf(e).auto === true),
+			demo: async (rt) => {
+				const property = rt.setting("auto-edges", "property");
+				const key = typeof property === "string" && property.trim() ? property.trim() : "canvas-edges";
+				await setProperty(rt, "hotel", key, [`[[${noteName(rt.t, "tickets")}]]`]);
+			},
+		},
+	],
+};
+
+// ---------- 15. Style and reuse ----------
+
+let templatesAtStart = 0;
+const templateCount = (rt: TutorialRuntime) => (rt.setting("node-templates", "templates") as unknown[] | undefined)?.length ?? 0;
+const lastTemplateButton = (rt: TutorialRuntime) => [...rt.canvas.cardMenuEl.querySelectorAll<HTMLElement>("[class*='opc-card-template-']")].pop();
+
+const style: TutorialDefinition = {
+	id: "style",
+	icon: "palette",
+	title: "tut.style.title",
+	summary: "tut.style.summary",
+	modules: ["node-borders", "node-templates", "floating-edges"],
+	// Templates saved while practicing are not kept.
+	restoreSettings: [{ module: "node-templates", key: "templates" }],
+	board: (t) => ({
+		nodes: [
+			card("s-idea", t("tut.style.board.idea"), 0, 0, 240, 90, { color: "5" }),
+			card("s-plan", t("tut.style.board.plan"), 420, 0, 240, 90, { color: "4" }),
+			card("s-task", t("tut.style.board.task"), -420, 0, 300, 110, { color: "3", [SCHEMA_KEY]: { border: "dashed" } }),
+		],
+		edges: [edge("s-e1", "s-idea", "right", "s-plan", "left")],
+	}),
+	steps: [
+		{
+			title: "tut.style.s1.title",
+			body: "tut.style.s1.body",
+			task: "tut.style.s1.task",
+			target: ".opc-menu-border",
+			enter: (rt) => rt.select(["s-idea"]),
+			check: (rt) => changedAny(rt, (n) => extraOf(n).border),
+			demo: (rt) => {
+				rt.select(["s-idea"]);
+				setExtra(rt, "s-idea", { border: "dotted" });
+			},
+		},
+		{
+			title: "tut.style.s2.title",
+			body: "tut.style.s2.body",
+			task: "tut.style.s2.task",
+			enter: (rt) => {
+				templatesAtStart = templateCount(rt);
+				rt.select(["s-task"]);
+			},
+			check: (rt) => templateCount(rt) > templatesAtStart,
+			demo: async (rt) => {
+				rt.select(["s-task"]);
+				rt.command("node-templates:save-node-as-template");
+				await rt.wait(400);
+				activeDocument.querySelector<HTMLElement>(".modal .mod-cta")?.click();
+			},
+		},
+		{
+			title: "tut.style.s3.title",
+			body: "tut.style.s3.body",
+			task: "tut.style.s3.task",
+			target: lastTemplateButton,
+			check: (rt) => grew(rt, (n) => n.type === "text" && n.text === rt.t("tut.style.board.task")),
+			demo: (rt) => lastTemplateButton(rt)?.click(),
+		},
+		{
+			title: "tut.style.s4.title",
+			body: "tut.style.s4.body",
+			task: "tut.style.s4.task",
+			focus: ["s-idea", "s-plan"],
+			check: (rt) =>
+				edgesOf(rt.now()).some((e) => {
+					const f = extraOf(e).floating as { from?: boolean; to?: boolean } | undefined;
+					return !!f?.from || !!f?.to;
+				}),
+			demo: async (rt) => {
+				setEdgeExtra(rt, "s-e1", { floating: { to: true } });
+				await rt.wait(400);
+				// Move the card below: the arrow now ends on its top side.
+				const idea = rt.node("s-idea");
+				const plan = rt.node("s-plan");
+				if (idea && plan) await glide(rt, "s-plan", idea.x - plan.x, idea.y + 300 - plan.y);
+			},
+		},
+		{ title: "tut.style.s5.title", body: "tut.style.s5.body" },
+	],
+};
+
+// ---------- 16. Big boards ----------
+
+const detailsName = (t: TutorialRuntime["t"]) => fileSafe(t("tut.big.detailsName"));
+
+const big: TutorialDefinition = {
+	id: "big",
+	icon: "door-open",
+	title: "tut.big.title",
+	summary: "tut.big.summary",
+	modules: ["portals", "encapsulate", "node-links"],
+	files: (t) => [
+		{
+			path: `${detailsName(t)}.canvas`,
+			content: JSON.stringify(
+				{
+					nodes: [card("d-1", t("tut.big.board.d1"), 0, 0, 240, 80, { color: "4" }), card("d-2", t("tut.big.board.d2"), 320, 0, 240, 80), card("d-3", t("tut.big.board.d3"), 320, 120, 240, 80)],
+					edges: [edge("d-e1", "d-1", "right", "d-2", "left"), edge("d-e2", "d-1", "right", "d-3", "left")],
+				},
+				null,
+				"\t",
+			),
+		},
+	],
+	board: (t, folder) => ({
+		nodes: [
+			title("b-title", t("tut.big.board.title"), 0, -140, 700, 80),
+			fileCard("b-portal", `${folder}/${detailsName(t)}.canvas`, 0, 0, 420, 260),
+			card("b-1", t("tut.big.board.c1"), 760, 0, 240, 80, { color: "6" }),
+			card("b-2", t("tut.big.board.c2"), 760, 110, 240, 80, { color: "6" }),
+			card("b-3", t("tut.big.board.c3"), 760, 220, 240, 80, { color: "6" }),
+		],
+		edges: [edge("b-e1", "b-1", "bottom", "b-2", "top"), edge("b-e2", "b-2", "bottom", "b-3", "top")],
+	}),
+	steps: [
+		{
+			title: "tut.big.s1.title",
+			body: "tut.big.s1.body",
+			task: "tut.big.s1.task",
+			target: ".opc-menu-portal",
+			enter: (rt) => rt.select(["b-portal"]),
+			check: (rt) => !!rt.extra("b-portal").portal?.open,
+			demo: (rt) => {
+				rt.select(["b-portal"]);
+				rt.command("portals:toggle-portal");
+			},
+		},
+		{
+			title: "tut.big.s2.title",
+			body: "tut.big.s2.body",
+			task: "tut.big.s2.task",
+			focus: ["b-1", "b-2", "b-3"],
+			check: (rt) => rt.seen("selection-encapsulated"),
+			demo: async (rt) => {
+				rt.select(["b-1", "b-2", "b-3"]);
+				rt.command("encapsulate:encapsulate-selection");
+				await rt.wait(400);
+				activeDocument.querySelector<HTMLElement>(".modal .mod-cta")?.click();
+			},
+		},
+		{ title: "tut.big.s3.title", body: "tut.big.s3.body" },
+	],
+};
+
+// ---------- 17. Right-to-left ----------
+
+const direction: TutorialDefinition = {
+	id: "direction",
+	icon: "languages",
+	title: "tut.dir.title",
+	summary: "tut.dir.summary",
+	modules: ["direction", "mindmap"],
+	board: (t) => ({
+		nodes: [
+			title("d-title", t("tut.dir.board.title"), 0, -160, 700, 80),
+			card("d-mixed", `${t("tut.dir.board.ltrLine")}\n\n${t("tut.dir.board.rtlLine")}`, 0, 0, 320, 140, { color: "5" }),
+			card("d-fixed", t("tut.dir.board.fixed"), 380, 0, 320, 140, { color: "4" }),
+			card("d-root", t("tut.dir.board.root"), 190, 300, 320, 80, { color: "6" }),
+		],
+		edges: [],
+	}),
+	steps: [
+		{ title: "tut.dir.s1.title", body: "tut.dir.s1.body", focus: ["d-mixed", "d-fixed"] },
+		{
+			title: "tut.dir.s2.title",
+			body: "tut.dir.s2.body",
+			task: "tut.dir.s2.task",
+			target: ".opc-menu-text-direction",
+			enter: (rt) => rt.select(["d-fixed"]),
+			check: (rt) => changedAny(rt, (n) => extraOf(n).dir),
+			demo: (rt) => {
+				rt.select(["d-fixed"]);
+				setExtra(rt, "d-fixed", { dir: "rtl" });
+			},
+		},
+		{
+			title: "tut.dir.s3.title",
+			body: "tut.dir.s3.body",
+			task: "tut.dir.s3.task",
+			check: (rt) => rt.root().dir === "rtl",
+			demo: (rt) => void rt.command("direction:canvas-rtl"),
+		},
+		{
+			title: "tut.dir.s4.title",
+			body: "tut.dir.s4.body",
+			task: "tut.dir.s4.task",
+			enter: (rt) => rt.select(["d-root"]),
+			check: (rt) => {
+				const root = findNode(rt.now(), "d-root");
+				return addedEdges(rt.before, rt.now()).some((e) => {
+					const child = e.fromNode === "d-root" ? findNode(rt.now(), e.toNode) : undefined;
+					return !!root && !!child && child.x + child.width <= root.x;
+				});
+			},
+			demo: async (rt) => {
+				rt.select(["d-root"]);
+				rt.command("mindmap:add-child");
+				await rt.wait(350);
+				const child = added(rt.before, rt.now())[0];
+				const node = child && rt.node(child.id);
+				if (!node) return;
+				rt.command("mindmap:stop-editing");
+				rt.change(() => node.setData({ ...node.getData(), text: rt.t("tut.dir.board.child") }));
+			},
+		},
+		{ title: "tut.dir.s5.title", body: "tut.dir.s5.body" },
+	],
+};
+
+// ---------- 18. PDF pages ----------
+
+const pdfName = (t: TutorialRuntime["t"]) => `${fileSafe(t("tut.pdf.fileName"))}.pdf`;
+const isPinnedPage = (n: CanvasNodeData) => n.type === "file" && !!(extraOf(n).pdf as { pinned?: boolean } | undefined)?.pinned;
+
+/** Page 1: a title bar, lines of "text" and a figure; page 2: a bar chart. Shapes only, so it fits every language. */
+const PDF_PAGES = [
+	[
+		"0.27 0.35 0.85 rg 50 730 495 60 re f",
+		"0.75 g",
+		...[650, 625, 600, 575, 550].map((y, i) => `60 ${y} ${470 - (i % 2) * 90} 12 re f`),
+		"0.95 0.6 0.2 RG 3 w 70 300 m 70 500 l 300 500 l 300 300 l h S",
+		"0.95 0.6 0.2 rg 185 455 m 215.4 455 240 430.4 240 400 c 240 369.6 215.4 345 185 345 c 154.6 345 130 369.6 130 400 c 130 430.4 154.6 455 185 455 c f",
+		"0.75 g",
+		...[480, 455, 430, 405, 380, 355, 330].map((y) => `330 ${y} 200 10 re f`),
+	].join("\n"),
+	[
+		"0 g 1.5 w 70 150 m 70 650 l S 70 150 m 530 150 l S",
+		"0.27 0.35 0.85 rg 100 150 60 220 re f",
+		"0.2 0.7 0.5 rg 190 150 60 380 re f",
+		"0.95 0.6 0.2 rg 280 150 60 160 re f",
+		"0.85 0.3 0.4 rg 370 150 60 300 re f",
+		"0.5 0.4 0.8 rg 460 150 60 450 re f",
+	].join("\n"),
+];
+
+const pdf: TutorialDefinition = {
+	id: "pdf",
+	icon: "file-text",
+	title: "tut.pdf.title",
+	summary: "tut.pdf.summary",
+	modules: ["pdf-annotation", "drawing"],
+	files: (t) => [{ path: pdfName(t), content: practicePdf(PDF_PAGES) }],
+	board: (t, folder) => ({
+		nodes: [title("p-title", t("tut.pdf.board.title"), 0, -140, 700, 80), fileCard("p-pdf", `${folder}/${pdfName(t)}`, 0, 0, 440, 623)],
+		edges: [],
+	}),
+	steps: [
+		{
+			title: "tut.pdf.s1.title",
+			body: "tut.pdf.s1.body",
+			task: "tut.pdf.s1.task",
+			enter: (rt) => rt.select(["p-pdf"]),
+			check: (rt) => isPinnedPage(findNode(rt.now(), "p-pdf") ?? ({} as CanvasNodeData)),
+			demo: (rt) => {
+				rt.select(["p-pdf"]);
+				rt.command("pdf-annotation:pin-pdf-page");
+			},
+		},
+		{
+			title: "tut.pdf.s2.title",
+			body: "tut.pdf.s2.body",
+			task: "tut.pdf.s2.task",
+			check: (rt) => count(rt.now(), isPinnedPage) > count(rt.before, isPinnedPage),
+			demo: async (rt) => {
+				rt.canvas.deselectAll();
+				// The pages are inserted in the middle of the view: make room beside the first card.
+				const first = rt.node("p-pdf");
+				if (first) rt.canvas.panTo(first.x + first.width + 500, first.y + 300);
+				rt.command("pdf-annotation:insert-pdf");
+				await rt.wait(400);
+				const input = activeDocument.querySelector<HTMLInputElement>(".prompt .prompt-input");
+				if (!input) return;
+				input.value = pdfName(rt.t).replace(/\.pdf$/, "");
+				input.dispatchEvent(new Event("input"));
+				await rt.wait(300);
+				input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+			},
+		},
+		{
+			title: "tut.pdf.s3.title",
+			body: "tut.pdf.s3.body",
+			task: "tut.pdf.s3.task",
+			check: (rt) => strokeCount(rt.now()) > strokeCount(rt.before),
+			demo: (rt) => {
+				const pages = nodesOf(rt.now()).filter(isPinnedPage);
+				const page = pages.find((n) => n.id !== "p-pdf") ?? pages[0];
+				if (!page) return;
+				// Circle the figure in the top half of the page.
+				rt.add([ink(randomId(), ellipsePoints(page.x + page.width * 0.31, page.y + page.height * 0.52, page.width * 0.25, page.height * 0.15))]);
+			},
+		},
+		{ title: "tut.pdf.s4.title", body: "tut.pdf.s4.body" },
+	],
+};
+
+export const TUTORIALS: readonly TutorialDefinition[] = [basics, notes, shapes, edges, drawing, layers, present, mindmap, navigate, organize, markdown, select, blocks, vault, style, big, direction, pdf];

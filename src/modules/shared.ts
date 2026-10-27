@@ -102,3 +102,11 @@ export function capturePointer(el: Element, pointerId: number): void {
 		// The gesture still works without capture while the pointer stays over the element.
 	}
 }
+
+/** Glides the view so `node` is in the middle of the screen, keeping the zoom. */
+export function centerOn(canvas: CanvasLike, node: CanvasNodeLike): void {
+	canvas.tx = node.x + node.width / 2;
+	canvas.ty = node.y + node.height / 2;
+	canvas.zoomCenter = null;
+	canvas.markViewportChanged();
+}

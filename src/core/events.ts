@@ -42,6 +42,9 @@ export interface PublicEventMap {
 	"presentation-started": [canvas: CanvasLike, slide: CanvasNodeLike];
 	"presentation-slide-changed": [canvas: CanvasLike, slide: CanvasNodeLike, index: number];
 	"presentation-ended": [canvas: CanvasLike];
+	"map-walk-started": [canvas: CanvasLike, node: CanvasNodeLike];
+	"map-walk-moved": [canvas: CanvasLike, node: CanvasNodeLike];
+	"map-walk-ended": [canvas: CanvasLike];
 	"selection-encapsulated": [canvas: CanvasLike, file: TFile];
 	"portal-opened": [canvas: CanvasLike, portal: CanvasNodeLike];
 	"portal-closed": [canvas: CanvasLike, portal: CanvasNodeLike];
@@ -66,6 +69,8 @@ export interface PublicEventMap {
 	"note-exported": [canvasFile: TFile, note: TFile];
 	"canvas-updated-from-note": [canvasFile: TFile, note: TFile, added: number, removed: number, updated: number];
 	"note-block-dropped": [canvas: CanvasLike, node: CanvasNodeLike];
+	"card-relinked": [canvas: CanvasLike, node: CanvasNodeLike];
+	"text-highlighted": [canvas: CanvasLike, node: CanvasNodeLike];
 	"lasso-selected": [canvas: CanvasLike, items: CanvasItemLike[]];
 	"selection-cut": [canvas: CanvasLike, count: number];
 }

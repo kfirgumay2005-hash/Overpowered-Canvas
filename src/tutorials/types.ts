@@ -14,6 +14,8 @@ export interface TutorialRuntime {
 	readonly canvas: CanvasLike;
 	readonly t: Translate;
 	readonly data: CanvasDataApi;
+	/** Where the tutorial's practice files are (see TutorialDefinition.files). */
+	readonly folder: string;
 	/** The canvas as it is now. */
 	now(): CanvasFileData;
 	/** The canvas as it was when the step started. */
@@ -70,7 +72,12 @@ export interface TutorialDefinition {
 	modules: readonly string[];
 	/** Module settings the tutorial may change, put back as they were when it ends. */
 	restoreSettings?: readonly { module: string; key: string }[];
-	/** The demo board, in the UI language. Node ids are stable so steps can refer to them. */
-	board(t: Translate): { nodes: CanvasNodeData[]; edges: CanvasEdgeData[]; root?: Partial<OpcRoot> };
+	/**
+	 * Practice files (notes, other canvases) the board uses, written to the tutorial's own folder
+	 * before the board and deleted with it. Paths are relative to that folder.
+	 */
+	files?(t: Translate): readonly { path: string; content: string }[];
+	/** The demo board, in the UI language; `folder` holds its practice files. Node ids are stable so steps can refer to them. */
+	board(t: Translate, folder: string): { nodes: CanvasNodeData[]; edges: CanvasEdgeData[]; root?: Partial<OpcRoot> };
 	steps: readonly TutorialStep[];
 }

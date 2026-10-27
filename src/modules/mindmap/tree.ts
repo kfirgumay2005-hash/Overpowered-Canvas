@@ -82,6 +82,35 @@ export function siblingPosition(node: TNode, dir: Dir, size: { width: number; he
 	return dir === "right" || dir === "left" ? { x: node.x, y: node.y + node.height + gap } : { x: node.x + node.width + gap, y: node.y };
 }
 
+/**
+ * Room for a new sibling right after `node` (below it in sideways maps, after it in reading
+ * order in up/down maps): its position, the siblings further along on the same side of the
+ * parent, and how far those must move (with their subtrees) so the new card fits between.
+ */
+export function siblingSlot(parent: TNode, node: TNode, siblings: TNode[], size: { width: number; height: number }, rtl: boolean, gap = 30): { pos: { x: number; y: number }; later: string[]; shift: { x: number; y: number } } {
+	const dir = directionBetween(parent, node);
+	const center = (n: TNode) => ({ x: n.x + n.width / 2, y: n.y + n.height / 2 });
+	const c = center(node);
+	const side = siblings.filter((s) => s.id !== node.id && s.id !== parent.id && directionBetween(parent, s) === dir);
+	if (dir === "right" || dir === "left") {
+		const pos = { x: dir === "left" ? node.x + node.width - size.width : node.x, y: node.y + node.height + gap };
+		const later = side.filter((s) => center(s).y > c.y);
+		const top = later.length ? Math.min(...later.map((s) => s.y)) : Infinity;
+		return { pos, later: later.map((s) => s.id), shift: { x: 0, y: Math.max(0, pos.y + size.height + gap - top) } };
+	}
+	const y = dir === "up" ? node.y + node.height - size.height : node.y;
+	if (!rtl) {
+		const pos = { x: node.x + node.width + gap, y };
+		const later = side.filter((s) => center(s).x > c.x);
+		const left = later.length ? Math.min(...later.map((s) => s.x)) : Infinity;
+		return { pos, later: later.map((s) => s.id), shift: { x: Math.max(0, pos.x + size.width + gap - left), y: 0 } };
+	}
+	const pos = { x: node.x - gap - size.width, y };
+	const later = side.filter((s) => center(s).x < c.x);
+	const right = later.length ? Math.max(...later.map((s) => s.x + s.width)) : -Infinity;
+	return { pos, later: later.map((s) => s.id), shift: { x: -Math.max(0, right - (pos.x - gap)), y: 0 } };
+}
+
 /** The direction from parent to child, from their centers. */
 export function directionBetween(parent: TNode, child: TNode): Dir {
 	const dx = child.x + child.width / 2 - (parent.x + parent.width / 2);

@@ -1,10 +1,11 @@
-import { Notice, PluginSettingTab, Setting, setIcon, type App, type ExtraButtonComponent, type Plugin, type SettingDefinitionItem } from "obsidian";
+import { Notice, PluginSettingTab, Setting, setIcon, type App, type ButtonComponent, type ExtraButtonComponent, type Plugin, type SettingDefinitionItem } from "obsidian";
 import { SETTINGS_GROUP_ORDER, type AnyModule } from "../core/module";
 import type { ModuleManager } from "../core/module-manager";
 import type { I18nKey, LanguageSetting, Translate } from "../i18n";
 import { en } from "../i18n/locales/en";
 import { renderTutorialList, type TutorialListHost } from "../tutorials/list";
-import type { PluginSettings } from "./settings";
+import { FolderPickModal, splitFolder, type MoveResult } from "./files-folder";
+import { cleanFolderPath, type PluginSettings } from "./settings";
 
 export interface SettingsTabHost {
 	readonly settings: PluginSettings;
@@ -13,6 +14,8 @@ export interface SettingsTabHost {
 	saveSettings(): Promise<void>;
 	setLanguage(language: LanguageSetting): void;
 	readonly tutorials: TutorialListHost;
+	/** Moves the plugin's files to `to` and makes it the files folder. */
+	applyFilesFolder(to: string): Promise<MoveResult>;
 }
 
 const COLLAPSED_KEY = "overpowered-canvas:settings-collapsed";
@@ -66,6 +69,11 @@ export class OpcSettingTab extends PluginSettingTab {
 				type: "group",
 				cls: "opc-settings-search-group",
 				items: [{ name: t("settings.search.placeholder"), searchable: false, render: (s) => this.renderSearch(s) }],
+			},
+			{
+				name: t("settings.filesFolder.name"),
+				desc: t("settings.filesFolder.desc"),
+				render: (s) => this.renderFilesFolder(s),
 			},
 			{
 				name: t("settings.language.name"),
@@ -174,6 +182,69 @@ export class OpcSettingTab extends PluginSettingTab {
 			nameEl.addClass("opc-collapse-name");
 			nameEl.addEventListener("click", toggle);
 		});
+	}
+
+	/**
+	 * Where the plugin's folder sits: a button opens the list of vault folders (searchable), the row
+	 * shows the resulting folder, and Apply moves the files there.
+	 */
+	private renderFilesFolder(s: Setting): void {
+		const { host } = this;
+		const t = host.t();
+		s.settingEl.setAttr("data-opc-search", searchText(t, ["settings.filesFolder.name", "settings.filesFolder.desc", "settings.filesFolder.simple"]));
+		addSimpleLine(s.descEl, t("settings.filesFolder.simple"));
+		const current = host.settings.filesFolder;
+		const { name } = splitFolder(current);
+		let parent = splitFolder(current).parent;
+		const target = () => (parent ? `${parent}/${name}` : name);
+		const preview = s.descEl.createDiv({ cls: "opc-files-folder-preview" });
+		let pick: ButtonComponent | null = null;
+		let apply: ButtonComponent | null = null;
+		const refresh = () => {
+			// A folder icon beside the folder's name, so it reads as "choose a place".
+			if (pick) {
+				pick.buttonEl.empty();
+				setIcon(pick.buttonEl.createSpan({ cls: "opc-files-folder-icon" }), "folder-open");
+				pick.buttonEl.createSpan({ text: parent || t("settings.filesFolder.root") });
+			}
+			preview.setText(t("settings.filesFolder.preview", { path: target() }));
+			preview.toggleClass("is-changed", target() !== current);
+			apply?.setDisabled(target() === current);
+		};
+		s.addButton((b) => {
+			pick = b;
+			b.setTooltip(t("settings.filesFolder.choose"))
+				.onClick(() =>
+					new FolderPickModal(this.app, { placeholder: t("settings.filesFolder.search"), root: t("settings.filesFolder.root") }, current, (path) => {
+						parent = path;
+						refresh();
+					}).open(),
+				);
+			b.buttonEl.addClass("opc-files-folder-pick");
+		});
+		s.addButton((b) => {
+			apply = b;
+			b.setButtonText(t("settings.filesFolder.apply"))
+				.setCta()
+				.onClick(async () => {
+					const to = cleanFolderPath(target());
+					if (!to) {
+						new Notice(t("settings.filesFolder.invalid"));
+						return;
+					}
+					b.setDisabled(true);
+					try {
+						const result = await host.applyFilesFolder(to);
+						const kept = result.kept ? ` ${t("settings.filesFolder.kept", { count: result.kept })}` : "";
+						new Notice(t("settings.filesFolder.done", { path: to, count: result.moved }) + kept);
+					} catch (error) {
+						console.error("[overpowered-canvas] could not move the plugin's files", error);
+						new Notice(t("settings.filesFolder.failed"));
+					}
+					this.update();
+				});
+		});
+		refresh();
 	}
 
 	/** The tutorial cards; starting one closes the settings window. */

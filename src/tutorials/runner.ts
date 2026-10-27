@@ -18,15 +18,30 @@ import { extraOf } from "./board";
 import { renderRich } from "./rich";
 import type { TutorialDefinition, TutorialRuntime, TutorialStep } from "./types";
 
-export const TUTORIAL_FOLDER = "Overpowered Canvas tutorials";
+/** The tutorials' folder inside the plugin's files folder (a plugin setting). */
+export const TUTORIALS_FOLDER_NAME = "Tutorials";
+/** Where earlier versions kept the practice boards; leftovers there are cleaned up too. */
+const LEGACY_FOLDER = "Overpowered Canvas tutorials";
+
+export function tutorialsFolder(filesFolder: string): string {
+	return normalizePath(`${filesFolder}/${TUTORIALS_FOLDER_NAME}`);
+}
 /** Root key that marks a temporary tutorial canvas (so leftovers can be cleaned up safely). */
 export const TUTORIAL_KEY = "x-opc-tutorial";
+
+/** A tutorial's own folder for its practice files (inside the tutorials folder, which is ours). */
+function practiceFolder(root: string, def: TutorialDefinition): string {
+	return normalizePath(`${root}/${def.id}`);
+}
 
 /** Public events steps can wait for. */
 const WATCHED_EVENTS = [
 	"presentation-started",
 	"presentation-slide-changed",
 	"presentation-ended",
+	"map-walk-started",
+	"map-walk-moved",
+	"map-walk-ended",
 	"drawing-mode-changed",
 	"stroke-added",
 	"strokes-erased",
@@ -45,6 +60,12 @@ const WATCHED_EVENTS = [
 	"outline-copied",
 	"outline-inserted",
 	"note-block-dropped",
+	"card-relinked",
+	"kanban-moved",
+	"query-group-refreshed",
+	"selection-encapsulated",
+	"portal-opened",
+	"text-highlighted",
 	"lasso-selected",
 	"selection-cut",
 	"note-exported",
@@ -62,6 +83,8 @@ export interface TutorialHost {
 	readonly history: HistoryApi;
 	readonly hooks: CanvasHooks;
 	t(): Translate;
+	/** The plugin's files folder; the tutorials folder is inside it. */
+	filesFolder(): string;
 	markDone(id: string): void;
 	/** Shows the list of tutorials. */
 	openList(): void;
@@ -78,6 +101,10 @@ export class TutorialRunner {
 	private session: Session | null = null;
 
 	constructor(private readonly host: TutorialHost) {}
+
+	private get root(): string {
+		return tutorialsFolder(this.host.filesFolder());
+	}
 
 	get running(): TutorialDefinition | null {
 		return this.session?.def ?? null;
@@ -100,8 +127,10 @@ export class TutorialRunner {
 		}
 
 		let file: TFile;
+		const folder = practiceFolder(this.root, def);
 		try {
-			file = await this.writeBoard(def);
+			await this.writeFiles(def, folder);
+			file = await this.writeBoard(def, folder);
 		} catch (error) {
 			console.error("[overpowered-canvas] could not create the tutorial canvas", error);
 			new Notice(t("tutorial.createFailed"));
@@ -114,9 +143,10 @@ export class TutorialRunner {
 			new Notice(t("tutorial.createFailed"));
 			leaf.detach();
 			await this.removeFile(file);
+			await this.removeFolder(folder);
 			return;
 		}
-		this.session = new Session(this.host, def, file, leaf, canvas, (finished, next) => void this.stop(finished).then(() => next && this.start(next)));
+		this.session = new Session(this.host, def, file, folder, leaf, canvas, (finished, next) => void this.stop(finished).then(() => next && this.start(next)));
 		this.session.begin();
 	}
 
@@ -131,16 +161,53 @@ export class TutorialRunner {
 		if (session.leaf.view && (session.leaf.view as CanvasViewLike).file === session.file) session.leaf.detach();
 		await this.removeNotesOf((path) => path === session.file.path);
 		await sleep(150);
+		// Files made during the tutorial in the tutorials folder (a canvas split off the board…).
+		for (const path of session.created) await this.removePath(path);
+		await this.removeFolder(session.folder);
 		await this.removeFile(session.file);
+	}
+
+	/** Closes the tabs showing a file (or anything inside a folder) at `path`. */
+	private closeTabs(path: string): void {
+		this.host.app.workspace.iterateAllLeaves((leaf) => {
+			const shown = (leaf.view as { file?: TFile | null }).file?.path;
+			if (shown && (shown === path || shown.startsWith(`${path}/`))) leaf.detach();
+		});
+	}
+
+	private async removePath(path: string): Promise<void> {
+		const item = this.host.app.vault.getAbstractFileByPath(path);
+		if (!item) return;
+		this.closeTabs(path);
+		try {
+			await this.host.app.fileManager.trashFile(item);
+		} catch (error) {
+			console.error("[overpowered-canvas] could not delete a tutorial file", error);
+		}
+	}
+
+	private async removeFolder(path: string): Promise<void> {
+		if (this.host.app.vault.getAbstractFileByPath(path) instanceof TFolder) await this.removePath(path);
+	}
+
+	private async writeFiles(def: TutorialDefinition, folder: string): Promise<void> {
+		const files = def.files?.(this.host.t()) ?? [];
+		// Left over from a crash: start from fresh copies.
+		await this.removeFolder(folder);
+		if (files.length === 0) return;
+		const { vault } = this.host.app;
+		if (!vault.getAbstractFileByPath(this.root)) await vault.createFolder(this.root);
+		await vault.createFolder(folder);
+		for (const f of files) await vault.create(normalizePath(`${folder}/${f.path}`), f.content);
 	}
 
 	/**
 	 * Deletes notes in the tutorials folder that mirror a practice board (written by the
 	 * Markdown tutorial), closing their tabs first.
 	 */
-	private async removeNotesOf(isBoard: (canvasPath: string) => boolean): Promise<void> {
+	private async removeNotesOf(isBoard: (canvasPath: string) => boolean, root = this.root): Promise<void> {
 		const { app } = this.host;
-		const folder = app.vault.getAbstractFileByPath(normalizePath(TUTORIAL_FOLDER));
+		const folder = app.vault.getAbstractFileByPath(root);
 		if (!(folder instanceof TFolder)) return;
 		for (const child of [...folder.children]) {
 			if (!(child instanceof TFile) || child.extension !== "md") continue;
@@ -159,8 +226,13 @@ export class TutorialRunner {
 
 	/** Deletes tutorial canvases left over from a crash or a restart. */
 	async cleanUp(): Promise<void> {
+		await this.cleanUpIn(this.root);
+		await this.cleanUpIn(LEGACY_FOLDER);
+	}
+
+	private async cleanUpIn(root: string): Promise<void> {
 		const { app } = this.host;
-		const folder = app.vault.getAbstractFileByPath(normalizePath(TUTORIAL_FOLDER));
+		const folder = app.vault.getAbstractFileByPath(root);
 		if (!(folder instanceof TFolder)) return;
 		for (const child of [...folder.children]) {
 			if (!(child instanceof TFile) || child.extension !== "canvas" || child === this.session?.file) continue;
@@ -173,17 +245,18 @@ export class TutorialRunner {
 				// Not ours, or unreadable: leave it.
 			}
 		}
+		// Practice files of tutorials that are not running.
+		for (const def of this.host.catalog) if (def !== this.session?.def) await this.removeFolder(practiceFolder(root, def));
 		// Notes of practice boards that are gone.
-		const folderPrefix = `${normalizePath(TUTORIAL_FOLDER)}/`;
-		await this.removeNotesOf((path) => path.startsWith(folderPrefix) && path !== this.session?.file.path && !app.vault.getAbstractFileByPath(path));
-		await this.removeFolderIfEmpty();
+		await this.removeNotesOf((path) => path.startsWith(`${root}/`) && path !== this.session?.file.path && !app.vault.getAbstractFileByPath(path), root);
+		await this.removeFolderIfEmpty(root);
 	}
 
-	private async writeBoard(def: TutorialDefinition): Promise<TFile> {
+	private async writeBoard(def: TutorialDefinition, folder: string): Promise<TFile> {
 		const { app } = this.host;
 		const t = this.host.t();
-		const board = def.board(t);
-		const folderPath = normalizePath(TUTORIAL_FOLDER);
+		const board = def.board(t, folder);
+		const folderPath = this.root;
 		if (!app.vault.getAbstractFileByPath(folderPath)) await app.vault.createFolder(folderPath);
 		const base = t(def.title).replace(/[\\/:*?"<>|#^[\]]/g, "").trim() || def.id;
 		let path = normalizePath(`${folderPath}/${base}.canvas`);
@@ -208,13 +281,17 @@ export class TutorialRunner {
 		await this.removeFolderIfEmpty();
 	}
 
-	private async removeFolderIfEmpty(): Promise<void> {
-		const folder = this.host.app.vault.getAbstractFileByPath(normalizePath(TUTORIAL_FOLDER));
-		if (folder instanceof TFolder && folder.children.length === 0) {
+	/** Removes the tutorials folder when it is empty, and then the plugin's files folder if that is empty too. */
+	private async removeFolderIfEmpty(root = this.root): Promise<void> {
+		const files = this.host.filesFolder();
+		for (const path of root === this.root ? [root, files] : [root]) {
+			const folder = this.host.app.vault.getAbstractFileByPath(path);
+			if (!(folder instanceof TFolder) || folder.children.length > 0) return;
 			try {
 				await this.host.app.fileManager.trashFile(folder);
 			} catch {
 				// Someone put something there; keep it.
+				return;
 			}
 		}
 	}
@@ -241,11 +318,14 @@ class Session {
 	private finishedView = false;
 	private readonly saved = new Map<string, unknown>();
 	private readonly rt: TutorialRuntime;
+	/** Files created in the tutorials folder while the tutorial runs. */
+	readonly created: string[] = [];
 
 	constructor(
 		private readonly host: TutorialHost,
 		readonly def: TutorialDefinition,
 		readonly file: TFile,
+		readonly folder: string,
 		readonly leaf: WorkspaceLeaf,
 		private readonly canvas: CanvasLike,
 		private readonly end: (finished: boolean, next?: TutorialDefinition) => void,
@@ -270,6 +350,10 @@ class Session {
 			if ((this.leaf.view as CanvasViewLike | undefined)?.file !== this.file) this.end(false);
 		});
 		this.cleanups.push(() => app.workspace.offref(layoutRef));
+		const createRef = app.vault.on("create", (file) => {
+			if (file !== this.file && file.path.startsWith(`${tutorialsFolder(this.host.filesFolder())}/`) && !file.path.startsWith(`${this.folder}/`)) this.created.push(file.path);
+		});
+		this.cleanups.push(() => app.vault.offref(createRef));
 		const tick = window.setInterval(() => {
 			this.evaluate();
 			this.placeHighlight();
@@ -521,6 +605,8 @@ class Session {
 
 	/** Moves the panel below the minimap when it sits in the same corner. */
 	private avoidOverlaps(): void {
+		// The canvas direction can change while the tutorial runs: stay opposite the controls.
+		this.panel.toggleClass("is-right", getComputedStyle(this.canvas.wrapperEl).direction === "rtl");
 		const wrapper = this.canvas.wrapperEl.getBoundingClientRect();
 		const minimap = this.canvas.wrapperEl.querySelector<HTMLElement>(".opc-minimap");
 		let top = 0;
@@ -575,6 +661,7 @@ class Session {
 		return {
 			app,
 			canvas,
+			folder: this.folder,
 			get t() {
 				return host.t();
 			},

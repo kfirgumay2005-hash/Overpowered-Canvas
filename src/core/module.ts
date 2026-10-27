@@ -67,6 +67,8 @@ export interface ModuleContext<S extends object> {
 	readonly app: App;
 	readonly t: Translate;
 	readonly settings: Readonly<S>;
+	/** The vault folder for the plugin's files (a plugin-wide setting). */
+	filesFolder(): string;
 	updateSettings(patch: Partial<S>): Promise<void>;
 	onSettingsChange(cb: (next: Readonly<S>, prev: Readonly<S>) => void): void;
 
