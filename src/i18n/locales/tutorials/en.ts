@@ -520,4 +520,13 @@ export const tutorialsEn = {
 	"tut.pdf.s3.task": "Draw a mark on one of the pages.",
 	"tut.pdf.s4.title": "Good to know",
 	"tut.pdf.s4.body": "Right-click a pinned page → **Unpin PDF page** to get the scrolling viewer back. The width of inserted pages is a setting (*PDF annotation*). The PDF file itself is never changed.",
+	"tut.basics.s8.touch": "No keyboard? Open the command palette and run **Undo**.",
+	"tut.notes.s1.touch": "No keyboard? Long-press the pink note → **Add the next sticky note to the right**.",
+	"tut.notes.s2.touch": "No keyboard? Long-press a note → **Add the next sticky note below**.",
+	"tut.present.s5.touch": "No keyboard? Tap **›** in the corner of the screen.",
+	"tut.present.s6.touch": "No keyboard? Tap **✕** in the corner of the screen.",
+	"tut.mindmap.s1.touch": "No keyboard? Long-press **Kyoto** → **Add child card**.",
+	"tut.mindmap.s2.touch": "No keyboard? Long-press a card (not the center) → **Add sibling card**.",
+	"tut.markdown.s3.touch": "No keyboard? Open the command palette and run **Paste Markdown outline as mind map**.",
+	"tut.dir.s4.touch": "No keyboard? Long-press the map card → **Add child card**.",
 } as const;

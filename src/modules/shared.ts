@@ -5,6 +5,7 @@ import type { ModuleContext } from "../core/module";
 import { ReadOnlyExtraDataError } from "../data/access";
 import { InvalidExtraDataError } from "../data/validate";
 import type { CanvasEdgeLike, CanvasItemLike, CanvasLike, CanvasNodeLike } from "../internals/types";
+import { logError } from "../core/log";
 
 export type NodeType = "text" | "file" | "link" | "group";
 
@@ -65,7 +66,7 @@ export function mutate(ctx: ModuleContext<object>, canvas: CanvasLike, fn: () =>
 		return true;
 	} catch (error) {
 		if (!(error instanceof ReadOnlyExtraDataError)) {
-			console.error(`[overpowered-canvas] ${ctx.moduleId}: change failed and was undone`, error);
+			logError(`[overpowered-canvas] ${ctx.moduleId}: change failed and was undone`, error);
 			if (error instanceof InvalidExtraDataError) new Notice(`Overpowered Canvas: ${error.message}`);
 		}
 		return false;
@@ -92,6 +93,24 @@ export function randomId(length = 16): string {
 	const bytes = new Uint8Array(length / 2);
 	crypto.getRandomValues(bytes);
 	return [...bytes].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+const activeTools = new WeakMap<CanvasLike, { id: string; stop: () => void }>();
+
+/**
+ * Canvas tools that take over the pointer (drawing, lasso, highlighter) are exclusive: starting
+ * one ends the one that was on, so switching tools always works.
+ */
+export function claimTool(canvas: CanvasLike, id: string, stop: () => void): void {
+	const current = activeTools.get(canvas);
+	activeTools.delete(canvas);
+	if (current && current.id !== id) current.stop();
+	activeTools.set(canvas, { id, stop });
+}
+
+/** The tool `id` ended on this canvas. */
+export function releaseTool(canvas: CanvasLike, id: string): void {
+	if (activeTools.get(canvas)?.id === id) activeTools.delete(canvas);
 }
 
 /** Pointer capture that tolerates pointers the browser no longer tracks (synthetic or ended). */

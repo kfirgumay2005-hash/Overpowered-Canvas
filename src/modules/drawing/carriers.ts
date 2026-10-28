@@ -56,10 +56,10 @@ export function shiftStroke(s: Stroke, dx: number, dy: number): Stroke {
 }
 
 /** A stroke from absolute canvas points, relative to `origin`. */
-export function makeStroke(id: string, points: InkPoint[], origin: { x: number; y: number }, style: Pick<Stroke, "tool" | "color" | "size" | "smoothing">): Stroke {
+export function makeStroke(id: string, points: InkPoint[], origin: { x: number; y: number }, style: Pick<Stroke, "tool" | "color" | "size" | "smoothing" | "uniform">): Stroke {
 	const rel = points.map((p) => ({ ...p, x: p.x - origin.x, y: p.y - origin.y }));
 	const packed = pack(rel);
-	return { id, tool: style.tool, color: style.color, size: style.size, ...(style.smoothing !== undefined ? { smoothing: style.smoothing } : {}), ...packed };
+	return { id, tool: style.tool, color: style.color, size: style.size, ...(style.smoothing !== undefined ? { smoothing: style.smoothing } : {}), ...(style.uniform ? { uniform: true } : {}), ...packed };
 }
 
 /** Absolute points of a stored stroke. */

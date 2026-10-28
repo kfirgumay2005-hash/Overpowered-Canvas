@@ -181,6 +181,7 @@ const stroke: Sanitizer<Stroke> = (raw) => {
 			opacity: unit,
 			smoothing: unit,
 			locked: bool,
+			uniform: bool,
 			pts: flatTuples(3),
 			tilt: flatTuples(2),
 		},

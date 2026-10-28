@@ -135,6 +135,10 @@ export const canvasCommandsModule = defineModule({
 		command("move-left", "arrow-left", canNudge, nudge(-1, 0));
 		command("move-right", "arrow-right", canNudge, nudge(1, 0));
 
+		// Undo and redo without a keyboard (tablets).
+		command("undo", "undo-2", writable, (c) => c.undo());
+		command("redo", "redo-2", writable, (c) => c.redo());
+
 		// ---------- view ----------
 		command("zoom-in", "zoom-in", () => true, (c) => c.zoomBy(0.5));
 		command("zoom-out", "zoom-out", () => true, (c) => c.zoomBy(-0.5));

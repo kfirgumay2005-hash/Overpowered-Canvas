@@ -68,8 +68,9 @@ function pressure(p: InkPoint, brush: BrushPreset): number {
 }
 
 /** SVG path of the filled stroke outline. */
-export function strokePath(points: InkPoint[], tool: StrokeTool, size: number, smoothing?: number): string {
-	const brush = BRUSHES[tool];
+export function strokePath(points: InkPoint[], tool: StrokeTool, size: number, smoothing?: number, uniform = false): string {
+	// Without pressure sensitivity the stroke keeps one width.
+	const brush = uniform ? { ...BRUSHES[tool], thinning: 0, simulatePressure: false, tiltWidth: 0 } : BRUSHES[tool];
 	const allSame = points.every((p) => p.p === points[0]?.p);
 	const outline = getStroke(
 		points.map((p) => [p.x, p.y, pressure(p, brush)]),

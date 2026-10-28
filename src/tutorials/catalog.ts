@@ -183,6 +183,7 @@ const basics: TutorialDefinition = {
 			title: "tut.basics.s8.title",
 			body: "tut.basics.s8.body",
 			task: "tut.basics.s8.task",
+			touch: "tut.basics.s8.touch",
 			check: (rt) => rt.seen("undo"),
 			demo: (rt) => rt.canvas.undo(),
 		},
@@ -212,6 +213,7 @@ const notes: TutorialDefinition = {
 			title: "tut.notes.s1.title",
 			body: "tut.notes.s1.body",
 			task: "tut.notes.s1.task",
+			touch: "tut.notes.s1.touch",
 			focus: ["n-g", "n-long"],
 			enter: (rt) => rt.select(["n-s2"]),
 			check: (rt) => grew(rt, isSticky),
@@ -226,6 +228,7 @@ const notes: TutorialDefinition = {
 			title: "tut.notes.s2.title",
 			body: "tut.notes.s2.body",
 			task: "tut.notes.s2.task",
+			touch: "tut.notes.s2.touch",
 			enter: (rt) => {
 				if (!lastSelectedSticky(rt)) rt.select(["n-s1"]);
 			},
@@ -781,6 +784,7 @@ const present: TutorialDefinition = {
 			title: "tut.present.s5.title",
 			body: "tut.present.s5.body",
 			task: "tut.present.s5.task",
+			touch: "tut.present.s5.touch",
 			check: (rt) => rt.seen("presentation-slide-changed", (_c, _s, index) => typeof index === "number" && index >= 1),
 			demo: (rt) => {
 				if (!rt.command("presentation:next")) rt.command("presentation:start");
@@ -790,6 +794,7 @@ const present: TutorialDefinition = {
 			title: "tut.present.s6.title",
 			body: "tut.present.s6.body",
 			task: "tut.present.s6.task",
+			touch: "tut.present.s6.touch",
 			check: (rt) => rt.seen("presentation-ended"),
 			demo: (rt) => void rt.command("presentation:end"),
 		},
@@ -824,6 +829,7 @@ const mindmap: TutorialDefinition = {
 			title: "tut.mindmap.s1.title",
 			body: "tut.mindmap.s1.body",
 			task: "tut.mindmap.s1.task",
+			touch: "tut.mindmap.s1.touch",
 			enter: (rt) => rt.select(["m-kyoto"]),
 			check: (rt) => addedEdges(rt.before, rt.now()).some((e) => e.fromNode === "m-kyoto"),
 			demo: async (rt) => {
@@ -842,6 +848,7 @@ const mindmap: TutorialDefinition = {
 			title: "tut.mindmap.s2.title",
 			body: "tut.mindmap.s2.body",
 			task: "tut.mindmap.s2.task",
+			touch: "tut.mindmap.s2.touch",
 			enter: (rt) => {
 				if (rt.selected().length !== 1) rt.select(["m-tower"]);
 			},
@@ -1240,6 +1247,7 @@ const markdown: TutorialDefinition = {
 			title: "tut.markdown.s3.title",
 			body: "tut.markdown.s3.body",
 			task: "tut.markdown.s3.task",
+			touch: "tut.markdown.s3.touch",
 			check: (rt) => rt.seen("outline-inserted") || (added(rt.before, rt.now()).length >= 3 && addedEdges(rt.before, rt.now()).length >= 2),
 			demo: async (rt) => {
 				rt.select(["md-root"]);
@@ -1779,6 +1787,7 @@ const direction: TutorialDefinition = {
 			title: "tut.dir.s4.title",
 			body: "tut.dir.s4.body",
 			task: "tut.dir.s4.task",
+			touch: "tut.dir.s4.touch",
 			enter: (rt) => rt.select(["d-root"]),
 			check: (rt) => {
 				const root = findNode(rt.now(), "d-root");

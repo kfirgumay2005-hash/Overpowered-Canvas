@@ -3,6 +3,7 @@ import { defineModule, type ModuleContext } from "../../core/module";
 import type { CanvasNodeData } from "../../data/json-canvas";
 import type { CanvasLike, CanvasNodeLike } from "../../internals/types";
 import { mutate, nodeType, randomId, selectedNodes } from "../shared";
+import { logError } from "../../core/log";
 
 interface PdfSettings {
 	pageWidth: number;
@@ -117,7 +118,7 @@ export const pdfAnnotationModule = defineModule<PdfSettings>({
 				host.querySelectorAll(".opc-pdf-page").forEach((el) => el.remove());
 				host.appendChild(canvasEl);
 			} catch (error) {
-				console.error("[overpowered-canvas] PDF page render failed", error);
+				logError("[overpowered-canvas] PDF page render failed", error);
 			}
 		};
 

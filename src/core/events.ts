@@ -1,6 +1,7 @@
 import type { TFile, Workspace } from "obsidian";
 import type { CanvasFileData } from "../data/json-canvas";
 import type { CanvasEdgeLike, CanvasItemLike, CanvasLike, CanvasNodeLike } from "../internals/types";
+import { logError } from "./log";
 
 export const EVENT_PREFIX = "overpowered-canvas:";
 
@@ -85,7 +86,7 @@ export class PublicEvents {
 			this.workspace.trigger(`${EVENT_PREFIX}${name}`, ...args);
 		} catch (error) {
 			// A listener in another plugin must never break us.
-			console.error(`[overpowered-canvas] listener of ${name} threw`, error);
+			logError(`[overpowered-canvas] listener of ${name} threw`, error);
 		}
 	}
 }

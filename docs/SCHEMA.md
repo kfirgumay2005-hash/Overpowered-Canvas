@@ -42,7 +42,8 @@ interface OpcRoot {                       // file root "x-opc"
   frameOrder?: string[];                  // group ids, Frames panel order
   layers?: { id: string; name: string; hidden?: boolean; locked?: boolean }[];  // bottom to top
   activeLayer?: string;                   // layer id that new items go to
-  mapLayouts?: Record<string, MapLayout>; // root card id → auto layout last applied to its map
+  mapLayouts?: Record<string, MapLayout>; // root card id → layout last applied to its map (Auto layout,
+                                          // or built from a note); a card dropped into the map re-arranges it
 }
 
 // "right" | "left" | "down" | "up" | "balanced" | "radial" | "layered-right" | "layered-left" |
@@ -93,6 +94,7 @@ interface OpcEdge {
 interface Stroke {
   id: string; tool: "pen" | "pencil" | "marker" | "highlighter";
   color: string; size: number; opacity?: number; smoothing?: number; locked?: boolean;
+  uniform?: boolean; // drawn without pressure sensitivity: one width all along
   pts: number[];   // flat [x, y, pressure, …] relative to the carrier node
   tilt?: number[]; // flat [tiltX, tiltY, …], one pair per point
 }

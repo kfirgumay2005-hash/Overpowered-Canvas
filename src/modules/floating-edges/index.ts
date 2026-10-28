@@ -2,6 +2,7 @@ import { defineModule } from "../../core/module";
 import { bestSide } from "../../geometry/routing";
 import type { CanvasEdgeLike, CanvasLike, CanvasNodeLike, Point } from "../../internals/types";
 import { nodeType } from "../shared";
+import { logError } from "../../core/log";
 
 /** The central drop zone: the middle half of the node in both directions. */
 function inDropZone(node: CanvasNodeLike, p: Point): boolean {
@@ -96,7 +97,7 @@ export const floatingEdgesModule = defineModule({
 				ctx.data.edge(edge).set({ floating: Object.keys(floating).length ? floating : undefined });
 				canvas.markMoved(edge);
 			} catch (error) {
-				console.error("[overpowered-canvas] floating edge update failed", error);
+				logError("[overpowered-canvas] floating edge update failed", error);
 			}
 		};
 	},

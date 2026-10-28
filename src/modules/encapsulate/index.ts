@@ -4,6 +4,7 @@ import type { CanvasEdgeData, CanvasNodeData } from "../../data/json-canvas";
 import type { Translate } from "../../i18n";
 import type { CanvasLike, CanvasNodeLike } from "../../internals/types";
 import { mutate, randomId, selectedNodes } from "../shared";
+import { logError } from "../../core/log";
 
 /** Shifts the selection so its top-left corner sits at (0, 0). Pure. */
 export function normalizeSelection(nodes: CanvasNodeData[], edges: CanvasEdgeData[]): { nodes: CanvasNodeData[]; edges: CanvasEdgeData[] } {
@@ -71,7 +72,7 @@ export const encapsulateModule = defineModule({
 				try {
 					file = await ctx.app.vault.create(path, JSON.stringify({ nodes: inner.nodes, edges: inner.edges }, null, "\t"));
 				} catch (error) {
-					console.error(error);
+					logError(error);
 					new Notice(ctx.t("encapsulate.failed"));
 					return;
 				}

@@ -5,7 +5,7 @@ import { lassoed } from "../../geometry/ink";
 import type { CanvasItemLike, CanvasLike, CanvasNodeLike, SelectionDragLike } from "../../internals/types";
 import { mergeWithDefaults } from "../../settings/settings";
 import { absolutePoints, CARRIER_TEXT, refit } from "../drawing/carriers";
-import { capturePointer, mutate, nodeType, onHiddenLayer, randomId, selectedNodes } from "../shared";
+import { capturePointer, claimTool, mutate, releaseTool, nodeType, onHiddenLayer, randomId, selectedNodes } from "../shared";
 import { caught, type P } from "./select";
 
 interface LassoSettings {
@@ -24,6 +24,24 @@ let penSeen = false;
 /** A press that moves farther than this (px) is a drag, not a tap. */
 const SLOP = 5;
 const DOUBLE_TAP_MS = 350;
+/** A pen or finger held still this long on the selection opens its menu. */
+const LONG_PRESS_MS = 500;
+/** When our long-press last opened a menu (the app's own long-press menu right after is dropped). */
+let menuOpenedAt = 0;
+
+/** Opens the menu of the current selection at a screen point, as a right-click on it would. */
+export function openSelectionMenu(canvas: CanvasLike, clientX: number, clientY: number): void {
+	const evt = new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX, clientY });
+	menuOpenedAt = Date.now();
+	const nodes = selectedNodes(canvas);
+	if (canvas.selection.size === 1 && nodes.length === 1) nodes[0]!.onContextMenu?.(evt);
+	else canvas.onSelectionContextMenu?.(evt);
+}
+
+/** True right after our long-press opened a menu: the app's own long-press menu is a duplicate. */
+export function menuJustOpened(): boolean {
+	return Date.now() - menuOpenedAt < 1000;
+}
 
 /**
  * Moves the selection with this pointer, as the core's own drag does (snapping, group contents,
@@ -32,7 +50,16 @@ const DOUBLE_TAP_MS = 350;
 function moveSelection(canvas: CanvasLike, evt: PointerEvent, clickEl: HTMLElement, node?: CanvasNodeLike): void {
 	const win = clickEl.win;
 	let drag: SelectionDragLike | undefined;
+	// Touch and pen: held still, the press opens the selection menu instead of moving it.
+	let timer = evt.pointerType === "mouse" ? 0 : win.setTimeout(() => {
+		timer = 0;
+		if (drag) return;
+		remove();
+		openSelectionMenu(canvas, evt.clientX, evt.clientY);
+	}, LONG_PRESS_MS);
 	const remove = () => {
+		if (timer) win.clearTimeout(timer);
+		timer = 0;
 		win.removeEventListener("pointermove", move, true);
 		win.removeEventListener("pointerup", up, true);
 		win.removeEventListener("pointercancel", cancel, true);
@@ -42,6 +69,8 @@ function moveSelection(canvas: CanvasLike, evt: PointerEvent, clickEl: HTMLEleme
 		if (e.pointerId !== evt.pointerId) return;
 		if (!drag) {
 			if (Math.hypot(e.clientX - evt.clientX, e.clientY - evt.clientY) < SLOP) return;
+			if (timer) win.clearTimeout(timer);
+			timer = 0;
 			drag = canvas.handleSelectionDrag?.(evt, clickEl, node);
 			if (!drag) return remove();
 		}
@@ -101,6 +130,11 @@ class LassoSession {
 	private additive = false;
 	private penUntil = 0;
 	private lastTap: { at: number; node: CanvasNodeLike | null } = { at: 0, node: null };
+	/** When a menu last closed: the app closes menus on Esc before our key handler runs. */
+	private menuClosedAt = 0;
+	private readonly menus = new MutationObserver((records) => {
+		for (const r of records) for (const n of r.removedNodes) if (n.instanceOf(HTMLElement) && n.hasClass("menu")) this.menuClosedAt = Date.now();
+	});
 
 	constructor(
 		private readonly ctx: Ctx,
@@ -114,18 +148,35 @@ class LassoSession {
 		this.overlay.addEventListener("pointermove", this.onMove);
 		this.overlay.addEventListener("pointerup", this.onUp);
 		this.overlay.addEventListener("pointercancel", this.onCancel);
+		this.overlay.addEventListener("contextmenu", this.onContextMenu);
+		this.overlay.addEventListener("lostpointercapture", this.onCancel);
 		canvas.wrapperEl.win.addEventListener("keydown", this.onKey, true);
 		canvas.wrapperEl.addClass("opc-lasso-active");
+		this.menus.observe(canvas.wrapperEl.doc.body, { childList: true });
 	}
 
 	destroy(): void {
 		this.canvas.wrapperEl.win.removeEventListener("keydown", this.onKey, true);
+		this.menus.disconnect();
 		this.overlay.remove();
 		this.canvas.wrapperEl.removeClass("opc-lasso-active");
 	}
 
+	/** Right-click or the app's long-press on the selection: its menu (elsewhere: the board's menu). */
+	private onContextMenu = (e: MouseEvent) => {
+		const box = this.canvas.selection.size ? selectionBox(this.canvas) : null;
+		if (!box) return;
+		const p = this.canvas.posFromEvt(e);
+		if (p.x < box.minX || p.x > box.maxX || p.y < box.minY || p.y > box.maxY) return;
+		e.preventDefault();
+		e.stopPropagation();
+		if (!menuJustOpened()) openSelectionMenu(this.canvas, e.clientX, e.clientY);
+	};
+
 	private onKey = (e: KeyboardEvent) => {
 		if (e.key !== "Escape") return;
+		// An open menu closes first (the app may have closed it already, a moment ago).
+		if (e.defaultPrevented || this.canvas.wrapperEl.doc.querySelector(".menu") || Date.now() - this.menuClosedAt < 100) return;
 		e.preventDefault();
 		e.stopPropagation();
 		this.onEnd();
@@ -157,6 +208,9 @@ class LassoSession {
 			if (this.fingersMoveBoard()) return;
 		}
 		if (e.pointerType === "mouse" && e.button !== 0) return; // right/middle: core panning
+		// A pen or mouse can't press twice: the last gesture lost its release (it happens on
+		// tablets), so it is dropped instead of blocking the lasso.
+		if (this.pointerId !== null && e.pointerType !== "touch") this.reset();
 		if (this.pointerId !== null) return;
 		e.preventDefault();
 		e.stopPropagation();
@@ -241,12 +295,15 @@ class LassoSession {
 	}
 
 	private onCancel = (e: PointerEvent) => {
-		if (e.pointerId !== this.pointerId) return;
+		if (e.pointerId === this.pointerId) this.reset();
+	};
+
+	private reset(): void {
 		this.pointerId = null;
 		this.points = [];
 		this.screen = [];
 		this.draw();
-	};
+	}
 
 	private draw(): void {
 		this.line.setAttribute("points", this.screen.map((p) => `${p.x},${p.y}`).join(" "));
@@ -324,14 +381,15 @@ export const lassoModule = defineModule<LassoSettings>({
 	enable(ctx) {
 		const sessions = new Map<CanvasLike, LassoSession>();
 		const stop = (canvas: CanvasLike) => {
+			releaseTool(canvas, "lasso");
 			sessions.get(canvas)?.destroy();
 			sessions.delete(canvas);
 			refresh(canvas);
 		};
 		const toggle = (canvas: CanvasLike) => {
 			if (sessions.has(canvas)) return stop(canvas);
-			// Drawing mode has its own lasso for strokes; leave it first.
-			if (canvas.wrapperEl.hasClass("opc-drawing") || canvas.wrapperEl.hasClass("opc-highlighting")) return;
+			// Drawing mode or the highlighter ends first.
+			claimTool(canvas, "lasso", () => stop(canvas));
 			sessions.set(canvas, new LassoSession(ctx, canvas, () => stop(canvas)));
 			refresh(canvas);
 		};
@@ -381,8 +439,18 @@ export const lassoModule = defineModule<LassoSettings>({
 				e.stopPropagation();
 				moveSelection(canvas, e, node?.nodeEl ?? wrapper, node);
 			};
+			// Our long-press already opened the menu: the app's own long-press menu would cover it.
+			const onMenu = (e: MouseEvent) => {
+				if (!menuJustOpened()) return;
+				e.preventDefault();
+				e.stopPropagation();
+			};
 			wrapper.addEventListener("pointerdown", onDown, true);
-			return () => wrapper.removeEventListener("pointerdown", onDown, true);
+			wrapper.addEventListener("contextmenu", onMenu, true);
+			return () => {
+				wrapper.removeEventListener("pointerdown", onDown, true);
+				wrapper.removeEventListener("contextmenu", onMenu, true);
+			};
 		});
 	},
 

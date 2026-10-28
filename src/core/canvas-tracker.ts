@@ -1,6 +1,7 @@
 import type { App, EventRef } from "obsidian";
 import { findCanvasShapeProblems, isCanvasView } from "../internals/guards";
 import type { CanvasLike, CanvasViewLike } from "../internals/types";
+import { logError } from "./log";
 
 export type CanvasCallback = (canvas: CanvasLike, view: CanvasViewLike) => (() => void) | void;
 
@@ -94,7 +95,7 @@ export class CanvasTracker {
 			const cleanup = sub.cb(view.canvas, view);
 			if (cleanup) sub.cleanups.set(view, cleanup);
 		} catch (error) {
-			console.error("[overpowered-canvas] canvas subscriber failed", error);
+			logError("[overpowered-canvas] canvas subscriber failed", error);
 		}
 	}
 }
@@ -103,6 +104,6 @@ function safely(fn: () => void): void {
 	try {
 		fn();
 	} catch (error) {
-		console.error("[overpowered-canvas] cleanup failed", error);
+		logError("[overpowered-canvas] cleanup failed", error);
 	}
 }

@@ -1,21 +1,39 @@
 import { defineModule, type ModuleContext } from "../../core/module";
+import type { I18nKey, Translate } from "../../i18n";
 import type { Stroke } from "../../data/schema";
 import { bounds, eraseFrom, hitsStroke, lassoed, recognize, strokePath, transform, type InkPoint } from "../../geometry/ink";
 import type { CanvasLike, CanvasNodeLike } from "../../internals/types";
 import { mergeWithDefaults } from "../../settings/settings";
 import { attachTarget } from "../free-lines/attach";
 import { cornersOf, lineNodeData, shapeNodeData, snapEnds, type P } from "../free-lines/model";
-import { capturePointer, mutate, nodeType, randomId } from "../shared";
+import { capturePointer, claimTool, mutate, nodeType, randomId, releaseTool } from "../shared";
 import { anchorOf, enableAnchors, stickyTargets } from "./anchors";
 import { cardUnder } from "./stick";
 import { absolutePoints, CARRIER_TEXT, makeStroke, refit, shiftStroke } from "./carriers";
 import { renderInk } from "./render";
-import { DRAWING_DEFAULTS, INK_DEFAULT, InkToolbar, PEN_TOOLS, type DrawingSettings, type InkTool, type PenTool } from "./toolbar";
+import { DRAWING_DEFAULTS, INK_DEFAULT, InkToolbar, PEN_TOOLS, sanitizePens, type DrawingSettings, type InkTool, type PenTool } from "./toolbar";
+import { logError } from "../../core/log";
 
 type Ctx = ModuleContext<DrawingSettings>;
 
 function isCarrier(ctx: Ctx, node: CanvasNodeLike): boolean {
 	return nodeType(node) === "text" && ctx.data.node(node).get().kind === "ink";
+}
+
+/** Names the palette colors for people; other colors stay as they are. */
+const COLOR_KEYS: Record<string, I18nKey> = {
+	[INK_DEFAULT]: "drawing.color.black",
+	"#e03131": "drawing.color.red",
+	"#f08c00": "drawing.color.orange",
+	"#ffd43b": "drawing.color.yellow",
+	"#2f9e44": "drawing.color.green",
+	"#1971c2": "drawing.color.blue",
+	"#7048e8": "drawing.color.purple",
+	"#ffffff": "drawing.color.white",
+};
+function colorName(t: Translate, color: string): string {
+	const key = COLOR_KEYS[color.toLowerCase()];
+	return key ? t(key) : color;
 }
 
 /** Lines and shapes in the default ink color keep the theme's text color instead. */
@@ -84,6 +102,7 @@ class InkSession {
 			hasSelection: () => this.selection.size > 0,
 			lockSelection: () => this.lockSelection(),
 			close: () => this.onClose(),
+			colorName: (color) => colorName(ctx.t, color),
 		});
 		wrapper.addClass("opc-drawing");
 		this.overlay.addEventListener("pointerdown", this.onDown);
@@ -131,6 +150,10 @@ class InkSession {
 			if (this.ctx.settings.penOnly) return;
 		}
 		if (evt.pointerType === "mouse" && evt.button !== 0) return; // middle/right: core panning
+		// A pen or mouse can't press twice: the last stroke lost its release (it happens on
+		// tablets). Finish it instead of ignoring the pen from now on.
+		const stale = this.current;
+		if (stale && evt.pointerType !== "touch" && evt.pointerId !== stale.pointerId) this.onUp(new PointerEvent("pointerup", { pointerId: stale.pointerId }));
 		if (this.canvas.readonly || this.current) return;
 		evt.preventDefault();
 		evt.stopPropagation();
@@ -205,7 +228,7 @@ class InkSession {
 				if (cur.mode === "erase") this.ctx.events.emit("strokes-erased", this.canvas, 1);
 			}
 		} catch (error) {
-			console.error("[overpowered-canvas] drawing failed", error);
+			logError("[overpowered-canvas] drawing failed", error);
 		}
 		this.renderSelection();
 	};
@@ -283,7 +306,7 @@ class InkSession {
 		}
 		const tool = this.tool as PenTool;
 		const path = this.preview.createSvg("path", { cls: tool === "highlighter" ? ["opc-ink-live", "is-highlighter"] : "opc-ink-live" });
-		path.setAttribute("d", strokePath(cur.points, tool, this.size(tool), s.smoothing));
+		path.setAttribute("d", strokePath(cur.points, tool, this.size(tool), s.smoothing, !s.pressure));
 		path.setAttribute("fill", s.color);
 		path.style.opacity = tool === "highlighter" ? "0.35" : tool === "pencil" ? "0.85" : "1";
 	}
@@ -302,7 +325,7 @@ class InkSession {
 		const tool = this.tool as PenTool;
 		if (recognized) return this.commitShape(recognized);
 		if (points.length === 1) points.push({ ...points[0]!, x: points[0]!.x + 0.1 });
-		const style = { tool, color: s.color, size: this.size(tool), smoothing: s.smoothing };
+		const style = { tool, color: s.color, size: this.size(tool), smoothing: s.smoothing, uniform: !s.pressure };
 		const box = bounds(points, style.size);
 		// Drawn on a card: the stroke sticks to it, in that card's own ink.
 		const anchor = s.stickToCards ? cardUnder(points, stickyTargets(this.ctx, this.canvas)) : null;
@@ -397,7 +420,7 @@ class InkSession {
 				carrier.moveAndResize(fit.box);
 				this.ctx.data.node(carrier).set({ strokes: fit.strokes }, { history: false });
 			} catch (error) {
-				console.error("[overpowered-canvas] erase failed", error);
+				logError("[overpowered-canvas] erase failed", error);
 			}
 		}
 	}
@@ -535,7 +558,10 @@ export const drawingModule = defineModule<DrawingSettings>({
 	defaultEnabled: true,
 	defaultSettings: DRAWING_DEFAULTS,
 	overlapsWith: ["canvas-kit"],
-	sanitizeSettings: (raw, defaults) => mergeWithDefaults(raw, defaults),
+	sanitizeSettings: (raw, defaults) => {
+		const s = mergeWithDefaults(raw, defaults);
+		return { ...s, pressure: typeof s.pressure === "boolean" ? s.pressure : defaults.pressure, pens: sanitizePens((raw as { pens?: unknown } | undefined)?.pens, defaults.pens) };
+	},
 
 	enable(ctx) {
 		const sessions = new Map<CanvasLike, InkSession>();
@@ -560,6 +586,7 @@ export const drawingModule = defineModule<DrawingSettings>({
 		ctx.intercept("node-start-editing", (node) => (isCarrier(ctx, node) ? true : undefined));
 
 		const stop = (canvas: CanvasLike) => {
+			releaseTool(canvas, "drawing");
 			const session = sessions.get(canvas);
 			if (!session) return;
 			sessions.delete(canvas);
@@ -568,6 +595,8 @@ export const drawingModule = defineModule<DrawingSettings>({
 		};
 		const start = (canvas: CanvasLike) => {
 			if (sessions.has(canvas) || canvas.readonly) return;
+			// The lasso or the highlighter ends first.
+			claimTool(canvas, "drawing", () => stop(canvas));
 			canvas.deselectAll();
 			sessions.set(canvas, new InkSession(ctx, canvas, () => stop(canvas), rerender));
 			ctx.events.emit("drawing-mode-changed", canvas, ctx.settings.tool);

@@ -6,6 +6,7 @@ import { en } from "../i18n/locales/en";
 import { renderTutorialList, type TutorialListHost } from "../tutorials/list";
 import { FolderPickModal, splitFolder, type MoveResult } from "./files-folder";
 import { cleanFolderPath, type PluginSettings } from "./settings";
+import { logError } from "../core/log";
 
 export interface SettingsTabHost {
 	readonly settings: PluginSettings;
@@ -238,7 +239,7 @@ export class OpcSettingTab extends PluginSettingTab {
 						const kept = result.kept ? ` ${t("settings.filesFolder.kept", { count: result.kept })}` : "";
 						new Notice(t("settings.filesFolder.done", { path: to, count: result.moved }) + kept);
 					} catch (error) {
-						console.error("[overpowered-canvas] could not move the plugin's files", error);
+						logError("[overpowered-canvas] could not move the plugin's files", error);
 						new Notice(t("settings.filesFolder.failed"));
 					}
 					this.update();

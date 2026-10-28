@@ -7,6 +7,7 @@ import { TextPromptModal } from "../../ui/text-prompt";
 import { CONNECTOR, CONNECTOR_Z } from "../free-lines/render";
 import { mutate, nodeType, onlyNodes, randomId, renderedZ, selectedNodes } from "../shared";
 import { BASE_LAYER, cardZ, groupZ, heirOf, layerIndex, layersOf, MAX_LAYERS, moveLayer, neighborLayer, nextLayerName } from "./logic";
+import { logError } from "../../core/log";
 
 export const LAYERS_VIEW = "opc-layers";
 
@@ -522,7 +523,7 @@ export const layersModule = defineModule({
 						new Notice(ctx.t("layers.revealed", { name: active.name }));
 					}
 				} catch (error) {
-					console.error("[overpowered-canvas] layers: could not place a new item on the active layer", error);
+					logError("[overpowered-canvas] layers: could not place a new item on the active layer", error);
 				}
 			});
 		});
@@ -566,7 +567,7 @@ export const layersModule = defineModule({
 					if (!state.layered(canvas)) return;
 					ctx.data.root(canvas).set({ activeLayer: id }, { history: false });
 				} catch (error) {
-					console.error("[overpowered-canvas] layers: could not set the active layer", error);
+					logError("[overpowered-canvas] layers: could not set the active layer", error);
 				}
 			},
 			rename: (canvas, id) => {

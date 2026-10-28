@@ -201,3 +201,33 @@ body.opc-mod-drawing .opc-ink-more-row {
 		height: 28px;
 	}
 }
+
+/* Pen rack: saved pens, each in its own color with a dot for its width. */
+body.opc-mod-drawing .opc-ink-pen {
+	position: relative;
+	color: var(--swatch);
+	padding: 4px 6px;
+}
+body.opc-mod-drawing .opc-ink-pen.is-active {
+	outline: 2px solid var(--interactive-accent);
+	outline-offset: 1px;
+}
+body.opc-mod-drawing .opc-ink-pen-dot {
+	position: absolute;
+	right: 1px;
+	bottom: 1px;
+	border-radius: 50%;
+	background: var(--swatch);
+	border: 1px solid var(--background-primary);
+}
+/* No pressure: a square dot. */
+body.opc-mod-drawing .opc-ink-pen.is-uniform .opc-ink-pen-dot {
+	border-radius: 2px;
+}
+/* The default ink is drawn light in dark themes. */
+body.theme-dark.opc-mod-drawing .opc-ink-pen[style*="#1e1e1e"] {
+	color: #e8e8e8;
+}
+body.theme-dark.opc-mod-drawing .opc-ink-pen[style*="#1e1e1e"] .opc-ink-pen-dot {
+	background: #e8e8e8;
+}

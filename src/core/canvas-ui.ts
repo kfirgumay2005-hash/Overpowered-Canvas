@@ -9,6 +9,7 @@ import { SCHEMA_KEY, type OpcEdge, type OpcNode } from "../data/schema";
 import type { CanvasEdgeLike, CanvasItemLike, CanvasLike, CanvasMenuLike, CanvasNodeLike, CanvasViewLike, Point } from "../internals/types";
 import type { CanvasHooks } from "./canvas-hooks";
 import type { CanvasTracker } from "./canvas-tracker";
+import { logError } from "./log";
 
 export interface NodeDecorator {
 	/** Called after render, setData and our own writes. Must be idempotent and cheap. */
@@ -124,7 +125,7 @@ export class CanvasUi {
 				decorator.apply(node, readNode(node.unknownData[SCHEMA_KEY]));
 				if (node.isEditing) mirrorToFrame(node);
 			} catch (error) {
-				console.error("[overpowered-canvas] node decorator failed", error);
+				logError("[overpowered-canvas] node decorator failed", error);
 			}
 		};
 		// The editor iframe is created asynchronously after edit mode starts.
@@ -163,7 +164,7 @@ export class CanvasUi {
 			try {
 				decorator.apply(edge, readEdge(edge.unknownData[SCHEMA_KEY]));
 			} catch (error) {
-				console.error("[overpowered-canvas] edge decorator failed", error);
+				logError("[overpowered-canvas] edge decorator failed", error);
 			}
 		};
 		const offs = [this.hooks.on("edge-render", run), this.hooks.on("edge-set-data", run), this.hooks.on("edge-extra-change", run)];
@@ -262,7 +263,7 @@ export class CanvasUi {
 					try {
 						if (s.handle(canvas, evt)) return false;
 					} catch (error) {
-						console.error("[overpowered-canvas] key handler failed", error);
+						logError("[overpowered-canvas] key handler failed", error);
 					}
 				}
 				return true;
@@ -296,7 +297,7 @@ export class CanvasUi {
 				try {
 					canvas.menu.render(true);
 				} catch (error) {
-					console.error("[overpowered-canvas] menu re-render failed", error);
+					logError("[overpowered-canvas] menu re-render failed", error);
 				}
 			}
 		}
@@ -312,7 +313,7 @@ export class CanvasUi {
 			try {
 				visible = spec.isVisible(selection, canvas);
 			} catch (error) {
-				console.error(`[overpowered-canvas] menu button ${spec.id} failed`, error);
+				logError(`[overpowered-canvas] menu button ${spec.id} failed`, error);
 			}
 			if (!visible) continue;
 			const button = menu.menuEl.createEl("button", { cls: `clickable-icon opc-menu-button opc-menu-${spec.id}` });
@@ -326,7 +327,7 @@ export class CanvasUi {
 				try {
 					spec.onClick({ canvas, selection: [...canvas.selection], buttonEl: button, evt });
 				} catch (error) {
-					console.error(`[overpowered-canvas] menu button ${spec.id} failed`, error);
+					logError(`[overpowered-canvas] menu button ${spec.id} failed`, error);
 				}
 			});
 		}

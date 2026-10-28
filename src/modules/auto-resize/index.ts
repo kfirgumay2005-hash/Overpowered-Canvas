@@ -1,11 +1,12 @@
-import { Setting } from "obsidian";
+import { type Menu, Setting } from "obsidian";
 import { defineModule, type ModuleContext } from "../../core/module";
 import type { OpcNode } from "../../data/schema";
 import type { I18nKey } from "../../i18n";
 import type { CanvasLike, CanvasNodeLike } from "../../internals/types";
 import { mergeWithDefaults } from "../../settings/settings";
 import { showPicker } from "../../ui/picker";
-import { common, isTextBox, mutate, nodeType, onlyNodes, onlyTextBoxes } from "../shared";
+import { common, isTextBox, mutate, nodeType, onlyNodes, onlyTextBoxes, selectedNodes } from "../shared";
+import { logError } from "../../core/log";
 
 interface AutoResizeSettings {
 	/** "Fit text" cards grow up to this width (canvas units), then their lines wrap. */
@@ -278,7 +279,7 @@ export const autoResizeModule = defineModule<AutoResizeSettings>({
 							try {
 								ctx.data.node(node).set(PATCH.fit, { history: false });
 							} catch (error) {
-								console.error("[overpowered-canvas] auto-resize: fitting a new card failed", error);
+								logError("[overpowered-canvas] auto-resize: fitting a new card failed", error);
 							}
 						return node;
 					},
@@ -293,6 +294,71 @@ export const autoResizeModule = defineModule<AutoResizeSettings>({
 				for (const node of nodes) ctx.data.node(node).set(PATCH.fit);
 			});
 		};
+		/**
+		 * One-off: the selected text and note cards get the height their text needs, top-left
+		 * corner fixed. Cards off screen are drawn first so they can be measured. One undo step.
+		 */
+		const expandToText = async (canvas: CanvasLike, nodes: CanvasNodeLike[]) => {
+			nodes = nodes.filter((n) => nodeType(n) === "text" || nodeType(n) === "file");
+			if (!nodes.length || canvas.readonly) return;
+			for (const n of nodes) if (!n.isAttached) n.attach();
+			for (const n of nodes) n.render();
+			const win = canvas.wrapperEl.win;
+			const frame = () => new Promise<void>((r) => win.requestAnimationFrame(() => r()));
+			const settle = async () => {
+				await frame();
+				await frame();
+				await new Promise<void>((r) => win.setTimeout(r, 80));
+			};
+			// Markdown renders over a few frames, and the text can reflow once the card is taller:
+			// measure and resize until nothing changes, then save it all as one step.
+			const original = new Map(nodes.map((n) => [n, n.height]));
+			const min = canvas.config.minContainerDimension;
+			await settle();
+			for (let pass = 0; pass < 4; pass++) {
+				let changed = false;
+				for (const n of nodes) {
+					const target = neededHeight(n);
+					if (target === null) continue;
+					const height = Math.max(min, Math.round(target));
+					if (Math.abs(height - n.height) <= 1) continue;
+					n.resize({ width: n.width, height });
+					n.render();
+					changed = true;
+				}
+				if (!changed) break;
+				await settle();
+			}
+			const heights = new Map(nodes.map((n) => [n, n.height]));
+			for (const [n, h] of original) n.resize({ width: n.width, height: h });
+			mutate(ctx, canvas, () => {
+				for (const [n, height] of heights) {
+					if (height === original.get(n)) continue;
+					n.moveAndResize({ x: n.x, y: n.y, width: n.width, height });
+					n.render();
+				}
+			});
+			canvas.requestFrame();
+		};
+		const expandItem = (menu: Menu, canvas: CanvasLike, nodes: CanvasNodeLike[]) => {
+			if (canvas.readonly || !nodes.some((n) => nodeType(n) === "text" || nodeType(n) === "file")) return;
+			menu.addItem((item) => item.setSection("action").setTitle(ctx.t("autoResize.expand")).setIcon("unfold-vertical").onClick(() => void expandToText(canvas, nodes)));
+		};
+		ctx.onSelectionMenu((menu, canvas) => expandItem(menu, canvas, selectedNodes(canvas)));
+		ctx.onNodeMenu((menu, node) => expandItem(menu, node.canvas, [node]));
+		ctx.addCommand({
+			id: "expand-to-text",
+			name: ctx.t("autoResize.expand"),
+			icon: "unfold-vertical",
+			checkCallback: (checking) => {
+				const canvas = ctx.activeCanvas();
+				const nodes = canvas ? selectedNodes(canvas) : [];
+				if (!canvas || canvas.readonly || !nodes.length) return false;
+				if (!checking) void expandToText(canvas, nodes);
+				return true;
+			},
+		});
+
 		ctx.addCommand({
 			id: "fit-cards",
 			name: ctx.t("autoResize.fitAll"),

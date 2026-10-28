@@ -4,7 +4,7 @@
  * "Show me" button that does the task on the board. Closing the tutorial (or its tab) deletes
  * the temporary canvas and puts back the settings the tutorial may have changed.
  */
-import { normalizePath, Notice, setIcon, setTooltip, TFile, TFolder, type App, type EventRef, type WorkspaceLeaf } from "obsidian";
+import { normalizePath, Notice, Platform, setIcon, setTooltip, TFile, TFolder, type App, type EventRef, type WorkspaceLeaf } from "obsidian";
 import type { CanvasHooks } from "../core/canvas-hooks";
 import type { HistoryApi } from "../core/history";
 import type { ModuleManager } from "../core/module-manager";
@@ -17,6 +17,7 @@ import type { CanvasLike, CanvasNodeLike, CanvasViewLike } from "../internals/ty
 import { extraOf } from "./board";
 import { renderRich } from "./rich";
 import type { TutorialDefinition, TutorialRuntime, TutorialStep } from "./types";
+import { logError } from "../core/log";
 
 /** The tutorials' folder inside the plugin's files folder (a plugin setting). */
 export const TUTORIALS_FOLDER_NAME = "Tutorials";
@@ -132,7 +133,7 @@ export class TutorialRunner {
 			await this.writeFiles(def, folder);
 			file = await this.writeBoard(def, folder);
 		} catch (error) {
-			console.error("[overpowered-canvas] could not create the tutorial canvas", error);
+			logError("[overpowered-canvas] could not create the tutorial canvas", error);
 			new Notice(t("tutorial.createFailed"));
 			return;
 		}
@@ -182,7 +183,7 @@ export class TutorialRunner {
 		try {
 			await this.host.app.fileManager.trashFile(item);
 		} catch (error) {
-			console.error("[overpowered-canvas] could not delete a tutorial file", error);
+			logError("[overpowered-canvas] could not delete a tutorial file", error);
 		}
 	}
 
@@ -219,7 +220,7 @@ export class TutorialRunner {
 				for (const leaf of app.workspace.getLeavesOfType("markdown")) if ((leaf.view as { file?: TFile | null }).file === child) leaf.detach();
 				await app.fileManager.trashFile(child);
 			} catch (error) {
-				console.error("[overpowered-canvas] could not delete a tutorial note", error);
+				logError("[overpowered-canvas] could not delete a tutorial note", error);
 			}
 		}
 	}
@@ -276,7 +277,7 @@ export class TutorialRunner {
 			const current = this.host.app.vault.getAbstractFileByPath(file.path);
 			if (current instanceof TFile) await this.host.app.fileManager.trashFile(current);
 		} catch (error) {
-			console.error("[overpowered-canvas] could not delete the tutorial canvas", error);
+			logError("[overpowered-canvas] could not delete the tutorial canvas", error);
 		}
 		await this.removeFolderIfEmpty();
 	}
@@ -411,7 +412,7 @@ class Session {
 		try {
 			this.step.enter?.(this.rt);
 		} catch (error) {
-			console.error("[overpowered-canvas] tutorial step setup failed", error);
+			logError("[overpowered-canvas] tutorial step setup failed", error);
 		}
 		if (this.step.focus) this.rt.look(this.step.focus);
 		else if (index === 0 || !this.boardInView()) this.rt.look();
@@ -479,7 +480,7 @@ class Session {
 			this.focusCanvasLeaf();
 			await demo(this.rt);
 		} catch (error) {
-			console.error("[overpowered-canvas] tutorial demo failed", error);
+			logError("[overpowered-canvas] tutorial demo failed", error);
 		} finally {
 			// A demo's last change may only show up on the next check.
 			this.evaluate();
@@ -552,6 +553,11 @@ class Session {
 			const text = task.createDiv({ cls: "opc-tutorial-task-text" });
 			text.createDiv({ cls: "opc-tutorial-task-label", text: t(done ? "tutorial.taskDone" : "tutorial.task") });
 			renderRich(text.createDiv(), t(step.task));
+			if (step.touch && Platform.isMobile) {
+				const touch = text.createDiv({ cls: "opc-tutorial-touch" });
+				setIcon(touch.createSpan({ cls: "opc-tutorial-touch-icon" }), "hand");
+				renderRich(touch.createSpan(), t(step.touch));
+			}
 			if (celebrate) burst(task);
 			if (step.demo && !done) {
 				const show = task.createEl("button", { cls: "opc-tutorial-demo" });

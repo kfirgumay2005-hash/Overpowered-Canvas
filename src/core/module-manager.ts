@@ -13,6 +13,7 @@ import type { HistoryApi } from "./history";
 import type { AnyModule, ModuleContext, PluginInspector } from "./module";
 import type { Patcher } from "./patcher";
 import { sortByDependencies } from "./dependencies";
+import { logError } from "./log";
 
 export interface ModuleHost {
 	readonly app: App;
@@ -165,7 +166,7 @@ export class ModuleManager {
 		try {
 			return def.sanitizeSettings ? def.sanitizeSettings(stored, defaults) : mergeWithDefaults(stored, defaults);
 		} catch (error) {
-			console.error(`[overpowered-canvas] settings of "${def.id}" are invalid; using defaults`, error);
+			logError(`[overpowered-canvas] settings of "${def.id}" are invalid; using defaults`, error);
 			return { ...defaults };
 		}
 	}
@@ -177,7 +178,7 @@ export class ModuleManager {
 			try {
 				listener(mod.current, prev);
 			} catch (error) {
-				console.error(`[overpowered-canvas] settings listener of "${mod.def.id}" threw`, error);
+				logError(`[overpowered-canvas] settings listener of "${mod.def.id}" threw`, error);
 			}
 		}
 	}
@@ -331,7 +332,7 @@ export class ModuleManager {
 		try {
 			await def.enable(ctx);
 		} catch (error) {
-			console.error(`[overpowered-canvas] module "${def.id}" failed to enable`, error);
+			logError(`[overpowered-canvas] module "${def.id}" failed to enable`, error);
 			this.teardown(mod);
 			this.failed.add(def.id);
 			new Notice(host.t()("module.enable.failed", { module: host.t()(def.name) }));
@@ -357,12 +358,12 @@ export class ModuleManager {
 		try {
 			mod.def.disable?.();
 		} catch (error) {
-			console.error(`[overpowered-canvas] module "${mod.def.id}" threw in disable()`, error);
+			logError(`[overpowered-canvas] module "${mod.def.id}" threw in disable()`, error);
 		}
 		try {
 			mod.component.unload();
 		} catch (error) {
-			console.error(`[overpowered-canvas] cleanup of "${mod.def.id}" failed`, error);
+			logError(`[overpowered-canvas] cleanup of "${mod.def.id}" failed`, error);
 		}
 	}
 }
@@ -373,7 +374,7 @@ function workspaceOn(app: App, name: string, cb: (...args: unknown[]) => void) {
 		try {
 			cb(...args);
 		} catch (error) {
-			console.error(`[overpowered-canvas] ${name} handler failed`, error);
+			logError(`[overpowered-canvas] ${name} handler failed`, error);
 		}
 	});
 }
