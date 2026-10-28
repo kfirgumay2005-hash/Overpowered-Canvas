@@ -8,7 +8,7 @@ const pathCache = new WeakMap<Stroke, string>();
 export function strokeD(s: Stroke): string {
 	let d = pathCache.get(s);
 	if (d === undefined) {
-		d = strokePath(unpack(s.pts, s.tilt), s.tool, s.size, s.smoothing);
+		d = strokePath(unpack(s.pts, s.tilt), s.tool, s.size, s.smoothing, s.uniform);
 		pathCache.set(s, d);
 	}
 	return d;

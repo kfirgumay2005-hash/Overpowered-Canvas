@@ -15,6 +15,7 @@ import { countItems, isOutline, stripFrontmatter, writeOutline } from "./outline
 import { DataStore } from "./store";
 import { buildStructure } from "./structure";
 import { TUTORIAL_KEY } from "../../tutorials/runner";
+import { logError } from "../../core/log";
 
 interface CanvasMarkdownSettings {
 	indent: "tab" | "4" | "2";
@@ -194,7 +195,7 @@ export const canvasMarkdownModule = defineModule<CanvasMarkdownSettings>({
 		};
 
 		const fail = (error: unknown) => {
-			console.error("[overpowered-canvas] canvas-markdown:", error);
+			logError("[overpowered-canvas] canvas-markdown:", error);
 			new Notice(t("canvasMarkdown.failed"));
 		};
 

@@ -419,3 +419,18 @@ body.mod-rtl .opc-tutorial-arrow svg {
 body.mod-rtl .opc-tutorials-card-go svg {
 	transform: scaleX(-1);
 }
+
+/* How to do a keyboard task by touch (phones and tablets). */
+.opc-tutorial-touch {
+	display: flex;
+	gap: var(--size-2-2);
+	align-items: flex-start;
+	margin-top: var(--size-2-2);
+	font-size: var(--font-ui-small);
+	color: var(--text-muted);
+}
+.opc-tutorial-touch-icon {
+	display: inline-flex;
+	flex-shrink: 0;
+	--icon-size: var(--icon-xs);
+}

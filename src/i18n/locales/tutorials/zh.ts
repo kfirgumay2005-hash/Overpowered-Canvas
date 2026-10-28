@@ -519,4 +519,13 @@ export const tutorialsZh: Record<keyof typeof tutorialsEn, string> = {
 	"tut.pdf.s3.task": "在某一页上画一个标记。",
 	"tut.pdf.s4.title": "小贴士",
 	"tut.pdf.s4.body": "右键点击固定的页面 → **取消固定 PDF 页面** 可恢复可滚动的查看器。插入页面的宽度可以在设置（*PDF 批注*）中调整。PDF 文件本身永远不会被修改。",
+	"tut.basics.s8.touch": "没有键盘？打开命令面板，运行 **撤销**。",
+	"tut.notes.s1.touch": "没有键盘？长按粉色便签 → **在右侧添加下一张便签**。",
+	"tut.notes.s2.touch": "没有键盘？长按一张便签 → **在下方添加下一张便签**。",
+	"tut.present.s5.touch": "没有键盘？点按屏幕角落的 **›**。",
+	"tut.present.s6.touch": "没有键盘？点按屏幕角落的 **✕**。",
+	"tut.mindmap.s1.touch": "没有键盘？长按 **京都** → **添加子卡片**。",
+	"tut.mindmap.s2.touch": "没有键盘？长按一张卡片（不是中心卡片）→ **添加同级卡片**。",
+	"tut.markdown.s3.touch": "没有键盘？打开命令面板，运行 **将 Markdown 大纲粘贴为思维导图**。",
+	"tut.dir.s4.touch": "没有键盘？长按导图卡片 → **添加子卡片**。",
 };

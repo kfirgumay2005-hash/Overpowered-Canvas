@@ -1,19 +1,26 @@
-import { Notice, setIcon, setTooltip } from "obsidian";
+import { Notice, Setting, setIcon, setTooltip } from "obsidian";
 import { defineModule, type ModuleContext } from "../../core/module";
 import type { CanvasLike, CanvasNodeLike } from "../../internals/types";
 import { mergeWithDefaults } from "../../settings/settings";
-import { capturePointer, isTextBox, mutate, nodeType } from "../shared";
-import { align, rehighlight, sourceRange, toWords, unhighlight } from "./source";
+import { capturePointer, claimTool, isTextBox, mutate, nodeType, releaseTool } from "../shared";
+import { locate, rehighlight, toWords, unhighlight, withoutHighlights } from "./source";
+import { logWarn } from "../../core/log";
 
 interface HighlightSettings {
 	/** Highlight color: "" for the theme's own highlight, else a CSS color. */
 	color: string;
+	/** Extra colors of the user's own, shown after the built-in ones. */
+	customColors: string[];
 }
 
 type Ctx = ModuleContext<HighlightSettings>;
 
 /** "" = the theme's highlight (==text==). */
 const COLORS = ["", "#ffd43b", "#8ce99a", "#74c0fc", "#faa2c1", "#ffa94d"];
+const HEX = /^#[0-9a-f]{6}$/i;
+/** Most extra colors the bar shows. */
+const MAX_CUSTOM = 12;
+
 /** Marks drawn in a chosen color are this opaque, so the text stays readable. */
 const ALPHA = "80";
 /** The theme's highlight color (some themes leave it unset). */
@@ -53,6 +60,7 @@ class HighlightSession {
 		this.overlay.addEventListener("pointermove", this.onMove);
 		this.overlay.addEventListener("pointerup", this.onUp);
 		this.overlay.addEventListener("pointercancel", this.onCancel);
+		this.overlay.addEventListener("lostpointercapture", this.onLost);
 		wrapper.win.addEventListener("keydown", this.onKey, true);
 		wrapper.addClass("opc-highlighting");
 	}
@@ -70,7 +78,7 @@ class HighlightSession {
 	private renderBar(): void {
 		const t = this.ctx.t;
 		this.bar.empty();
-		for (const color of COLORS) {
+		for (const color of [...COLORS, ...this.ctx.settings.customColors.filter((c) => !COLORS.includes(c))]) {
 			const b = this.bar.createEl("button", { cls: "opc-hl-swatch clickable-icon" });
 			if (color) b.style.setProperty("--opc-hl-color", color);
 			else b.addClass("is-theme");
@@ -162,6 +170,8 @@ class HighlightSession {
 			if (penSeen) return;
 		}
 		if (e.pointerType === "mouse" && e.button !== 0) return;
+		// A pen or mouse can't press twice: the last gesture lost its release (tablets), drop it.
+		if (this.gesture && e.pointerType !== "touch") this.dropGesture();
 		if (this.gesture || this.canvas.readonly) return;
 		const node = this.cardAt(e.clientX, e.clientY);
 		if (!node) return; // empty space: the board pans as usual
@@ -200,12 +210,21 @@ class HighlightSession {
 	};
 
 	private onCancel = (e: PointerEvent) => {
+		if (this.gesture && e.pointerId === this.gesture.pointerId) this.dropGesture();
+	};
+
+	/** Capture lost without a release: apply what was swiped, as a release there would. */
+	private onLost = (e: PointerEvent) => {
+		if (this.gesture && e.pointerId === this.gesture.pointerId) this.onUp(e);
+	};
+
+	private dropGesture(): void {
 		const g = this.gesture;
-		if (!g || e.pointerId !== g.pointerId) return;
+		if (!g) return;
 		this.gesture = null;
 		this.marks.empty();
 		g.restore();
-	};
+	}
 
 	/** Rendered-text offsets of the gesture, widened to whole words. */
 	private span(node: CanvasNodeLike, a: Caret, b: Caret): { rendered: string; from: number; to: number } | null {
@@ -248,7 +267,7 @@ class HighlightSession {
 		if (!s) return;
 		const data = node.getData();
 		const source = typeof data.text === "string" ? data.text : "";
-		const range = sourceRange(align(s.rendered, source), s.from, s.to);
+		const range = locate(s.rendered, source, s.from, s.to);
 		if (!range) {
 			new Notice(this.ctx.t("textHighlight.notFound"));
 			return;
@@ -256,6 +275,12 @@ class HighlightSession {
 		const color = this.ctx.settings.color;
 		const next = this.erase ? unhighlight(source, range[0], range[1]) : rehighlight(source, range[0], range[1], { color: color ? color + ALPHA : "" });
 		if (next === source) return;
+		// Only highlight marks may change: anything else means the words were placed wrong.
+		if (withoutHighlights(next) !== withoutHighlights(source)) {
+			logWarn("[overpowered-canvas] text-highlight: skipped an edit that would change the text", { picked: s.rendered.slice(s.from, s.to), range });
+			new Notice(this.ctx.t("textHighlight.notFound"));
+			return;
+		}
 		mutate(this.ctx, this.canvas, () => node.setData({ ...node.getData(), text: next }));
 		this.ctx.events.emit("text-highlighted", this.canvas, node);
 	}
@@ -290,23 +315,29 @@ export const textHighlightModule = defineModule<HighlightSettings>({
 	description: "textHighlight.desc",
 	group: "drawing",
 	defaultEnabled: true,
-	defaultSettings: { color: "" },
+	defaultSettings: { color: "", customColors: [] },
 	sanitizeSettings: (raw, defaults) => {
 		const s = mergeWithDefaults(raw, defaults);
-		return { color: typeof s.color === "string" && (s.color === "" || /^#[0-9a-f]{6}$/i.test(s.color)) ? s.color : defaults.color };
+		const custom = Array.isArray(s.customColors) ? s.customColors.filter((c): c is string => typeof c === "string" && HEX.test(c)).map((c) => c.toLowerCase()) : [];
+		return {
+			color: typeof s.color === "string" && (s.color === "" || HEX.test(s.color)) ? s.color.toLowerCase() : defaults.color,
+			customColors: [...new Set(custom)].slice(0, MAX_CUSTOM),
+		};
 	},
 
 	enable(ctx) {
 		const sessions = new Map<CanvasLike, HighlightSession>();
 		const refresh = (canvas: CanvasLike) => canvas.cardMenuEl.querySelector(".opc-card-text-highlight")?.toggleClass("is-active", sessions.has(canvas));
 		const stop = (canvas: CanvasLike) => {
+			releaseTool(canvas, "text-highlight");
 			sessions.get(canvas)?.destroy();
 			sessions.delete(canvas);
 			refresh(canvas);
 		};
 		const toggle = (canvas: CanvasLike) => {
 			if (sessions.has(canvas)) return stop(canvas);
-			if (canvas.readonly || canvas.wrapperEl.hasClass("opc-drawing") || canvas.wrapperEl.hasClass("opc-lasso-active")) return;
+			if (canvas.readonly) return;
+			claimTool(canvas, "text-highlight", () => stop(canvas));
 			canvas.deselectAll();
 			sessions.set(canvas, new HighlightSession(ctx, canvas, () => stop(canvas)));
 			refresh(canvas);
@@ -336,5 +367,41 @@ export const textHighlightModule = defineModule<HighlightSettings>({
 			},
 		});
 		ctx.addCanvasKey({ modifiers: [], key: "H", handle: (canvas) => (canvas.readonly ? false : (toggle(canvas), true)) });
+	},
+
+	renderSettings(el, ctx: ModuleContext<HighlightSettings>) {
+		const box = el.createDiv();
+		const render = () => {
+			box.empty();
+			const colors = ctx.settings.customColors;
+			const save = (next: string[]) => void ctx.updateSettings({ customColors: next }).then(render);
+			new Setting(box)
+				.setName(ctx.t("textHighlight.colors.name"))
+				.setDesc(ctx.t("textHighlight.colors.desc"))
+				.addButton((b) =>
+					b
+						.setButtonText(ctx.t("textHighlight.colors.add"))
+						.setDisabled(colors.length >= MAX_CUSTOM)
+						.onClick(() => save([...colors, "#b197fc"])),
+				);
+			colors.forEach((color, i) => {
+				new Setting(box)
+					.setName(ctx.t("textHighlight.colors.item", { n: String(i + 1) }))
+					.addColorPicker((c) =>
+						c.setValue(color).onChange((v) => {
+							const next = [...ctx.settings.customColors];
+							next[i] = v.toLowerCase();
+							void ctx.updateSettings({ customColors: next });
+						}),
+					)
+					.addExtraButton((b) =>
+						b
+							.setIcon("trash-2")
+							.setTooltip(ctx.t("textHighlight.colors.remove"))
+							.onClick(() => save(ctx.settings.customColors.filter((_, j) => j !== i))),
+					);
+			});
+		};
+		render();
 	},
 });

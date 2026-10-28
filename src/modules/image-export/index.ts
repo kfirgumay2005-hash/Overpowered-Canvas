@@ -4,6 +4,7 @@ import type { Translate } from "../../i18n";
 import { isCanvasView } from "../../internals/guards";
 import type { CanvasLike } from "../../internals/types";
 import { exportCanvasSvg, svgToPng, type ExportOptions } from "./exporter";
+import { logError } from "../../core/log";
 
 interface ExportSettings {
 	format: "png" | "svg";
@@ -119,7 +120,7 @@ export const imageExportModule = defineModule<ExportSettings>({
 				const where = await save(ctx.app, canvas.view.file, `${base}.${choice.format}`, out);
 				if (where) new Notice(ctx.t("imageExport.saved", { path: where }));
 			} catch (error) {
-				console.error("[overpowered-canvas] export failed", error);
+				logError("[overpowered-canvas] export failed", error);
 				new Notice(ctx.t("imageExport.failed"));
 			} finally {
 				notice.hide();

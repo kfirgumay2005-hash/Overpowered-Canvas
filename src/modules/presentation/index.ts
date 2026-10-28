@@ -1,4 +1,4 @@
-import { Notice, Setting } from "obsidian";
+import { Notice, Setting, setIcon } from "obsidian";
 import { defineModule, type ModuleContext } from "../../core/module";
 import type { OpcNode } from "../../data/schema";
 import { LOCALES } from "../../i18n";
@@ -7,6 +7,7 @@ import { NumberPromptModal } from "../../ui/number-prompt";
 import { mutate, nodeType, selectedEdges, selectedNodes } from "../shared";
 import { nextSlide, slideOrder, type SlideEdge } from "./path";
 import { enableWalk } from "./walker";
+import { logError } from "../../core/log";
 
 interface PresentationSettings {
 	slideWidth: number;
@@ -89,7 +90,7 @@ export const presentationModule = defineModule<PresentationSettings>({
 					const presentation = { ...ctx.data.root(canvas).get().presentation, last };
 					ctx.data.root(canvas).set({ presentation }, { history: false });
 				} catch (error) {
-					console.error("[overpowered-canvas] could not store the last slide", error);
+					logError("[overpowered-canvas] could not store the last slide", error);
 				}
 			}
 			ctx.events.emit("presentation-ended", canvas);
@@ -105,7 +106,22 @@ export const presentationModule = defineModule<PresentationSettings>({
 				return;
 			}
 			const wrapper = canvas.wrapperEl;
-			const counterEl = wrapper.createDiv({ cls: "opc-presentation-counter", attr: { "aria-live": "polite", dir: "ltr" } });
+			// Touch screens have no arrow keys: buttons to go back, forward and end.
+			const navEl = wrapper.createDiv({ cls: "opc-presentation-nav", attr: { dir: "ltr" } });
+			const navButton = (icon: string, label: string, run: () => void) => {
+				const btn = navEl.createEl("button", { cls: "clickable-icon", attr: { "aria-label": label } });
+				setIcon(btn, icon);
+				btn.addEventListener("pointerdown", (e) => e.stopPropagation());
+				btn.addEventListener("click", (e) => {
+					e.stopPropagation();
+					run();
+				});
+				return btn;
+			};
+			navButton("chevron-left", ctx.t("presentation.previous"), () => step(canvas, -1));
+			const counterEl = navEl.createSpan({ cls: "opc-presentation-counter", attr: { "aria-live": "polite" } });
+			navButton("chevron-right", ctx.t("presentation.next"), () => step(canvas, 1));
+			navButton("x", ctx.t("presentation.end"), () => exit(canvas));
 			const onKey = (evt: KeyboardEvent) => {
 				if (!sessions.has(canvas)) return;
 				if (NEXT_KEYS.has(evt.key)) step(canvas, 1);
@@ -140,7 +156,7 @@ export const presentationModule = defineModule<PresentationSettings>({
 					wrapper.doc.removeEventListener("fullscreenchange", onFullscreen);
 					if (fullscreen && wrapper.doc.fullscreenElement) void wrapper.doc.exitFullscreen().catch(() => {});
 					wrapper.removeClass("opc-presenting");
-					counterEl.remove();
+					navEl.remove();
 				},
 			};
 			sessions.set(canvas, session);

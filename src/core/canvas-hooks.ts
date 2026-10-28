@@ -14,6 +14,7 @@ import type { CanvasFileData } from "../data/json-canvas";
 import type { CanvasEdgeLike, CanvasLike, CanvasMenuLike, CanvasNodeLike, CanvasViewLike } from "../internals/types";
 import type { CanvasTracker } from "./canvas-tracker";
 import type { PatchFactories, Patcher } from "./patcher";
+import { logError } from "./log";
 
 export interface HookMap {
 	/** After node.render() (base class). */
@@ -135,7 +136,7 @@ export class CanvasHooks {
 			try {
 				(fn as Listener<K>)(...args);
 			} catch (error) {
-				console.error(`[overpowered-canvas] ${name} listener failed`, error);
+				logError(`[overpowered-canvas] ${name} listener failed`, error);
 			}
 		}
 	}
@@ -149,7 +150,7 @@ export class CanvasHooks {
 				const result = (fn as Interceptor<K>)(...args);
 				if (result !== undefined) return result;
 			} catch (error) {
-				console.error(`[overpowered-canvas] ${name} interceptor failed`, error);
+				logError(`[overpowered-canvas] ${name} interceptor failed`, error);
 			}
 		}
 		return undefined;
@@ -543,7 +544,7 @@ export class CanvasHooks {
 									try {
 										data = (fn as unknown as DataTransformer)(data, this);
 									} catch (error) {
-										console.error("[overpowered-canvas] data transformer failed", error);
+										logError("[overpowered-canvas] data transformer failed", error);
 									}
 								}
 								return data;
@@ -672,7 +673,7 @@ function safe(fn: () => void): void {
 	try {
 		fn();
 	} catch (error) {
-		console.error("[overpowered-canvas]", error);
+		logError("[overpowered-canvas]", error);
 	}
 }
 

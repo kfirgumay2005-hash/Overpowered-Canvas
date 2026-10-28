@@ -86,6 +86,8 @@ export interface CanvasNodeLike {
 	/** Adds nodeEl to the canvas DOM (virtualization). */
 	attach(): void;
 	startEditing(): void;
+	/** Right-click / long-press menu of this card (or of the selection when it holds several items). */
+	onContextMenu?(evt: MouseEvent): void;
 	focus(): void;
 	blur(): void;
 }
@@ -258,6 +260,8 @@ export interface CanvasLike {
 	handleSelectionDrag?(evt: PointerEvent, clickEl: HTMLElement, node?: CanvasNodeLike): SelectionDragLike | undefined;
 	/** The topmost node under a canvas point. */
 	hitTestNode?(pos: Point, margin: number): CanvasNodeLike | null;
+	/** The menu of a multi-item selection (right-click / long-press on it). */
+	onSelectionContextMenu?(evt: MouseEvent): void;
 	setReadonly(readonly: boolean): void;
 	getZIndex(): number;
 	rerenderViewport(): void;

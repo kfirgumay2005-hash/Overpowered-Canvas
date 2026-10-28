@@ -6,6 +6,7 @@ import type { CanvasLike, CanvasNodeLike } from "../../internals/types";
 import { mergeWithDefaults } from "../../settings/settings";
 import { showPicker } from "../../ui/picker";
 import { canvasDirection, common, mutate, nodeType, onlyNodes, onlyTextBoxes } from "../shared";
+import { logError } from "../../core/log";
 
 interface TextAlignSettings {
 	/** Center the text of every new card: not at all, horizontally, or horizontally and vertically. */
@@ -101,7 +102,7 @@ export const textAlignModule = defineModule<TextAlignSettings>({
 			try {
 				ctx.data.node(node).set(mode === "both" ? { align: "center", valign: "middle" } : { align: "center" }, { history: false });
 			} catch (error) {
-				console.error("[overpowered-canvas] text-align: centering a new card failed", error);
+				logError("[overpowered-canvas] text-align: centering a new card failed", error);
 			}
 		};
 		const patched = new WeakSet<object>();

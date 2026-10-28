@@ -12,6 +12,7 @@ import { childPosition, childrenOf, descendants, directionBetween, logical, pare
 import { canvasDirection, centerOn, isTextBox, mutate, nodeType, randomId, selectedNodes } from "../shared";
 import { blockAt, type Block } from "./block";
 import { CropModal, loadImage } from "./crop";
+import { logError } from "../../core/log";
 
 /** Wait before centering a dropped card; a card that fits its text is measured again once the view
  * reaches it, so it is centered a second time (unless the board was moved meanwhile). */
@@ -255,7 +256,7 @@ export const noteBlocksModule = defineModule<NoteBlocksSettings>({
 			const card: CanvasNodeLike = created;
 			const follow = ctx.settings.follow === "all" || (ctx.settings.follow === "targets" && !!target.zone);
 			// Center the card once the map has made room for it and the card has its final size.
-			const settled = parent ? relayout(canvas, card, sibling?.id).catch((e) => console.error("[overpowered-canvas] note-blocks layout", e)) : Promise.resolve();
+			const settled = parent ? relayout(canvas, card, sibling?.id).catch((e) => logError("[overpowered-canvas] note-blocks layout", e)) : Promise.resolve();
 			if (follow) void settled.then(() => window.setTimeout(() => followCard(canvas, card), FOLLOW_DELAY));
 			ctx.events.emit("note-block-dropped", canvas, card);
 			return card;
@@ -543,7 +544,7 @@ export const noteBlocksModule = defineModule<NoteBlocksSettings>({
 				canvas.importData({ nodes: [], edges: [{ id: randomId(), fromNode: parent.id, fromSide: SIDE[dir], toNode: root.id, toSide: OPPOSITE[dir], ...(color ? { color } : {}) }] }, false);
 			});
 			if (!ok) return;
-			void relayout(canvas, root, zone.kind === "sibling" ? target.id : undefined).catch((e) => console.error("[overpowered-canvas] note-blocks layout", e));
+			void relayout(canvas, root, zone.kind === "sibling" ? target.id : undefined).catch((e) => logError("[overpowered-canvas] note-blocks layout", e));
 			ctx.events.emit("card-relinked", canvas, root);
 		};
 

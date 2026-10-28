@@ -8,6 +8,7 @@ import { mergeWithDefaults } from "../../settings/settings";
 import { orderFrames } from "../frames/logic";
 import { canvasDirection, mutate, nodeType } from "../shared";
 import { columnAt, propertyMatches, slug, targetColumn, type Column } from "./logic";
+import { logError } from "../../core/log";
 
 interface KanbanSettings {
 	/** Move cards while the canvas is open when a note's property changes. */
@@ -114,7 +115,7 @@ export const kanbanModule = defineModule<KanbanSettings>({
 					})
 					.then(() => ctx.events.emit("kanban-moved", canvas, node, file, col.value))
 					.catch((error) => {
-						console.error("[overpowered-canvas] kanban: could not update", file.path, error);
+						logError("[overpowered-canvas] kanban: could not update", file.path, error);
 						new Notice(ctx.t("kanban.writeFailed", { name: file.basename }));
 					});
 			}

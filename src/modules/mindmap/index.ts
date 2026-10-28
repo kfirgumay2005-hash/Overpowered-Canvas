@@ -170,6 +170,11 @@ export const mindmapModule = defineModule<MindmapSettings>({
 
 		ctx.onNodeMenu((menu, node) => {
 			const canvas = node.canvas;
+			// Tab and Enter without a keyboard.
+			if (!canvas.readonly && nodeType(node) !== "group") {
+				menu.addItem((item) => item.setSection("action").setTitle(ctx.t("mindmap.addChild")).setIcon("git-branch-plus").onClick(() => addChild(canvas, node)));
+				if (parentOf(edgesOf(canvas), node.id)) menu.addItem((item) => item.setSection("action").setTitle(ctx.t("mindmap.addSibling")).setIcon("list-plus").onClick(() => addSibling(canvas, node)));
+			}
 			if (childrenOf(edgesOf(canvas), node.id).length === 0) return;
 			menu.addItem((item) => item.setSection("selection").setTitle(ctx.t("mindmap.selectSubtree")).setIcon("network").onClick(() => selectSubtree(canvas, node)));
 			if (!canvas.readonly) menu.addItem((item) => item.setSection("canvas").setTitle(ctx.t("mindmap.colorEdges")).setIcon("palette").onClick(() => colorEdges(canvas, [node])));

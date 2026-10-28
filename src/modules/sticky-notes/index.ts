@@ -1,6 +1,7 @@
 import { Setting } from "obsidian";
 import { defineModule, type ModuleContext } from "../../core/module";
 import type { OpcNode } from "../../data/schema";
+import type { I18nKey } from "../../i18n";
 import type { CanvasLike, CanvasNodeLike } from "../../internals/types";
 import { mergeWithDefaults } from "../../settings/settings";
 import { showPicker } from "../../ui/picker";
@@ -142,6 +143,42 @@ export const stickyNotesModule = defineModule<StickySettings>({
 		// Above the mind map keys, which take the same keys on other cards.
 		ctx.addCanvasKey({ modifiers: [], key: "Tab", priority: 10, handle: (canvas) => next(canvas, canvasDirection(canvas) === "rtl" ? "left" : "right") });
 		for (const [key, dir] of Object.entries(ARROWS)) ctx.addCanvasKey({ modifiers: ["Mod"], key, priority: 10, handle: (canvas) => next(canvas, dir) });
+
+		// The same without a keyboard: commands and the card menu of a sticky.
+		const SIDES: [Dir, string, I18nKey][] = [
+			["right", "arrow-right", "stickyNotes.next.right"],
+			["down", "arrow-down", "stickyNotes.next.down"],
+			["left", "arrow-left", "stickyNotes.next.left"],
+			["up", "arrow-up", "stickyNotes.next.up"],
+		];
+		for (const [dir, icon, key] of SIDES)
+			ctx.addCommand({
+				id: `next-sticky-${dir}`,
+				name: ctx.t(key),
+				icon,
+				checkCallback: (checking) => {
+					const canvas = ctx.activeCanvas();
+					const nodes = canvas ? selectedNodes(canvas) : [];
+					if (!canvas || canvas.readonly || nodes.length !== 1 || !isSticky(nodes[0]!, ctx.data.node(nodes[0]!).get())) return false;
+					if (!checking) next(canvas, dir);
+					return true;
+				},
+			});
+		ctx.onNodeMenu((menu, node) => {
+			const canvas = node.canvas;
+			if (canvas.readonly || !isSticky(node, ctx.data.node(node).get())) return;
+			for (const [dir, icon, key] of SIDES)
+				menu.addItem((item) =>
+					item
+						.setSection("action")
+						.setTitle(ctx.t(key))
+						.setIcon(icon)
+						.onClick(() => {
+							canvas.selectOnly(node);
+							next(canvas, dir);
+						}),
+				);
+		});
 
 		ctx.addCardMenuButton({
 			id: "sticky",

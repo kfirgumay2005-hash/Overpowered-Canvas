@@ -478,3 +478,28 @@ Automated runtime checks of every item below were run in an isolated Obsidian 1.
 4. Move it back to the vault root → files return. A file whose name already exists in the target
    stays where it was, and the notice says how many.
 5. An older settings file with the Canvas ⇄ Markdown *Data folder* option takes that folder over.
+
+## Manual — tester feedback, round 4 (iPad)
+
+1. Lasso on, select cards with it, then long-press inside the selection (pen and finger): the
+   selection menu opens (*Auto layout…*, *Expand cards to fit text*…). One card: its card menu.
+   Esc with the menu open closes only the menu; Esc again ends the lasso.
+2. Select cards whose text is cut off (one off screen) → *Expand cards to fit text*: each card
+   gets exactly its text height, top edge fixed; one undo step restores all.
+3. Highlighter on, then press the lasso / pen buttons: the tool switches every time (only one is
+   on). A pen press whose release got lost no longer blocks the next stroke.
+4. Highlight a word right after a colored highlight, and a word after a long link: the whole
+   word gets the mark, nothing else in the card changes. Settings → *Your highlight colors*: add,
+   change and remove colors; they show in the highlighter bar.
+5. Auto layout a mind map, then drag a card onto *Add as child* of one of its cards: the map
+   re-arranges with no overlaps.
+6. Drawing mode: the pen rack shows saved pens (tool icon in the pen's color, dot for its width,
+   square dot = no pressure). Tap one → tool, color, width and pressure switch. **+** saves the
+   current pen (hidden when it is already in the rack, up to 10); long-press / right-click a pen
+   → *Replace with the current pen* / *Remove from the rack*. More options → *Pressure changes
+   the width*.
+7. Diagnostics on → *Copy debug log* / *Save debug log to a note* list errors, plugin events and
+   pointer input. *Keep the log across restarts* → after a restart *Debug log (previous).md* holds
+   the earlier session.
+8. On a phone or tablet: tutorial steps that ask for a key show a "No keyboard?" line, and the
+   way it names (card menu items, *Undo*, the presentation's ‹ › ✕ buttons) completes the task.

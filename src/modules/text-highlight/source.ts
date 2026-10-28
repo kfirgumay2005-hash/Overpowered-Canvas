@@ -12,33 +12,85 @@ const HIGHLIGHTS = /==([^=\n]+)==|<mark\b[^>]*>([\s\S]*?)<\/mark>/g;
 /** List markers, quote markers and heading signs at the start of a source line. */
 const LINE_PREFIX = /^(\s*(?:[-*+]\s+(?:\[.\]\s+)?|\d+[.)]\s+|>\s?|#{1,6}\s+))*/;
 
+/** HTML tags, link targets, aliased link targets and comments: Markdown the card doesn't show. */
+const HIDDEN = [/<\/?[a-zA-Z][^>\n]*>/g, /\]\([^)\n]*\)/g, /\[\[[^\]|\n]*\|/g, /%%[\s\S]*?%%/g];
+
+/** The source characters that can show on the card, with the source index of each. */
+export function visible(source: string): { text: string; index: number[] } {
+	const hidden = new Uint8Array(source.length);
+	for (const re of HIDDEN) for (const m of source.matchAll(re)) hidden.fill(1, m.index, m.index + m[0].length);
+	let text = "";
+	const index: number[] = [];
+	for (let i = 0; i < source.length; i++)
+		if (!hidden[i]) {
+			text += source[i];
+			index.push(i);
+		}
+	return { text, index };
+}
+
+const isSpace = (c: string) => /\s/.test(c);
+const isWordChar = (c: string) => /[\p{L}\p{N}\p{M}]/u.test(c);
+
 /**
  * For each rendered character, the index of the source character it shows (or -1 for text
- * the renderer added, such as a callout's title). Greedy, in order.
+ * the renderer added, such as a callout's title). Greedy, in order, over the visible source; a
+ * space only matches a space before the next letter, so an extra rendered space never skips a word.
  */
 export function align(rendered: string, source: string): number[] {
+	const { text, index } = visible(source);
 	const map: number[] = [];
 	let j = 0;
 	for (const ch of rendered) {
-		const limit = Math.min(source.length, j + LOOKAHEAD);
+		const limit = Math.min(text.length, j + LOOKAHEAD);
 		let k = j;
-		while (k < limit && !same(source[k]!, ch)) k++;
-		if (k < limit) {
-			map.push(k);
+		if (isSpace(ch)) while (k < limit && !isSpace(text[k]!) && !isWordChar(text[k]!)) k++;
+		else while (k < limit && text[k] !== ch) k++;
+		if (k < limit && (isSpace(ch) ? isSpace(text[k]!) : true)) {
+			map.push(index[k]!);
 			j = k + 1;
 		} else map.push(-1);
 	}
 	return map;
 }
 
-function same(a: string, b: string): boolean {
-	return a === b || (/\s/.test(a) && /\s/.test(b));
+/**
+ * The source range of rendered characters [from, to). When the picked words appear verbatim in
+ * the visible source, the matching occurrence wins (the same one counting from the top, else the
+ * one nearest the aligned guess); otherwise the alignment decides.
+ */
+export function locate(rendered: string, source: string, from: number, to: number): [number, number] | null {
+	const guess = sourceRange(align(rendered, source), from, to);
+	const words = rendered.slice(from, to);
+	if (!words) return null;
+	const { text, index } = visible(source);
+	const hits: [number, number][] = [];
+	for (let i = text.indexOf(words); i >= 0; i = text.indexOf(words, i + 1)) {
+		const a = index[i]!;
+		const b = index[i + words.length - 1]!;
+		if (b - a === words.length - 1) hits.push([a, b + 1]);
+	}
+	if (!hits.length) return guess;
+	let nth = 0;
+	let total = 0;
+	for (let i = rendered.indexOf(words); i >= 0; i = rendered.indexOf(words, i + 1)) {
+		if (i < from) nth++;
+		total++;
+	}
+	if (total === hits.length) return hits[nth] ?? guess;
+	if (!guess) return hits.length === 1 ? hits[0]! : null;
+	return hits.reduce((best, h) => (Math.abs(h[0] - guess[0]) < Math.abs(best[0] - guess[0]) ? h : best));
+}
+
+/** The text with every highlight taken off: highlighting must change nothing else. */
+export function withoutHighlights(source: string): string {
+	return unhighlight(source, 0, source.length);
 }
 
 /** Widens [start, end) of `text` to whole words. */
 export function toWords(text: string, start: number, end: number): [number, number] {
 	if (start > end) [start, end] = [end, start];
-	const word = /[\p{L}\p{N}_'’-]/u;
+	const word = /[\p{L}\p{N}\p{M}_'’׳״-]/u;
 	while (start > 0 && word.test(text[start - 1]!) && word.test(text[start] ?? " ")) start--;
 	while (end < text.length && word.test(text[end]!) && end > 0 && word.test(text[end - 1]!)) end++;
 	// Leading and trailing spaces are not part of the highlight.

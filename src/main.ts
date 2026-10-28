@@ -19,6 +19,7 @@ import { sanitizeSettings, type PluginSettings } from "./settings/settings";
 import { TUTORIALS } from "./tutorials/catalog";
 import { TutorialListModal, type TutorialListHost } from "./tutorials/list";
 import { TutorialRunner } from "./tutorials/runner";
+import { logError } from "./core/log";
 
 export default class OverpoweredCanvasPlugin extends Plugin {
 	declare settings: PluginSettings;
@@ -35,7 +36,7 @@ export default class OverpoweredCanvasPlugin extends Plugin {
 
 		const history = createHistoryApi();
 		const tracker = new CanvasTracker(this.app, (problems) => {
-			console.error("[overpowered-canvas] Canvas internals changed; this canvas is left untouched.", problems);
+			logError("[overpowered-canvas] Canvas internals changed; this canvas is left untouched.", problems);
 		});
 		const hooks = (this.hooks = new CanvasHooks(this.patcher, tracker));
 		const saveGuard = new SaveGuard(this.patcher, tracker, () => this.translate("saveGuard.dropped"));

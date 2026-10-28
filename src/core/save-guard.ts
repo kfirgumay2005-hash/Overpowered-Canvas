@@ -11,6 +11,7 @@ import { checkCanvasFile, hasErrors, stripInvalidExtra } from "../data/validate-
 import type { CanvasViewLike } from "../internals/types";
 import type { CanvasTracker } from "./canvas-tracker";
 import type { Patcher } from "./patcher";
+import { logError } from "./log";
 
 export class SaveGuard {
 	private uninstall: (() => void) | null = null;
@@ -48,13 +49,13 @@ export class SaveGuard {
 						if (hasErrors(problems)) {
 							const cleaned = stripInvalidExtra(canvas.data, problems);
 							if (cleaned !== canvas.data) {
-								console.error("[overpowered-canvas] Removed invalid extra data before saving", this.file?.path, problems);
+								logError("[overpowered-canvas] Removed invalid extra data before saving", this.file?.path, problems);
 								canvas.data = cleaned;
 								warnOnce();
 							}
 						}
 					} catch (error) {
-						console.error("[overpowered-canvas] save guard failed; saving unchanged", error);
+						logError("[overpowered-canvas] save guard failed; saving unchanged", error);
 					}
 					return next.call(this);
 				},

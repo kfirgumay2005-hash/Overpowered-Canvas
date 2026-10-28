@@ -159,6 +159,8 @@ export interface Stroke {
 	opacity?: number;
 	smoothing?: number;
 	locked?: boolean;
+	/** Drawn without pressure sensitivity: the same width all along. */
+	uniform?: boolean;
 	/** Flat [x, y, pressure, x, y, pressure, …] relative to the carrier node, rounded. */
 	pts: number[];
 	/** Optional flat [tiltX, tiltY, …], one pair per point. */

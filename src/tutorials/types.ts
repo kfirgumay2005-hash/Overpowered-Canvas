@@ -51,6 +51,8 @@ export interface TutorialStep {
 	body: I18nKey;
 	/** The "Try it" task. Steps without a task are read-only and just need Next. */
 	task?: I18nKey;
+	/** How to do the task without a keyboard (shown on phones and tablets). */
+	touch?: I18nKey;
 	/** Done when this returns true (checked on every change and a few times a second). */
 	check?(rt: TutorialRuntime): boolean;
 	/** "Show me": does the task live on the board. */

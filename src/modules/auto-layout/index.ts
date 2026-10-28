@@ -9,6 +9,7 @@ import { canvasDirection, mutate, nodeType, selectedNodes } from "../shared";
 import { disposeElk, getElk } from "./engine";
 import { collapseGroups, expandPositions } from "./blocks";
 import { computeLayout, interpolate, type Algorithm, type LayoutDirection, type Positions } from "./layout";
+import { logError } from "../../core/log";
 
 interface LayoutSettings {
 	algorithm: Algorithm;
@@ -115,7 +116,7 @@ async function runLayout(ctx: ModuleContext<LayoutSettings>, canvas: CanvasLike,
 	try {
 		laid = await computeLayout(getElk(), blocks.nodes, blocks.edges, { algorithm: choice.algorithm, direction, spacing: choice.spacing, levelSpacing: choice.levelSpacing });
 	} catch (error) {
-		console.error("[overpowered-canvas] layout failed", error);
+		logError("[overpowered-canvas] layout failed", error);
 		new Notice(ctx.t("autoLayout.failed"));
 		return;
 	}
@@ -135,6 +136,15 @@ async function runLayout(ctx: ModuleContext<LayoutSettings>, canvas: CanvasLike,
 			const floating = ctx.data.edge(e).get().floating;
 			const dir = directionBetween(e.from.node, e.to.node);
 			e.update({ ...e.from, side: floating?.from ? e.from.side : SIDE[dir] }, { ...e.to, side: floating?.to ? e.to.side : OPPOSITE[dir] });
+		}
+		// Each map arranged here remembers its layout: cards dropped into it later re-arrange it.
+		const hasParent = new Set(allEdges.filter((e) => e.from !== e.to).map((e) => e.to));
+		const hasChild = new Set(allEdges.filter((e) => e.from !== e.to).map((e) => e.from));
+		const roots = targets.filter((n) => !hasParent.has(n.id) && hasChild.has(n.id)).map((n) => n.id);
+		if (roots.length) {
+			const layouts = { ...(ctx.data.root(canvas).get().mapLayouts ?? {}) };
+			for (const id of roots) layouts[id] = mapLayoutOf(choice);
+			ctx.data.root(canvas).set({ mapLayouts: layouts });
 		}
 	});
 	if (!ok) return;
