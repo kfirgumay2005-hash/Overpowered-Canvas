@@ -137,8 +137,11 @@ export const autoResizeModule = defineModule<AutoResizeSettings>({
 
 	enable(ctx) {
 		const watches = new Map<CanvasNodeLike, Watch>();
+		/** Cards being resized by hand: fitting them now would undo the drag. */
+		const resizing = new Set<CanvasNodeLike>();
 
 		const fit = (node: CanvasNodeLike) => {
+			if (resizing.has(node)) return;
 			const min = node.canvas.config.minContainerDimension;
 			let width = node.width;
 			const mode = modeOf(ctx.data.node(node).get());
@@ -233,6 +236,55 @@ export const autoResizeModule = defineModule<AutoResizeSettings>({
 		});
 		ctx.register(() => {
 			for (const node of [...watches.keys()]) unwatch(node);
+		});
+
+		// Resizing a card by hand drops the automatic size it would snap back to: a new height
+		// turns auto-resize off, a new width alone keeps the height growing with the text.
+		ctx.onCanvas((canvas) => {
+			const win = canvas.wrapperEl.win;
+			let sizes: Map<CanvasNodeLike, { width: number; height: number }> | null = null;
+			const onDown = (evt: PointerEvent) => {
+				const handle = (evt.target as Element | null)?.closest(".canvas-node-resizer");
+				if (!handle || canvas.readonly) return;
+				const layer = canvas.nodeInteractionLayer;
+				const nodes = layer && handle.parentElement === layer.interactionEl ? (layer.target ? [layer.target] : []) : selectedNodes(canvas);
+				const auto = nodes.filter((n) => modeOf(ctx.data.node(n).get()) !== "off");
+				if (!auto.length) return;
+				sizes = new Map(auto.map((n) => [n, { width: n.width, height: n.height }]));
+				for (const n of auto) resizing.add(n);
+			};
+			const onUp = () => {
+				if (!sizes) return;
+				const before = sizes;
+				sizes = null;
+				// Let the core finish the resize first.
+				win.setTimeout(() => {
+					const changes: [CanvasNodeLike, Mode][] = [];
+					for (const [node, size] of before) {
+						resizing.delete(node);
+						const mode = modeOf(ctx.data.node(node).get());
+						if (Math.abs(node.height - size.height) > 1) changes.push([node, "off"]);
+						else if (Math.abs(node.width - size.width) > 1 && mode !== "height") changes.push([node, "height"]);
+						else schedule(node);
+					}
+					if (!changes.length) return;
+					// Joins the core's pending undo step for the resize.
+					try {
+						for (const [node, mode] of changes) ctx.data.node(node).set(PATCH[mode]);
+					} catch (error) {
+						logError("[overpowered-canvas] auto-resize: leaving auto mode after a resize failed", error);
+					}
+					canvas.menu.render(true);
+				});
+			};
+			canvas.wrapperEl.addEventListener("pointerdown", onDown, true);
+			win.addEventListener("pointerup", onUp, true);
+			win.addEventListener("pointercancel", onUp, true);
+			return () => {
+				canvas.wrapperEl.removeEventListener("pointerdown", onDown, true);
+				win.removeEventListener("pointerup", onUp, true);
+				win.removeEventListener("pointercancel", onUp, true);
+			};
 		});
 
 		const eligible = (selection: Parameters<typeof onlyNodes>[0]) => onlyTextBoxes(ctx, selection);

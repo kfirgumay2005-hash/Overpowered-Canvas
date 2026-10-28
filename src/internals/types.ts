@@ -205,6 +205,8 @@ export interface CanvasLike {
 	edgeContainerEl: SVGSVGElement;
 	edgeEndContainerEl: SVGSVGElement;
 	menu: CanvasMenuLike;
+	/** Hover layer holding the resize handles of the card under the pointer. */
+	nodeInteractionLayer?: { target: CanvasNodeLike | null; interactionEl: HTMLElement };
 	/** Multimaps node → edges starting / ending there (used by getEdgesForNode). */
 	edgeFrom: EdgeIndexLike;
 	edgeTo: EdgeIndexLike;
