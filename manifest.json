@@ -1,7 +1,7 @@
 {
   "id": "overpoweredcanvas",
   "name": "Overpowered Canvas",
-  "version": "0.9.0",
+  "version": "0.9.1",
   "minAppVersion": "1.14.0",
   "description": "Turns Canvas into a full whiteboard: shapes, drawing, mind maps, auto layout, presentations, Markdown round trip and more.",
   "author": "KfirG",
