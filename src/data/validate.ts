@@ -20,6 +20,7 @@ import {
 	type CropRect,
 	type GuideData,
 	type LayerInfo,
+	type PageInfo,
 	type LineData,
 	type OpcEdge,
 	type OpcNode,
@@ -204,6 +205,7 @@ export const ROOT_SHAPE: Shape<OpcRoot> = {
 	layers: arrayOf(objectOf<LayerInfo>({ id: nonEmptyStr, name: str, hidden: bool, locked: bool }, { required: ["id", "name"] }), { min: 1 }),
 	activeLayer: nonEmptyStr,
 	mapLayouts: recordOf(oneOf(MAP_LAYOUTS)),
+	pages: arrayOf(objectOf<PageInfo>({ id: nonEmptyStr, anchor: nonEmptyStr, root: nonEmptyStr, parent: nonEmptyStr }, { required: ["id", "anchor", "root"] })),
 };
 
 export const NODE_SHAPE: Shape<OpcNode> = {
@@ -237,6 +239,7 @@ export const NODE_SHAPE: Shape<OpcNode> = {
 	strokes: arrayOf(stroke),
 	guide: objectOf<GuideData>({ axis: oneOf(["h", "v"] as const), angle: inRange(0, 180), width: inRange(0.5, 200) }, { required: ["axis", "width"] }),
 	layer: nonEmptyStr,
+	page: nonEmptyStr,
 	slide: bool,
 };
 
@@ -254,6 +257,7 @@ export const EDGE_SHAPE: Shape<OpcEdge> = {
 	),
 	styles: recordOf(str),
 	auto: bool,
+	bent: bool,
 };
 
 export const readRoot: Sanitizer<OpcRoot> = objectOf(ROOT_SHAPE, { required: ["v"] });

@@ -422,3 +422,72 @@ describe("matchOutline", () => {
 		expect(similarity("abc", "abc")).toBe(1);
 	});
 });
+
+describe("pages in the outline", () => {
+	// Main map: Hypertension → Treatment → Beta-blockers (anchor); page p1 holds the branch,
+	// page p2 (inside p1) holds "Contraindications".
+	const paged = (): CanvasFileData => ({
+		nodes: [
+			text("hyp00001", "Hypertension", 0, 0),
+			text("trt00001", "Treatment", 300, 0),
+			text("bb000001", "Beta-blockers\n\n[[H.canvas#bbroot01|Link]]", 600, 0),
+			text("bbroot01", "Beta-blockers\n\n[[H.canvas#bb000001|Link]]", 3000, 0, { "x-opc": { page: "p1" } }),
+			text("bbkid001", "Atenolol", 3300, 0, { "x-opc": { page: "p1" } }),
+			text("ci000001", "Contraindications", 3300, 100, { "x-opc": { page: "p1" } }),
+			text("ciroot01", "Contraindications", 6000, 0, { "x-opc": { page: "p2" } }),
+			text("cikid001", "Asthma", 6300, 0, { "x-opc": { page: "p2" } }),
+		],
+		edges: [
+			{ id: "e1", fromNode: "hyp00001", fromSide: "right", toNode: "trt00001", toSide: "left" },
+			{ id: "e2", fromNode: "trt00001", fromSide: "right", toNode: "bb000001", toSide: "left" },
+			{ id: "e3", fromNode: "bbroot01", fromSide: "right", toNode: "bbkid001", toSide: "left" },
+			{ id: "e4", fromNode: "bbroot01", fromSide: "right", toNode: "ci000001", toSide: "left" },
+			{ id: "e5", fromNode: "ciroot01", fromSide: "right", toNode: "cikid001", toSide: "left" },
+			// A link between pages stays a cross edge.
+			{ id: "e6", fromNode: "cikid001", fromSide: "left", toNode: "hyp00001", toSide: "right" },
+		],
+		"x-opc": {
+			v: 1,
+			pages: [
+				{ id: "p1", anchor: "bb000001", root: "bbroot01" },
+				{ id: "p2", anchor: "ci000001", root: "ciroot01", parent: "p1" },
+			],
+		},
+	});
+
+	it("writes each page as a heading under the map it comes from", () => {
+		const md = exportClean(paged(), { ...exportOpts, notePath: "H.md" }).md;
+		const headings = md.split("\n").filter((l) => l.startsWith("#"));
+		expect(headings).toEqual(["# Hypertension", "## Beta-blockers", "### Contraindications"]);
+		expect(md.indexOf("Asthma")).toBeGreaterThan(md.indexOf("### Contraindications"));
+	});
+
+	it("turns pages deeper than the sixth heading into nested bullets", () => {
+		// Five groups around the main map put it at level 6: its pages nest as bullets.
+		const data = paged();
+		const nodes = data.nodes!;
+		const g = { id: "g", type: "group" as const, label: "G", x: -50, y: -50, width: 1000, height: 200 };
+		const nested = (depth: number): CanvasNodeData[] => Array.from({ length: depth }, (_, i) => ({ ...g, id: `g${i}`, x: -50 - i * 10, y: -50 - i * 10, width: 1000 + i * 20, height: 200 + i * 20 }));
+		const s2 = buildStructure({ ...data, nodes: [...nested(5), ...nodes] }, { rtl: false, freeLabel: "Free" });
+		const md = writeOutline(s2.items, { indent: "\t", ids: false, clean: true });
+		expect(md).toContain("###### Hypertension");
+		expect(md).toMatch(/\t\t- Beta-blockers/);
+		expect(md).toMatch(/\t\t\t\t- Contraindications/);
+	});
+
+	it("keeps pages when the note is read back, and new lines join the page", async () => {
+		const canvas = paged();
+		const { md, data } = exportClean(canvas, { ...exportOpts, notePath: "H.md" });
+		const edited = md.replace("- Atenolol", "- Atenolol\n    - Metoprolol").replace("- Atenolol", "- Atenolol");
+		const items = parseOutline(edited);
+		matchOutline(items, data.outline ?? []);
+		const result = await applyNote(items, data, canvas, elk, options());
+		const byId = new Map(result.data.nodes!.map((n) => [n.id, n]));
+		const added = result.data.nodes!.find((n) => n.text === "Metoprolol")!;
+		expect((added["x-opc"] as { page?: string }).page).toBe("p1");
+		// No new edge ties a page's root to the map it was nested under.
+		expect(result.data.edges!.some((e) => e.toNode === "bbroot01" || e.toNode === "ciroot01")).toBe(false);
+		expect(byId.get("bbroot01")).toBeDefined();
+		expect(result.removed).toBe(0);
+	});
+});

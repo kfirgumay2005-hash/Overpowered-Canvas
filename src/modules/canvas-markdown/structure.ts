@@ -3,6 +3,8 @@
  * becomes a heading, the rest nested bullets along a spanning tree. Edges outside the tree are
  * "cross edges"; cards without edges are listed as free cards; groups become headings around
  * the maps and cards inside them; drawings (ink, free lines, infinite lines) stay out of the text.
+ * Pages (a branch moved to its own page) follow the card they come from: a heading one level
+ * below the map holding that card, or, past the sixth level, nested bullets under the card.
  */
 import type { CanvasFileData, CanvasNodeData } from "../../data/json-canvas";
 import type { TNode } from "../mindmap/tree";
@@ -40,6 +42,26 @@ function isPlainObject(v: unknown): v is Record<string, unknown> {
 export function kindOf(node: CanvasNodeData): string | undefined {
 	const extra = node["x-opc"];
 	return isPlainObject(extra) && typeof extra.kind === "string" ? extra.kind : undefined;
+}
+
+/** The page a node is on ("" = the main page). */
+export function pageOfNode(node: CanvasNodeData): string {
+	const extra = node["x-opc"];
+	return isPlainObject(extra) && typeof extra.page === "string" ? extra.page : "";
+}
+
+export interface PageRef {
+	id: string;
+	anchor: string;
+	root: string;
+	parent?: string;
+}
+
+/** The pages listed in a canvas root (x-opc `pages`). */
+export function pagesOfRoot(root: Record<string, unknown> | undefined): PageRef[] {
+	const extra = root?.["x-opc"];
+	const list = isPlainObject(extra) && Array.isArray(extra.pages) ? extra.pages : [];
+	return list.filter((p): p is PageRef => isPlainObject(p) && typeof p.id === "string" && typeof p.anchor === "string" && typeof p.root === "string");
 }
 
 export function isDrawing(node: CanvasNodeData): boolean {
@@ -132,7 +154,9 @@ export function buildStructure(data: CanvasFileData, opts: StructureOptions): St
 	const contentIds = new Set(content.map((n) => n.id));
 	const groups = all.filter((n) => n.type === "group");
 	const edges = (data.edges ?? []).filter((e) => byId.has(e.fromNode) && byId.has(e.toNode));
-	const treeLike = edges.filter((e) => contentIds.has(e.fromNode) && contentIds.has(e.toNode) && e.fromNode !== e.toNode);
+	// Links between pages are cross edges: each page's map is a tree of its own.
+	const samePage = (a: string, b: string) => pageOfNode(byId.get(a)!) === pageOfNode(byId.get(b)!);
+	const treeLike = edges.filter((e) => contentIds.has(e.fromNode) && contentIds.has(e.toNode) && e.fromNode !== e.toNode && samePage(e.fromNode, e.toNode));
 	const alias = makeAliases([...content, ...groups].map((n) => n.id));
 	const order = readingOrder(opts.rtl);
 
@@ -245,12 +269,14 @@ export function buildStructure(data: CanvasFileData, opts: StructureOptions): St
 	const topFree = free.filter((id) => !container.has(id)).map((id) => byId.get(id)!).sort(order);
 	if (topFree.length) items.push({ kind: "free", text: opts.freeLabel, heading: 1, children: topFree.map((n) => bullet(n.id)) });
 
+	nestPages(items, data, roots, children, alias);
+
 	const rootOrder: string[] = [];
 	const byAlias = new Map([...alias].map(([id, a]) => [a, id]));
 	const rootSet = new Set(roots);
 	const collect = (list: OutlineItem[]) => {
 		for (const item of list) {
-			if (item.kind === "node" && item.heading !== undefined) {
+			if (item.kind === "node" && (item.heading !== undefined || item.page)) {
 				const id = item.id ? byAlias.get(item.id) : undefined;
 				if (id && rootSet.has(id)) rootOrder.push(id);
 			}
@@ -259,4 +285,61 @@ export function buildStructure(data: CanvasFileData, opts: StructureOptions): St
 	};
 	collect(items);
 	return { items, alias, treeEdges, crossEdges, drawings, roots: rootOrder };
+}
+
+/**
+ * Moves each page's map under the card it comes from: a heading one level deeper than the
+ * section of the map holding that card, or, below the sixth heading level, bullets nested under
+ * the card itself. Parent pages first, so deeper pages land inside their parents.
+ */
+function nestPages(items: OutlineItem[], data: CanvasFileData, roots: string[], children: Map<string, string[]>, alias: Map<string, string>): void {
+	const pages = pagesOfRoot(data);
+	if (pages.length === 0) return;
+	const rootSet = new Set(roots);
+	const parentOf = new Map<string, string>();
+	for (const [p, kids] of children) for (const k of kids) parentOf.set(k, p);
+	const mapRoot = (id: string) => {
+		let cur = id;
+		const seen = new Set<string>();
+		while (parentOf.has(cur) && !seen.has(cur)) {
+			seen.add(cur);
+			cur = parentOf.get(cur)!;
+		}
+		return cur;
+	};
+	const find = (list: OutlineItem[], aliasId: string | undefined): { list: OutlineItem[]; item: OutlineItem } | null => {
+		if (!aliasId) return null;
+		for (const item of list) {
+			if (item.kind !== "free" && item.id === aliasId) return { list, item };
+			const inner = find(item.children, aliasId);
+			if (inner) return inner;
+		}
+		return null;
+	};
+	const depth = (p: PageRef) => {
+		let d = 0;
+		const seen = new Set<string>();
+		for (let cur: PageRef | undefined = p; cur?.parent && !seen.has(cur.id); cur = pages.find((q) => q.id === cur.parent)) {
+			seen.add(cur.id);
+			d++;
+		}
+		return d;
+	};
+	for (const page of [...pages].sort((a, b) => depth(a) - depth(b))) {
+		if (!rootSet.has(page.root)) continue;
+		const own = find(items, alias.get(page.root));
+		const holder = find(items, alias.get(mapRoot(page.anchor)));
+		const anchor = find(items, alias.get(page.anchor));
+		if (!own || !holder || !anchor || own.item === holder.item) continue;
+		own.list.splice(own.list.indexOf(own.item), 1);
+		const level = (holder.item.heading ?? 6) + 1;
+		if (holder.item.heading !== undefined && level <= 6) {
+			own.item.heading = level;
+			holder.item.children.push(own.item);
+		} else {
+			delete own.item.heading;
+			anchor.item.children.push(own.item);
+		}
+		own.item.page = true;
+	}
 }

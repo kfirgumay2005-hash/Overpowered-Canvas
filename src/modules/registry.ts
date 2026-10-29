@@ -56,6 +56,7 @@ import { textAlignModule } from "./text-align";
 import { toolbarSizeModule } from "./toolbar-size";
 import { variableBreakpointsModule } from "./variable-breakpoints";
 import { layersModule } from "./layers";
+import { pagesModule } from "./pages";
 
 /** Every feature module, in display order within its settings group. */
 export const MODULES: readonly AnyModule[] = [
@@ -96,6 +97,7 @@ export const MODULES: readonly AnyModule[] = [
 	mindmapModule,
 	branchCollapseModule,
 	autoLayoutModule,
+	pagesModule,
 	drawingModule,
 	lassoModule,
 	textHighlightModule,

@@ -149,5 +149,8 @@ Verified against: **Obsidian 1.14.4 (desktop, Windows)**.
 | `wrapperEl.mod-zoomed-out` | Core class when zoomed far out; we drop hover-only elements from the layout with it. | 🟢 runtime |
 | Cards in `direction: rtl` | Cards are absolutely positioned without left/right; in an RTL container their static position flips. The transformed `.canvas` layer must stay LTR (direction module); text direction is applied to card content. | 🟢 runtime |
 | `p[dir=auto]`, `li[dir=auto]` | The core marks each paragraph and list item for per-paragraph direction, but not the list; `:dir()` + `:has()` mirror lists. | 🟢 runtime |
+| `menu.dom` (Menu) after `showAtPosition` | The core gives `.menu` `max-height: 100%` but opens it `top` px down, so long menus run past the window's bottom. `src/ui/menu-fit.ts` caps the height to the visible area (visual viewport, safe-area insets) after canvas menus open. | 🟢 runtime |
+| `canvas.zoomToFit()` | Fits `nodes` (all of them). Pages patch it to fit the page shown. | 🟢 runtime |
+| `canvas.getEdgesForNode(node)` + `removeEdge` / `importData` | Re-pointing edges when a branch moves to a page (edges are re-created with the new end). | 🟢 runtime |
 | 2D canvas `font` setter / `fillText` | Resolve the font against computed style: inside a frame with pending DOM changes this forces a full style pass. Set the font once per context state. | 🟢 runtime |
 

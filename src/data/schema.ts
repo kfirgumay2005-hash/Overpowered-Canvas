@@ -179,6 +179,19 @@ export interface OpcRoot {
 	activeLayer?: string;
 	/** Root card id → the auto layout last applied to its map (Markdown round trip re-applies it). */
 	mapLayouts?: Record<string, MapLayout>;
+	/** Pages: parts of the board shown one at a time (nodes carry `page`). */
+	pages?: PageInfo[];
+}
+
+/** A page made from a branch: `anchor` stays in the parent page and leads to `root`. */
+export interface PageInfo {
+	id: string;
+	/** The card left in the parent page (the break point). */
+	anchor: string;
+	/** The page's root card (a copy of the anchor that holds the branch). */
+	root: string;
+	/** The page the anchor is on; absent: the main page. */
+	parent?: string;
 }
 
 export interface LayerInfo {
@@ -225,6 +238,8 @@ export interface OpcNode {
 	guide?: GuideData;
 	/** Id of the layer the item is on; absent or unknown: the bottom layer. */
 	layer?: string;
+	/** The page this item is on; absent: the main page. */
+	page?: string;
 	/** A presentation slide (a group made with "Add slide"). */
 	slide?: boolean;
 }
@@ -244,6 +259,8 @@ export interface OpcEdge {
 	styles?: Record<string, string>;
 	/** Created by the auto-edges module from a frontmatter property; removed with the property. */
 	auto?: boolean;
+	/** `route` was set by auto layout because no side gave a clear path; a later layout may undo it. */
+	bent?: boolean;
 }
 
 /** Values equal to these are not stored, which keeps files small. */

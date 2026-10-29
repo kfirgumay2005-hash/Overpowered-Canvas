@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { TEdge, TNode } from "../mindmap/tree";
-import { largestRoot, walkStep } from "./walk";
+import { largestRoot, treeStep, walkStep } from "./walk";
 
 const box = (id: string, x: number, y: number): TNode => ({ id, x, y, width: 100, height: 40 });
 const map = (...n: TNode[]) => new Map(n.map((b) => [b.id, b]));
@@ -63,5 +63,38 @@ describe("walking a map", () => {
 	});
 	it("starts at the root of the biggest map", () => {
 		expect(largestRoot(nodes, edges)).toBe("r");
+	});
+});
+
+describe("walking a map by its hierarchy", () => {
+	// A map that grows both ways: b sits left of r, a and c to the right.
+	const n = map(box("r", 300, 100), box("a", 600, 0), box("b", 0, 100), box("c", 600, 300), box("a1", 900, 0), box("a2", 900, 80));
+	const e: TEdge[] = [
+		{ from: "r", to: "a" },
+		{ from: "r", to: "b" },
+		{ from: "r", to: "c" },
+		{ from: "a", to: "a1" },
+		{ from: "a", to: "a2" },
+	];
+	it("Right goes into the children and Left back to the parent, wherever they sit", () => {
+		expect(treeStep(n, e, "r", "right", none)).toBe("a");
+		expect(treeStep(n, e, "a", "right", none)).toBe("a1");
+		expect(treeStep(n, e, "b", "left", none)).toBe("r");
+		expect(treeStep(n, e, "b", "right", none)).toBeNull();
+		expect(treeStep(n, e, "r", "left", none)).toBeNull();
+	});
+	it("Up and Down move along the siblings in reading order and stop at the ends", () => {
+		// Children on both sides go clockwise from the top, as in the outline: a, c, b.
+		expect(treeStep(n, e, "a", "down", none)).toBe("c");
+		expect(treeStep(n, e, "c", "down", none)).toBe("b");
+		expect(treeStep(n, e, "b", "down", none)).toBeNull();
+		expect(treeStep(n, e, "a", "up", none)).toBeNull();
+		expect(treeStep(n, e, "a1", "down", none)).toBe("a2");
+		expect(treeStep(n, e, "r", "down", none)).toBeNull();
+	});
+	it("returns to the child visited last and the parent it came from", () => {
+		expect(treeStep(n, e, "r", "right", new Map([["r", "c"]]))).toBe("c");
+		const twoParents: TEdge[] = [...e, { from: "c", to: "a1" }];
+		expect(treeStep(n, twoParents, "a1", "left", new Map([["c", "a1"]]))).toBe("c");
 	});
 });

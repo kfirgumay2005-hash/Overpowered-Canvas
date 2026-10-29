@@ -5,7 +5,7 @@
  */
 import { arrayBufferToBase64, requestUrl } from "obsidian";
 import type { CanvasEdgeLike, CanvasLike, CanvasNodeLike } from "../../internals/types";
-import { onHiddenLayer, renderedZ } from "../shared";
+import { isHiddenNode, renderedZ } from "../shared";
 
 export interface ExportOptions {
 	scope: "all" | "selection";
@@ -27,7 +27,7 @@ const XHTML = "http://www.w3.org/1999/xhtml";
 const MAX_SIDE = 16_000;
 
 function itemsInScope(canvas: CanvasLike, scope: ExportOptions["scope"]): { nodes: CanvasNodeLike[]; edges: CanvasEdgeLike[] } {
-	const all = [...canvas.nodes.values()].filter((n) => !onHiddenLayer(n)).sort((a, b) => renderedZ(a) - renderedZ(b));
+	const all = [...canvas.nodes.values()].filter((n) => !isHiddenNode(n)).sort((a, b) => renderedZ(a) - renderedZ(b));
 	const nodes = scope === "selection" ? all.filter((n) => canvas.selection.has(n)) : all;
 	const set = new Set(nodes);
 	const shown = new Set(all);

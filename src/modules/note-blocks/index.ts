@@ -3,13 +3,11 @@ import { defineModule, type ModuleContext } from "../../core/module";
 import type { EdgeSide } from "../../data/json-canvas";
 import type { CanvasLike, CanvasNodeLike, CanvasViewLike, SelectionDragLike } from "../../internals/types";
 import { mergeWithDefaults } from "../../settings/settings";
-import { getElk } from "../auto-layout/engine";
-import { layoutMap } from "../canvas-markdown/apply";
+import { relayoutMap } from "../auto-layout/arrange";
 import { estimateSize } from "../canvas-markdown/size";
-import { orderChildren } from "../canvas-markdown/structure";
 import { makeSiblingRoom } from "../mindmap/room";
-import { childPosition, childrenOf, descendants, directionBetween, logical, parentOf, type Dir, type TEdge, type TNode } from "../mindmap/tree";
-import { canvasDirection, centerOn, isTextBox, mutate, nodeType, randomId, selectedNodes } from "../shared";
+import { childPosition, childrenOf, descendants, directionBetween, logical, parentOf, type Dir, type TEdge } from "../mindmap/tree";
+import { canvasDirection, centerOn, isHiddenNode, isTextBox, mutate, nodeType, randomId, selectedNodes } from "../shared";
 import { blockAt, type Block } from "./block";
 import { CropModal, loadImage } from "./crop";
 import { logError } from "../../core/log";
@@ -142,72 +140,7 @@ export const noteBlocksModule = defineModule<NoteBlocksSettings>({
 			return logical("right", canvasDirection(canvas) === "rtl");
 		};
 
-		/** Re-arranges a map that has a recorded layout (auto layout or built from a note). Children
-		 * keep the order they show on the canvas; `after` puts a new card right after a sibling. */
-		const relayout = async (canvas: CanvasLike, start: CanvasNodeLike, after?: string) => {
-			const edges = edgesOf(canvas);
-			let root = start.id;
-			const seen = new Set<string>();
-			for (let p = parentOf(edges, root); p && !seen.has(p); p = parentOf(edges, root)) {
-				seen.add(root);
-				root = p;
-			}
-			const layout = ctx.data.root(canvas).get().mapLayouts?.[root];
-			if (!layout || layout === "grid" || layout.startsWith("layered")) return;
-			const rtl = canvasDirection(canvas) === "rtl";
-			const kids = new Map<string, string[]>();
-			const ids: string[] = [];
-			const stack = [root];
-			const visited = new Set<string>();
-			while (stack.length) {
-				const id = stack.pop()!;
-				if (visited.has(id)) continue;
-				visited.add(id);
-				ids.push(id);
-				const parentNode = canvas.nodes.get(id)!;
-				let children = orderChildren(parentNode, childrenOf(edges, id).filter((c) => !visited.has(c) && canvas.nodes.has(c)).map((c) => canvas.nodes.get(c)!), rtl).map((n) => n.id);
-				if (after && children.includes(after) && children.includes(start.id)) {
-					children = children.filter((c) => c !== start.id);
-					children.splice(children.indexOf(after) + 1, 0, start.id);
-				}
-				kids.set(id, children);
-				stack.push(...children);
-			}
-			const nodes: TNode[] = ids.map((id) => {
-				const n = canvas.nodes.get(id)!;
-				return { id, x: n.x, y: n.y, width: n.width, height: n.height };
-			});
-			const tree = ids.flatMap((id) => (kids.get(id) ?? []).map((c) => ({ from: id, to: c })));
-			const pos = await layoutMap(getElk(), nodes, tree, root, kids, layout, { rtl, spacing: 30, levelSpacing: 80 });
-			// Keep the root where it is.
-			const r = canvas.nodes.get(root)!;
-			const p0 = pos.get(root);
-			if (!p0) return;
-			const dx = r.x - p0.x;
-			const dy = r.y - p0.y;
-			if (canvas.readonly) return;
-			const apply = () => {
-				for (const id of ids) {
-					const p = pos.get(id);
-					if (p) canvas.nodes.get(id)!.moveTo({ x: Math.round(p.x + dx), y: Math.round(p.y + dy) });
-				}
-				// Links inside the map attach to the sides facing each other (floating ends keep theirs).
-				const inMap = new Set(ids);
-				for (const e of canvas.edges.values()) {
-					if (!inMap.has(e.from.node.id) || !inMap.has(e.to.node.id) || e.from.node === e.to.node) continue;
-					const floating = ctx.data.edge(e).get().floating;
-					const d = directionBetween(e.from.node, e.to.node);
-					e.update({ ...e.from, side: floating?.from ? e.from.side : SIDE[d] }, { ...e.to, side: floating?.to ? e.to.side : OPPOSITE[d] });
-				}
-			};
-			try {
-				apply();
-			} finally {
-				// Part of the step that added or linked the card: one undo takes both back.
-				canvas.requestPushHistory.cancel();
-				canvas.overrideHistory();
-			}
-		};
+		const relayout = (canvas: CanvasLike, start: CanvasNodeLike, after?: string) => relayoutMap(ctx, canvas, start, after);
 
 		const followCard = (canvas: CanvasLike, card: CanvasNodeLike) => {
 			if (canvas.nodes.get(card.id) !== card) return;
@@ -392,7 +325,7 @@ export const noteBlocksModule = defineModule<NoteBlocksSettings>({
 			let best: CanvasNodeLike | null = null;
 			for (const n of canvas.nodes.values()) {
 				const type = nodeType(n);
-				if (type === "group" || n.id.includes("~") || skip?.has(n) || !isTextBox(ctx, n) || n.nodeEl.hasClass("opc-layer-hidden")) continue;
+				if (type === "group" || n.id.includes("~") || skip?.has(n) || !isTextBox(ctx, n) || isHiddenNode(n)) continue;
 				if (p.x >= n.x && p.x <= n.x + n.width && p.y >= n.y && p.y <= n.y + n.height) best = n;
 			}
 			return best;

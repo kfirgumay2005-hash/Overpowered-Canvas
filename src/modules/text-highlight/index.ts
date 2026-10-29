@@ -20,6 +20,30 @@ const COLORS = ["", "#ffd43b", "#8ce99a", "#74c0fc", "#faa2c1", "#ffa94d"];
 const HEX = /^#[0-9a-f]{6}$/i;
 /** Most extra colors the bar shows. */
 const MAX_CUSTOM = 12;
+/** What "Add a color" starts with: the first of these not in use yet. */
+const NEW_COLORS = ["#b197fc", "#ff8787", "#63e6be", "#ffe066", "#4dabf7", "#f783ac", "#c0eb75", "#ffc078", "#91a7ff", "#e599f7", "#66d9e8", "#ced4da"];
+
+/** A color for a new slot that differs from the built-in and existing ones. */
+export function nextCustomColor(existing: readonly string[]): string {
+	const used = new Set([...COLORS, ...existing].map((c) => c.toLowerCase()));
+	const free = NEW_COLORS.find((c) => !used.has(c));
+	if (free) return free;
+	// All presets taken: step the hue until a color is free.
+	for (let hue = 0; ; hue += 17) {
+		const c = hslHex(hue % 360, 70, 70);
+		if (!used.has(c)) return c;
+	}
+}
+
+function hslHex(h: number, s: number, l: number): string {
+	const a = (s / 100) * Math.min(l / 100, 1 - l / 100);
+	const f = (n: number) => {
+		const k = (n + h / 30) % 12;
+		const v = l / 100 - a * Math.max(-1, Math.min(k - 3, 9 - k, 1));
+		return Math.round(v * 255).toString(16).padStart(2, "0");
+	};
+	return `#${f(0)}${f(8)}${f(4)}`;
+}
 
 /** Marks drawn in a chosen color are this opaque, so the text stays readable. */
 const ALPHA = "80";
@@ -78,7 +102,7 @@ class HighlightSession {
 	private renderBar(): void {
 		const t = this.ctx.t;
 		this.bar.empty();
-		for (const color of [...COLORS, ...this.ctx.settings.customColors.filter((c) => !COLORS.includes(c))]) {
+		for (const color of [...new Set([...COLORS, ...this.ctx.settings.customColors])]) {
 			const b = this.bar.createEl("button", { cls: "opc-hl-swatch clickable-icon" });
 			if (color) b.style.setProperty("--opc-hl-color", color);
 			else b.addClass("is-theme");
@@ -321,7 +345,7 @@ export const textHighlightModule = defineModule<HighlightSettings>({
 		const custom = Array.isArray(s.customColors) ? s.customColors.filter((c): c is string => typeof c === "string" && HEX.test(c)).map((c) => c.toLowerCase()) : [];
 		return {
 			color: typeof s.color === "string" && (s.color === "" || HEX.test(s.color)) ? s.color.toLowerCase() : defaults.color,
-			customColors: [...new Set(custom)].slice(0, MAX_CUSTOM),
+			customColors: custom.slice(0, MAX_CUSTOM),
 		};
 	},
 
@@ -382,7 +406,7 @@ export const textHighlightModule = defineModule<HighlightSettings>({
 					b
 						.setButtonText(ctx.t("textHighlight.colors.add"))
 						.setDisabled(colors.length >= MAX_CUSTOM)
-						.onClick(() => save([...colors, "#b197fc"])),
+						.onClick(() => save([...colors, nextCustomColor(colors)])),
 				);
 			colors.forEach((color, i) => {
 				new Setting(box)

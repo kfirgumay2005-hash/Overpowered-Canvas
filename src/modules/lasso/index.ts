@@ -5,7 +5,7 @@ import { lassoed } from "../../geometry/ink";
 import type { CanvasItemLike, CanvasLike, CanvasNodeLike, SelectionDragLike } from "../../internals/types";
 import { mergeWithDefaults } from "../../settings/settings";
 import { absolutePoints, CARRIER_TEXT, refit } from "../drawing/carriers";
-import { capturePointer, claimTool, mutate, releaseTool, nodeType, onHiddenLayer, randomId, selectedNodes } from "../shared";
+import { capturePointer, claimTool, mutate, releaseTool, nodeType, isHiddenNode, randomId, selectedNodes } from "../shared";
 import { caught, type P } from "./select";
 
 interface LassoSettings {
@@ -111,7 +111,7 @@ function selectionBox(canvas: CanvasLike): { minX: number; minY: number; maxX: n
 }
 
 function hidden(n: CanvasNodeLike): boolean {
-	return n.nodeEl.hasClass("opc-hidden-by-collapse") || n.nodeEl.hasClass("opc-hidden-by-branch") || onHiddenLayer(n);
+	return n.nodeEl.hasClass("opc-hidden-by-collapse") || n.nodeEl.hasClass("opc-hidden-by-branch") || isHiddenNode(n);
 }
 
 /**

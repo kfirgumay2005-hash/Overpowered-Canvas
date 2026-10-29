@@ -16,7 +16,7 @@ import { rootMapLayouts } from "./note";
 import { normalizeText, type OutlineItem } from "./outline";
 import { estimateSize } from "./size";
 import { tidyTree } from "./tidy";
-import { isDrawing, nodeText } from "./structure";
+import { isDrawing, nodeText, pageOfNode, pagesOfRoot } from "./structure";
 
 export interface ApplyOptions {
 	/** Layout for maps that are entirely new (logical: "right" means forward). */
@@ -110,6 +110,8 @@ export async function applyNote(items: OutlineItem[], note: NoteData | null, bas
 	}
 	const idToAlias = new Map([...aliasToId].map(([a, id]) => [id, a]));
 	const baseNodes = new Map((base?.nodes ?? []).map((n) => [n.id, n]));
+	// A page's root card heads a map of its own, wherever the note nests it.
+	const pageRoots = new Set(pagesOfRoot(base ? (base as unknown as Record<string, unknown>) : note?.root).map((p) => p.root));
 	const known = new Set(fromNote.keys());
 
 	// 1. Walk the outline: resolve ids, update text, create cards.
@@ -147,7 +149,7 @@ export async function applyNote(items: OutlineItem[], note: NoteData | null, bas
 				const next = updateText(existing, item.text, opts.resolveFile);
 				if (next) updated++;
 				nodes.set(existing.id, next ?? existing);
-				placed.push({ id: existing.id, parent, group, isNew: false });
+				placed.push({ id: existing.id, parent: pageRoots.has(existing.id) ? null : parent, group, isNew: false });
 				walk(item.children, existing.id, group);
 				continue;
 			}
@@ -155,7 +157,9 @@ export async function applyNote(items: OutlineItem[], note: NoteData | null, bas
 			const fields = contentFields(item.text, opts.resolveFile);
 			const size = fields.type === "file" ? opts.fileSize : estimateSize(fields.type === "link" ? (fields.url ?? "") : item.text, opts.textWidth);
 			const id = opts.newId();
-			nodes.set(id, { id, x: 0, y: 0, width: size.width, height: size.height, ...fields } as CanvasNodeData);
+			// A new line under a card of a page belongs to that page.
+			const page = parent && nodes.get(parent) ? pageOfNode(nodes.get(parent)!) : "";
+			nodes.set(id, { id, x: 0, y: 0, width: size.width, height: size.height, ...fields, ...(page ? { [SCHEMA_KEY]: { v: SCHEMA_VERSION, page } } : {}) } as CanvasNodeData);
 			unplaced.add(id);
 			created.push(id);
 			placed.push({ id, parent, group, isNew: true });

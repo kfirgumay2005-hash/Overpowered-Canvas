@@ -20,6 +20,8 @@ export interface OutlineItem {
 	id?: string;
 	/** Heading level when written as a heading. */
 	heading?: number;
+	/** The root of a page (exports only; not read back from the text). */
+	page?: boolean;
 	children: OutlineItem[];
 }
 

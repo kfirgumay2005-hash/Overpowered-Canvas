@@ -503,3 +503,33 @@ Automated runtime checks of every item below were run in an isolated Obsidian 1.
    the earlier session.
 8. On a phone or tablet: tutorial steps that ask for a key show a "No keyboard?" line, and the
    way it names (card menu items, *Undo*, the presentation's ‹ › ✕ buttons) completes the task.
+
+## Manual — tester feedback, round 5
+
+1. Make the window short, select a card near the bottom and right-click (or long-press): the
+   menu ends inside the window and scrolls to its last item (also with the tablet's bottom bar).
+2. Settings → Highlight text in cards → *Add a color* several times: each click adds a new slot
+   with a different color; changing or removing one keeps the others.
+3. Auto layout a map that has a group around some of its cards, then drag a card onto *Add as
+   child* of a card in the map (also of a card inside the group): the group moves as one with
+   everything in it, nothing overlaps, and the dropped card stays outside the group. With a group
+   around the whole map, the cards are arranged inside it and the group grows.
+4. Auto layout a large map (select its root): no arrow runs under a card or crosses another
+   arrow; arrows that can't avoid cards bend around them (route A\*), and go back to curves once a
+   later layout clears them. Settings → *Where arrows attach* → *Sides facing each other* gives
+   the old behavior.
+5. Walk through a map (route button): `→` children (the last visited first), `←` parent, `↑`/`↓`
+   siblings stopping at the ends, whatever the layout direction. A group with arrows is a stop; a
+   group without arrows leads into the cards inside it. Settings → Presentation → *Arrow keys…*
+   → *By where the cards are* gives the old behavior.
+6. Pages: right-click a card with children → *Move branch to a new page*: only the branch shows,
+   the bar says *main › card*, both cards got a *Link* line (and grew to show it); the main map
+   closed the gap (if it has a recorded layout). Click the links both ways (same tab), use the bar,
+   the index (left ribbon), two tabs on two pages, a link to a card on another page from a note,
+   canvas search, select all / zoom to fit (only the page shown), Undo / Redo (one step), walking
+   across pages, pasting cards (they join the page shown), *Bring this page back into the map*,
+   pages inside pages, *Show one page at a time* off, and Canvas → Markdown both ways (pages as
+   nested headings, deeper ones as bullets; reading the note back keeps them).
+7. *Move branch to another spot…* → move the view → *Put the branch here* (Esc cancels): the
+   branch lands in the middle of the view, linked both ways.
+8. Tutorials *Big maps in pages* and *Tidy arrows and map keys*: every "Show me" completes its task.

@@ -24,15 +24,28 @@ function inside(outer: TNode, inner: TNode): boolean {
 }
 
 /**
+ * Groups that hold every one of `ids`: the map lives inside them, so they are not blocks — the
+ * cards inside are arranged and the group grows to fit them (see `fitGroups`).
+ */
+export function groupsAround(all: BoxNode[], ids: Iterable<string>): Set<string> {
+	const byId = new Map(all.map((n) => [n.id, n]));
+	const members = [...ids].map((id) => byId.get(id)).filter((n): n is BoxNode => !!n && !n.group);
+	if (members.length === 0) return new Set();
+	return new Set(all.filter((g) => g.group && members.every((m) => inside(g, m))).map((g) => g.id));
+}
+
+/**
  * `all`: every node of the canvas; `targets`: the cards to arrange; `groups`: groups chosen
  * directly (selected, or all of them for a whole-canvas layout). A target inside a group makes
- * its outermost group a block.
+ * its outermost group a block. Groups in `open` are never blocks (the next group inside them
+ * can be). Nodes in `loose` never belong to a group (a card just dropped onto one).
  */
-export function collapseGroups(all: BoxNode[], targets: Set<string>, groups: Set<string>, edges: TEdge[]): Blocks {
+export function collapseGroups(all: BoxNode[], targets: Set<string>, groups: Set<string>, edges: TEdge[], open: ReadonlySet<string> = new Set(), loose: ReadonlySet<string> = new Set()): Blocks {
 	// Outermost group around each node (largest first, so the first hit is the outermost).
-	const byArea = all.filter((n) => n.group).sort((a, b) => b.width * b.height - a.width * a.height);
+	const byArea = all.filter((n) => n.group && !open.has(n.id)).sort((a, b) => b.width * b.height - a.width * a.height);
 	const outer = new Map<string, string>();
 	for (const n of all) {
+		if (loose.has(n.id)) continue;
 		const g = byArea.find((g) => g.id !== n.id && inside(g, n) && !(n.group && g.width * g.height <= n.width * n.height));
 		if (g) outer.set(n.id, g.id);
 	}
@@ -41,7 +54,7 @@ export function collapseGroups(all: BoxNode[], targets: Set<string>, groups: Set
 		const g = outer.get(id);
 		if (g) blocks.add(g);
 	}
-	for (const id of groups) blocks.add(outer.get(id) ?? id);
+	for (const id of groups) if (!open.has(id)) blocks.add(outer.get(id) ?? id);
 
 	const members = new Map<string, string[]>([...blocks].map((b) => [b, []]));
 	const blockOf = new Map<string, string>();
@@ -88,6 +101,35 @@ export function expandPositions(blocks: Blocks, positions: Map<string, { x: numb
 			const n = all.get(m)!;
 			out.set(m, { x: n.x + dx, y: n.y + dy });
 		}
+	}
+	return out;
+}
+
+/** Room kept between a group's border and the cards it was grown around. */
+const GROUP_PAD = 40;
+
+/**
+ * New rectangles for the `open` groups after a layout: each keeps its old area and grows to hold
+ * the cards that were inside it before. Groups that need no change are left out.
+ */
+export function fitGroups(all: BoxNode[], open: ReadonlySet<string>, positions: Map<string, { x: number; y: number }>): Map<string, { x: number; y: number; width: number; height: number }> {
+	const out = new Map<string, { x: number; y: number; width: number; height: number }>();
+	for (const g of all) {
+		if (!open.has(g.id)) continue;
+		let minX = g.x;
+		let minY = g.y;
+		let maxX = g.x + g.width;
+		let maxY = g.y + g.height;
+		for (const n of all) {
+			if (n.id === g.id || !inside(g, n)) continue;
+			const p = positions.get(n.id);
+			if (!p) continue;
+			minX = Math.min(minX, p.x - GROUP_PAD);
+			minY = Math.min(minY, p.y - GROUP_PAD);
+			maxX = Math.max(maxX, p.x + n.width + GROUP_PAD);
+			maxY = Math.max(maxY, p.y + n.height + GROUP_PAD);
+		}
+		if (minX < g.x || minY < g.y || maxX > g.x + g.width || maxY > g.y + g.height) out.set(g.id, { x: minX, y: minY, width: maxX - minX, height: maxY - minY });
 	}
 	return out;
 }

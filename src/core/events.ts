@@ -47,6 +47,9 @@ export interface PublicEventMap {
 	"map-walk-moved": [canvas: CanvasLike, node: CanvasNodeLike];
 	"map-walk-ended": [canvas: CanvasLike];
 	"selection-encapsulated": [canvas: CanvasLike, file: TFile];
+	"page-shown": [canvas: CanvasLike, pageId: string];
+	"branch-moved": [canvas: CanvasLike, anchor: CanvasNodeLike, root: CanvasNodeLike, pageId: string | null];
+	"page-merged": [canvas: CanvasLike, pageId: string];
 	"portal-opened": [canvas: CanvasLike, portal: CanvasNodeLike];
 	"portal-closed": [canvas: CanvasLike, portal: CanvasNodeLike];
 	"pdf-inserted": [canvas: CanvasLike, file: TFile, pages: number];

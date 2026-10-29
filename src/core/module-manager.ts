@@ -316,6 +316,11 @@ export class ModuleManager {
 				component.register(off);
 				return off;
 			},
+			addRibbonIcon: (icon, title, onClick) => {
+				const el = host.plugin.addRibbonIcon(icon, title, onClick);
+				component.register(() => el.detach());
+				return el;
+			},
 			addCardMenuButton: (spec) => {
 				const off = host.ui.addCardMenuButton(spec);
 				component.register(off);

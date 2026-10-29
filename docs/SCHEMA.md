@@ -44,6 +44,9 @@ interface OpcRoot {                       // file root "x-opc"
   activeLayer?: string;                   // layer id that new items go to
   mapLayouts?: Record<string, MapLayout>; // root card id → layout last applied to its map (Auto layout,
                                           // or built from a note); a card dropped into the map re-arranges it
+  pages?: { id: string; anchor: string; root: string; parent?: string }[];
+                                          // Pages: `anchor` = the card left in the parent page (absent parent =
+                                          // main page), `root` = the page's first card (a copy of the anchor)
 }
 
 // "right" | "left" | "down" | "up" | "balanced" | "radial" | "layered-right" | "layered-left" |
@@ -76,6 +79,7 @@ interface OpcNode {
   strokes?: Stroke[];                     // only on kind: "ink"
   guide?: { axis: "h" | "v"; angle?: number; width: number };  // only on kind: "guide"; angle 0–180°, clockwise
   layer?: string;                         // layer id; absent or unknown = bottom layer
+  page?: string;                          // page id (root `pages`); absent = the main page
   slide?: boolean;                        // a presentation slide (group)
 }
 
@@ -89,6 +93,8 @@ interface OpcEdge {
   order?: number;                         // presentation order
   portalTarget?: { end: "from" | "to"; nodeId: string };
   styles?: Record<string, string>;
+  auto?: boolean;                         // made by auto-edges from a frontmatter property
+  bent?: boolean;                         // `route` was set by auto layout (no clear side); a later layout may clear it
 }
 
 interface Stroke {

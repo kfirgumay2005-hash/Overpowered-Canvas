@@ -1,0 +1,114 @@
+/* Cards of other pages, and the edges and labels attached to them. */
+body.opc-mod-pages .canvas-node.opc-page-hidden,
+body.opc-mod-pages .canvas-edges .opc-page-hidden,
+body.opc-mod-pages .canvas-path-label-wrapper.opc-page-hidden {
+	display: none;
+}
+
+/* Where you are: main page › page › page. */
+body.opc-mod-pages .opc-pages-bar {
+	position: absolute;
+	top: var(--size-4-3);
+	inset-inline-start: var(--size-4-3);
+	z-index: calc(var(--layer-popover) - 1);
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: var(--size-2-1);
+	max-width: calc(100% - 120px);
+	padding: var(--size-2-1) var(--size-2-3);
+	background-color: var(--background-primary);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-m);
+	box-shadow: var(--shadow-s);
+	font-size: var(--font-ui-small);
+}
+body.opc-mod-pages .opc-pages-crumb {
+	background: none;
+	box-shadow: none;
+	border: none;
+	height: auto;
+	padding: var(--size-2-1) var(--size-2-2);
+	color: var(--text-muted);
+	max-width: 220px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	cursor: pointer;
+}
+body.opc-mod-pages .opc-pages-crumb:hover {
+	color: var(--text-normal);
+	background-color: var(--background-modifier-hover);
+}
+body.opc-mod-pages .opc-pages-crumb.is-current {
+	color: var(--text-normal);
+	font-weight: var(--font-semibold);
+}
+body.opc-mod-pages .opc-pages-sep {
+	color: var(--text-faint);
+}
+body.opc-mod-pages .canvas-wrapper:is(.opc-presenting, .opc-walking) .opc-pages-bar {
+	opacity: 0.6;
+}
+
+/* Placing a branch by hand. */
+body.opc-mod-pages .opc-pages-placing {
+	position: absolute;
+	bottom: calc(var(--size-4-4) + 56px);
+	left: 50%;
+	transform: translateX(-50%);
+	z-index: var(--layer-popover);
+	display: flex;
+	align-items: center;
+	gap: var(--size-4-2);
+	max-width: calc(100% - 32px);
+	padding: var(--size-4-2) var(--size-4-3);
+	background-color: var(--background-primary);
+	border: 1px solid var(--interactive-accent);
+	border-radius: var(--radius-l);
+	box-shadow: var(--shadow-l);
+}
+
+/* The index. */
+body.opc-mod-pages .opc-pages-view {
+	padding: var(--size-4-2);
+}
+body.opc-mod-pages .opc-pages-heading {
+	font-weight: var(--font-semibold);
+	padding: var(--size-2-2) var(--size-4-2);
+}
+body.opc-mod-pages .opc-pages-item {
+	display: flex;
+	align-items: center;
+	gap: var(--size-2-2);
+	padding: var(--size-2-2) var(--size-4-2);
+	padding-inline-start: calc(var(--size-4-2) + var(--opc-pages-depth, 0) * var(--size-4-5));
+	border-radius: var(--radius-s);
+	cursor: pointer;
+}
+body.opc-mod-pages .opc-pages-item:hover {
+	background-color: var(--background-modifier-hover);
+}
+body.opc-mod-pages .opc-pages-item.is-current {
+	background-color: var(--background-modifier-active-hover);
+	font-weight: var(--font-semibold);
+}
+body.opc-mod-pages .opc-pages-icon {
+	display: flex;
+	color: var(--text-muted);
+}
+body.opc-mod-pages .opc-pages-title {
+	flex: 1;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+body.opc-mod-pages .opc-pages-count {
+	color: var(--text-faint);
+	font-size: var(--font-ui-smaller);
+}
+body.opc-mod-pages .opc-pages-empty {
+	color: var(--text-muted);
+	font-size: var(--font-ui-small);
+	padding: var(--size-4-2);
+}

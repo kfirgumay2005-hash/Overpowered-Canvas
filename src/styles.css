@@ -45,6 +45,7 @@
 @import "./modules/direction/styles.css";
 @import "./modules/performance/styles.css";
 @import "./modules/layers/styles.css";
+@import "./modules/pages/styles.css";
 @import "./modules/note-blocks/styles.css";
 @import "./modules/lasso/styles.css";
 @import "./modules/text-highlight/styles.css";
@@ -159,4 +160,14 @@ body.canvas-kit-hide-bottom-bar .canvas-card-menu.opc-has-card-buttons > .canvas
 /* Its toolbar sits at the top centre too: ours goes below it. */
 .canvas-wrapper .opc-ink-toolbar.mod-below-bar {
 	top: calc(var(--size-4-3) + 56px);
+}
+
+/* Context menus kept inside the visible window (src/ui/menu-fit.ts). */
+.menu.opc-menu-fit {
+	top: var(--opc-menu-fit-top) !important;
+	max-height: var(--opc-menu-fit-max);
+}
+.menu.opc-menu-fit > .menu-scroll {
+	overflow-y: auto;
+	min-height: 0;
 }
