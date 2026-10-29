@@ -164,7 +164,6 @@ body.canvas-kit-hide-bottom-bar .canvas-card-menu.opc-has-card-buttons > .canvas
 
 /* Context menus kept inside the visible window (src/ui/menu-fit.ts). */
 .menu.opc-menu-fit {
-	top: var(--opc-menu-fit-top) !important;
 	max-height: var(--opc-menu-fit-max);
 }
 .menu.opc-menu-fit > .menu-scroll {
