@@ -47,6 +47,9 @@ read-only unless you know the internals. Payloads are listed below; types are in
 | `map-walk-moved` | canvas, node (the card the walk is on now, also the first one) |
 | `map-walk-ended` | canvas |
 | `selection-encapsulated` | canvas, newFile |
+| `page-shown` | canvas, pageId (`""` = the main page) — a view switched page |
+| `branch-moved` | canvas, anchor, root, pageId (`null` when the branch moved to another spot of the same page) |
+| `page-merged` | canvas, pageId |
 | `portal-opened` / `portal-closed` | canvas, portal |
 | `pdf-inserted` | canvas, file, pages |
 | `style-attribute-changed` | canvas, item, key, value |

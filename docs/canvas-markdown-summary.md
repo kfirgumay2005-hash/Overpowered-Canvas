@@ -129,3 +129,11 @@ line still belongs to that card.
 - Empty cards are skipped when a note is inserted as a *new* map.
 - The section-based outline format of other outliner plugins (`<!--section: 1.2-->`) is not read;
   convert those notes to a bullet outline first.
+
+## Pages
+
+A canvas split into pages (module *Pages*) exports each page as a heading one level below the map
+holding the card it comes from (deeper pages nest further); past `######`, a page continues as
+bullets nested under that card. Links between pages are cross edges, so each page's map stays a
+tree of its own. Reading the note back keeps every page: a page's first card is never linked to
+the heading it is nested under, and new lines take the page of the card they are under.

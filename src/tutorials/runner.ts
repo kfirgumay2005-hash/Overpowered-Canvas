@@ -71,6 +71,9 @@ const WATCHED_EVENTS = [
 	"selection-cut",
 	"note-exported",
 	"canvas-updated-from-note",
+	"page-shown",
+	"branch-moved",
+	"page-merged",
 ] as const;
 
 /** Seconds a finished step waits before moving on by itself. */

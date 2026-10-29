@@ -1,4 +1,4 @@
-import { getLanguage, Notice, Plugin, setIcon, setTooltip } from "obsidian";
+import { getLanguage, Notice, Plugin, setIcon, setTooltip, type EventRef, type Menu } from "obsidian";
 import { CanvasHooks } from "./core/canvas-hooks";
 import { CanvasTracker } from "./core/canvas-tracker";
 import { CanvasUi } from "./core/canvas-ui";
@@ -20,6 +20,7 @@ import { TUTORIALS } from "./tutorials/catalog";
 import { TutorialListModal, type TutorialListHost } from "./tutorials/list";
 import { TutorialRunner } from "./tutorials/runner";
 import { logError } from "./core/log";
+import { fitMenu } from "./ui/menu-fit";
 
 export default class OverpoweredCanvasPlugin extends Plugin {
 	declare settings: PluginSettings;
@@ -70,6 +71,10 @@ export default class OverpoweredCanvasPlugin extends Plugin {
 			},
 			MODULES,
 		);
+
+		// Long canvas menus stay reachable down to their last item.
+		const workspace = this.app.workspace as unknown as { on(name: string, cb: (menu: Menu) => void): EventRef };
+		for (const name of ["canvas:node-menu", "canvas:edge-menu", "canvas:selection-menu"]) this.registerEvent(workspace.on(name, (menu) => fitMenu(menu)));
 
 		const tutorials = this.setupTutorials(tracker, data, history, hooks);
 		this.addSettingTab(

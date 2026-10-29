@@ -1,13 +1,13 @@
 import { Modal, Notice, Setting, type App } from "obsidian";
 import { defineModule, type ModuleContext } from "../../core/module";
-import type { EdgeSide } from "../../data/json-canvas";
 import type { I18nKey, Translate } from "../../i18n";
 import type { CanvasLike, CanvasNodeLike } from "../../internals/types";
-import { SCHEMA_KEY, type MapLayout } from "../../data/schema";
-import { descendants, directionBetween, logical, type Dir, type TEdge } from "../mindmap/tree";
+import type { MapLayout } from "../../data/schema";
+import { descendants, logical, type TEdge } from "../mindmap/tree";
 import { canvasDirection, mutate, nodeType, selectedNodes } from "../shared";
 import { disposeElk, getElk } from "./engine";
-import { collapseGroups, expandPositions } from "./blocks";
+import { collapseGroups, expandPositions, fitGroups, groupsAround } from "./blocks";
+import { applyEdgeSides, arrangeState, isDrawingNode, isOutOfView, type SideMode } from "./arrange";
 import { computeLayout, interpolate, type Algorithm, type LayoutDirection, type Positions } from "./layout";
 import { logError } from "../../core/log";
 
@@ -18,19 +18,19 @@ interface LayoutSettings {
 	spacing: number;
 	levelSpacing: number;
 	animate: boolean;
+	/** How edges pick their sides after a layout. */
+	sides: SideMode;
+	/** Route an edge around the cards when no pair of sides gives it a clear path. */
+	bend: boolean;
 }
 
-const OPPOSITE: Record<Dir, EdgeSide> = { right: "left", left: "right", down: "top", up: "bottom" };
-const SIDE: Record<Dir, EdgeSide> = { right: "right", left: "left", down: "bottom", up: "top" };
 const ALGORITHMS: Algorithm[] = ["mindmap", "layered", "grid"];
-const DRAWINGS: ReadonlySet<string> = new Set(["ink", "line", "guide"]);
 const DIRECTIONS: LayoutDirection[] = ["right", "left", "down", "up", "balanced", "radial"];
 
 /** Which nodes a layout applies to: the selection (plus subtrees of a single root) or the whole canvas. */
 export function layoutTargets(canvas: CanvasLike, scope: LayoutSettings["scope"]): CanvasNodeLike[] {
 	// Drawings (ink, lines, guides) are not cards to arrange: lines follow the cards they connect.
-	const drawing = (n: CanvasNodeLike) => nodeType(n) === "text" && DRAWINGS.has(String((n.unknownData?.[SCHEMA_KEY] as { kind?: string } | undefined)?.kind ?? ""));
-	const usable = (n: CanvasNodeLike) => nodeType(n) !== "group" && !drawing(n) && !n.id.includes("~") && !n.nodeEl.hasClass("opc-hidden-by-collapse") && !n.nodeEl.hasClass("opc-hidden-by-branch");
+	const usable = (n: CanvasNodeLike) => nodeType(n) !== "group" && !isDrawingNode(n) && !n.id.includes("~") && !isOutOfView(n);
 	const all = [...canvas.nodes.values()].filter(usable);
 	const selected = selectedNodes(canvas).filter(usable);
 	if (scope === "canvas" || selected.length === 0) return all;
@@ -95,16 +95,15 @@ async function runLayout(ctx: ModuleContext<LayoutSettings>, canvas: CanvasLike,
 	const targets = layoutTargets(canvas, choice.scope);
 	// Groups move as rigid blocks: the chosen ones, and the outermost group around any target.
 	const whole = choice.scope === "canvas" || selectedNodes(canvas).length === 0;
-	const allNodes = [...canvas.nodes.values()].filter((n) => !n.id.includes("~"));
+	const allNodes = [...canvas.nodes.values()].filter((n) => !n.id.includes("~") && !isOutOfView(n));
 	const chosenGroups = new Set((whole ? allNodes : selectedNodes(canvas)).filter((n) => nodeType(n) === "group").map((n) => n.id));
 	const box = (n: CanvasNodeLike) => ({ id: n.id, x: n.x, y: n.y, width: n.width, height: n.height });
-	const allEdges: TEdge[] = [...canvas.edges.values()].map((e) => ({ from: e.from.node.id, to: e.to.node.id }));
-	const blocks = collapseGroups(
-		allNodes.map((n) => ({ ...box(n), group: nodeType(n) === "group" })),
-		new Set(targets.map((n) => n.id)),
-		chosenGroups,
-		allEdges,
-	);
+	const shownIds = new Set(allNodes.map((n) => n.id));
+	const allEdges: TEdge[] = [...canvas.edges.values()].map((e) => ({ from: e.from.node.id, to: e.to.node.id })).filter((e) => shownIds.has(e.from) && shownIds.has(e.to));
+	const boxes = allNodes.map((n) => ({ ...box(n), group: nodeType(n) === "group" }));
+	// A group holding every card being arranged is the map's frame, not a block: it grows instead.
+	const open = whole ? new Set<string>() : groupsAround(boxes, targets.map((n) => n.id));
+	const blocks = collapseGroups(boxes, new Set(targets.map((n) => n.id)), chosenGroups, allEdges, open);
 	if (blocks.nodes.length < 2) {
 		new Notice(ctx.t("autoLayout.nothing"));
 		return;
@@ -122,21 +121,14 @@ async function runLayout(ctx: ModuleContext<LayoutSettings>, canvas: CanvasLike,
 	}
 	const byId = new Map(allNodes.map((n) => [n.id, n]));
 	const positions = expandPositions(blocks, laid, new Map(allNodes.map((n) => [n.id, box(n)])));
+	const grown = fitGroups(boxes, open, positions);
 	const moved = [...positions.keys()].map((id) => byId.get(id)).filter((n): n is CanvasNodeLike => !!n);
 	const start: Positions = new Map(moved.map((n) => [n.id, { x: n.x, y: n.y }]));
 	const ok = mutate(ctx, canvas, () => {
 		for (const n of moved) n.moveTo(positions.get(n.id)!);
-		// Edges that moved attach to the sides facing each other (floating ends pick their own side).
-		for (const e of canvas.edges.values()) {
-			const from = e.from.node.id;
-			const to = e.to.node.id;
-			if (!positions.has(from) && !positions.has(to)) continue;
-			const sameBlock = blocks.blockOf.get(from) !== undefined && blocks.blockOf.get(from) === blocks.blockOf.get(to);
-			if (sameBlock || from === to) continue;
-			const floating = ctx.data.edge(e).get().floating;
-			const dir = directionBetween(e.from.node, e.to.node);
-			e.update({ ...e.from, side: floating?.from ? e.from.side : SIDE[dir] }, { ...e.to, side: floating?.to ? e.to.side : OPPOSITE[dir] });
-		}
+		for (const [id, r] of grown) byId.get(id)?.moveAndResize(r);
+		// Edges that moved get the sides of a clear path (floating ends keep theirs).
+		applyEdgeSides(ctx, canvas, new Set(positions.keys()), (a, b) => blocks.blockOf.get(a) !== undefined && blocks.blockOf.get(a) === blocks.blockOf.get(b));
 		// Each map arranged here remembers its layout: cards dropped into it later re-arrange it.
 		const hasParent = new Set(allEdges.filter((e) => e.from !== e.to).map((e) => e.to));
 		const hasChild = new Set(allEdges.filter((e) => e.from !== e.to).map((e) => e.from));
@@ -172,7 +164,7 @@ export const autoLayoutModule = defineModule<LayoutSettings>({
 	description: "autoLayout.desc",
 	group: "mindmap",
 	defaultEnabled: true,
-	defaultSettings: { algorithm: "mindmap", direction: "right", scope: "auto", spacing: 30, levelSpacing: 80, animate: true },
+	defaultSettings: { algorithm: "mindmap", direction: "right", scope: "auto", spacing: 30, levelSpacing: 80, animate: true, sides: "clear", bend: true },
 	overlapsWith: ["canvas-mindmap"],
 	sanitizeSettings: (raw, defaults) => {
 		const r = (raw ?? {}) as Partial<LayoutSettings>;
@@ -184,11 +176,23 @@ export const autoLayoutModule = defineModule<LayoutSettings>({
 			spacing: num(r.spacing, defaults.spacing),
 			levelSpacing: num(r.levelSpacing, defaults.levelSpacing),
 			animate: typeof r.animate === "boolean" ? r.animate : defaults.animate,
+			sides: r.sides === "facing" ? "facing" : "clear",
+			bend: typeof r.bend === "boolean" ? r.bend : defaults.bend,
 		};
 	},
 
 	enable(ctx) {
 		ctx.register(disposeElk);
+		const share = () => {
+			arrangeState.sides = ctx.settings.sides;
+			arrangeState.bend = ctx.settings.bend;
+		};
+		share();
+		ctx.onSettingsChange(share);
+		ctx.register(() => {
+			arrangeState.sides = "clear";
+			arrangeState.bend = true;
+		});
 		const run = (canvas: CanvasLike, patch: Partial<LayoutSettings> = {}) => void runLayout(ctx, canvas, { ...ctx.settings, ...patch });
 		const command = (id: string, name: string, icon: string, fn: (c: CanvasLike) => void) =>
 			ctx.addCommand({
@@ -228,5 +232,18 @@ export const autoLayoutModule = defineModule<LayoutSettings>({
 			.setName(ctx.t("autoLayout.levelSpacing.name"))
 			.addSlider((s) => s.setLimits(20, 400, 10).setValue(ctx.settings.levelSpacing).onChange((v) => ctx.updateSettings({ levelSpacing: v })));
 		new Setting(el).setName(ctx.t("autoLayout.animate.name")).addToggle((t) => t.setValue(ctx.settings.animate).onChange((v) => ctx.updateSettings({ animate: v })));
+		new Setting(el)
+			.setName(ctx.t("autoLayout.sides.name"))
+			.setDesc(ctx.t("autoLayout.sides.desc"))
+			.addDropdown((d) =>
+				d
+					.addOptions({ clear: ctx.t("autoLayout.sides.clear"), facing: ctx.t("autoLayout.sides.facing") })
+					.setValue(ctx.settings.sides)
+					.onChange((v) => ctx.updateSettings({ sides: v as SideMode })),
+			);
+		new Setting(el)
+			.setName(ctx.t("autoLayout.bend.name"))
+			.setDesc(ctx.t("autoLayout.bend.desc"))
+			.addToggle((t) => t.setValue(ctx.settings.bend).onChange((v) => ctx.updateSettings({ bend: v })));
 	},
 });

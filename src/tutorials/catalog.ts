@@ -7,6 +7,7 @@ import { SCHEMA_KEY, type LayerInfo, type OpcRoot } from "../data/schema";
 import { builtinTemplate } from "../modules/board-templates/builtins";
 import { reid, translate as shiftData } from "../modules/board-templates/logic";
 import { STICKY_COLORS } from "../modules/sticky-notes/logic";
+import { relayoutMap } from "../modules/auto-layout/arrange";
 import { added, addedEdges, arrow, card, count, edge, edgesOf, ellipsePoints, extraOf, findNode, group, ink, kindOf, nodesOf, practicePdf, randomId, shape, sticky, strokeCount, title } from "./board";
 import type { TutorialDefinition, TutorialRuntime } from "./types";
 
@@ -1897,4 +1898,231 @@ const pdf: TutorialDefinition = {
 	],
 };
 
-export const TUTORIALS: readonly TutorialDefinition[] = [basics, notes, shapes, edges, drawing, layers, present, mindmap, navigate, organize, markdown, select, blocks, vault, style, big, direction, pdf];
+// ---------- 19. Big maps in pages ----------
+
+const PAGES_VIEW = "opc-pages";
+const pagesOfRoot = (rt: TutorialRuntime) => rt.root().pages ?? [];
+const pageOfCard = (rt: TutorialRuntime, id: string) => rt.extra(id).page ?? "";
+
+const pages: TutorialDefinition = {
+	id: "pages",
+	icon: "file-stack",
+	title: "tut.pages.title",
+	summary: "tut.pages.summary",
+	modules: ["pages", "auto-layout", "presentation", "node-links"],
+	board: (t) => ({
+		nodes: [
+			card("pg-root", t("tut.pages.board.root"), 0, 120, 240, 80, { color: "5" }),
+			card("pg-diag", t("tut.pages.board.diag"), 360, -40, 220, 60),
+			card("pg-treat", t("tut.pages.board.treat"), 360, 280, 220, 60, { color: "4" }),
+			card("pg-bb", t("tut.pages.board.bb"), 700, 180, 220, 60, { color: "6" }),
+			card("pg-ace", t("tut.pages.board.ace"), 700, 400, 220, 60),
+			card("pg-bb1", t("tut.pages.board.bb1"), 1040, 80, 220, 60),
+			card("pg-bb2", t("tut.pages.board.bb2"), 1040, 170, 220, 60),
+			card("pg-bb3", t("tut.pages.board.bb3"), 1040, 260, 220, 60),
+			card("pg-bb3a", t("tut.pages.board.bb3a"), 1380, 260, 220, 60),
+			card("pg-ace1", t("tut.pages.board.ace1"), 1040, 400, 220, 60),
+		],
+		edges: [
+			edge("pg-e1", "pg-root", "right", "pg-diag", "left"),
+			edge("pg-e2", "pg-root", "right", "pg-treat", "left"),
+			edge("pg-e3", "pg-treat", "right", "pg-bb", "left"),
+			edge("pg-e4", "pg-treat", "right", "pg-ace", "left"),
+			edge("pg-e5", "pg-bb", "right", "pg-bb1", "left"),
+			edge("pg-e6", "pg-bb", "right", "pg-bb2", "left"),
+			edge("pg-e7", "pg-bb", "right", "pg-bb3", "left"),
+			edge("pg-e8", "pg-bb3", "right", "pg-bb3a", "left"),
+			edge("pg-e9", "pg-ace", "right", "pg-ace1", "left"),
+		],
+		root: { mapLayouts: { "pg-root": "right" } },
+	}),
+	steps: [
+		{
+			title: "tut.pages.s1.title",
+			body: "tut.pages.s1.body",
+			task: "tut.pages.s1.task",
+			enter: (rt) => rt.select(["pg-bb"]),
+			check: (rt) => pagesOfRoot(rt).some((p) => p.anchor === "pg-bb"),
+			demo: (rt) => {
+				rt.select(["pg-bb"]);
+				rt.command("pages:move-branch");
+			},
+		},
+		{
+			title: "tut.pages.s2.title",
+			body: "tut.pages.s2.body",
+			task: "tut.pages.s2.task",
+			target: ".opc-pages-bar",
+			check: (rt) => rt.seen("page-shown", (_c, page) => page === ""),
+			demo: (rt) => {
+				const root = pagesOfRoot(rt).find((p) => p.anchor === "pg-bb")?.root;
+				if (root) rt.select([root]);
+				rt.command("pages:follow-link");
+			},
+		},
+		{
+			title: "tut.pages.s3.title",
+			body: "tut.pages.s3.body",
+			task: "tut.pages.s3.task",
+			target: ".opc-pages-index",
+			check: (rt) => rt.viewOpen(PAGES_VIEW),
+			demo: (rt) => {
+				rt.command("pages:open-index");
+			},
+		},
+		{
+			title: "tut.pages.s4.title",
+			body: "tut.pages.s4.body",
+			task: "tut.pages.s4.task",
+			touch: "tut.pages.s4.touch",
+			enter: (rt) => {
+				rt.command("pages:main-page");
+				rt.select(["pg-bb"]);
+			},
+			check: (rt) => rt.seen("map-walk-moved") && rt.seen("page-shown", (_c, page) => page !== ""),
+			demo: async (rt) => {
+				if (!rt.canvas.wrapperEl.hasClass("opc-walking")) {
+					rt.command("pages:main-page");
+					rt.select(["pg-bb"]);
+					rt.command("presentation:walk");
+					await rt.wait(700);
+				}
+				rt.canvas.wrapperEl.querySelector<HTMLElement>(".opc-walk-right")?.click();
+				await rt.wait(700);
+				rt.canvas.wrapperEl.querySelector<HTMLElement>(".opc-walk-right")?.click();
+			},
+		},
+		{
+			title: "tut.pages.s5.title",
+			body: "tut.pages.s5.body",
+			task: "tut.pages.s5.task",
+			enter: (rt) => {
+				rt.command("presentation:walk-end");
+				rt.command("pages:main-page");
+				rt.select(["pg-ace"]);
+			},
+			check: (rt) => rt.seen("branch-moved", (_c, _a, _r, page) => page === null),
+			demo: async (rt) => {
+				rt.command("pages:main-page");
+				rt.select(["pg-ace"]);
+				rt.command("pages:place-branch");
+				await rt.wait(600);
+				const ace = rt.node("pg-ace");
+				if (ace) {
+					rt.canvas.tx = ace.x + 200;
+					rt.canvas.ty = ace.y + 520;
+					rt.canvas.markViewportChanged();
+				}
+				await rt.wait(900);
+				rt.command("pages:put-branch-here");
+			},
+		},
+		{
+			title: "tut.pages.s6.title",
+			body: "tut.pages.s6.body",
+			task: "tut.pages.s6.task",
+			check: (rt) => rt.seen("page-merged"),
+			demo: async (rt) => {
+				if (pageOfCard(rt, "pg-bb") === "" && !rt.node("pg-bb")?.nodeEl.hasClass("opc-page-hidden")) {
+					rt.select(["pg-bb"]);
+					rt.command("pages:follow-link");
+					await rt.wait(700);
+				}
+				rt.command("pages:merge-page");
+			},
+		},
+		{ title: "tut.pages.s7.title", body: "tut.pages.s7.body" },
+	],
+};
+
+// ---------- 20. Tidy arrows ----------
+
+const arrows: TutorialDefinition = {
+	id: "arrows",
+	icon: "waypoints",
+	title: "tut.arrows.title",
+	summary: "tut.arrows.summary",
+	modules: ["auto-layout", "note-blocks", "presentation", "edge-routing"],
+	board: (t) => ({
+		nodes: [
+			group("ar-g", t("tut.arrows.board.group"), 380, 230, 700, 230),
+			card("ar-root", t("tut.arrows.board.root"), 0, 300, 240, 80, { color: "5" }),
+			card("ar-a", t("tut.arrows.board.a"), 420, 0, 220, 60, { color: "4" }),
+			card("ar-a1", t("tut.arrows.board.a1"), 800, -80, 220, 60),
+			card("ar-a2", t("tut.arrows.board.a2"), 800, 40, 220, 60),
+			card("ar-b", t("tut.arrows.board.b"), 420, 300, 220, 60, { color: "6" }),
+			card("ar-b1", t("tut.arrows.board.b1"), 800, 260, 220, 60),
+			card("ar-b2", t("tut.arrows.board.b2"), 800, 370, 220, 60),
+			card("ar-c", t("tut.arrows.board.c"), 420, 620, 220, 60, { color: "2" }),
+			card("ar-c1", t("tut.arrows.board.c1"), 800, 620, 220, 60),
+			card("ar-new", t("tut.arrows.board.new"), 0, 900, 220, 60, { color: "3" }),
+		],
+		// Sides left over from an older arrangement: several arrows run under cards.
+		edges: [
+			edge("ar-e1", "ar-root", "bottom", "ar-a", "bottom"),
+			edge("ar-e2", "ar-root", "right", "ar-b", "left"),
+			edge("ar-e3", "ar-root", "top", "ar-c", "top"),
+			edge("ar-e4", "ar-a", "bottom", "ar-a1", "left"),
+			edge("ar-e5", "ar-a", "right", "ar-a2", "left"),
+			edge("ar-e6", "ar-b", "right", "ar-b1", "left"),
+			edge("ar-e7", "ar-b", "right", "ar-b2", "left"),
+			edge("ar-e8", "ar-c", "top", "ar-c1", "top"),
+		],
+		root: { mapLayouts: { "ar-root": "right" } },
+	}),
+	steps: [
+		{
+			title: "tut.arrows.s1.title",
+			body: "tut.arrows.s1.body",
+			task: "tut.arrows.s1.task",
+			enter: (rt) => rt.select(["ar-root"]),
+			check: (rt) => rt.seen("layout-applied"),
+			demo: (rt) => {
+				rt.select(["ar-root"]);
+				rt.command("auto-layout:layout-mindmap");
+			},
+		},
+		{
+			title: "tut.arrows.s2.title",
+			body: "tut.arrows.s2.body",
+			task: "tut.arrows.s2.task",
+			focus: ["ar-new", "ar-g"],
+			check: (rt) => edgesOf(rt.now()).some((e) => e.fromNode === "ar-b" && e.toNode === "ar-new"),
+			demo: async (rt) => {
+				const b = rt.node("ar-b");
+				const fresh = rt.node("ar-new");
+				if (!b || !fresh) return;
+				await glide(rt, "ar-new", b.x + b.width + 60 - fresh.x, b.y - fresh.y);
+				rt.change(() => rt.canvas.importData({ nodes: [], edges: [edge("ar-e9", "ar-b", "right", "ar-new", "left")] }, false));
+				const moved = rt.node("ar-new");
+				if (moved) await relayoutMap({ data: rt.data }, rt.canvas, moved);
+			},
+		},
+		{
+			title: "tut.arrows.s3.title",
+			body: "tut.arrows.s3.body",
+			task: "tut.arrows.s3.task",
+			touch: "tut.arrows.s3.touch",
+			target: ".opc-card-walk",
+			enter: (rt) => rt.select(["ar-root"]),
+			check: (rt) => {
+				let moves = 0;
+				return rt.seen("map-walk-moved", () => ++moves >= 4);
+			},
+			demo: async (rt) => {
+				if (!rt.canvas.wrapperEl.hasClass("opc-walking")) {
+					rt.select(["ar-root"]);
+					rt.command("presentation:walk");
+					await rt.wait(700);
+				}
+				for (const dir of ["right", "down", "right", "left"]) {
+					rt.canvas.wrapperEl.querySelector<HTMLElement>(`.opc-walk-${dir}`)?.click();
+					await rt.wait(700);
+				}
+			},
+		},
+		{ title: "tut.arrows.s4.title", body: "tut.arrows.s4.body", enter: (rt) => void rt.command("presentation:walk-end") },
+	],
+};
+
+export const TUTORIALS: readonly TutorialDefinition[] = [basics, notes, shapes, edges, drawing, layers, present, mindmap, navigate, organize, markdown, select, blocks, vault, style, big, direction, pdf, pages, arrows];

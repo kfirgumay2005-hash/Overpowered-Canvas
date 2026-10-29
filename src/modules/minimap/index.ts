@@ -4,7 +4,7 @@ import { SCHEMA_KEY, type OpcNode } from "../../data/schema";
 import { unpack } from "../../geometry/ink";
 import type { CanvasLike } from "../../internals/types";
 import { mergeWithDefaults } from "../../settings/settings";
-import { capturePointer, nodeType, onHiddenLayer, renderedZ } from "../shared";
+import { capturePointer, nodeType, isHiddenNode, renderedZ } from "../shared";
 import { cssColor, fitTransform, toMap, toWorld, unionBox, type Box, type MapTransform } from "./logic";
 
 const CORNERS = ["top-start", "top-end", "bottom-start", "bottom-end"] as const;
@@ -170,7 +170,7 @@ class Minimap {
 		g.globalAlpha = 1;
 
 		// Drawing order of the canvas itself: the rendered z-index (layers move it), else the core's.
-		const nodes = [...canvas.nodes.values()].filter((n) => !onHiddenLayer(n)).sort((a, b) => renderedZ(a) - renderedZ(b));
+		const nodes = [...canvas.nodes.values()].filter((n) => !isHiddenNode(n)).sort((a, b) => renderedZ(a) - renderedZ(b));
 		for (const n of nodes) {
 			const extra = (n.unknownData[SCHEMA_KEY] ?? {}) as OpcNode;
 			const p = toMap(t, n.x, n.y);

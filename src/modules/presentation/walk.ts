@@ -1,4 +1,5 @@
 // Walking through a mind map with the arrow keys (pure, unit-tested).
+import { orderChildren } from "../canvas-markdown/structure";
 import { childrenOf, directionBetween, parentOf, type Dir, type TEdge, type TNode } from "../mindmap/tree";
 
 const OPPOSITE: Record<Dir, Dir> = { right: "left", left: "right", down: "up", up: "down" };
@@ -60,4 +61,38 @@ export function largestRoot(nodes: Map<string, TNode>, edges: TEdge[]): string |
 	let best: string | null = null;
 	for (const [id, n] of size) if (best === null || n > size.get(best)!) best = id;
 	return best;
+}
+
+/** The parent a step back leads to: the one we came down from, else the first. */
+function treeParent(nodes: Map<string, TNode>, edges: TEdge[], id: string, visited: ReadonlyMap<string, string>): string | null {
+	const parents = edges.filter((e) => e.to === id && e.from !== id && nodes.has(e.from)).map((e) => e.from);
+	return parents.find((p) => visited.get(p) === id) ?? parents[0] ?? null;
+}
+
+/** Children of `id` in reading order (as the outline lists them). */
+export function orderedChildren(nodes: Map<string, TNode>, edges: TEdge[], id: string, rtl: boolean): TNode[] {
+	const parent = nodes.get(id);
+	if (!parent) return [];
+	const kids = [...new Set(childrenOf(edges, id))].map((c) => nodes.get(c)).filter((n): n is TNode => !!n);
+	return orderChildren(parent, kids, rtl);
+}
+
+/**
+ * Where an arrow key leads by the map's hierarchy, wherever the cards sit: Right goes into the
+ * children (the one visited last under this card, else the first), Left back to the parent, Up
+ * and Down to the previous and next sibling, stopping at the first and last. Null at the ends.
+ */
+export function treeStep(nodes: Map<string, TNode>, edges: TEdge[], current: string, key: Dir, visited: ReadonlyMap<string, string>, rtl = false): string | null {
+	if (!nodes.has(current)) return null;
+	if (key === "right") {
+		const kids = orderedChildren(nodes, edges, current, rtl);
+		const last = visited.get(current);
+		return kids.find((k) => k.id === last)?.id ?? kids[0]?.id ?? null;
+	}
+	const parent = treeParent(nodes, edges, current, visited);
+	if (key === "left") return parent;
+	if (!parent) return null;
+	const siblings = orderedChildren(nodes, edges, parent, rtl);
+	const i = siblings.findIndex((s) => s.id === current);
+	return siblings[i + (key === "down" ? 1 : -1)]?.id ?? null;
 }

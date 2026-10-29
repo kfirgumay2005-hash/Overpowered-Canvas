@@ -4,7 +4,7 @@ import type { GuideData, OpcNode } from "../../data/schema";
 import type { CanvasLike, CanvasNodeLike } from "../../internals/types";
 import { NumberPromptModal } from "../../ui/number-prompt";
 import { closePicker, showPicker, showPopover, type ChoiceAnchor } from "../../ui/picker";
-import { common, mutate, nodeType, onlyNodes, randomId } from "../shared";
+import { common, isHiddenNode, mutate, nodeType, onlyNodes, randomId } from "../shared";
 import { angleOf, HANDLE_LONG, HANDLE_SHORT, handleSize, normalizeAngle, projectOnLine, withAngle } from "./geometry";
 
 /** Obsidian's hover layer over a card (resize handles, connection dots). */
@@ -47,7 +47,7 @@ class GuideLayer {
 			el.addEventListener("dblclick", (evt) => evt.stopPropagation());
 			// The line follows its handle's layer (hidden / locked), whichever module marks it.
 			const sync = () => {
-				el.toggleClass("opc-layer-hidden", node.nodeEl.hasClass("opc-layer-hidden"));
+				el.toggleClass("opc-layer-hidden", isHiddenNode(node));
 				el.toggleAttribute("data-opc-layer-locked", node.nodeEl.hasAttribute("data-opc-layer-locked"));
 			};
 			const watch = new MutationObserver(sync);

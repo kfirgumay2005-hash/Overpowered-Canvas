@@ -115,6 +115,8 @@ export interface ModuleContext<S extends object> {
 	addCanvasKey(spec: CanvasKeySpec): void;
 	/** A workspace view type; its leaves are closed and the type unregistered on disable. */
 	registerView(type: string, factory: ViewCreator): void;
+	/** An icon in the left ribbon; removed on disable. */
+	addRibbonIcon(icon: string, title: string, onClick: (evt: MouseEvent) => unknown): HTMLElement;
 	/** Context menus of nodes / edges / multi-selections (public workspace events). */
 	onNodeMenu(cb: (menu: Menu, node: CanvasNodeLike) => void): void;
 	onEdgeMenu(cb: (menu: Menu, edge: CanvasEdgeLike) => void): void;

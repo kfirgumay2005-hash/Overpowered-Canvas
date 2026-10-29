@@ -6,13 +6,15 @@ import type { CanvasLike, CanvasNodeLike } from "../../internals/types";
 import { NumberPromptModal } from "../../ui/number-prompt";
 import { mutate, nodeType, selectedEdges, selectedNodes } from "../shared";
 import { nextSlide, slideOrder, type SlideEdge } from "./path";
-import { enableWalk } from "./walker";
+import { enableWalk, type WalkKeys } from "./walker";
 import { logError } from "../../core/log";
 
 interface PresentationSettings {
 	slideWidth: number;
 	slideHeight: number;
 	fullscreen: boolean;
+	/** What the arrow keys follow when walking through a map. */
+	walkKeys: WalkKeys;
 }
 
 interface Session {
@@ -57,12 +59,12 @@ export const presentationModule = defineModule<PresentationSettings>({
 	description: "presentation.desc",
 	group: "interaction",
 	defaultEnabled: true,
-	defaultSettings: { slideWidth: 1200, slideHeight: 675, fullscreen: true },
+	defaultSettings: { slideWidth: 1200, slideHeight: 675, fullscreen: true, walkKeys: "tree" },
 	overlapsWith: ["advanced-canvas"],
 
 	enable(ctx) {
 		const sessions = new Map<CanvasLike, Session>();
-		const walker = enableWalk(ctx, (canvas) => sessions.has(canvas));
+		const walker = enableWalk(ctx, (canvas) => sessions.has(canvas), () => ctx.settings.walkKeys);
 
 		const show = (canvas: CanvasLike, session: Session) => {
 			const id = session.history[session.history.length - 1]!;
@@ -319,5 +321,14 @@ export const presentationModule = defineModule<PresentationSettings>({
 		new Setting(el)
 			.setName(ctx.t("presentation.fullscreen.name"))
 			.addToggle((t) => t.setValue(ctx.settings.fullscreen).onChange((v) => ctx.updateSettings({ fullscreen: v })));
+		new Setting(el)
+			.setName(ctx.t("presentation.walkKeys.name"))
+			.setDesc(ctx.t("presentation.walkKeys.desc"))
+			.addDropdown((d) =>
+				d
+					.addOptions({ tree: ctx.t("presentation.walkKeys.tree"), layout: ctx.t("presentation.walkKeys.layout") })
+					.setValue(ctx.settings.walkKeys)
+					.onChange((v) => ctx.updateSettings({ walkKeys: v as WalkKeys })),
+			);
 	},
 });

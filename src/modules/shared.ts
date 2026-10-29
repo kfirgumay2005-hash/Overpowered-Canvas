@@ -84,9 +84,9 @@ export function renderedZ(node: CanvasNodeLike): number {
 	return Number.isFinite(rendered) ? rendered : node.zIndex;
 }
 
-/** On a hidden layer (the Layers module marks those cards). */
-export function onHiddenLayer(node: CanvasNodeLike): boolean {
-	return node.nodeEl.hasClass("opc-layer-hidden");
+/** Not on the board right now: on a hidden layer (Layers) or on another page (Pages). */
+export function isHiddenNode(node: CanvasNodeLike): boolean {
+	return node.nodeEl.hasClass("opc-layer-hidden") || node.nodeEl.hasClass("opc-page-hidden");
 }
 
 export function randomId(length = 16): string {

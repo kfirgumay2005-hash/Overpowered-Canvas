@@ -5,7 +5,7 @@
  */
 import type { ModuleContext } from "../../core/module";
 import type { CanvasItemLike, CanvasLike, CanvasNodeLike } from "../../internals/types";
-import { isTextBox, mutate, nodeType, onHiddenLayer, randomId, renderedZ } from "../shared";
+import { isTextBox, mutate, nodeType, isHiddenNode, randomId, renderedZ } from "../shared";
 import { absolutePoints, CARRIER_TEXT, refit, shiftStroke } from "./carriers";
 import { cardUnder, remapRefs } from "./stick";
 import type { DrawingSettings } from "./toolbar";
@@ -19,7 +19,7 @@ export function isInk(ctx: Ctx, n: CanvasNodeLike): boolean {
 /** Cards a stroke can stick to, topmost first. */
 export function stickyTargets(ctx: Ctx, canvas: CanvasLike): CanvasNodeLike[] {
 	return [...canvas.nodes.values()]
-		.filter((n) => nodeType(n) !== "group" && !n.id.includes("~") && !onHiddenLayer(n) && (isTextBox(ctx, n) || nodeType(n) === "link"))
+		.filter((n) => nodeType(n) !== "group" && !n.id.includes("~") && !isHiddenNode(n) && (isTextBox(ctx, n) || nodeType(n) === "link"))
 		.sort((a, b) => renderedZ(b) - renderedZ(a));
 }
 

@@ -41,10 +41,22 @@ Lock items in place.
 drag a card onto another card's "Add as child" / "Add as sibling" targets to move it with its
 branch (the view follows dropped note blocks to the middle of the screen), Alt+arrows to move
 between cards, walk through a map with the arrow keys at your zoom (or with on-screen arrows on
-touch screens) without making slides,
+touch screens) without making slides — Right into the children, Left to the parent, Up and Down
+along the siblings, wherever the cards sit (groups with arrows are stops too),
 collapsible branches with child counts, and automatic layout (mind map in any direction,
 collision-free radial that respects every card's size, balanced, layered flowchart, grid) as one
-animated undo step; groups move as rigid blocks and edges re-attach to the facing sides.
+animated undo step; groups move as rigid blocks (also when a dropped card re-arranges the map), a
+group around the whole map grows to hold it, and every arrow gets the sides of its shortest path
+that passes under no card and crosses no other arrow (or bends around the cards when none does).
+
+**Pages** — split a huge map into pages of the same canvas: *Move branch to a new page* takes
+everything below a card to a page of its own; the card stays in the map and it and the page's
+first card link to each other. One page shows at a time in each tab (two tabs can show two pages),
+a bar at the top shows where you are, and a pages index in the left sidebar lists them as a tree.
+Walking through the map crosses pages, Canvas → Markdown writes pages as nested headings (nested
+bullets past the sixth level), and a page can be brought back into the map. Or move a branch to
+another spot of the same page, linked the same way. Without the plugin the pages simply sit side
+by side on the board.
 
 **Vault integration** — canvases get properties, tags, aliases and outgoing links in Obsidian's
 metadata cache; edges from frontmatter links; links and embeds to a single card
@@ -61,7 +73,7 @@ other canvases, collapsible groups, focus mode, move a selection to a new canvas
 cards for annotation, custom style attributes from CSS snippets, a public events API, a minimap,
 a frames panel to search, reorder and present the groups of a canvas, a line grid behind the
 content (a line every N dots), an adjustable selection toolbar size (separately for computers
-and phones), and eighteen hands-on tutorials (at the top of the settings and in the canvas
+and phones), and twenty hands-on tutorials (at the top of the settings and in the canvas
 controls). Each tutorial opens a temporary practice board with a coach panel: small tasks that
 tick themselves off as you do them, a "Show me" button that does each task live on the board, and
 highlights on the controls involved. The board (and any practice notes it uses) is deleted when the tutorial closes. At the top of the settings you choose the vault folder for the plugin's own files (note data and

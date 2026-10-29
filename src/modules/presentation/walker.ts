@@ -1,9 +1,13 @@
 import { setIcon } from "obsidian";
 import type { ModuleContext } from "../../core/module";
 import type { CanvasLike, CanvasNodeLike } from "../../internals/types";
-import { parentOf, type Dir, type TEdge, type TNode } from "../mindmap/tree";
-import { centerOn, nodeType, onHiddenLayer, selectedNodes } from "../shared";
-import { largestRoot, walkStep } from "./walk";
+import { type Dir, type TEdge, type TNode } from "../mindmap/tree";
+import { pagesHost } from "../pages/api";
+import { canvasDirection, centerOn, nodeType, selectedNodes } from "../shared";
+import { largestRoot, treeStep, walkStep } from "./walk";
+
+/** What the arrow keys follow: the map's hierarchy, or where the cards sit. */
+export type WalkKeys = "tree" | "layout";
 
 interface Walk {
 	start: string;
@@ -19,33 +23,66 @@ const ARROWS: Record<string, Dir> = { ArrowRight: "right", ArrowLeft: "left", Ar
 const TAP_MOVE = 6;
 const ZOOM_STEP = 0.5;
 
+/** Cards (and groups) a walk can stop on. Cards on other pages count: a walk can go there. */
 function shown(node: CanvasNodeLike): boolean {
 	const el = node.nodeEl;
-	return nodeType(node) !== "group" && !el.hasClass("opc-hidden-by-collapse") && !el.hasClass("opc-hidden-by-branch") && !onHiddenLayer(node);
+	return !node.id.includes("~") && !el.hasClass("opc-hidden-by-collapse") && !el.hasClass("opc-hidden-by-branch") && !el.hasClass("opc-layer-hidden");
+}
+
+function inside(outer: TNode, inner: TNode): boolean {
+	return inner.x >= outer.x && inner.y >= outer.y && inner.x + inner.width <= outer.x + outer.width && inner.y + inner.height <= outer.y + outer.height;
 }
 
 /**
  * Walking through a map without slides: the arrow keys (or the on-screen arrows) move along the
  * map's links at the current zoom. Read-only while walking; Esc ends it.
  */
-export function enableWalk(ctx: ModuleContext<object>, presenting: (canvas: CanvasLike) => boolean) {
+export function enableWalk(ctx: ModuleContext<object>, presenting: (canvas: CanvasLike) => boolean, keys: () => WalkKeys) {
 	const walks = new Map<CanvasLike, Walk>();
 
+	/**
+	 * The map as a walk sees it: cards and groups joined by their edges. A group without edges
+	 * of its own leads into the cards inside it that have no parent, and a card whose branch was
+	 * moved to a page leads to that page.
+	 */
 	const model = (canvas: CanvasLike) => {
 		const nodes = new Map<string, TNode>();
-		for (const n of canvas.nodes.values()) if (shown(n)) nodes.set(n.id, { id: n.id, x: n.x, y: n.y, width: n.width, height: n.height });
+		const groups: TNode[] = [];
+		for (const n of canvas.nodes.values()) {
+			if (!shown(n)) continue;
+			const box = { id: n.id, x: n.x, y: n.y, width: n.width, height: n.height };
+			nodes.set(n.id, box);
+			if (nodeType(n) === "group") groups.push(box);
+		}
 		const edges: TEdge[] = [...canvas.edges.values()].map((e) => ({ from: e.from.node.id, to: e.to.node.id })).filter((e) => nodes.has(e.from) && nodes.has(e.to));
-		return { nodes, edges };
+		const hasParent = new Set(edges.map((e) => e.to));
+		const hasChildren = new Set(edges.map((e) => e.from));
+		const page = pagesHost.api;
+		const pageOf = (id: string) => {
+			const n = canvas.nodes.get(id);
+			return page && n ? page.pageOf(n) : "";
+		};
+		// Smallest group around each node, so nested groups lead into each other.
+		const byArea = [...groups].sort((a, b) => a.width * a.height - b.width * b.height);
+		const virtual: TEdge[] = [];
+		for (const n of nodes.values()) {
+			if (hasParent.has(n.id)) continue;
+			const g = byArea.find((g) => g.id !== n.id && inside(g, n) && g.width * g.height > n.width * n.height && pageOf(g.id) === pageOf(n.id));
+			if (g && !hasChildren.has(g.id)) virtual.push({ from: g.id, to: n.id });
+		}
+		for (const link of page?.links(canvas) ?? []) if (nodes.has(link.anchor) && nodes.has(link.root)) virtual.push({ from: link.anchor, to: link.root });
+		return { nodes, edges: [...edges, ...virtual] };
 	};
 
-	const go = (canvas: CanvasLike, walk: Walk, id: string) => {
+	const go = (canvas: CanvasLike, walk: Walk, id: string, from?: string) => {
 		const node = canvas.nodes.get(id);
 		if (!node) return;
 		canvas.nodes.get(walk.current)?.nodeEl.removeClass("opc-walk-current");
+		if (from && from !== id) walk.visited.set(from, id);
 		walk.current = id;
+		// A card on another page: show that page first.
+		pagesHost.api?.reveal(canvas, node);
 		node.nodeEl.addClass("opc-walk-current");
-		const parent = parentOf(model(canvas).edges, id);
-		if (parent) walk.visited.set(parent, id);
 		centerOn(canvas, node);
 		ctx.events.emit("map-walk-moved", canvas, node);
 	};
@@ -54,8 +91,13 @@ export function enableWalk(ctx: ModuleContext<object>, presenting: (canvas: Canv
 		const walk = walks.get(canvas);
 		if (!walk) return;
 		const { nodes, edges } = model(canvas);
-		const next = walkStep(nodes, edges, walk.current, dir, walk.visited);
-		if (next) go(canvas, walk, next);
+		const next = keys() === "tree" ? treeStep(nodes, edges, walk.current, dir, walk.visited, canvasDirection(canvas) === "rtl") : walkStep(nodes, edges, walk.current, dir, walk.visited);
+		if (!next) return;
+		// Each parent remembers the child visited last (going down, or along the siblings), so
+		// going back up and down again returns there.
+		const down = edges.some((e) => e.from === walk.current && e.to === next);
+		const sharedParent = edges.find((e) => e.to === next && edges.some((f) => f.from === e.from && f.to === walk.current))?.from;
+		go(canvas, walk, next, down ? walk.current : sharedParent);
 	};
 
 	const zoom = (canvas: CanvasLike, delta: number) => {
