@@ -30,7 +30,9 @@ export function fitMenu(menu: Menu): void {
 		let menuTop = rect.top;
 		if (bottom - menuTop < Math.min(full, bottom - top)) menuTop = Math.max(top, bottom - full);
 		dom.addClass("opc-menu-fit");
-		dom.setCssProps({ "--opc-menu-fit-top": `${Math.round(menuTop)}px`, "--opc-menu-fit-max": `${Math.max(80, Math.floor(bottom - menuTop))}px` });
+		// The app places the menu with an inline `top`; move it the same way.
+		dom.setCssStyles({ top: `${Math.round(menuTop)}px` });
+		dom.setCssProps({ "--opc-menu-fit-max": `${Math.max(80, Math.floor(bottom - menuTop))}px` });
 	};
 	// The menu is laid out right after the event that builds it.
 	window.setTimeout(run, 0);
