@@ -3,7 +3,8 @@ import { defineModule } from "../../core/module";
 import type { CanvasNodeData } from "../../data/json-canvas";
 import { embedRegistry, type EmbedContext } from "../../internals/app";
 import type { CanvasLike, CanvasNodeLike, CanvasViewLike } from "../../internals/types";
-import { selectedNodes } from "../shared";
+import { pagesHost } from "../pages/api";
+import { centerOn, selectedNodes } from "../shared";
 
 /** "#abc123" → "abc123" for node subpaths; headings and blocks (#^…) are not node ids. */
 export function nodeIdFromSubpath(subpath: string | undefined): string | null {
@@ -101,15 +102,25 @@ function copyLink(canvas: CanvasLike, node: CanvasNodeLike, t: (k: "nodeLinks.co
 	new Notice(t("nodeLinks.copied"));
 }
 
-/** Zooms to and selects a node once it exists (the view may still be loading its file). */
-function revealNode(canvas: CanvasLike, id: string, tries = 20): void {
+/** A canvas loaded this recently has no zoom of its own yet: a link into it zooms to the card. */
+const FRESH_MS = 1500;
+/** The click on a link is still reaching the card that holds the link, which selects that card. */
+const CLICK_SETTLES_MS = 50;
+
+/**
+ * Selects a node once it exists (the view may still be loading its file), on its own page. A view
+ * in use keeps its zoom and only moves to the node.
+ */
+function revealNode(canvas: CanvasLike, id: string, fresh: () => boolean, tries = 20): void {
 	const node = canvas.nodes.get(id);
 	if (!node) {
-		if (tries > 0) window.setTimeout(() => revealNode(canvas, id, tries - 1), 100);
+		if (tries > 0) window.setTimeout(() => revealNode(canvas, id, fresh, tries - 1), 100);
 		return;
 	}
+	pagesHost.api?.reveal(canvas, node);
 	canvas.selectOnly(node);
-	canvas.zoomToBbox(node.getBBox());
+	if (fresh()) canvas.zoomToBbox(node.getBBox());
+	else centerOn(canvas, node);
 }
 
 /**
@@ -128,6 +139,8 @@ export const nodeLinksModule = defineModule({
 	enable(ctx) {
 		// Links: the view receives the subpath as ephemeral state.
 		let viewPatched = false;
+		const loadedAt = new WeakMap<CanvasLike, number>();
+		ctx.on("data-load", (canvas) => loadedAt.set(canvas, Date.now()));
 		ctx.onCanvas((_canvas, view) => {
 			if (viewPatched) return;
 			viewPatched = true;
@@ -136,7 +149,9 @@ export const nodeLinksModule = defineModule({
 					function (this: CanvasViewLike, state: { subpath?: string } | undefined) {
 						next.call(this, state);
 						const id = nodeIdFromSubpath(state?.subpath);
-						if (id) revealNode(this.canvas, id);
+						if (!id) return;
+						const canvas = this.canvas;
+						window.setTimeout(() => revealNode(canvas, id, () => Date.now() - (loadedAt.get(canvas) ?? 0) < FRESH_MS), CLICK_SETTLES_MS);
 					},
 			});
 		});

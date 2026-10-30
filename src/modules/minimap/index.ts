@@ -4,6 +4,7 @@ import { SCHEMA_KEY, type OpcNode } from "../../data/schema";
 import { unpack } from "../../geometry/ink";
 import type { CanvasLike } from "../../internals/types";
 import { mergeWithDefaults } from "../../settings/settings";
+import { pagesHost } from "../pages/api";
 import { capturePointer, nodeType, isHiddenNode, renderedZ } from "../shared";
 import { cssColor, fitTransform, toMap, toWorld, unionBox, type Box, type MapTransform } from "./logic";
 
@@ -136,7 +137,8 @@ class Minimap {
 		g.setTransform(dpr, 0, 0, dpr, 0, 0);
 		g.clearRect(0, 0, width, height);
 		const boxes: Box[] = [];
-		for (const n of canvas.nodes.values()) boxes.push({ minX: n.x, minY: n.y, maxX: n.x + n.width, maxY: n.y + n.height });
+		const shown = [...canvas.nodes.values()].filter((n) => !isHiddenNode(n));
+		for (const n of shown) boxes.push({ minX: n.x, minY: n.y, maxX: n.x + n.width, maxY: n.y + n.height });
 		// The map frames the content (the view rectangle may run past its edge), so panning and
 		// zooming don't change the transform and the cached layer stays valid.
 		const world = unionBox(boxes) ?? view;
@@ -160,7 +162,7 @@ class Minimap {
 		for (const e of canvas.edges.values()) {
 			const a = e.from?.node;
 			const b = e.to?.node;
-			if (!a || !b) continue;
+			if (!a || !b || isHiddenNode(a) || isHiddenNode(b)) continue;
 			const p = toMap(t, a.x + a.width / 2, a.y + a.height / 2);
 			const q = toMap(t, b.x + b.width / 2, b.y + b.height / 2);
 			g.moveTo(p.x, p.y);
@@ -170,7 +172,7 @@ class Minimap {
 		g.globalAlpha = 1;
 
 		// Drawing order of the canvas itself: the rendered z-index (layers move it), else the core's.
-		const nodes = [...canvas.nodes.values()].filter((n) => !isHiddenNode(n)).sort((a, b) => renderedZ(a) - renderedZ(b));
+		const nodes = shown.sort((a, b) => renderedZ(a) - renderedZ(b));
 		for (const n of nodes) {
 			const extra = (n.unknownData[SCHEMA_KEY] ?? {}) as OpcNode;
 			const p = toMap(t, n.x, n.y);
@@ -328,9 +330,14 @@ export const minimapModule = defineModule<MinimapSettings>({
 
 		// Pan and zoom animate over several frames: follow the view every frame.
 		const lastView = new WeakMap<CanvasLike, string>();
+		const lastPage = new WeakMap<CanvasLike, string>();
 		ctx.on("canvas-frame", (canvas) => {
 			const map = maps.get(canvas);
 			if (!map) return;
+			// Another page shown: the map draws only that page.
+			const page = pagesHost.api?.current(canvas) ?? "";
+			if ((lastPage.get(canvas) ?? "") !== page) map.invalidate();
+			lastPage.set(canvas, page);
 			const view = `${canvas.x},${canvas.y},${canvas.zoom}`;
 			if (lastView.get(canvas) === view) return;
 			lastView.set(canvas, view);
