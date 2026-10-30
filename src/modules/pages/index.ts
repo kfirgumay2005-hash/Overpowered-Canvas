@@ -4,7 +4,7 @@ import type { CanvasEdgeData, CanvasNodeData } from "../../data/json-canvas";
 import type { PageInfo } from "../../data/schema";
 import type { CanvasLike, CanvasNodeLike } from "../../internals/types";
 import { mapRootOf, relayoutMap } from "../auto-layout/arrange";
-import { mutate, nodeType, randomId, renderedZ, selectedNodes } from "../shared";
+import { centerOn, mutate, nodeType, randomId, renderedZ, selectedNodes } from "../shared";
 import { pagesHost } from "./api";
 import { boundsOf, branchOf, cardLink, freeRegion, pageChildren, pagePath, titleOf, withLink, withoutLink, withoutPage, type PlanNode } from "./logic";
 import { logError } from "../../core/log";
@@ -65,6 +65,11 @@ export const pagesModule = defineModule<PagesSettings>({
 		const placing = new Map<CanvasLike, Placing>();
 		/** Nodes this module adds itself: their page is set already. */
 		const ours = new Set<string>();
+		/**
+		 * New cards until their page is written. The core and the tools select a card as soon as they
+		 * create it: until then it counts as on the page shown, or that selection would switch pages.
+		 */
+		const arriving = new Set<CanvasNodeLike>();
 		let replaying = 0;
 
 		const label = () => ctx.settings.linkLabel || ctx.t("pages.link");
@@ -73,6 +78,7 @@ export const pagesModule = defineModule<PagesSettings>({
 		const hasPages = (canvas: CanvasLike) => pagesOf(canvas).length > 0;
 		const hiding = (canvas: CanvasLike) => ctx.settings.onePage && hasPages(canvas);
 		const isHidden = (node: CanvasNodeLike) => node.nodeEl.hasClass(HIDDEN);
+		const offPage = (node: CanvasNodeLike) => hiding(node.canvas) && !arriving.has(node) && pageOf(node) !== current(node.canvas);
 
 		const stateOf = (canvas: CanvasLike): ViewState => {
 			let s = views.get(canvas);
@@ -92,9 +98,7 @@ export const pagesModule = defineModule<PagesSettings>({
 		// ---------- showing one page ----------
 
 		const decorate = (canvas: CanvasLike) => {
-			const on = hiding(canvas);
-			const page = current(canvas);
-			for (const n of canvas.nodes.values()) n.nodeEl.toggleClass(HIDDEN, on && pageOf(n) !== page);
+			for (const n of canvas.nodes.values()) n.nodeEl.toggleClass(HIDDEN, offPage(n));
 			for (const e of canvas.edges.values()) {
 				const hidden = isHidden(e.from.node) || isHidden(e.to.node);
 				e.lineGroupEl.toggleClass(HIDDEN, hidden);
@@ -165,6 +169,8 @@ export const pagesModule = defineModule<PagesSettings>({
 				return;
 			}
 			if (!bar || !bar.isConnected) {
+				// A plugin reload leaves the old bar behind.
+				canvas.wrapperEl.querySelectorAll(".opc-pages-bar").forEach((el) => el.remove());
 				bar = canvas.wrapperEl.createDiv({ cls: "opc-pages-bar" });
 				// The bar is not part of the board: no panning or selecting through it.
 				bar.addEventListener("pointerdown", (evt) => evt.stopPropagation());
@@ -284,7 +290,7 @@ export const pagesModule = defineModule<PagesSettings>({
 			} else if (!pageId) decorate(canvas);
 			else {
 				decorate(canvas);
-				canvas.zoomToBbox(root.getBBox());
+				centerOn(canvas, root);
 			}
 			canvas.selectOnly(root);
 			new Notice(ctx.t(pageId ? "pages.moved" : "pages.placed", { name: nodeLabel(anchor) || ctx.t("pages.untitled") }));
@@ -334,7 +340,7 @@ export const pagesModule = defineModule<PagesSettings>({
 			if (anchor) {
 				await relayoutMap(ctx, canvas, anchor).catch((e) => logError("[overpowered-canvas] pages: layout", e));
 				canvas.selectOnly(anchor);
-				canvas.zoomToBbox(anchor.getBBox());
+				centerOn(canvas, anchor);
 			}
 			ctx.events.emit("page-merged", canvas, pageId);
 		};
@@ -425,7 +431,7 @@ export const pagesModule = defineModule<PagesSettings>({
 		});
 
 		ctx.decorateNodes({
-			apply: (node) => node.nodeEl.toggleClass(HIDDEN, hiding(node.canvas) && pageOf(node) !== current(node.canvas)),
+			apply: (node) => node.nodeEl.toggleClass(HIDDEN, offPage(node)),
 			clear: (node) => node.nodeEl.removeClass(HIDDEN),
 		});
 		ctx.onCanvas((canvas) => {
@@ -472,7 +478,10 @@ export const pagesModule = defineModule<PagesSettings>({
 		ctx.on("node-added", (node) => {
 			if (replaying > 0 || ours.has(node.id)) return;
 			const canvas = node.canvas;
+			arriving.add(node);
+			node.nodeEl.removeClass(HIDDEN);
 			queueMicrotask(() => {
+				arriving.delete(node);
 				if (canvas.nodes.get(node.id) !== node || ours.has(node.id)) return;
 				const page = hasPages(canvas) ? current(canvas) : "";
 				if (pageOf(node) === page) return;
