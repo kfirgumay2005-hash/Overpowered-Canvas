@@ -54,6 +54,7 @@ import { nodeShapesModule } from "./node-shapes";
 import { nodeTemplatesModule } from "./node-templates";
 import { textAlignModule } from "./text-align";
 import { toolbarSizeModule } from "./toolbar-size";
+import { barButtonsModule } from "./bar-buttons";
 import { variableBreakpointsModule } from "./variable-breakpoints";
 import { layersModule } from "./layers";
 import { pagesModule } from "./pages";
@@ -86,6 +87,7 @@ export const MODULES: readonly AnyModule[] = [
 	canvasCommandsModule,
 	clipboardModule,
 	toolbarSizeModule,
+	barButtonsModule,
 	presentationModule,
 	portalsModule,
 	collapsibleGroupsModule,

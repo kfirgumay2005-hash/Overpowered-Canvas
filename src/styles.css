@@ -49,6 +49,7 @@
 @import "./modules/note-blocks/styles.css";
 @import "./modules/lasso/styles.css";
 @import "./modules/text-highlight/styles.css";
+@import "./modules/bar-buttons/styles.css";
 
 .opc-setting-note {
 	color: var(--text-warning);
