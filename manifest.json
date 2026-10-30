@@ -1,9 +1,9 @@
 {
   "id": "overpoweredcanvas",
   "name": "Overpowered Canvas",
-  "version": "0.10.1",
+  "version": "0.10.2",
   "minAppVersion": "1.14.0",
-  "description": "Turns Canvas into a full whiteboard: shapes, drawing, mind maps, auto layout, presentations, Markdown round trip and more.",
+  "description": "You're either perfect or you're not me(Perfect Cell, 2015). Includes all the features from both Advanced canvas and Canvas mindmap plugins , and far more , the perfected form of ULTRA INSTINCT",
   "author": "KfirG",
   "authorUrl": "https://github.com/kfirgumay2005-hash",
   "isDesktopOnly": false
