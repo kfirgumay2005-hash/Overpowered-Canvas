@@ -1,0 +1,18 @@
+/* Buttons taken off the bars, and groups or bars left with nothing. */
+body.opc-mod-bar-buttons .canvas-wrapper .canvas-card-menu.opc-bar-hidden,
+body.opc-mod-bar-buttons .canvas-wrapper .canvas-card-menu > .opc-bar-hidden,
+body.opc-mod-bar-buttons .canvas-wrapper .canvas-controls > .opc-bar-hidden,
+body.opc-mod-bar-buttons .canvas-wrapper .canvas-control-group > .opc-bar-hidden {
+	display: none;
+}
+
+.opc-bars-modal .setting-item-name {
+	display: flex;
+	align-items: center;
+	gap: var(--size-4-2);
+}
+.opc-bars-icon {
+	display: inline-flex;
+	flex-shrink: 0;
+	color: var(--text-muted);
+}

@@ -6,7 +6,7 @@
  * Nothing outside src/internals/, src/core/canvas-hooks.ts and the modules' patches.ts files
  * should reach past these types into the raw objects.
  */
-import type { App, Debouncer, ItemView, TFile } from "obsidian";
+import type { App, Debouncer, ItemView, Menu, TFile } from "obsidian";
 import type { CanvasFileData, CanvasEdgeData, CanvasNodeData, EdgeSide } from "../data/json-canvas";
 
 export interface BBox {
@@ -262,6 +262,8 @@ export interface CanvasLike {
 	handleSelectionDrag?(evt: PointerEvent, clickEl: HTMLElement, node?: CanvasNodeLike): SelectionDragLike | undefined;
 	/** The topmost node under a canvas point. */
 	hitTestNode?(pos: Point, margin: number): CanvasNodeLike | null;
+	/** Adds the canvas' quick settings to a menu (the settings button, the board's menu). */
+	showQuickSettingsMenu(menu: Menu): void;
 	/** The menu of a multi-item selection (right-click / long-press on it). */
 	onSelectionContextMenu?(evt: MouseEvent): void;
 	setReadonly(readonly: boolean): void;

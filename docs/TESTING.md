@@ -525,7 +525,7 @@ Automated runtime checks of every item below were run in an isolated Obsidian 1.
 6. Pages: right-click a card with children → *Move branch to a new page*: only the branch shows,
    the bar says *main › card*, both cards got a *Link* line (and grew to show it); the main map
    closed the gap (if it has a recorded layout). Click the links both ways (same tab), use the bar,
-   the index (left ribbon), two tabs on two pages, a link to a card on another page from a note,
+   the index (button on the bar), two tabs on two pages, a link to a card on another page from a note,
    canvas search, select all / zoom to fit (only the page shown), Undo / Redo (one step), walking
    across pages, pasting cards (they join the page shown), *Bring this page back into the map*,
    pages inside pages, *Show one page at a time* off, and Canvas → Markdown both ways (pages as
@@ -533,3 +533,18 @@ Automated runtime checks of every item below were run in an isolated Obsidian 1.
 7. *Move branch to another spot…* → move the view → *Put the branch here* (Esc cancels): the
    branch lands in the middle of the view, linked both ways.
 8. Tutorials *Big maps in pages* and *Tidy arrows and map keys*: every "Show me" completes its task.
+
+## Manual — customize the bars
+
+1. Open a canvas → settings button on the side bar → *Customize the bars* (also in the menu of the
+   board, the command palette and the module's button in settings).
+2. Switch off *Zoom in*, *Undo* and *Redo*: the buttons go at once, and the group left empty goes
+   too. Their shortcuts still work. Open another canvas: same bars.
+3. *Add a command* under *Bottom bar* → pick an app command → keep or change the name and icon. Do
+   the same under *Side bar* with a command from this plugin. Both buttons run their command, and
+   a selection stays selected.
+4. Pencil on an added row: change its name and icon. Trash: it leaves the bar.
+5. Disable the plugin behind an added command, then press its button: a notice says it can't run.
+6. Start a tutorial: every button is back while it runs.
+7. On a phone: the bottom bar's added buttons sit with the others in the controls bar.
+8. *Restore both bars* brings everything back.

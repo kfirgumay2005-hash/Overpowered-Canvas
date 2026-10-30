@@ -548,7 +548,7 @@ export const tutorialsEn = {
 	"tut.pages.s2.body": "You are on the new page now: only its cards show. The bar at the top says where you are (**main page › Beta-blockers**); click a name there to go to that page. The **Link** under the first card takes you back to the card it came from, in this same tab.",
 	"tut.pages.s2.task": "Go back to the main page: click the **Link** under **Beta-blockers**, or the first name in the bar at the top.",
 	"tut.pages.s3.title": "The pages index",
-	"tut.pages.s3.body": "The **pages index** lists every page of the canvas as a tree, with pages inside pages. Open it from the list icon in the left ribbon, from the bar at the top, or with `Ctrl/Cmd+P` → **Open the pages index**. Click a page to show it in the canvas you were using. You can open the same canvas in two tabs and show a different page in each.",
+	"tut.pages.s3.body": "The **pages index** lists every page of the canvas as a tree, with pages inside pages. Open it from the list icon on the bar at the top, or with `Ctrl/Cmd+P` → **Open the pages index**. Click a page to show it in the canvas you were using. You can open the same canvas in two tabs and show a different page in each.",
 	"tut.pages.s3.task": "Open the pages index.",
 	"tut.pages.s4.title": "Walking across pages",
 	"tut.pages.s4.body": "Walking through the map (**route button** in the bottom bar) goes across pages too: on a card whose branch has its own page, `→` continues on that page, and `←` from the page's first card comes back.",

@@ -128,6 +128,9 @@ still clickable ([docs/BENCHMARKS.md](docs/BENCHMARKS.md)).
 | → / Space / PageDown, ← / PageUp, Esc | Presentations                                             |
 | Arrows, + / −, Home, Esc              | Walking through a map: child, parent, siblings; zoom      |
 
+The bottom bar and the side bar are yours to arrange: take off any button, and add a button for
+any command, from this plugin, the app or other plugins (*Customize the bars*).
+
 Every toolbar action is also in the command palette ("Selection: …"), so you can assign your
 own hotkeys to any of them.
 

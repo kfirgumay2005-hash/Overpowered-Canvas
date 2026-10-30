@@ -520,7 +520,6 @@ export const pagesModule = defineModule<PagesSettings>({
 			await leaf.setViewState({ type: PAGES_VIEW, active: true });
 			await ctx.app.workspace.revealLeaf(leaf);
 		};
-		ctx.addRibbonIcon("list-tree", ctx.t("pages.index.open"), () => void openIndex());
 
 		// ---------- commands and menus ----------
 

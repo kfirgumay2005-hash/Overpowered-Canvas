@@ -37,7 +37,7 @@ const CANVAS_MEMBERS = [
 	"createFileNode", "createLinkNode", "createGroupNode", "addNode", "removeNode", "addEdge",
 	"removeEdge", "getEdgesForNode", "selectOnly", "deselectAll", "updateSelection", "setReadonly",
 	"render", "rerenderViewport", "virtualize", "getSelectionData", "handlePaste", "handleCopy",
-	"onContextMenu", "onSelectionContextMenu", "posFromEvt", "posFromClient", "domFromPos",
+	"onContextMenu", "onSelectionContextMenu", "showQuickSettingsMenu", "posFromEvt", "posFromClient", "domFromPos",
 ];
 const NODE_MEMBERS = [
 	"id", "canvas", "x", "y", "width", "height", "color", "unknownData", "nodeEl", "contentEl",
