@@ -108,6 +108,10 @@ body.opc-mod-text-pages .opc-text-print .opc-text-sheet {
 	overflow: visible;
 	padding: 0;
 }
-body.opc-mod-text-pages .opc-text-print .opc-text-sheet + .opc-text-sheet {
-	break-before: page;
+/* A change of named page forces a new PDF page, so neighbouring sheets take different names. */
+body.opc-mod-text-pages .opc-text-print .opc-text-sheet:nth-child(odd) {
+	page: opc-text-odd;
+}
+body.opc-mod-text-pages .opc-text-print .opc-text-sheet:nth-child(even) {
+	page: opc-text-even;
 }
