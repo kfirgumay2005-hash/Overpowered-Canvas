@@ -1,15 +1,29 @@
 # Overpowered Canvas
 
-An Obsidian plugin that turns the core Canvas into a full whiteboard: shapes and sticky notes,
-freehand drawing with stylus support, mind maps with automatic layout, presentations, kanban
-boards synced with your notes, a minimap, a frames panel, a background grid, hands-on tutorials, and
-first-class right-to-left support — while every canvas stays a standard JSON Canvas file that
-vanilla Obsidian opens cleanly.
+## Plugins absorbed
+
+![Absorb](https://raw.githubusercontent.com/kfirgumay2005-hash/Overpowered-Canvas/main/docs/media/Absorb.gif)
+
+Advanced Canvas
+Canvas Mindmap
+CardNote
+Arbor, and far more
+
+![Perfect Cell](https://raw.githubusercontent.com/kfirgumay2005-hash/Overpowered-Canvas/main/docs/media/perfect-cell.gif)
+
+## Before anything else, I want to thank
+
+Hajime No Ippo , hopefully this plugin grows big enough so someone works in Netflix notices this and fund the series:
+![Ippo](https://raw.githubusercontent.com/kfirgumay2005-hash/Overpowered-Canvas/main/docs/media/ippo.gif)
+
+An Obsidian plugin that turns the core Canvas into a full whiteboard with ton of features
 
 Every feature is a **module** you can switch off in the settings. A disabled module leaves no
 patches, listeners or styling behind.
 
-Includes all the features from both advanced canvas and canvas mindmap plugins , and far more , built by the goat claude code this is the perfected form of ultra instinct.
+## There plugin includes interactive tutorials for all of it's features.
+
+## You don't have to read any of the mentioned below, better spend this time on the tutorials.
 
 ## Pages: a big map, or a long document, in parts
 
@@ -23,7 +37,7 @@ own, inside the same canvas file.
 - **Export to Markdown**: the pages become nested headings in one clean note.
 - **Read it as text**: the book button shows the same canvas as a paginated document, with the same
   index and links. Edit cards from there, or export a PDF with one PDF page per page.
-- **Change your mind**: *Bring this page back into the map* puts the branch back under its card
+- **Change your mind**: _Bring this page back into the map_ puts the branch back under its card
   and removes the links.
 
 You don't need to study with mind maps to use this. Pages are an alternative to endless vertical
@@ -71,7 +85,7 @@ animated undo step; groups move as rigid blocks (also when a dropped card re-arr
 group around the whole map grows to hold it, and every arrow gets the sides of its shortest path
 that passes under no card and crosses no other arrow (or bends around the cards when none does).
 
-**Pages** — split a huge map into pages of the same canvas: *Move branch to a new page* takes
+**Pages** — split a huge map into pages of the same canvas: _Move branch to a new page_ takes
 everything below a card to a page of its own; the card stays in the map and it and the page's
 first card link to each other. One page shows at a time in each tab (two tabs can show two pages),
 a bar at the top shows where you are, and a pages index in the left sidebar lists them as a tree.
@@ -166,7 +180,7 @@ still clickable ([docs/BENCHMARKS.md](docs/BENCHMARKS.md)).
 | Arrows, + / −, Home, Esc              | Walking through a map: child, parent, siblings; zoom      |
 
 The bottom bar and the side bar are yours to arrange: take off any button, and add a button for
-any command, from this plugin, the app or other plugins (*Customize the bars*).
+any command, from this plugin, the app or other plugins (_Customize the bars_).
 
 Every toolbar action is also in the command palette ("Selection: …"), so you can assign your
 own hotkeys to any of them.
