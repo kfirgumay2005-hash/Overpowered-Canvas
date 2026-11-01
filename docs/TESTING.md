@@ -376,7 +376,7 @@ Automated runtime checks of every item below were run in an isolated Obsidian 1.
 2. **Groups in layouts:** a map whose child sits inside a group → Auto layout (whole canvas):
    the group moves as one block, its cards keep their places inside it, nothing overlaps it.
 3. **Edge sides:** after any layout (grid too), edges attach on the sides facing each other.
-4. **Note blocks:** note and canvas side by side. Hold a bullet with children ~0.35 s and drag it
+4. **Note blocks:** note and canvas side by side. Hold a bullet with children with the mouse ~0.35 s and drag it
    onto the board: one card with the whole block, sized to its text, under the pointer. With a
    mouse, the dotted handle left of a line drags at once. Over a card: "Add as child" / "Add as
    sibling" appear; dropping links the card. iPad: hold with a finger, then drag — the page must
@@ -548,3 +548,20 @@ Automated runtime checks of every item below were run in an isolated Obsidian 1.
 6. Start a tutorial: every button is back while it runs.
 7. On a phone: the bottom bar's added buttons sit with the others in the controls bar.
 8. *Restore both bars* brings everything back.
+
+## Touch, search and scrolling bars
+
+1. **Text selection on phones:** phone, a note, no canvas. A long press selects a word; nothing lifts. Same with a mouse hold on a computer when no canvas is open.
+2. **Phones setting:** turn on "Use in notes on phones": a tap shows the handle while a canvas is beside the note, and the inbox button returns. Turning it off hides both.
+3. **Tablet:** note and canvas side by side. A long press selects text. A tap shows the larger handle on that line; it follows the line when the keyboard scrolls the note; dragging it drops a card and opens no keyboard. "Long press picks up blocks on touch screens" brings the hold back.
+4. **Settings search:** "hold" shows only rows with that text in their name or description, and no other options of those modules. The name of a module ("pages") shows all its options. In another language, English words still find rows.
+5. **Bars:** add buttons until the side bar is taller and the bottom bar wider than the board. Each scrolls with the wheel and with a finger, without moving the board; a swipe on the bottom bar adds no card; a tap on a button works; a bar that fits does not scroll.
+6. **Merging a page:** "Bring this page back into the map" works from the root card and the card a page comes from (context menu), from the command palette and from the button in the pages index. The saved canvas matches the one from before the move, undo brings the page back.
+
+## Tutorials 21-23 and the wider Style tutorial
+
+1. **Your own bars:** by hand and with Show me. Taking a button off shows on the practice board (and only there among tutorial boards); closing the tutorial brings back the hidden buttons and added commands you had before it.
+2. **Images:** the practice photo shows; crop by hand and with Show me; a resize keeps the cropped proportions; Reset crop brings the whole picture back; the export task needs no export. The photo is deleted with the board.
+3. **A canvas as a file:** add `tags` by hand and with Show me; the tag shows in the tag pane, the alias in the quick switcher; read-only on, a card does not move; read-only off.
+4. **Style and reuse:** the practice colors are in the color menu at the end of the row and leave it when the tutorial ends; a breakpoint of 0 hides the text below 100% zoom.
+5. **Language:** run each with another UI language; the labels in the texts match the buttons.

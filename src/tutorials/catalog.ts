@@ -8,6 +8,7 @@ import { builtinTemplate } from "../modules/board-templates/builtins";
 import { reid, translate as shiftData } from "../modules/board-templates/logic";
 import { STICKY_COLORS } from "../modules/sticky-notes/logic";
 import { relayoutMap } from "../modules/auto-layout/arrange";
+import { BARS_TUTORIAL } from "./runner";
 import { added, addedEdges, arrow, card, count, edge, edgesOf, ellipsePoints, extraOf, findNode, group, ink, kindOf, nodesOf, practicePdf, randomId, shape, sticky, strokeCount, title } from "./board";
 import type { TutorialDefinition, TutorialRuntime } from "./types";
 
@@ -1453,6 +1454,7 @@ const blocks: TutorialDefinition = {
 			title: "tut.blocks.s2.title",
 			body: "tut.blocks.s2.body",
 			task: "tut.blocks.s2.task",
+			touch: "tut.blocks.s2.touch",
 			enter: (rt) => void openPracticeNote(rt),
 			check: (rt) => rt.seen("note-block-dropped") || added(rt.before, rt.now()).some((n) => fromNote(rt, n)),
 			demo: (rt) => {
@@ -1607,12 +1609,31 @@ let templatesAtStart = 0;
 const templateCount = (rt: TutorialRuntime) => (rt.setting("node-templates", "templates") as unknown[] | undefined)?.length ?? 0;
 const lastTemplateButton = (rt: TutorialRuntime) => [...rt.canvas.cardMenuEl.querySelectorAll<HTMLElement>("[class*='opc-card-template-']")].pop();
 
+/** Practice colors, as a theme or a snippet would define them. Numbers few themes use. */
+const FIRST_PRACTICE_COLOR = 30;
+const PRACTICE_COLORS = ["#00aaa0", "#e65096", "#826ef0"];
+const practiceColorName = (i: number) => `--canvas-color-${FIRST_PRACTICE_COLOR + i}`;
+
+/** Puts the practice colors in the color menu until the tutorial ends; nothing is written anywhere. */
+function addPracticeColors(rt: TutorialRuntime): void {
+	const body = activeDocument.body;
+	if (body.style.getPropertyValue(practiceColorName(0))) return;
+	PRACTICE_COLORS.forEach((color, i) => body.style.setProperty(practiceColorName(i), color));
+	rt.app.workspace.trigger("css-change");
+	rt.onEnd(() => {
+		PRACTICE_COLORS.forEach((_, i) => body.style.removeProperty(practiceColorName(i)));
+		rt.app.workspace.trigger("css-change");
+	});
+}
+
+const paletteButton = (rt: TutorialRuntime) => rt.canvas.menu.menuEl.querySelector<HTMLElement>("button:has(svg.lucide-palette)");
+
 const style: TutorialDefinition = {
 	id: "style",
 	icon: "palette",
 	title: "tut.style.title",
 	summary: "tut.style.summary",
-	modules: ["node-borders", "node-templates", "floating-edges"],
+	modules: ["node-borders", "node-templates", "floating-edges", "custom-colors", "variable-breakpoints"],
 	// Templates saved while practicing are not kept.
 	restoreSettings: [{ module: "node-templates", key: "templates" }],
 	board: (t) => ({
@@ -1679,7 +1700,37 @@ const style: TutorialDefinition = {
 				if (idea && plan) await glide(rt, "s-plan", idea.x - plan.x, idea.y + 300 - plan.y);
 			},
 		},
-		{ title: "tut.style.s5.title", body: "tut.style.s5.body" },
+		{
+			title: "tut.style.s5.title",
+			body: "tut.style.s5.body",
+			task: "tut.style.s5.task",
+			target: paletteButton,
+			focus: ["s-idea", "s-plan", "s-task"],
+			enter: (rt) => {
+				addPracticeColors(rt);
+				rt.select(["s-task"]);
+			},
+			check: (rt) => changedAny(rt, (n) => n.color, (n) => Number(n.color) >= FIRST_PRACTICE_COLOR),
+			demo: (rt) => {
+				addPracticeColors(rt);
+				rt.select(["s-task"]);
+				rt.change(() => rt.node("s-task")?.setColor(String(FIRST_PRACTICE_COLOR)));
+			},
+		},
+		{
+			title: "tut.style.s6.title",
+			body: "tut.style.s6.body",
+			task: "tut.style.s6.task",
+			focus: ["s-idea"],
+			enter: (rt) => rt.select(["s-idea"]),
+			check: (rt) => changedAny(rt, (n) => extraOf(n).breakpoint),
+			demo: (rt) => {
+				rt.select(["s-idea"]);
+				setExtra(rt, "s-idea", { breakpoint: 0 });
+				rt.canvas.rerenderViewport();
+			},
+		},
+		{ title: "tut.style.s7.title", body: "tut.style.s7.body" },
 	],
 };
 
@@ -2125,4 +2176,289 @@ const arrows: TutorialDefinition = {
 	],
 };
 
-export const TUTORIALS: readonly TutorialDefinition[] = [basics, notes, shapes, edges, drawing, layers, present, mindmap, navigate, organize, markdown, select, blocks, vault, style, big, direction, pdf, pages, arrows];
+// ---------- shared by the next tutorials ----------
+
+const dialogOpen = (selector: string) => !!activeDocument.querySelector(selector);
+
+/** Closes one of the plugin's dialogs with Esc, which works whatever the app's dialogs look like. */
+const closeDialog = (selector: string) => {
+	if (dialogOpen(selector)) activeDocument.body.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", code: "Escape", keyCode: 27, bubbles: true, cancelable: true }));
+};
+
+/**
+ * For tasks in a dialog, which covers the coach panel: done once it was opened and closed again,
+ * so the next step isn't shown behind it.
+ */
+function visitedDialog(selector: string): { reset(): void; check(): boolean } {
+	let seen = false;
+	return {
+		reset: () => void (seen = false),
+		check: () => {
+			const open = dialogOpen(selector);
+			seen ||= open;
+			return seen && !open;
+		},
+	};
+}
+
+/** The side bar's settings button, which opens the canvas options. */
+const settingsButton = (rt: TutorialRuntime) => rt.canvas.canvasControlsEl.querySelector("svg.lucide-settings")?.closest<HTMLElement>(".canvas-control-item");
+
+// ---------- 21. Your own bars ----------
+
+const BARS_DIALOG = ".opc-bars-modal";
+const barsVisit = visitedDialog(BARS_DIALOG);
+const hiddenButtons = (rt: TutorialRuntime) => (rt.setting("bar-buttons", "hidden") as string[] | undefined) ?? [];
+const customButtons = (rt: TutorialRuntime) => (rt.setting("bar-buttons", "custom") as unknown[] | undefined) ?? [];
+let hiddenAtStart = 0;
+let customAtStart = 0;
+
+const bars: TutorialDefinition = {
+	id: BARS_TUTORIAL,
+	icon: "sliders-horizontal",
+	title: "tut.bars.title",
+	summary: "tut.bars.summary",
+	modules: ["bar-buttons", "toolbar-size"],
+	// The practice changes the real settings of the bars: they go back when the tutorial ends.
+	restoreSettings: [
+		{ module: "bar-buttons", key: "hidden" },
+		{ module: "bar-buttons", key: "custom" },
+	],
+	board: (t) => ({
+		nodes: [title("br-title", t("tut.bars.board.title"), 0, -140, 700, 80), card("br-1", t("tut.bars.board.c1"), 0, 0, 280, 90, { color: "5" }), card("br-2", t("tut.bars.board.c2"), 340, 0, 280, 90, { color: "4" })],
+		edges: [],
+	}),
+	steps: [
+		{
+			title: "tut.bars.s1.title",
+			body: "tut.bars.s1.body",
+			task: "tut.bars.s1.task",
+			target: settingsButton,
+			enter: () => barsVisit.reset(),
+			check: () => barsVisit.check(),
+			demo: async (rt) => {
+				rt.command("bar-buttons:customize");
+				await rt.wait(1800);
+				closeDialog(BARS_DIALOG);
+			},
+		},
+		{
+			title: "tut.bars.s2.title",
+			body: "tut.bars.s2.body",
+			task: "tut.bars.s2.task",
+			target: settingsButton,
+			enter: (rt) => {
+				hiddenAtStart = hiddenButtons(rt).length;
+			},
+			check: (rt) => hiddenButtons(rt).length > hiddenAtStart && !dialogOpen(BARS_DIALOG),
+			demo: async (rt) => {
+				rt.command("bar-buttons:customize");
+				await rt.wait(900);
+				activeDocument.querySelector<HTMLElement>(`${BARS_DIALOG} .checkbox-container.is-enabled`)?.click();
+				await rt.wait(900);
+				closeDialog(BARS_DIALOG);
+			},
+		},
+		{
+			title: "tut.bars.s3.title",
+			body: "tut.bars.s3.body",
+			task: "tut.bars.s3.task",
+			target: settingsButton,
+			enter: (rt) => {
+				customAtStart = customButtons(rt).length;
+			},
+			check: (rt) => customButtons(rt).length > customAtStart && !dialogOpen(".modal"),
+			demo: (rt) => rt.setSetting("bar-buttons", "custom", [...customButtons(rt), { id: randomId().slice(0, 8), bar: "side", command: "app:toggle-left-sidebar", icon: "lucide-panel-left", name: rt.t("tut.bars.demoButton") }]),
+		},
+		{
+			title: "tut.bars.s4.title",
+			body: "tut.bars.s4.body",
+			task: "tut.bars.s4.task",
+			target: settingsButton,
+			enter: (rt) => {
+				hiddenAtStart = hiddenButtons(rt).length;
+			},
+			check: (rt) => hiddenButtons(rt).length < hiddenAtStart && !dialogOpen(BARS_DIALOG),
+			demo: (rt) => rt.setSetting("bar-buttons", "hidden", hiddenButtons(rt).slice(0, -1)),
+		},
+		{ title: "tut.bars.s5.title", body: "tut.bars.s5.body" },
+	],
+};
+
+// ---------- 22. Images ----------
+
+const CROP_DIALOG = ".opc-crop-modal";
+const EXPORT_DIALOG = ".opc-export-modal";
+const exportVisit = visitedDialog(EXPORT_DIALOG);
+const photoName = (t: TutorialRuntime["t"]) => `${fileSafe(t("tut.images.photoName"))}.svg`;
+
+/** A small landscape to crop: text, so it fits the practice files. */
+const PRACTICE_PHOTO = `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="500" viewBox="0 0 800 500">
+	<rect width="800" height="500" fill="#8fd3f4"/>
+	<circle cx="620" cy="110" r="60" fill="#ffd166"/>
+	<path d="M0 340 L180 150 L330 320 L470 190 L800 400 L800 500 L0 500 Z" fill="#5b7c99"/>
+	<path d="M0 420 C200 340 420 470 800 370 L800 500 L0 500 Z" fill="#4c9f70"/>
+	<circle cx="170" cy="400" r="26" fill="#2f6f4f"/>
+	<rect x="164" y="420" width="12" height="36" fill="#6b4f3a"/>
+</svg>
+`;
+
+/** Selects the photo and opens the crop dialog from its toolbar button. */
+async function openCrop(rt: TutorialRuntime): Promise<void> {
+	rt.select(["i-photo"]);
+	await rt.wait(350);
+	rt.canvas.menu.menuEl.querySelector<HTMLElement>(".opc-menu-crop")?.click();
+	await rt.wait(700);
+}
+
+const images: TutorialDefinition = {
+	id: "images",
+	icon: "image",
+	title: "tut.images.title",
+	summary: "tut.images.summary",
+	modules: ["image-crop", "image-export"],
+	files: (t) => [{ path: photoName(t), content: PRACTICE_PHOTO }],
+	board: (t, folder) => ({
+		nodes: [title("i-title", t("tut.images.board.title"), 0, -140, 700, 80), fileCard("i-photo", `${folder}/${photoName(t)}`, 0, 0, 480, 300), card("i-note", t("tut.images.board.note"), 560, 90, 260, 110, { color: "5" })],
+		edges: [],
+	}),
+	steps: [
+		{
+			title: "tut.images.s1.title",
+			body: "tut.images.s1.body",
+			task: "tut.images.s1.task",
+			target: ".opc-menu-crop",
+			enter: (rt) => rt.select(["i-photo"]),
+			check: (rt) => !!rt.extra("i-photo").crop && !dialogOpen(CROP_DIALOG),
+			demo: async (rt) => {
+				await openCrop(rt);
+				activeDocument.querySelectorAll<HTMLElement>(`${CROP_DIALOG} .opc-crop-presets button`)[4]?.click();
+				await rt.wait(900);
+				activeDocument.querySelector<HTMLElement>(`${CROP_DIALOG} .modal-button-container .mod-cta`)?.click();
+			},
+		},
+		{
+			title: "tut.images.s2.title",
+			body: "tut.images.s2.body",
+			task: "tut.images.s2.task",
+			focus: ["i-photo"],
+			enter: (rt) => rt.select(["i-photo"]),
+			check: (rt) => {
+				const a = findNode(rt.before, "i-photo");
+				const b = findNode(rt.now(), "i-photo");
+				return !!a && !!b && Math.abs(a.width - b.width) >= 20;
+			},
+			demo: (rt) => {
+				const node = rt.node("i-photo");
+				if (!node) return;
+				const width = node.width + 160;
+				rt.change(() => node.moveAndResize({ x: node.x, y: node.y, width, height: Math.round((width * node.height) / node.width) }));
+			},
+		},
+		{
+			title: "tut.images.s3.title",
+			body: "tut.images.s3.body",
+			task: "tut.images.s3.task",
+			enter: (rt) => rt.select(["i-photo"]),
+			check: (rt) => !rt.extra("i-photo").crop && !dialogOpen(CROP_DIALOG),
+			demo: async (rt) => {
+				await openCrop(rt);
+				activeDocument.querySelector<HTMLElement>(`${CROP_DIALOG} .modal-button-container button`)?.click();
+				await rt.wait(900);
+				activeDocument.querySelector<HTMLElement>(`${CROP_DIALOG} .modal-button-container .mod-cta`)?.click();
+			},
+		},
+		{
+			title: "tut.images.s4.title",
+			body: "tut.images.s4.body",
+			task: "tut.images.s4.task",
+			enter: () => exportVisit.reset(),
+			check: () => exportVisit.check(),
+			demo: async (rt) => {
+				rt.command("image-export:export-image");
+				await rt.wait(1800);
+				closeDialog(EXPORT_DIALOG);
+			},
+		},
+		{ title: "tut.images.s5.title", body: "tut.images.s5.body" },
+	],
+};
+
+// ---------- 23. A canvas as a file ----------
+
+const PROPERTIES_DIALOG = ".opc-properties-modal";
+const propertiesButton = (rt: TutorialRuntime) => rt.canvas.view.containerEl.querySelector<HTMLElement>(".opc-canvas-properties-action");
+const frontmatterTags = (rt: TutorialRuntime): unknown[] => {
+	// A row left as text is a single tag.
+	const tags = rt.root().frontmatter?.tags;
+	return Array.isArray(tags) ? tags : typeof tags === "string" && tags.trim() ? [tags.trim().replace(/^#/, "")] : [];
+};
+const referenceNote = (t: TutorialRuntime["t"]) => `${fileSafe(t("tut.file.noteName"))}.md`;
+let readonlyAtStart = false;
+
+/** The core tag pane is showing one of the board's tags. */
+const tagPaneShows = (rt: TutorialRuntime) => {
+	const pane = rt.app.workspace.getLeavesOfType("tag")[0]?.view.containerEl;
+	return !!pane?.isShown() && frontmatterTags(rt).some((tag) => pane.textContent?.includes(String(tag)));
+};
+
+const file: TutorialDefinition = {
+	id: "file",
+	icon: "file-cog",
+	title: "tut.file.title",
+	summary: "tut.file.summary",
+	modules: ["canvas-properties", "canvas-metadata", "readonly-plus"],
+	files: (t) => [{ path: referenceNote(t), content: `# ${t("tut.file.noteName")}\n\n${t("tut.file.noteText")}\n` }],
+	board: (t, folder) => ({
+		nodes: [
+			title("f-title", t("tut.file.board.title"), 0, -140, 700, 80),
+			card("f-1", `${t("tut.file.board.c1")}\n\n[[${folder}/${referenceNote(t).replace(/\.md$/, "")}|${t("tut.file.noteName")}]]`, 0, 0, 300, 130, { color: "4" }),
+			card("f-2", t("tut.file.board.c2"), 380, 20, 260, 90, { color: "5" }),
+		],
+		edges: [edge("f-e1", "f-1", "right", "f-2", "left")],
+	}),
+	steps: [
+		{
+			title: "tut.file.s1.title",
+			body: "tut.file.s1.body",
+			task: "tut.file.s1.task",
+			target: propertiesButton,
+			check: (rt) => frontmatterTags(rt).length > 0 && !dialogOpen(PROPERTIES_DIALOG),
+			demo: async (rt) => {
+				propertiesButton(rt)?.click();
+				await rt.wait(1200);
+				closeDialog(PROPERTIES_DIALOG);
+				rt.change(() => rt.data.root(rt.canvas).set({ frontmatter: { ...rt.root().frontmatter, tags: [rt.t("tut.file.tag")], aliases: [rt.t("tut.file.alias")] } }));
+			},
+		},
+		{
+			title: "tut.file.s2.title",
+			body: "tut.file.s2.body",
+			task: "tut.file.s2.task",
+			check: tagPaneShows,
+			demo: (rt) => void rt.command("core:tag-pane:open"),
+		},
+		{
+			title: "tut.file.s3.title",
+			body: "tut.file.s3.body",
+			task: "tut.file.s3.task",
+			target: settingsButton,
+			check: (rt) => rt.canvas.readonly,
+			demo: (rt) => rt.canvas.setReadonly(true),
+		},
+		{
+			title: "tut.file.s4.title",
+			body: "tut.file.s4.body",
+			task: "tut.file.s4.task",
+			target: settingsButton,
+			enter: (rt) => {
+				readonlyAtStart = rt.canvas.readonly;
+			},
+			check: (rt) => readonlyAtStart && !rt.canvas.readonly,
+			demo: (rt) => rt.canvas.setReadonly(false),
+		},
+		{ title: "tut.file.s5.title", body: "tut.file.s5.body" },
+	],
+};
+
+export const TUTORIALS: readonly TutorialDefinition[] = [basics, notes, shapes, edges, drawing, layers, present, mindmap, navigate, organize, markdown, select, blocks, vault, style, big, direction, pdf, pages, arrows, bars, images, file];

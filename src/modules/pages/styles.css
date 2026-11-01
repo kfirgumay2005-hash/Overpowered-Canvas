@@ -112,3 +112,12 @@ body.opc-mod-pages .opc-pages-empty {
 	font-size: var(--font-ui-small);
 	padding: var(--size-4-2);
 }
+body.opc-mod-pages .opc-pages-merge {
+	flex-shrink: 0;
+	width: auto;
+	height: auto;
+	padding: var(--size-2-1);
+	box-shadow: none;
+	background: none;
+	--icon-size: var(--icon-xs);
+}

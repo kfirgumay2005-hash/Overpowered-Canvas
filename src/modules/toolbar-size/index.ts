@@ -23,11 +23,27 @@ const clampPercent = (n: number, fallback: number) => (Number.isFinite(n) ? Math
 /** Obsidian marks phones (not tablets) with this class; the core hides the card bar there. */
 const isPhone = () => document.body.hasClass("is-phone");
 
+const overflows = (el: HTMLElement) => ({ wide: el.scrollWidth > el.clientWidth + 1, tall: el.scrollHeight > el.clientHeight + 1 });
+
+/** Over a bar with more buttons than fit, the wheel scrolls the bar and leaves the board alone. */
+function wheelOverBar(evt: WheelEvent): void {
+	const bar = evt.currentTarget as HTMLElement;
+	const { wide, tall } = overflows(bar);
+	if (!wide && !tall) return;
+	evt.stopPropagation();
+	// A row has no vertical scrolling of its own: the ordinary wheel moves it sideways.
+	if (wide && !tall && !evt.deltaX) {
+		evt.preventDefault();
+		// Right-to-left bars scroll towards negative values.
+		bar.scrollLeft += bar.win.getComputedStyle(bar).direction === "rtl" ? -evt.deltaY : evt.deltaY;
+	}
+}
+
 /**
  * Size of the selection toolbar and of the canvas controls bar, separately for desktop and mobile.
- * On phones, where the core hides the card bar (add card, shapes, text…), its buttons join the
- * controls bar, which sits at the bottom of the screen (scrolls sideways) or at the side (scrolls
- * up and down).
+ * Both bars scroll when they hold more buttons than fit. On phones, where the core hides the card
+ * bar (add card, shapes, text…), its buttons join the controls bar, which sits at the bottom of the
+ * screen (scrolls sideways) or at the side (scrolls up and down).
  */
 export const toolbarSizeModule = defineModule<ToolbarSizeSettings>({
 	id: "toolbar-size",
@@ -65,21 +81,28 @@ export const toolbarSizeModule = defineModule<ToolbarSizeSettings>({
 		});
 
 		ctx.onCanvas((canvas) => {
-			if (!isPhone()) return;
 			const card = canvas.cardMenuEl;
 			const controls = canvas.canvasControlsEl;
+			// A swipe over the buttons scrolls the bar instead of dragging a new card out; a tap still adds one.
+			const keepScroll = (evt: PointerEvent) => {
+				if (evt.pointerType !== "mouse" && (isPhone() || overflows(card).wide)) evt.stopPropagation();
+			};
+			card.addEventListener("pointerdown", keepScroll, true);
+			card.addEventListener("wheel", wheelOverBar, { passive: false });
+			controls.addEventListener("wheel", wheelOverBar, { passive: false });
+			const unbind = () => {
+				card.removeEventListener("pointerdown", keepScroll, true);
+				card.removeEventListener("wheel", wheelOverBar);
+				controls.removeEventListener("wheel", wheelOverBar);
+			};
+			if (!isPhone()) return unbind;
 			const home = card.parentElement;
 			const next = card.nextSibling;
 			controls.prepend(card);
 			card.addClass("mod-raised");
 			canvas.wrapperEl.setAttribute("data-opc-phone-bar", ctx.settings.phoneBar);
-			// A swipe over the buttons scrolls the bar instead of dragging a new card out; a tap still adds one.
-			const keepScroll = (evt: PointerEvent) => {
-				if (evt.pointerType !== "mouse") evt.stopPropagation();
-			};
-			card.addEventListener("pointerdown", keepScroll, true);
 			return () => {
-				card.removeEventListener("pointerdown", keepScroll, true);
+				unbind();
 				card.removeClass("mod-raised");
 				canvas.wrapperEl.removeAttribute("data-opc-phone-bar");
 				if (home) home.insertBefore(card, next && next.parentNode === home ? next : null);

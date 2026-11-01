@@ -6,6 +6,37 @@ body.opc-mod-toolbar-size .canvas-controls {
 	zoom: var(--opc-controls-zoom, 1);
 }
 
+/* More buttons than fit: the bars scroll, with a finger too. Their zoom scales these lengths too. */
+body.opc-mod-toolbar-size .canvas-wrapper:not([data-opc-phone-bar]) .canvas-controls {
+	max-height: calc((100% - var(--size-4-3) - max(var(--size-4-3), var(--view-bottom-spacing, 0px) + var(--size-4-2))) / var(--opc-controls-zoom, 1));
+	overflow-x: hidden;
+	overflow-y: auto;
+	overscroll-behavior: contain;
+	scrollbar-width: none;
+	touch-action: pan-y;
+}
+body.opc-mod-toolbar-size .canvas-wrapper:not([data-opc-phone-bar]) .canvas-controls::-webkit-scrollbar {
+	display: none;
+}
+body.opc-mod-toolbar-size .canvas-wrapper:not([data-opc-phone-bar]) .canvas-controls > .canvas-control-group {
+	flex-shrink: 0;
+}
+body.opc-mod-toolbar-size .canvas-wrapper:not([data-opc-phone-bar]) .canvas-card-menu {
+	/* Centered, so the side bar's room is left on both sides. */
+	max-width: calc((100% - 2 * (var(--size-4-3) + 56px)) / var(--opc-menu-zoom, 1));
+	overflow-x: auto;
+	overflow-y: hidden;
+	overscroll-behavior: contain;
+	scrollbar-width: none;
+	touch-action: pan-x;
+}
+body.opc-mod-toolbar-size .canvas-wrapper:not([data-opc-phone-bar]) .canvas-card-menu::-webkit-scrollbar {
+	display: none;
+}
+body.opc-mod-toolbar-size .canvas-wrapper:not([data-opc-phone-bar]) .canvas-card-menu > * {
+	flex-shrink: 0;
+}
+
 /* Phones: the card bar lives inside the controls bar, as its first group. */
 body.opc-mod-toolbar-size .canvas-wrapper[data-opc-phone-bar] .canvas-controls {
 	overscroll-behavior: contain;

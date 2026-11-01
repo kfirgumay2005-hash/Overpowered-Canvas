@@ -1,4 +1,4 @@
-import { MarkdownView, Notice, Setting, setIcon, setTooltip } from "obsidian";
+import { MarkdownView, Notice, Platform, Setting, setIcon, setTooltip } from "obsidian";
 import { defineModule, type ModuleContext } from "../../core/module";
 import type { EdgeSide } from "../../data/json-canvas";
 import type { CanvasLike, CanvasNodeLike, CanvasViewLike, SelectionDragLike } from "../../internals/types";
@@ -20,6 +20,10 @@ const FOLLOW_AGAIN = 500;
 interface NoteBlocksSettings {
 	/** Hold this long (ms) on a line to pick up its block. */
 	holdMs: number;
+	/** Work in notes on phones, where a note and a canvas rarely fit side by side. */
+	phones: boolean;
+	/** A long press picks up the block on touch screens too (it normally selects text there). */
+	touchHold: boolean;
 	/** A drag handle beside the line under the mouse. */
 	handle: boolean;
 	/** Show the handle only while a canvas is open beside the note. */
@@ -56,7 +60,7 @@ const shortSymbol = (v: string) => [...v.trim()].slice(0, SYMBOL_MAX).join("");
 interface CmView {
 	posAtCoords(coords: { x: number; y: number }, precise?: false): number | null;
 	coordsAtPos(pos: number): { top: number; bottom: number; left: number } | null;
-	state: { doc: { lineAt(pos: number): { number: number; from: number }; line(n: number): { from: number; to: number } } };
+	state: { doc: { lines: number; lineAt(pos: number): { number: number; from: number }; line(n: number): { from: number; to: number } } };
 	contentDOM: HTMLElement;
 	scrollDOM: HTMLElement;
 }
@@ -87,10 +91,12 @@ interface Target {
 }
 
 /**
- * Note blocks → canvas: hold a line (or grab its handle) to pick up the whole block — a bullet
- * with its children, a heading with its section, a paragraph — and drop it on a canvas as a
- * card, or onto a mind-map card's "child" / "sibling" target. Inbox mode sends clicked blocks
- * into a named group of the open canvas. Pointer and touch events both drive it (iPad).
+ * Note blocks → canvas: hold a line with the mouse (or grab its handle) to pick up the whole
+ * block — a bullet with its children, a heading with its section, a paragraph — and drop it on a
+ * canvas as a card, or onto a mind-map card's "child" / "sibling" target. Inbox mode sends clicked
+ * blocks into a named group of the open canvas. On touch screens a long press stays the system's
+ * text selection: a tap shows the handle. Notes on phones are left alone unless asked for. Nothing
+ * is picked up without a canvas in the window. Pointer and touch events both drive it (iPad).
  */
 export const noteBlocksModule = defineModule<NoteBlocksSettings>({
 	id: "note-blocks",
@@ -98,11 +104,13 @@ export const noteBlocksModule = defineModule<NoteBlocksSettings>({
 	description: "noteBlocks.desc",
 	group: "data",
 	defaultEnabled: true,
-	defaultSettings: { holdMs: 350, handle: true, handleNeedsCanvas: true, dropZones: true, moveZones: true, follow: "targets", inboxName: "Inbox", handleSymbol: "", handleImage: "" },
+	defaultSettings: { holdMs: 350, phones: false, touchHold: false, handle: true, handleNeedsCanvas: true, dropZones: true, moveZones: true, follow: "targets", inboxName: "Inbox", handleSymbol: "", handleImage: "" },
 	sanitizeSettings: (raw, defaults) => {
 		const s = mergeWithDefaults(raw, defaults);
 		return {
 			holdMs: typeof s.holdMs === "number" && s.holdMs >= 150 && s.holdMs <= 2000 ? s.holdMs : defaults.holdMs,
+			phones: typeof s.phones === "boolean" ? s.phones : defaults.phones,
+			touchHold: typeof s.touchHold === "boolean" ? s.touchHold : defaults.touchHold,
 			handle: typeof s.handle === "boolean" ? s.handle : defaults.handle,
 			handleNeedsCanvas: typeof s.handleNeedsCanvas === "boolean" ? s.handleNeedsCanvas : defaults.handleNeedsCanvas,
 			dropZones: typeof s.dropZones === "boolean" ? s.dropZones : defaults.dropZones,
@@ -118,6 +126,8 @@ export const noteBlocksModule = defineModule<NoteBlocksSettings>({
 		const app = ctx.app;
 		const t = ctx.t;
 		let inbox = false;
+		/** Notes on a phone are left alone: moving cards on the board still works there. */
+		const notesOff = () => (Platform.isPhone || activeDocument.body.hasClass("is-phone")) && !ctx.settings.phones;
 
 		// ---- Placing cards ---------------------------------------------------------------
 
@@ -263,6 +273,7 @@ export const noteBlocksModule = defineModule<NoteBlocksSettings>({
 			item.toggleClass("is-active", inbox);
 			item.addEventListener("click", toggleInbox);
 			inboxButtons.add(item);
+			group.toggle(!notesOff());
 			return () => {
 				inboxButtons.delete(item);
 				group.remove();
@@ -271,13 +282,16 @@ export const noteBlocksModule = defineModule<NoteBlocksSettings>({
 		const status = ctx.addStatusBarItem();
 		status.addClass("opc-note-blocks-status");
 		const renderStatus = () => {
+			if (notesOff()) inbox = false;
 			status.setText(inbox ? t("noteBlocks.inbox.status", { name: ctx.settings.inboxName }) : "");
 			status.toggle(inbox);
 			for (const b of inboxButtons) {
 				b.toggleClass("is-active", inbox);
 				b.setAttr("aria-pressed", String(inbox));
+				b.parentElement?.toggle(!notesOff());
 			}
 		};
+		ctx.onSettingsChange(renderStatus);
 		status.onClickEvent(() => {
 			inbox = false;
 			renderStatus();
@@ -287,7 +301,11 @@ export const noteBlocksModule = defineModule<NoteBlocksSettings>({
 			id: "toggle-inbox",
 			name: t("noteBlocks.cmd.inbox"),
 			icon: "inbox",
-			callback: toggleInbox,
+			checkCallback: (checking) => {
+				if (notesOff()) return false;
+				if (!checking) toggleInbox();
+				return true;
+			},
 		});
 
 		// ---- Dragging --------------------------------------------------------------------
@@ -691,6 +709,8 @@ export const noteBlocksModule = defineModule<NoteBlocksSettings>({
 			/** Where the shown block's first line starts on screen. */
 			let handleTextLeft = 0;
 			let lastX = 0;
+			/** The handle was shown by a tap: it stays on its line until the next tap. */
+			let tapped = false;
 			let press: { x: number; y: number; id: number; timer: number; type: string } | null = null;
 
 			const editing = () => view.getMode() === "source" && !!cmOf(view);
@@ -701,32 +721,52 @@ export const noteBlocksModule = defineModule<NoteBlocksSettings>({
 				press = null;
 			};
 
+			/** Puts the handle beside the block's first line; false when that line is out of sight. */
+			const placeHandle = (block: Block): boolean => {
+				const cm = cmOf(view);
+				if (!cm || block.from >= cm.state.doc.lines) return false;
+				const coords = cm.coordsAtPos(cm.state.doc.line(block.from + 1).from);
+				if (!coords) return false;
+				const mid = (coords.top + coords.bottom) / 2;
+				const scroller = cm.scrollDOM.getBoundingClientRect();
+				if (mid < scroller.top || mid > scroller.bottom) return false;
+				const text = cm.contentDOM.getBoundingClientRect();
+				handle.show();
+				const parent = (handle.offsetParent as HTMLElement | null) ?? content;
+				const box = parent.getBoundingClientRect();
+				// Centred on the block's first line.
+				handle.style.top = `${mid - box.top + parent.scrollTop - handle.offsetHeight / 2}px`;
+				handle.style.left = `${Math.max(0, text.left - box.left + parent.scrollLeft - handle.offsetWidth - 4)}px`;
+				handleBlock = block;
+				handleTextLeft = coords.left;
+				return true;
+			};
+
 			const onDown = (e: PointerEvent) => {
-				if (handle.contains(e.target as Node)) return;
+				if (notesOff() || handle.contains(e.target as Node)) return;
 				if (!inText(e) || (e.pointerType === "mouse" && e.button !== 0)) return;
 				cancelPress();
 				const id = e.pointerId;
-				press = {
-					x: e.clientX,
-					y: e.clientY,
-					id,
-					type: e.pointerType,
-					timer: window.setTimeout(() => {
-						const p = press;
-						press = null;
-						if (!p) return;
-						const block = blockUnder(view, p.x, p.y);
-						if (!block) return;
-						isTouch = p.type !== "mouse";
-						navigator.vibrate?.(15);
-						startDrag(block, view, p.x, p.y, id);
-					}, ctx.settings.holdMs),
+				const pickUp = () => {
+					const p = press;
+					press = null;
+					if (!p || !canvasBeside(view)) return;
+					const block = blockUnder(view, p.x, p.y);
+					if (!block) return;
+					isTouch = p.type !== "mouse";
+					navigator.vibrate?.(15);
+					startDrag(block, view, p.x, p.y, id);
 				};
+				// The press is kept without a timer too: a tap ends it (inbox mode, the handle).
+				const holds = e.pointerType === "mouse" || ctx.settings.touchHold;
+				press = { x: e.clientX, y: e.clientY, id, type: e.pointerType, timer: holds ? window.setTimeout(pickUp, ctx.settings.holdMs) : 0 };
 			};
 			const onMove = (e: PointerEvent) => {
 				if (press && e.pointerId === press.id && Math.hypot(e.clientX - press.x, e.clientY - press.y) > SLOP) cancelPress();
 				// Handle beside the line under the mouse.
-				if (e.pointerType !== "mouse" || !ctx.settings.handle || active || !editing() || e.buttons) return;
+				if (e.pointerType !== "mouse" || notesOff() || !ctx.settings.handle || active || !editing() || e.buttons) return;
+				tapped = false;
+				handle.removeClass("is-touch");
 				if (ctx.settings.handleNeedsCanvas && !canvasBeside(view)) {
 					handle.hide();
 					handleBlock = null;
@@ -752,26 +792,27 @@ export const noteBlocksModule = defineModule<NoteBlocksSettings>({
 					handleBlock = null;
 					return;
 				}
-				const coords = cm.coordsAtPos(cm.state.doc.line(block.from + 1).from);
-				if (!coords) return;
-				handle.show();
-				const parent = (handle.offsetParent as HTMLElement | null) ?? content;
-				const box = parent.getBoundingClientRect();
-				// Centred on the block's first line.
-				const mid = (coords.top + coords.bottom) / 2;
-				handle.style.top = `${mid - box.top + parent.scrollTop - handle.offsetHeight / 2}px`;
-				handle.style.left = `${Math.max(0, text.left - box.left + parent.scrollLeft - handle.offsetWidth - 4)}px`;
-				handleBlock = block;
-				handleTextLeft = coords.left;
+				placeHandle(block);
+			};
+			/** Touch and pen have no hover: a tap on a line shows its handle. */
+			const showOnTap = (e: PointerEvent) => {
+				if (!ctx.settings.handle || !inText(e) || (ctx.settings.handleNeedsCanvas && !canvasBeside(view))) return;
+				const block = blockUnder(view, e.clientX, e.clientY);
+				if (!block) return;
+				handle.addClass("is-touch");
+				tapped = true;
+				if (!placeHandle(block)) handle.hide();
 			};
 			const onUp = (e: PointerEvent) => {
 				const wasPress = press && e.pointerId === press.id;
 				cancelPress();
+				if (!wasPress || notesOff()) return;
 				// Inbox mode: a plain click sends the block under it.
-				if (wasPress && inbox && inText(e)) {
+				if (inbox && inText(e)) {
 					const block = blockUnder(view, e.clientX, e.clientY);
 					if (block) sendToInbox(block.text);
 				}
+				if (e.pointerType !== "mouse") showOnTap(e);
 			};
 			const onClick = (e: MouseEvent) => {
 				if (Date.now() < suppressClickUntil) {
@@ -783,10 +824,15 @@ export const noteBlocksModule = defineModule<NoteBlocksSettings>({
 				if (!handleBlock || (e.pointerType === "mouse" && e.button !== 0)) return;
 				e.preventDefault();
 				e.stopPropagation();
-				isTouch = false;
-				startDrag(handleBlock, view, e.clientX, e.clientY, e.pointerId);
+				isTouch = e.pointerType !== "mouse";
+				// A handle shown by a tap can outlive edits to its block.
+				const block = blockAt(view.editor.getValue().split("\n"), handleBlock.from) ?? handleBlock;
+				startDrag(block, view, e.clientX, e.clientY, e.pointerId);
 			};
-			const onScroll = () => handle.hide();
+			// A tapped handle stays with its line (the keyboard opening scrolls the note).
+			const onScroll = () => {
+				if (!tapped || !handleBlock || !placeHandle(handleBlock)) handle.hide();
+			};
 			// Stop iOS from scrolling or selecting once a hold has turned into a drag.
 			const onTouchMove = (e: TouchEvent) => {
 				if (active) e.preventDefault();
@@ -799,7 +845,9 @@ export const noteBlocksModule = defineModule<NoteBlocksSettings>({
 			content.addEventListener("click", onClick, true);
 			content.addEventListener("scroll", onScroll, true);
 			content.addEventListener("touchmove", onTouchMove, { capture: true, passive: false });
-			content.addEventListener("pointerleave", () => handle.hide());
+			content.addEventListener("pointerleave", (e) => {
+				if (e.pointerType === "mouse") handle.hide();
+			});
 			handle.addEventListener("pointerdown", onHandleDown);
 			ctx.register(() => {
 				cancelPress();
@@ -827,6 +875,14 @@ export const noteBlocksModule = defineModule<NoteBlocksSettings>({
 			.setName(ctx.t("noteBlocks.hold.name"))
 			.setDesc(ctx.t("noteBlocks.hold.desc"))
 			.addSlider((s) => s.setLimits(150, 1500, 50).setValue(ctx.settings.holdMs).onChange((v) => ctx.updateSettings({ holdMs: v })));
+		new Setting(el)
+			.setName(ctx.t("noteBlocks.phones.name"))
+			.setDesc(ctx.t("noteBlocks.phones.desc"))
+			.addToggle((tg) => tg.setValue(ctx.settings.phones).onChange((v) => ctx.updateSettings({ phones: v })));
+		new Setting(el)
+			.setName(ctx.t("noteBlocks.touchHold.name"))
+			.setDesc(ctx.t("noteBlocks.touchHold.desc"))
+			.addToggle((tg) => tg.setValue(ctx.settings.touchHold).onChange((v) => ctx.updateSettings({ touchHold: v })));
 		new Setting(el)
 			.setName(ctx.t("noteBlocks.handleSetting.name"))
 			.setDesc(ctx.t("noteBlocks.handleSetting.desc"))

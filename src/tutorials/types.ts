@@ -29,12 +29,16 @@ export interface TutorialRuntime {
 	root(): OpcRoot;
 	/** A module setting, as stored now. */
 	setting(module: string, key: string): unknown;
+	/** Changes a module setting (list the setting in restoreSettings to put it back at the end). */
+	setSetting(module: string, key: string, value: unknown): void;
+	/** Runs once when the tutorial ends, however it ends. */
+	onEnd(fn: () => void): void;
 	/** True while a workspace leaf of that view type is open. */
 	viewOpen(type: string): boolean;
 	/** Ids of the selected items. */
 	selected(): string[];
 	select(ids: string[]): void;
-	/** Runs a plugin command ("<module>:<id>") or a core one ("app:…"). */
+	/** Runs a plugin command ("<module>:<id>") or a core one ("app:…", "core:<id>"). */
 	command(id: string): boolean;
 	/** Adds nodes / edges as one undo step and returns the created nodes. */
 	add(nodes: CanvasNodeData[], edges?: CanvasEdgeData[]): CanvasNodeLike[];
