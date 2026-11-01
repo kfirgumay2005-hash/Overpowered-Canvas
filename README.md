@@ -20,14 +20,16 @@ Arbor, and far more
 Hajime No Ippo , hopefully this plugin grows big enough so someone works in Netflix notices this and fund the series:
 ![Ippo](https://raw.githubusercontent.com/kfirgumay2005-hash/Overpowered-Canvas/main/docs/media/ippo.gif)
 
-An Obsidian plugin that turns the core Canvas into a full whiteboard with ton of features
+Also an additional thanks to thanderhall | Frog Grand Master for testing the plugin along with his medicine studies , many bugs and additional features were implemented thanks to him.
+
+## The plugin includes interactive tutorials for all of it's features.
+
+## You don't have to read any of the mentioned below, better spend this time on the tutorials.
+
+An Obsidian plugin that turns the core Canvas into a full whiteboard with ton of features.
 
 Every feature is a **module** you can switch off in the settings. A disabled module leaves no
 patches, listeners or styling behind.
-
-## There plugin includes interactive tutorials for all of it's features.
-
-## You don't have to read any of the mentioned below, better spend this time on the tutorials.
 
 ## Pages: a big map, or a long document, in parts
 
