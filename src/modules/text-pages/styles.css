@@ -1,0 +1,113 @@
+body.opc-mod-text-pages .opc-text-pages {
+	position: relative;
+	display: flex;
+	flex-direction: column;
+	padding: 0;
+	overflow: hidden;
+}
+body.opc-mod-text-pages .opc-text-pages .opc-text-bar {
+	position: static;
+	align-self: flex-start;
+	flex: 0 0 auto;
+	margin: var(--size-4-2) var(--size-4-3) 0;
+	max-width: calc(100% - var(--size-4-6));
+}
+body.opc-mod-text-pages .opc-text-scroll {
+	flex: 1 1 auto;
+	min-height: 0;
+	overflow-y: auto;
+}
+body.opc-mod-text-pages .opc-text-page {
+	height: auto;
+	overflow: visible;
+}
+body.opc-mod-text-pages .opc-text-page.is-readable-line-width .markdown-preview-sizer {
+	max-width: var(--file-line-width);
+	margin-inline: auto;
+}
+body.opc-mod-text-pages .opc-text-body > :first-child {
+	margin-top: 0;
+}
+body.opc-mod-text-pages .opc-text-body > :last-child {
+	margin-bottom: 0;
+}
+body.opc-mod-text-pages li > .opc-text-block {
+	margin-bottom: var(--size-2-2);
+}
+body.opc-mod-text-pages .opc-text-block.is-flashing {
+	border-radius: var(--radius-s);
+	background-color: var(--text-highlight-bg);
+}
+body.opc-mod-text-pages .opc-text-pagelink {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--size-2-1);
+	margin-top: var(--size-2-1);
+	font-size: var(--font-ui-small);
+	color: var(--link-color);
+	text-decoration: none;
+}
+body.opc-mod-text-pages .opc-text-pagelink:hover {
+	text-decoration: underline;
+}
+body.opc-mod-text-pages .opc-text-pagelink-icon {
+	display: inline-flex;
+	order: 1;
+}
+body.opc-mod-text-pages .opc-text-pagelink-icon svg {
+	width: 14px;
+	height: 14px;
+}
+body.opc-mod-text-pages .opc-text-back {
+	margin-bottom: var(--size-4-3);
+}
+body.opc-mod-text-pages .opc-text-back .opc-text-pagelink-icon {
+	order: 0;
+}
+body.opc-mod-text-pages .opc-text-nav {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--size-4-2);
+	margin-top: var(--size-4-8);
+	padding-block: var(--size-4-3);
+	border-top: 1px solid var(--background-modifier-border);
+}
+body.opc-mod-text-pages .opc-text-nav button {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--size-2-2);
+	min-width: 0;
+	max-width: 40%;
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+}
+body.opc-mod-text-pages .opc-text-count {
+	font-size: var(--font-ui-small);
+	color: var(--text-muted);
+	font-variant-numeric: tabular-nums;
+}
+body.opc-mod-text-pages .opc-text-page.is-editing .opc-text-block.is-editable {
+	border-radius: var(--radius-s);
+	outline: 1px dashed var(--background-modifier-border);
+	cursor: text;
+}
+body.opc-mod-text-pages .opc-text-editor {
+	display: block;
+	width: 100%;
+	min-height: 2.2em;
+	resize: none;
+	overflow: hidden;
+	font: inherit;
+}
+
+/* The PDF: one sheet per page. */
+body.opc-mod-text-pages .opc-text-print .opc-text-sheet {
+	height: auto;
+	overflow: visible;
+	padding: 0;
+}
+body.opc-mod-text-pages .opc-text-print .opc-text-sheet + .opc-text-sheet {
+	break-before: page;
+}

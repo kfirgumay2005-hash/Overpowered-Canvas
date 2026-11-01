@@ -565,3 +565,37 @@ Automated runtime checks of every item below were run in an isolated Obsidian 1.
 3. **A canvas as a file:** add `tags` by hand and with Show me; the tag shows in the tag pane, the alias in the quick switcher; read-only on, a card does not move; read-only off.
 4. **Style and reuse:** the practice colors are in the color menu at the end of the row and leave it when the tutorial ends; a breakpoint of 0 hides the text below 100% zoom.
 5. **Language:** run each with another UI language; the labels in the texts match the buttons.
+
+## Auto-link
+
+1. **Preview:** a closed canvas with a card "causes of left ventricular hypertrophy", a note with that title. Command *Auto-link: scan and create real links*: the file and count are listed, nothing is written until *Create links*. Unticking a file skips it; the ban button excludes a title and scans again.
+2. **Real links:** after the run the card holds `[[…]]`, and the canvas shows in the note's backlinks and is connected to it in the graph. A different casing keeps the visible words: `[[Title|what was written]]`. An open canvas gets the links in one undo step.
+3. **Skipped:** text already linked, code, math, URLs, tags, comments, HTML; in notes also front matter and headings; a note's own title; part of a word; the plugin's own folder; Excalidraw and Kanban notes. Inside a table the link's `|` is escaped.
+4. **Longest match:** with notes "hypertrophy" and "left ventricular hypertrophy", the longer title wins.
+5. **Options:** each scope, aliases on notes and on canvases, minimum length, excluded folders and titles, only the first mention.
+6. **Undo:** *Auto-link: undo the last run* brings the original text back, in open and closed canvases and in notes.
+7. **Link while you work:** on, leaving a card's editor links it; Undo takes the links out.
+
+## Navigation mode by touch, and the column view
+
+1. **Tap zones:** while walking, a tap on the empty board above, below, left or right of the card moves to the previous sibling, the next sibling, the parent or the first child. In a map that grows to the left, a tap toward the children still leads to them. Works with a finger, no keyboard.
+2. **What stays the same:** a tap on another card goes to that card; panning and pinching don't count as taps; the bars and the pad don't either. At the end of a branch a tap does nothing.
+3. **Hint arrows:** only the ways that lead somewhere show, they keep their size at any zoom, and they can be tapped. Both settings can be turned off.
+4. **Column view:** columns button on the pad, or the command. Parents on the left, the card and its siblings mid-screen, its children on the right, children of other siblings hidden. Keys, the wheel and taps on cards move through it; it crosses pages; Esc ends the walk; closing it leaves the board as it was.
+
+## Text pages
+
+1. **Toggle:** the book button on a canvas shows the page on screen as text; *Show as canvas* returns to the same page. Back and forward in the tab go through the pages.
+2. **Outline:** a map's root is H1, the rest nested bullets, every other map on the page has its own H1, H2–H6 only where a card has them. A sub-page starts with its H1 and a link to its parent.
+3. **Navigation:** cards that lead to a page are links to it, the bar and the pages index work here (no merge button), previous and next at the end of each page, links to a card on another page go there.
+4. **Editing:** the pencil, then tap a card: Esc cancels, Ctrl/Cmd+Enter or leaving saves. Works with the canvas open (one undo step there) and closed. A read-only canvas refuses.
+5. **PDF (desktop):** one PDF page or more per page, each starting on a new one; links to child pages and back to parents work inside the PDF. The canvas file isn't touched.
+6. **Other:** a canvas with no pages shows no bar; a canvas that can't be read shows a message; text direction follows the canvas.
+
+## Tutorial steps for auto-link, tap zones and text pages
+
+1. **Mind maps, "Walk by touch":** a tap on the empty board or on a small arrow completes it; an arrow key doesn't. The two settings are on during the tutorial and go back to what they were when it ends.
+2. **Mind maps, "The map as columns":** the columns button is highlighted; turning the columns on is not enough, a move in them completes it. The coach panel stays above the columns.
+3. **Big maps in pages, text steps:** text pages opens beside the practice board, not over it, and the panel stays. Following the link and editing a card complete their steps; the edit shows on the board. *Show as canvas* closes the text and returns to the board. "Bringing a page back" still works afterwards.
+4. **Notes as cards, auto-link steps:** set the scope to the whole vault first. The preview lists only the practice board. The real undo record is kept, and nothing outside the tutorial folder changes. Undo takes the links back, and a normal scan afterwards doesn't list practice files.
+5. **Ending:** closing any of them mid-step leaves no text tab, practice file or changed setting behind. Show me completes each step.

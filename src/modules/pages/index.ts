@@ -5,8 +5,9 @@ import type { PageInfo } from "../../data/schema";
 import type { CanvasLike, CanvasNodeLike } from "../../internals/types";
 import { mapRootOf, relayoutMap } from "../auto-layout/arrange";
 import { centerOn, mutate, nodeType, randomId, renderedZ, selectedNodes } from "../shared";
-import { pagesHost } from "./api";
-import { boundsOf, branchOf, cardLink, freeRegion, pageChildren, pagePath, titleOf, withLink, withoutLink, withoutPage, type PlanNode } from "./logic";
+import { pagesHost, type PagesSource } from "./api";
+import { renderPagesBar } from "./bar";
+import { boundsOf, branchOf, cardLink, freeRegion, pageChildren, titleOf, withLink, withoutLink, withoutPage, type PlanNode } from "./logic";
 import { logError } from "../../core/log";
 
 export const PAGES_VIEW = "opc-pages";
@@ -30,6 +31,8 @@ const LINK_ROOM = 48;
 interface ViewState {
 	page: string;
 	viewports: Map<string, { x: number; y: number; zoom: number }>;
+	/** The view knew its file when the state was read: a view that is opening doesn't yet. */
+	restored: boolean;
 }
 
 interface Placing {
@@ -62,6 +65,8 @@ export const pagesModule = defineModule<PagesSettings>({
 		const views = new WeakMap<CanvasLike, ViewState>();
 		/** Last page shown per file, so reopening a canvas returns there. */
 		const lastPage = new Map<string, string>();
+		/** Files to frame on the remembered page when they open (coming from another view). */
+		const framing = new Set<string>();
 		const placing = new Map<CanvasLike, Placing>();
 		/** Nodes this module adds itself: their page is set already. */
 		const ours = new Set<string>();
@@ -83,9 +88,13 @@ export const pagesModule = defineModule<PagesSettings>({
 		const stateOf = (canvas: CanvasLike): ViewState => {
 			let s = views.get(canvas);
 			if (!s) {
-				const path = canvas.view.file?.path;
-				s = { page: (path && lastPage.get(path)) ?? "", viewports: new Map() };
+				s = { page: "", viewports: new Map(), restored: false };
 				views.set(canvas, s);
+			}
+			const path = canvas.view.file?.path;
+			if (!s.restored && path) {
+				s.restored = true;
+				s.page = lastPage.get(path) ?? "";
 			}
 			return s;
 		};
@@ -176,21 +185,20 @@ export const pagesModule = defineModule<PagesSettings>({
 				bar.addEventListener("pointerdown", (evt) => evt.stopPropagation());
 				bars.set(canvas, bar);
 			}
-			bar.empty();
-			const index = bar.createEl("button", { cls: "clickable-icon opc-pages-index", attr: { "aria-label": ctx.t("pages.index.open") } });
-			setIcon(index, "list-tree");
-			setTooltip(index, ctx.t("pages.index.open"));
-			index.addEventListener("click", () => void openIndex());
-			const page = current(canvas);
-			const crumbs = [{ id: "", title: pageTitle(canvas, "") }, ...pagePath(pagesOf(canvas), page).map((p) => ({ id: p.id, title: pageTitle(canvas, p.id) }))];
-			if (!ctx.settings.onePage) crumbs.splice(1);
-			crumbs.forEach((c, i) => {
-				if (i > 0) bar.createSpan({ cls: "opc-pages-sep", text: "›" });
-				const el = bar.createEl("button", { cls: "opc-pages-crumb", text: c.title });
-				el.toggleClass("is-current", c.id === page);
-				el.addEventListener("click", () => show(canvas, c.id));
-			});
+			renderPagesBar(bar, sourceOf(canvas), ctx.t, () => void openIndex(), ctx.settings.onePage);
 		};
+
+		/** The pages of a canvas on the board, for the bar and the index. */
+		const sourceOf = (canvas: CanvasLike): PagesSource => ({
+			key: canvas,
+			alive: () => canvas.wrapperEl.isConnected,
+			pages: () => pagesOf(canvas),
+			current: () => current(canvas),
+			title: (page) => pageTitle(canvas, page),
+			count: (page) => [...canvas.nodes.values()].filter((n) => pageOf(n) === page).length,
+			show: (page) => show(canvas, page),
+			...(canvas.readonly ? {} : { merge: (page: string) => void mergePage(canvas, page) }),
+		});
 
 		// ---------- moving a branch ----------
 
@@ -449,7 +457,13 @@ export const pagesModule = defineModule<PagesSettings>({
 			};
 		});
 		ctx.on("root-extra-change", decorate);
-		ctx.on("data-load", decorate);
+		ctx.on("data-load", (canvas) => {
+			decorate(canvas);
+			const path = canvas.view.file?.path;
+			if (!path || !framing.delete(path)) return;
+			const box = pageBox(canvas, current(canvas));
+			if (box) canvas.zoomToBbox(box);
+		});
 		ctx.on("history-apply", (canvas) => decorate(canvas));
 		ctx.on("node-extra-change", (node) => decorate(node.canvas));
 		ctx.on("edge-added", (edge) => {
@@ -500,6 +514,12 @@ export const pagesModule = defineModule<PagesSettings>({
 				if (hiding(canvas) && pageOf(node) !== current(canvas)) show(canvas, pageOf(node), { keepView: true });
 			},
 			links: (canvas) => pagesOf(canvas).map((p) => ({ anchor: p.anchor, root: p.root })),
+			remember: (path, page) => {
+				lastPage.set(path, page);
+				framing.add(path);
+			},
+			openIndex: () => openIndex(),
+			refreshIndex: () => refreshViews(),
 		};
 		ctx.register(() => (pagesHost.api = null));
 
@@ -511,7 +531,7 @@ export const pagesModule = defineModule<PagesSettings>({
 				if (view instanceof PagesView) view.refresh(canvas);
 			}
 		};
-		ctx.registerView(PAGES_VIEW, (leaf) => new PagesView(leaf, ctx, { pagesOf, current, show, pageTitle, merge: (c, id) => void mergePage(c, id), count: (c, id) => [...c.nodes.values()].filter((n) => pageOf(n) === id).length }));
+		ctx.registerView(PAGES_VIEW, (leaf) => new PagesView(leaf, ctx, sourceOf));
 		const openIndex = async () => {
 			const existing = ctx.app.workspace.getLeavesOfType(PAGES_VIEW)[0];
 			if (existing) return ctx.app.workspace.revealLeaf(existing);
@@ -552,7 +572,7 @@ export const pagesModule = defineModule<PagesSettings>({
 		command("move-branch", ctx.t("pages.moveBranch"), "file-plus-2", (c) => !c.readonly && !!oneCard(c), (c) => void moveBranch(c, oneCard(c)!, "page"));
 		command("place-branch", ctx.t("pages.placeBranch"), "move", (c) => !c.readonly && !!oneCard(c), (c) => startPlacing(c, oneCard(c)!));
 		command("put-branch-here", ctx.t("pages.placing.put"), "map-pin", (c) => placing.has(c), (c) => void placeHere(c));
-		command("open-index", ctx.t("pages.index.open"), "list-tree", () => true, () => void openIndex());
+		ctx.addCommand({ id: "open-index", name: ctx.t("pages.index.open"), icon: "list-tree", callback: () => void openIndex() });
 		command("main-page", ctx.t("pages.goMain"), "home", (c) => hasPages(c) && current(c) !== "", (c) => show(c, ""));
 		command("parent-page", ctx.t("pages.goUp"), "arrow-up-left", (c) => hasPages(c) && current(c) !== "", (c) => {
 			const info = pagesOf(c).find((p) => p.id === current(c));
@@ -622,24 +642,15 @@ function nodeLabel(node: CanvasNodeLike): string {
 	return titleOf(node.text ?? "");
 }
 
-interface IndexHost {
-	pagesOf(canvas: CanvasLike): PageInfo[];
-	current(canvas: CanvasLike): string;
-	show(canvas: CanvasLike, page: string): void;
-	pageTitle(canvas: CanvasLike, page: string): string;
-	merge(canvas: CanvasLike, page: string): void;
-	count(canvas: CanvasLike, page: string): number;
-}
-
-/** The pages of the canvas in front, as a tree; a click shows that page. */
+/** The pages of the canvas in front (on the board or as text), as a tree; a click shows that page. */
 class PagesView extends ItemView {
-	private canvas: CanvasLike | null = null;
+	private source: PagesSource | null = null;
 	private timer = 0;
 
 	constructor(
 		leaf: WorkspaceLeaf,
 		private readonly ctx: Ctx,
-		private readonly host: IndexHost,
+		private readonly sourceOf: (canvas: CanvasLike) => PagesSource,
 	) {
 		super(leaf);
 	}
@@ -664,16 +675,18 @@ class PagesView extends ItemView {
 
 	/** Follows the most recently active canvas. */
 	track(force = false): void {
-		const prev = this.canvas;
+		const prev = this.source?.key;
 		const leaf = this.app.workspace.getMostRecentLeaf();
-		const view = leaf?.view as { getViewType(): string; canvas?: CanvasLike } | undefined;
-		if (view?.getViewType() === "canvas" && view.canvas) this.canvas = view.canvas;
-		else if (this.canvas && !this.canvas.wrapperEl.isConnected) this.canvas = null;
-		if (force || this.canvas !== prev) this.render();
+		const view = leaf?.view as { getViewType(): string; canvas?: CanvasLike; pagesSource?(): PagesSource | null } | undefined;
+		const own = view?.pagesSource?.();
+		if (own) this.source = own;
+		else if (view?.getViewType() === "canvas" && view.canvas) this.source = this.sourceOf(view.canvas);
+		else if (this.source && !this.source.alive()) this.source = null;
+		if (force || this.source?.key !== prev) this.render();
 	}
 
 	refresh(canvas?: CanvasLike): void {
-		if ((canvas && canvas !== this.canvas) || this.timer) return;
+		if ((canvas && canvas !== this.source?.key) || this.timer) return;
 		this.timer = window.setTimeout(() => {
 			this.timer = 0;
 			this.track(true);
@@ -683,34 +696,34 @@ class PagesView extends ItemView {
 	render(): void {
 		const root = this.contentEl;
 		root.empty();
-		const canvas = this.canvas;
+		const source = this.source;
 		root.createDiv({ cls: "opc-pages-heading", text: this.ctx.t("pages.index") });
-		if (!canvas) {
+		if (!source) {
 			root.createDiv({ cls: "pane-empty", text: this.ctx.t("pages.index.noCanvas") });
 			return;
 		}
-		const pages = this.host.pagesOf(canvas);
+		const pages = source.pages();
 		const children = pageChildren(pages);
-		const current = this.host.current(canvas);
+		const current = source.current();
 		const list = root.createDiv({ cls: "opc-pages-tree", attr: { role: "tree" } });
 		const row = (id: string, depth: number) => {
 			const item = list.createDiv({ cls: "opc-pages-item", attr: { role: "treeitem", tabindex: "0" } });
 			item.setCssProps({ "--opc-pages-depth": String(depth) });
 			item.toggleClass("is-current", id === current);
 			setIcon(item.createSpan({ cls: "opc-pages-icon" }), id ? "file-text" : "home");
-			item.createSpan({ cls: "opc-pages-title", text: this.host.pageTitle(canvas, id) });
-			item.createSpan({ cls: "opc-pages-count", text: String(this.host.count(canvas, id)) });
-			if (id && !canvas.readonly) {
+			item.createSpan({ cls: "opc-pages-title", text: source.title(id) });
+			item.createSpan({ cls: "opc-pages-count", text: String(source.count(id)) });
+			if (id && source.merge) {
 				const merge = item.createEl("button", { cls: "clickable-icon opc-pages-merge", attr: { "aria-label": this.ctx.t("pages.merge") } });
 				setIcon(merge, "combine");
 				setTooltip(merge, this.ctx.t("pages.merge"));
 				merge.addEventListener("click", (evt) => {
 					evt.stopPropagation();
-					this.host.merge(canvas, id);
+					source.merge?.(id);
 				});
 			}
 			const open = () => {
-				this.host.show(canvas, id);
+				source.show(id);
 				this.render();
 			};
 			item.addEventListener("click", open);

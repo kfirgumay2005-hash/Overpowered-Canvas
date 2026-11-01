@@ -165,6 +165,8 @@ export class TutorialRunner {
 		if (finished) this.host.markDone(session.def.id);
 		// Close the tab first, so its last save can't bring the file back.
 		if (session.leaf.view && (session.leaf.view as CanvasViewLike).file === session.file) session.leaf.detach();
+		// Other views of the board (text pages in a split).
+		this.closeTabs(session.file.path);
 		await this.removeNotesOf((path) => path === session.file.path);
 		await sleep(150);
 		// Files made during the tutorial in the tutorials folder (a canvas split off the board…).
@@ -614,18 +616,18 @@ class Session {
 		keep.addEventListener("click", () => this.end(true));
 	}
 
-	/** Moves the panel below the minimap when it sits in the same corner. */
+	/** Moves the panel below the minimap and the pages bar when they sit in the same corner. */
 	private avoidOverlaps(): void {
 		// The canvas direction can change while the tutorial runs: stay opposite the controls.
 		this.panel.toggleClass("is-right", getComputedStyle(this.canvas.wrapperEl).direction === "rtl");
 		const wrapper = this.canvas.wrapperEl.getBoundingClientRect();
-		const minimap = this.canvas.wrapperEl.querySelector<HTMLElement>(".opc-minimap");
+		const p = this.panel.getBoundingClientRect();
 		let top = 0;
-		if (minimap?.isShown()) {
-			const m = minimap.getBoundingClientRect();
-			const p = this.panel.getBoundingClientRect();
+		for (const el of this.canvas.wrapperEl.querySelectorAll<HTMLElement>(".opc-minimap, .opc-pages-bar")) {
+			if (!el.isShown()) continue;
+			const m = el.getBoundingClientRect();
 			const sameSide = m.left < p.right && m.right > p.left;
-			if (sameSide && m.top - wrapper.top < wrapper.height / 2) top = m.bottom - wrapper.top + 8;
+			if (sameSide && m.top - wrapper.top < wrapper.height / 2) top = Math.max(top, m.bottom - wrapper.top + 8);
 		}
 		this.panel.setCssProps({ "--opc-tutorial-top": top > 0 ? `${Math.round(top)}px` : "" });
 	}

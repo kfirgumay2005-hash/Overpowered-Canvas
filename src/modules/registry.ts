@@ -58,6 +58,8 @@ import { barButtonsModule } from "./bar-buttons";
 import { variableBreakpointsModule } from "./variable-breakpoints";
 import { layersModule } from "./layers";
 import { pagesModule } from "./pages";
+import { textPagesModule } from "./text-pages";
+import { autoLinkModule } from "./auto-link";
 
 /** Every feature module, in display order within its settings group. */
 export const MODULES: readonly AnyModule[] = [
@@ -80,6 +82,7 @@ export const MODULES: readonly AnyModule[] = [
 	canvasMetadataModule,
 	canvasPropertiesModule,
 	autoEdgesModule,
+	autoLinkModule,
 	nodeLinksModule,
 	canvasSearchModule,
 	readonlyPlusModule,
@@ -100,6 +103,7 @@ export const MODULES: readonly AnyModule[] = [
 	branchCollapseModule,
 	autoLayoutModule,
 	pagesModule,
+	textPagesModule,
 	drawingModule,
 	lassoModule,
 	textHighlightModule,

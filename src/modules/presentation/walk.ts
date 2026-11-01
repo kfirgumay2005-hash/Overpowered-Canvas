@@ -96,3 +96,50 @@ export function treeStep(nodes: Map<string, TNode>, edges: TEdge[], current: str
 	const i = siblings.findIndex((s) => s.id === current);
 	return siblings[i + (key === "down" ? 1 : -1)]?.id ?? null;
 }
+
+export interface Rect {
+	left: number;
+	top: number;
+	right: number;
+	bottom: number;
+}
+
+/**
+ * The arrow a tap beside a card stands for: above, below, left or right of it, whichever way the
+ * tap lies furthest beyond the card's edges. Null on the card itself.
+ */
+export function tapDirection(card: Rect, x: number, y: number): Dir | null {
+	const across = x < card.left ? card.left - x : x > card.right ? x - card.right : 0;
+	const along = y < card.top ? card.top - y : y > card.bottom ? y - card.bottom : 0;
+	if (across === 0 && along === 0) return null;
+	if (along >= across) return y < card.top ? "up" : "down";
+	return x < card.left ? "left" : "right";
+}
+
+/** The cards from the top of the map down to `id`, along the way it was reached (cycle-safe). */
+export function pathTo(nodes: Map<string, TNode>, edges: TEdge[], id: string, visited: ReadonlyMap<string, string>): string[] {
+	const path = [id];
+	const seen = new Set(path);
+	for (let p = treeParent(nodes, edges, id, visited); p && !seen.has(p); p = treeParent(nodes, edges, p, visited)) {
+		seen.add(p);
+		path.unshift(p);
+	}
+	return path;
+}
+
+/**
+ * Whether the children of `id` lie to its left on screen, as in right-to-left maps and on the left
+ * side of balanced maps. A tap or an on-screen arrow then goes by what it points at: left leads to
+ * the children, right to the parent. Judged from the first child, else from the parent.
+ */
+export function childrenOnLeft(nodes: Map<string, TNode>, edges: TEdge[], id: string, visited: ReadonlyMap<string, string>, rtl: boolean): boolean {
+	const node = nodes.get(id);
+	if (!node) return false;
+	const cx = center(node).x;
+	const child = orderedChildren(nodes, edges, id, rtl)[0];
+	if (child && center(child).x !== cx) return center(child).x < cx;
+	const parentId = treeParent(nodes, edges, id, visited);
+	const parent = parentId ? nodes.get(parentId) : undefined;
+	if (parent && center(parent).x !== cx) return center(parent).x > cx;
+	return rtl;
+}

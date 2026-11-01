@@ -803,6 +803,13 @@ const present: TutorialDefinition = {
 	],
 };
 
+/** Starts a walk from the top of the map, unless one is going on. */
+function ensureWalk(rt: TutorialRuntime): void {
+	if (rt.canvas.wrapperEl.hasClass("opc-walking")) return;
+	rt.select(["m-root"]);
+	rt.command("presentation:walk");
+}
+
 // ---------- 8. Mind maps ----------
 
 const mindmap: TutorialDefinition = {
@@ -811,6 +818,10 @@ const mindmap: TutorialDefinition = {
 	title: "tut.mindmap.title",
 	summary: "tut.mindmap.summary",
 	modules: ["mindmap", "branch-collapse", "auto-layout", "note-blocks", "presentation"],
+	restoreSettings: [
+		{ module: "presentation", key: "walkTapZones" },
+		{ module: "presentation", key: "walkHints" },
+	],
 	board: (t) => ({
 		nodes: [
 			card("m-root", t("tut.mindmap.board.root"), 0, 0, 240, 80, { color: "5" }),
@@ -932,6 +943,43 @@ const mindmap: TutorialDefinition = {
 					rt.canvas.wrapperEl.querySelector<HTMLElement>(`.opc-walk-${dir}`)?.click();
 					await rt.wait(700);
 				}
+			},
+		},
+		{
+			title: "tut.mindmap.walkTouch.title",
+			body: "tut.mindmap.walkTouch.body",
+			task: "tut.mindmap.walkTouch.task",
+			enter: (rt) => {
+				rt.setSetting("presentation", "walkTapZones", true);
+				rt.setSetting("presentation", "walkHints", true);
+				ensureWalk(rt);
+			},
+			check: (rt) => rt.seen("map-walk-moved", (_c, _n, how) => how === "tap"),
+			demo: async (rt) => {
+				ensureWalk(rt);
+				await rt.wait(600);
+				rt.canvas.wrapperEl.querySelector<HTMLElement>(".opc-walk-hint")?.click();
+			},
+		},
+		{
+			title: "tut.mindmap.walkColumns.title",
+			body: "tut.mindmap.walkColumns.body",
+			task: "tut.mindmap.walkColumns.task",
+			target: ".opc-walk-columns",
+			enter: ensureWalk,
+			// Turning the columns on counts as one move, so the second is the user's.
+			check: (rt) => {
+				if (!rt.canvas.wrapperEl.querySelector(".opc-columns")) return false;
+				let moves = 0;
+				return rt.seen("map-walk-moved", () => ++moves >= 2);
+			},
+			demo: async (rt) => {
+				ensureWalk(rt);
+				await rt.wait(400);
+				const wrapper = rt.canvas.wrapperEl;
+				if (!wrapper.querySelector(".opc-columns")) wrapper.querySelector<HTMLElement>(".opc-walk-columns")?.click();
+				await rt.wait(1000);
+				wrapper.querySelector<HTMLElement>(".opc-columns-card.is-child, .opc-columns-card:not(.is-current)")?.click();
 			},
 		},
 	],
@@ -1518,12 +1566,21 @@ async function setProperty(rt: TutorialRuntime, which: VaultNote, key: string, v
 		});
 }
 
+const planText = (data: CanvasFileData) => findNode(data, "al-plan")?.text ?? "";
+/** The button that writes the links, once the scan has found them. */
+const createButton = () => activeDocument.querySelector<HTMLButtonElement>(".opc-autolink-modal .mod-cta:not(:disabled)");
+
 const vault: TutorialDefinition = {
 	id: "vault",
 	icon: "file-stack",
 	title: "tut.vault.title",
 	summary: "tut.vault.summary",
-	modules: ["kanban", "query-groups", "auto-edges"],
+	modules: ["kanban", "query-groups", "auto-edges", "auto-link"],
+	restoreSettings: [
+		{ module: "auto-link", key: "scope" },
+		{ module: "auto-link", key: "notes" },
+		{ module: "auto-link", key: "excludedTitles" },
+	],
 	files: (t) => {
 		const body = t("tut.vault.note.body");
 		const status = (which: VaultNote, value: string) => ({ path: `${noteName(t, which)}.md`, content: `---\nstatus: ${value}\n---\n${body}\n` });
@@ -1539,6 +1596,7 @@ const vault: TutorialDefinition = {
 			fileCard("k-pass", notePath(t, folder, "passport"), colX(0) + 30, 180),
 			fileCard("k-hotel", notePath(t, folder, "hotel"), colX(1) + 30, 40),
 			group("q-pack", t("tut.vault.board.packing"), colX(3) + 80, 0, 620, 300),
+			card("al-plan", t("tut.vault.board.plan", { hotel: noteName(t, "hotel").toLowerCase(), tickets: noteName(t, "tickets").toLowerCase() }), colX(3) + 80, 340, 620, 90, { color: "5" }),
 		],
 		edges: [],
 	}),
@@ -1598,6 +1656,30 @@ const vault: TutorialDefinition = {
 				const property = rt.setting("auto-edges", "property");
 				const key = typeof property === "string" && property.trim() ? property.trim() : "canvas-edges";
 				await setProperty(rt, "hotel", key, [`[[${noteName(rt.t, "tickets")}]]`]);
+			},
+		},
+		{
+			title: "tut.vault.autolink.title",
+			body: "tut.vault.autolink.body",
+			task: "tut.vault.autolink.task",
+			focus: ["al-plan"],
+			check: (rt) => planText(rt.now()).includes("[["),
+			demo: async (rt) => {
+				rt.command("auto-link:scan");
+				for (let i = 0; i < 40 && !createButton(); i++) await rt.wait(100);
+				await rt.wait(1200);
+				createButton()?.click();
+				await rt.wait(400);
+			},
+		},
+		{
+			title: "tut.vault.autolinkUndo.title",
+			body: "tut.vault.autolinkUndo.body",
+			task: "tut.vault.autolinkUndo.task",
+			focus: ["al-plan"],
+			check: (rt) => planText(rt.before).includes("[[") && !planText(rt.now()).includes("[["),
+			demo: (rt) => {
+				rt.command("auto-link:undo");
 			},
 		},
 	],
@@ -1953,6 +2035,12 @@ const pdf: TutorialDefinition = {
 
 const PAGES_VIEW = "opc-pages";
 const pagesOfRoot = (rt: TutorialRuntime) => rt.root().pages ?? [];
+const TEXT_VIEW = "opc-text-pages";
+const textLeaf = (rt: TutorialRuntime) => rt.app.workspace.getLeavesOfType(TEXT_VIEW).find((l) => (l.view as unknown as { file?: unknown }).file === rt.canvas.view.file);
+const textView = (rt: TutorialRuntime) => textLeaf(rt)?.view as unknown as { containerEl: HTMLElement; contentEl: HTMLElement; getState(): { page?: string } } | undefined;
+const showText = (rt: TutorialRuntime) => {
+	if (!textView(rt)) rt.command("text-pages:toggle");
+};
 const pageOfCard = (rt: TutorialRuntime, id: string) => rt.extra(id).page ?? "";
 
 const pages: TutorialDefinition = {
@@ -1960,7 +2048,7 @@ const pages: TutorialDefinition = {
 	icon: "file-stack",
 	title: "tut.pages.title",
 	summary: "tut.pages.summary",
-	modules: ["pages", "auto-layout", "presentation", "node-links"],
+	modules: ["pages", "text-pages", "auto-layout", "presentation", "node-links"],
 	board: (t) => ({
 		nodes: [
 			card("pg-root", t("tut.pages.board.root"), 0, 120, 240, 80, { color: "5" }),
@@ -2069,9 +2157,66 @@ const pages: TutorialDefinition = {
 			},
 		},
 		{
+			title: "tut.pages.text.title",
+			body: "tut.pages.text.body",
+			task: "tut.pages.text.task",
+			target: (rt) => rt.canvas.wrapperEl.closest(".workspace-leaf-content")?.querySelector<HTMLElement>(".opc-text-pages-switch"),
+			enter: (rt) => {
+				rt.command("presentation:walk-end");
+				rt.command("pages:main-page");
+			},
+			check: (rt) => !!textView(rt),
+			demo: showText,
+		},
+		{
+			title: "tut.pages.textLinks.title",
+			body: "tut.pages.textLinks.body",
+			task: "tut.pages.textLinks.task",
+			target: (rt) => textView(rt)?.contentEl.querySelector<HTMLElement>(".opc-text-pagelink"),
+			enter: showText,
+			check: (rt) => !!textView(rt)?.getState().page,
+			demo: async (rt) => {
+				showText(rt);
+				await rt.wait(700);
+				textView(rt)?.contentEl.querySelector<HTMLElement>(".opc-text-pagelink")?.click();
+			},
+		},
+		{
+			title: "tut.pages.textEdit.title",
+			body: "tut.pages.textEdit.body",
+			task: "tut.pages.textEdit.task",
+			target: (rt) => textView(rt)?.containerEl.querySelector<HTMLElement>(".opc-text-edit-button"),
+			enter: showText,
+			check: (rt) => changedAny(rt, (n) => n.text, isPlainCard),
+			demo: async (rt) => {
+				showText(rt);
+				await rt.wait(700);
+				const view = textView(rt);
+				const pencil = view?.containerEl.querySelector<HTMLElement>(".opc-text-edit-button");
+				if (!view || !pencil) return;
+				if (!pencil.hasClass("is-active")) pencil.click();
+				await rt.wait(500);
+				const cards = view.contentEl.querySelectorAll<HTMLElement>(".opc-text-block.is-editable .opc-text-body");
+				cards[cards.length - 1]?.click();
+				await rt.wait(600);
+				const input = view.contentEl.querySelector<HTMLTextAreaElement>("textarea.opc-text-editor");
+				if (!input) return;
+				input.value = `${input.value} ✓`;
+				input.dispatchEvent(new Event("input"));
+				await rt.wait(700);
+				input.blur();
+				await rt.wait(400);
+			},
+		},
+		{
 			title: "tut.pages.s6.title",
 			body: "tut.pages.s6.body",
 			task: "tut.pages.s6.task",
+			// Back on the board, with the page still to be merged.
+			enter: (rt) => {
+				textLeaf(rt)?.detach();
+				rt.command("pages:main-page");
+			},
 			check: (rt) => rt.seen("page-merged"),
 			demo: async (rt) => {
 				if (pageOfCard(rt, "pg-bb") === "" && !rt.node("pg-bb")?.nodeEl.hasClass("opc-page-hidden")) {

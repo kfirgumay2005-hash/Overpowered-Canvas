@@ -2,6 +2,7 @@
  * What other modules may ask the Pages module (set while it is enabled, else null): the page a
  * card is on, showing a page, and the links between a break-point card and its page.
  */
+import type { PageInfo } from "../../data/schema";
 import type { CanvasLike, CanvasNodeLike } from "../../internals/types";
 
 export interface PageLink {
@@ -19,6 +20,25 @@ export interface PagesApi {
 	/** Shows the page `node` is on (if another one) before something reveals it. */
 	reveal(canvas: CanvasLike, node: CanvasNodeLike): void;
 	links(canvas: CanvasLike): PageLink[];
+	/** The page a canvas shows when it is next opened. */
+	remember(path: string, page: string): void;
+	openIndex(): Promise<void>;
+	/** Tells the pages index that what it shows changed. */
+	refreshIndex(): void;
+}
+
+/** What the index and the bar show: the pages of a canvas on the board or in another view. */
+export interface PagesSource {
+	/** Identifies what is shown: the index draws again when it changes. */
+	key: object;
+	alive(): boolean;
+	pages(): PageInfo[];
+	/** "" for the main page. */
+	current(): string;
+	title(page: string): string;
+	count(page: string): number;
+	show(page: string): void;
+	merge?(page: string): void;
 }
 
 export const pagesHost: { api: PagesApi | null } = { api: null };
