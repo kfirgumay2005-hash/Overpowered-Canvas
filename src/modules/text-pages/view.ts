@@ -3,6 +3,7 @@ import type { ModuleContext } from "../../core/module";
 import { logError } from "../../core/log";
 import type { CanvasFileData } from "../../data/json-canvas";
 import type { CanvasLike, CanvasViewLike } from "../../internals/types";
+import { TUTORIAL_KEY } from "../../tutorials/runner";
 import { pagesHost, type PagesSource } from "../pages/api";
 import { renderPagesBar } from "../pages/bar";
 import { mutate } from "../shared";
@@ -77,6 +78,7 @@ export class TextPagesView extends FileView {
 		this.contentEl.addClass("opc-text-pages");
 		this.addAction("layout-dashboard", t("textPages.toCanvas"), () => void this.showCanvas());
 		this.editButton = this.addAction("pencil", t("textPages.edit"), () => this.toggleEditing());
+		this.editButton.addClass("opc-text-edit-button");
 		if (webContents()) this.addAction("file-output", t("textPages.pdf"), () => void this.exportPdf());
 		this.registerEvent(
 			this.app.vault.on("modify", (file) => {
@@ -169,6 +171,13 @@ export class TextPagesView extends FileView {
 
 	async showCanvas(): Promise<void> {
 		if (!this.file) return;
+		// A practice board is open beside this view: go back to it.
+		const board = this.liveCanvas();
+		if (board?.data[TUTORIAL_KEY]) {
+			this.app.workspace.setActiveLeaf(board.view.leaf, { focus: true });
+			this.leaf.detach();
+			return;
+		}
 		pagesHost.api?.remember(this.file.path, this.page);
 		await this.leaf.setViewState({ type: "canvas", state: { file: this.file.path }, active: true });
 	}

@@ -130,7 +130,7 @@ export function enableWalk(ctx: ModuleContext<object>, presenting: (canvas: Canv
 			hint.addEventListener("click", (evt) => {
 				evt.preventDefault();
 				evt.stopPropagation();
-				step(canvas, move);
+				step(canvas, move, "tap");
 			});
 		}
 	};
@@ -148,7 +148,7 @@ export function enableWalk(ctx: ModuleContext<object>, presenting: (canvas: Canv
 		walk.columns.show(columns, walk.current, path);
 	};
 
-	const go = (canvas: CanvasLike, walk: Walk, id: string, from?: string) => {
+	const go = (canvas: CanvasLike, walk: Walk, id: string, from?: string, how?: "tap") => {
 		const node = canvas.nodes.get(id);
 		if (!node) return;
 		canvas.nodes.get(walk.current)?.nodeEl.removeClass("opc-walk-current");
@@ -160,10 +160,10 @@ export function enableWalk(ctx: ModuleContext<object>, presenting: (canvas: Canv
 		centerOn(canvas, node);
 		drawHints(canvas, walk);
 		drawColumns(canvas, walk);
-		ctx.events.emit("map-walk-moved", canvas, node);
+		ctx.events.emit("map-walk-moved", canvas, node, how);
 	};
 
-	const step = (canvas: CanvasLike, dir: Dir) => {
+	const step = (canvas: CanvasLike, dir: Dir, how?: "tap") => {
 		const walk = walks.get(canvas);
 		if (!walk) return;
 		const { next, edges } = nextFrom(canvas, walk, dir);
@@ -172,7 +172,7 @@ export function enableWalk(ctx: ModuleContext<object>, presenting: (canvas: Canv
 		// going back up and down again returns there.
 		const down = edges.some((e) => e.from === walk.current && e.to === next);
 		const sharedParent = edges.find((e) => e.to === next && edges.some((f) => f.from === e.from && f.to === walk.current))?.from;
-		go(canvas, walk, next, down ? walk.current : sharedParent);
+		go(canvas, walk, next, down ? walk.current : sharedParent, how);
 	};
 
 	const zoom = (canvas: CanvasLike, delta: number) => {
@@ -284,7 +284,7 @@ export function enableWalk(ctx: ModuleContext<object>, presenting: (canvas: Canv
 			if (!options().tapZones || (target !== wrapper && !target?.closest?.(".canvas, .canvas-background"))) return;
 			const rect = canvas.nodes.get(walk.current)?.nodeEl.getBoundingClientRect();
 			const dir = rect ? tapDirection(rect, evt.clientX, evt.clientY) : null;
-			if (dir) step(canvas, onScreen(canvas, walk, dir));
+			if (dir) step(canvas, onScreen(canvas, walk, dir), "tap");
 		};
 		win.addEventListener("keydown", onKey, true);
 		wrapper.addEventListener("pointerdown", onDown, true);

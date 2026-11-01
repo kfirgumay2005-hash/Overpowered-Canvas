@@ -5,6 +5,7 @@ import type { CanvasFileData } from "../../data/json-canvas";
 import { metadataCacheInternal } from "../../internals/app";
 import type { CanvasLike, CanvasNodeLike, CanvasViewLike } from "../../internals/types";
 import { mergeWithDefaults } from "../../settings/settings";
+import { tutorialsFolder } from "../../tutorials/runner";
 import { readFrontmatter } from "../canvas-metadata/build";
 import { isDrawing } from "../canvas-markdown/structure";
 import { isTextBox, mutate, nodeType } from "../shared";
@@ -99,7 +100,13 @@ export const autoLinkModule = defineModule<AutoLinkSettings>({
 		const mc = app.metadataCache;
 		const internal = metadataCacheInternal(app);
 
+		/**
+		 * A tutorial's files. A scan started there sees nothing else, whatever the scope says, so
+		 * practice can't write to the vault; any other scan skips them.
+		 */
+		const isPractice = (path: string) => path.startsWith(`${tutorialsFolder(ctx.filesFolder())}/`);
 		const isExcluded = (path: string) => {
+			if (isPractice(path)) return true;
 			const folders = [ctx.filesFolder(), ...ctx.settings.excludedFolders].filter(Boolean).map((f) => normalizePath(f));
 			return folders.some((f) => path === f || path.startsWith(`${f}/`)) || !!internal?.isUserIgnored?.(path);
 		};
@@ -113,7 +120,7 @@ export const autoLinkModule = defineModule<AutoLinkSettings>({
 
 		// ---------- the titles of the vault ----------
 
-		const buildIndex = async (): Promise<Trie> => {
+		const buildIndex = async (practice = false): Promise<Trie> => {
 			const refused = new Set(ctx.settings.excludedTitles.map((t) => t.toLowerCase()));
 			const titles: Title[] = [];
 			const add = (phrase: string, file: TFile) => {
@@ -122,7 +129,7 @@ export const autoLinkModule = defineModule<AutoLinkSettings>({
 				titles.push({ phrase: text, target: file.path });
 			};
 			for (const file of app.vault.getFiles()) {
-				if ((file.extension !== "md" && !isCanvasFile(file)) || isExcluded(file.path)) continue;
+				if ((file.extension !== "md" && !isCanvasFile(file)) || (practice ? !isPractice(file.path) : isExcluded(file.path))) continue;
 				add(file.basename, file);
 				if (!ctx.settings.aliases) continue;
 				let front: unknown = mc.getFileCache(file)?.frontmatter;
@@ -192,9 +199,10 @@ export const autoLinkModule = defineModule<AutoLinkSettings>({
 		};
 
 		const scan = async (scope: AutoLinkScope, active: TFile | null): Promise<FilePlan[]> => {
-			const trie = await buildIndex();
+			const board = active && isPractice(active.path) ? active : null;
+			const trie = await buildIndex(!!board);
 			const plans: FilePlan[] = [];
-			const files = sourcesIn(scope, active);
+			const files = board ? [board] : sourcesIn(scope, active);
 			for (let i = 0; i < files.length; i++) {
 				const plan = await planFile(trie, files[i]!);
 				if (plan) plans.push(plan);
@@ -240,8 +248,12 @@ export const autoLinkModule = defineModule<AutoLinkSettings>({
 			});
 		};
 
+		/** The last run on a practice board: it must not replace the real one on disk. */
+		let practiceRun: Run | null = null;
+
 		const run = async (files: TFile[]): Promise<void> => {
-			const trie = await buildIndex();
+			const practice = files.every((f) => isPractice(f.path));
+			const trie = await buildIndex(practice);
 			const done: RunFile[] = [];
 			let links = 0;
 			for (const file of files) {
@@ -275,9 +287,10 @@ export const autoLinkModule = defineModule<AutoLinkSettings>({
 				done.push({ path: file.path, units: [...units.values()] });
 				for (const unit of units.values()) links += unit.links.length;
 			}
-			if (done.length) {
+			const lastRun: Run = { at: Date.now(), files: done };
+			if (done.length && practice) practiceRun = lastRun;
+			else if (done.length) {
 				await ensureFolder();
-				const lastRun: Run = { at: Date.now(), files: done };
 				await app.vault.adapter.write(undoPath(), JSON.stringify(lastRun));
 			}
 			new Notice(ctx.t("autoLink.done", { links, files: done.length }));
@@ -285,9 +298,11 @@ export const autoLinkModule = defineModule<AutoLinkSettings>({
 
 		const undo = async (): Promise<void> => {
 			const path = undoPath();
-			let last: Run | null = null;
+			const active = app.workspace.getActiveFile();
+			const practice = !!active && isPractice(active.path);
+			let last = practice ? practiceRun : null;
 			try {
-				if (await app.vault.adapter.exists(path)) last = JSON.parse(await app.vault.adapter.read(path)) as Run;
+				if (!practice && (await app.vault.adapter.exists(path))) last = JSON.parse(await app.vault.adapter.read(path)) as Run;
 			} catch (error) {
 				logError("[overpowered-canvas] auto-link: could not read the last run", error);
 			}
@@ -316,7 +331,8 @@ export const autoLinkModule = defineModule<AutoLinkSettings>({
 					});
 				}
 			}
-			await app.vault.adapter.remove(path);
+			if (practice) practiceRun = null;
+			else await app.vault.adapter.remove(path);
 			new Notice(ctx.t("autoLink.undone", { links: undone }));
 		};
 

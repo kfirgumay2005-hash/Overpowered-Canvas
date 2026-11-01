@@ -101,6 +101,17 @@ describe("protected text", () => {
 	});
 });
 
+describe("the tutorial's practice card, in each language", () => {
+	it.each([
+		["Still to do: find a hotel, then book flights.", "Find a hotel", "Book flights", "Still to do: [[Find a hotel|find a hotel]], then [[Book flights|book flights]]."],
+		["अभी बाकी: होटल ढूँढें, फिर उड़ान बुक करें।", "होटल ढूँढें", "उड़ान बुक करें", "अभी बाकी: [[होटल ढूँढें]], फिर [[उड़ान बुक करें]]।"],
+		["まだやること: ホテルを探す、それから 航空券を予約。", "ホテルを探す", "航空券を予約", "まだやること: [[ホテルを探す]]、それから [[航空券を予約]]。"],
+		["还要做: 找酒店,然后 订机票。", "找酒店", "订机票", "还要做: [[找酒店]],然后 [[订机票]]。"],
+	])("links both notes in %s", (text, hotel, tickets, linked) => {
+		expect(link(text, [hotel, tickets])).toBe(linked);
+	});
+});
+
 describe("tables", () => {
 	it("escapes the pipe of a link in a table", () => {
 		expect(link("| a |\n|---|\n| Heart |\n\nHeart", ["heart"])).toBe("| a |\n|---|\n| [[heart\\|Heart]] |\n\n[[heart|Heart]]");

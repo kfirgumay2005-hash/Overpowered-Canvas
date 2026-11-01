@@ -591,3 +591,11 @@ Automated runtime checks of every item below were run in an isolated Obsidian 1.
 4. **Editing:** the pencil, then tap a card: Esc cancels, Ctrl/Cmd+Enter or leaving saves. Works with the canvas open (one undo step there) and closed. A read-only canvas refuses.
 5. **PDF (desktop):** one PDF page or more per page, each starting on a new one; links to child pages and back to parents work inside the PDF. The canvas file isn't touched.
 6. **Other:** a canvas with no pages shows no bar; a canvas that can't be read shows a message; text direction follows the canvas.
+
+## Tutorial steps for auto-link, tap zones and text pages
+
+1. **Mind maps, "Walk by touch":** a tap on the empty board or on a small arrow completes it; an arrow key doesn't. The two settings are on during the tutorial and go back to what they were when it ends.
+2. **Mind maps, "The map as columns":** the columns button is highlighted; turning the columns on is not enough, a move in them completes it. The coach panel stays above the columns.
+3. **Big maps in pages, text steps:** text pages opens beside the practice board, not over it, and the panel stays. Following the link and editing a card complete their steps; the edit shows on the board. *Show as canvas* closes the text and returns to the board. "Bringing a page back" still works afterwards.
+4. **Notes as cards, auto-link steps:** set the scope to the whole vault first. The preview lists only the practice board. The real undo record is kept, and nothing outside the tutorial folder changes. Undo takes the links back, and a normal scan afterwards doesn't list practice files.
+5. **Ending:** closing any of them mid-step leaves no text tab, practice file or changed setting behind. Show me completes each step.

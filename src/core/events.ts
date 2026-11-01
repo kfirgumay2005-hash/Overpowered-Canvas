@@ -44,7 +44,7 @@ export interface PublicEventMap {
 	"presentation-slide-changed": [canvas: CanvasLike, slide: CanvasNodeLike, index: number];
 	"presentation-ended": [canvas: CanvasLike];
 	"map-walk-started": [canvas: CanvasLike, node: CanvasNodeLike];
-	"map-walk-moved": [canvas: CanvasLike, node: CanvasNodeLike];
+	"map-walk-moved": [canvas: CanvasLike, node: CanvasNodeLike, how?: "tap"];
 	"map-walk-ended": [canvas: CanvasLike];
 	"selection-encapsulated": [canvas: CanvasLike, file: TFile];
 	"page-shown": [canvas: CanvasLike, pageId: string];

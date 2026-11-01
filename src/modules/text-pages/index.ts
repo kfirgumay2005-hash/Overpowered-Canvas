@@ -1,4 +1,5 @@
 import { defineModule } from "../../core/module";
+import { TUTORIAL_KEY } from "../../tutorials/runner";
 import type { CanvasLike, CanvasViewLike } from "../../internals/types";
 import { pagesHost } from "../pages/api";
 import { canvasDirection } from "../shared";
@@ -29,7 +30,10 @@ export const textPagesModule = defineModule({
 			const file = view.file;
 			if (!file) return;
 			const state = { file: file.path, page: pagesHost.api?.current(canvas) ?? "", rtl: canvasDirection(canvas) === "rtl" };
-			void view.leaf.setViewState({ type: TEXT_PAGES_VIEW, state, active: true });
+			// A practice board keeps its tab: the tutorial's panel lives there.
+			const open = app.workspace.getLeavesOfType(TEXT_PAGES_VIEW).find((l) => (l.view as TextPagesView).file === file);
+			const leaf = canvas.data[TUTORIAL_KEY] ? (open ?? app.workspace.createLeafBySplit(view.leaf, "vertical")) : view.leaf;
+			void leaf.setViewState({ type: TEXT_PAGES_VIEW, state, active: true });
 		};
 
 		ctx.addCommand({

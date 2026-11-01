@@ -44,7 +44,7 @@ read-only unless you know the internals. Payloads are listed below; types are in
 | `presentation-slide-changed` | canvas, slide, index |
 | `presentation-ended` | canvas |
 | `map-walk-started` | canvas, node (walking through a map with the arrow keys began here) |
-| `map-walk-moved` | canvas, node (the card the walk is on now, also the first one) |
+| `map-walk-moved` | canvas, node (the card the walk is on now, also the first one), how (`"tap"` for a tap on the empty board or on an arrow beside the card, else absent) |
 | `map-walk-ended` | canvas |
 | `selection-encapsulated` | canvas, newFile |
 | `page-shown` | canvas, pageId (`""` = the main page) — a view switched page |
