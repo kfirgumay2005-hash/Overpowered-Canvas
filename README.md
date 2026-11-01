@@ -2,11 +2,15 @@
 
 ## Plugins absorbed
 
+## Plugins absorbed
+
+In addition to have many features on it's own , the plugin absorbed various other plugins:
+
 ![Absorb](https://raw.githubusercontent.com/kfirgumay2005-hash/Overpowered-Canvas/main/docs/media/Absorb.gif)
 
-Advanced Canvas
-Canvas Mindmap
-CardNote
+Advanced Canvas,
+Canvas Mindmap,
+CardNote,
 Arbor, and far more
 
 ![Perfect Cell](https://raw.githubusercontent.com/kfirgumay2005-hash/Overpowered-Canvas/main/docs/media/perfect-cell.gif)
