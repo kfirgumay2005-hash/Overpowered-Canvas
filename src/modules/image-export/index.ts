@@ -30,6 +30,7 @@ class ExportModal extends Modal {
 	override onOpen(): void {
 		const { t, contentEl } = this;
 		this.setTitle(t("imageExport.title"));
+		this.modalEl.addClass("opc-export-modal");
 		const c = this.choice;
 		new Setting(contentEl).setName(t("imageExport.format")).addDropdown((d) =>
 			d

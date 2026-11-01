@@ -21,6 +21,13 @@ body.opc-mod-note-blocks .opc-note-blocks-handle.mod-image {
 	line-height: 1;
 	user-select: none;
 }
+/* A finger needs more to aim at than the mouse does. */
+body.opc-mod-note-blocks .opc-note-blocks-handle.is-touch {
+	width: 28px;
+	height: 32px;
+	color: var(--text-muted);
+	background-position: 8px 9px;
+}
 body.opc-mod-note-blocks .opc-note-blocks-handle img,
 .opc-note-blocks-handle-preview img {
 	max-width: 18px;

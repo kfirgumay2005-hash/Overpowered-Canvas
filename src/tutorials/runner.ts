@@ -29,6 +29,8 @@ export function tutorialsFolder(filesFolder: string): string {
 }
 /** Root key that marks a temporary tutorial canvas (so leftovers can be cleaned up safely). */
 export const TUTORIAL_KEY = "x-opc-tutorial";
+/** The tutorial about taking buttons off the bars: only its board follows those settings. */
+export const BARS_TUTORIAL = "bars";
 
 /** A tutorial's own folder for its practice files (inside the tutorials folder, which is ours). */
 function practiceFolder(root: string, def: TutorialDefinition): string {
@@ -691,6 +693,8 @@ class Session {
 				const def = this.host.modules.get(module);
 				return def ? (this.host.modules.settingsOf(def) as Record<string, unknown>)[key] : undefined;
 			},
+			setSetting: (module, key, value) => void this.host.modules.contextOf(module)?.updateSettings({ [key]: value }),
+			onEnd: (fn) => void this.cleanups.push(fn),
 			viewOpen: (type) => app.workspace.getLeavesOfType(type).length > 0,
 			selected: () => [...canvas.selection].map((item) => item.id),
 			select: (ids) => {
@@ -701,7 +705,7 @@ class Session {
 			},
 			command: (id) => {
 				this.focusCanvasLeaf();
-				const full = id.includes(":") && !id.startsWith("app:") && !id.startsWith("canvas:") ? `${pluginId}:${id}` : id;
+				const full = id.startsWith("core:") ? id.slice("core:".length) : id.includes(":") && !id.startsWith("app:") && !id.startsWith("canvas:") ? `${pluginId}:${id}` : id;
 				return (app as unknown as { commands: { executeCommandById(id: string): boolean } }).commands.executeCommandById(full);
 			},
 			add: (nodes: CanvasNodeData[], edges: CanvasEdgeData[] = []) => {

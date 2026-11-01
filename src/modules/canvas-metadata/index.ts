@@ -8,8 +8,9 @@ const isCanvas = (f: TAbstractFile | null | undefined): f is TFile => f instance
 /**
  * Gives .canvas files a real metadata cache entry: outgoing links, embeds, tags, headings and
  * frontmatter (from x-opc.frontmatter). Backlinks and the graph already include canvases in
- * core Obsidian; this adds the outgoing-links pane, the tag pane, aliases in the quick switcher,
- * and property / tag search. In memory only — nothing is written to Obsidian's cache database.
+ * core Obsidian; this adds the tag pane and aliases in the quick switcher. The search and
+ * outgoing-links panes handle Markdown files only. In memory only — nothing is written to
+ * Obsidian's cache database.
  */
 export const canvasMetadataModule = defineModule({
 	id: "canvas-metadata",
@@ -25,6 +26,8 @@ export const canvasMetadataModule = defineModule({
 		if (!mc) throw new Error("metadataCache internals not found");
 		const app = ctx.app;
 		const index = new Map<string, CanvasMetadata>();
+		// The tag pane reads the tags again only on this event, which the core sends for notes.
+		const announce = debounce(() => mc.trigger("finished"), 500, true);
 
 		const update = async (file: TFile) => {
 			let parsed: unknown = null;
@@ -36,7 +39,10 @@ export const canvasMetadataModule = defineModule({
 			const meta = buildCanvasMetadata(parsed, coreCanvasPlugin(app)?.index.getForPath(file.path) ?? null);
 			const before = index.get(file.path);
 			index.set(file.path, meta);
-			if (JSON.stringify(before) !== JSON.stringify(meta)) mc.trigger("changed", file, "", meta);
+			if (JSON.stringify(before) !== JSON.stringify(meta)) {
+				mc.trigger("changed", file, "", meta);
+				announce();
+			}
 		};
 
 		const pending = new Map<string, TFile>();
@@ -71,7 +77,7 @@ export const canvasMetadataModule = defineModule({
 		ctx.registerEvent(app.vault.on("create", (f) => isCanvas(f) && queue(f)));
 		ctx.registerEvent(
 			app.vault.on("delete", (f) => {
-				if (isCanvas(f)) index.delete(f.path);
+				if (isCanvas(f) && index.delete(f.path)) announce();
 			}),
 		);
 		ctx.registerEvent(
@@ -85,6 +91,7 @@ export const canvasMetadataModule = defineModule({
 
 		ctx.register(() => {
 			flush.cancel();
+			announce.cancel();
 			const paths = [...index.keys()];
 			index.clear();
 			// Let open panes (outgoing links, tags) drop the canvas metadata.
@@ -92,6 +99,7 @@ export const canvasMetadataModule = defineModule({
 				const f = app.vault.getAbstractFileByPath(path);
 				if (isCanvas(f)) mc.trigger("changed", f, "", {});
 			}
+			mc.trigger("finished");
 		});
 	},
 });

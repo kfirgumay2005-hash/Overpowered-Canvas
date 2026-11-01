@@ -2,7 +2,7 @@ import { FuzzySuggestModal, Modal, Notice, Setting, setIcon, setTooltip, type Ap
 import { defineModule, type ModuleContext } from "../../core/module";
 import { commandRunner } from "../../internals/app";
 import type { CanvasLike } from "../../internals/types";
-import { TUTORIAL_KEY } from "../../tutorials/runner";
+import { BARS_TUTORIAL, TUTORIAL_KEY } from "../../tutorials/runner";
 import { IconPickerModal } from "../../ui/icon-picker";
 import { randomId } from "../shared";
 import { BARS, buttonKeys, buttonLabel, hiddenKey, sanitizeBarSettings, type Bar, type BarButtonsSettings, type CustomButton } from "./logic";
@@ -61,9 +61,9 @@ function applyTo(ctx: Ctx, canvas: CanvasLike, mounted: WeakMap<CanvasLike, stri
 		mounted.set(canvas, shape);
 		mountCustom(ctx, canvas);
 	}
-	// Tutorials point at the buttons, so their boards keep all of them.
-	const tutorial = !!canvas.view.file && TUTORIAL_KEY in (canvas.getData() as unknown as Record<string, unknown>);
-	const hidden = new Set(tutorial ? [] : ctx.settings.hidden);
+	// Tutorials point at the buttons, so their boards keep all of them (but the one about this module).
+	const tutorial = canvas.view.file ? (canvas.getData() as unknown as Record<string, unknown>)[TUTORIAL_KEY] : undefined;
+	const hidden = new Set(tutorial !== undefined && tutorial !== BARS_TUTORIAL ? [] : ctx.settings.hidden);
 	for (const bar of BARS) for (const b of buttonsOf(canvas, bar)) b.el.toggleClass(HIDDEN, hidden.has(hiddenKey(bar, b.key)));
 	// A group or a bar with nothing left in it goes too.
 	for (const group of canvas.canvasControlsEl.querySelectorAll<HTMLElement>(":scope > .canvas-control-group")) group.toggleClass(HIDDEN, group.childElementCount > 0 && [...group.children].every((c) => c.hasClass(HIDDEN)));

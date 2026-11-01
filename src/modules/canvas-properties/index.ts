@@ -27,8 +27,8 @@ interface FilePropertiesView extends View {
 
 /**
  * Canvas properties (frontmatter): an info button in the canvas view opens an editor; values
- * are stored in x-opc.frontmatter (one undo step per save). tags, aliases and other properties
- * become searchable through the canvas-metadata module; cssclasses apply to the canvas view.
+ * are stored in x-opc.frontmatter (one undo step per save). tags and aliases reach the tag pane and
+ * the quick switcher through the canvas-metadata module; cssclasses apply to the canvas view.
  */
 export const canvasPropertiesModule = defineModule({
 	id: "canvas-properties",

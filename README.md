@@ -11,6 +11,23 @@ patches, listeners or styling behind.
 
 Includes all the features from both advanced canvas and canvas mindmap plugins , and far more , built by the goat claude code this is the perfected form of ultra instinct.
 
+## Pages: a big map, or a long document, in parts
+
+![Moving a branch to a page, following the links, using the pages index and exporting to Markdown](https://raw.githubusercontent.com/kfirgumay2005-hash/Overpowered-Canvas/main/docs/media/pages.gif)
+
+Right-click a card and choose **Move branch to a new page**: everything below it gets a page of its
+own, inside the same canvas file.
+
+- **Follow the links** between a card and its page, in both directions.
+- **Jump around with the pages index**, a tree of every page on the board.
+- **Export to Markdown**: the pages become nested headings in one clean note.
+- **Change your mind**: *Bring this page back into the map* puts the branch back under its card
+  and removes the links.
+
+You don't need to study with mind maps to use this. Pages are an alternative to endless vertical
+scrolling in notes: build structured content page by page, then turn it into Markdown when you're
+done.
+
 ## Features
 
 **Cards and edges** — flowchart and basic shapes on cards, border styles, start/center/end and
@@ -54,7 +71,8 @@ everything below a card to a page of its own; the card stays in the map and it a
 first card link to each other. One page shows at a time in each tab (two tabs can show two pages),
 a bar at the top shows where you are, and a pages index in the left sidebar lists them as a tree.
 Walking through the map crosses pages, Canvas → Markdown writes pages as nested headings (nested
-bullets past the sixth level), and a page can be brought back into the map. Or move a branch to
+bullets past the sixth level), and a page can be brought back into the map (from its first card,
+the card it comes from, the pages index or the command palette). Or move a branch to
 another spot of the same page, linked the same way. Without the plugin the pages simply sit side
 by side on the board.
 
@@ -73,7 +91,7 @@ other canvases, collapsible groups, focus mode, move a selection to a new canvas
 cards for annotation, custom style attributes from CSS snippets, a public events API, a minimap,
 a frames panel to search, reorder and present the groups of a canvas, a line grid behind the
 content (a line every N dots), an adjustable selection toolbar size (separately for computers
-and phones), and twenty hands-on tutorials (at the top of the settings and in the canvas
+and phones), and twenty-three hands-on tutorials (at the top of the settings and in the canvas
 controls). Each tutorial opens a temporary practice board with a coach panel: small tasks that
 tick themselves off as you do them, a "Show me" button that does each task live on the board, and
 highlights on the controls involved. The board (and any practice notes it uses) is deleted when the tutorial closes. At the top of the settings you choose the vault folder for the plugin's own files (note data and
@@ -85,11 +103,12 @@ settings search. A double-click on the empty canvas creates a card at a speed yo
 **Data features** — board templates (your own, plus Kanban, SWOT, Retrospective, Weekly plan,
 Mind map and Flowchart), kanban columns bound to a frontmatter property with two-way sync
 (rules: [docs/KANBAN.md](docs/KANBAN.md)), and query groups that fill themselves with notes
-matching tags, folders, properties or links. Drag a block from a note onto a canvas (hold a line,
-or grab its handle): a bullet with its children, a heading with its section or a paragraph
+matching tags, folders, properties or links. Drag a block from a note onto a canvas (hold a line
+with the mouse or grab its handle; on a touch screen, tap the line and drag its handle): a bullet with its children, a heading with its section or a paragraph
 becomes a card under the pointer, or a linked child or sibling of the card you drop it on;
 inbox mode sends clicked blocks into a named group. The handle shows while a canvas is open
-beside the note, and can be an emoji or an image of your own, cropped to a circle or a square.
+beside the note (a long press keeps selecting text, and notes on phones are left alone unless you
+turn this on), and can be an emoji or an image of your own, cropped to a circle or a square.
 
 **Canvas ⇄ Markdown** — copy a mind map (or any connected cards) as a Markdown outline; paste an
 outline onto the board, insert a note, or convert a note card to get a laid-out mind map; and

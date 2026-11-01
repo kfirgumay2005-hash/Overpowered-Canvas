@@ -136,6 +136,7 @@
 	width: 100%;
 }
 .setting-item.opc-search-hidden,
+.opc-module-options.opc-search-hidden,
 .setting-group.opc-search-hidden {
 	display: none;
 }

@@ -5,6 +5,7 @@ import type { I18nKey, LanguageSetting, Translate } from "../i18n";
 import { en } from "../i18n/locales/en";
 import { renderTutorialList, type TutorialListHost } from "../tutorials/list";
 import { FolderPickModal, splitFolder, type MoveResult } from "./files-folder";
+import { matches, normalize, queryWords } from "./search";
 import { cleanFolderPath, type PluginSettings } from "./settings";
 import { logError } from "../core/log";
 
@@ -21,10 +22,7 @@ export interface SettingsTabHost {
 
 const COLLAPSED_KEY = "overpowered-canvas:settings-collapsed";
 
-/** Lower case, accents removed: the form both the query and the searched text are compared in. */
-function normalize(text: string): string {
-	return text.normalize("NFKD").replace(/\p{M}/gu, "").toLowerCase();
-}
+const SEARCH_HIDDEN = "opc-search-hidden";
 
 /** Everything a row can be found by: these strings in the current language and in English. */
 function searchText(t: Translate, keys: readonly I18nKey[]): string {
@@ -292,20 +290,23 @@ export class OpcSettingTab extends PluginSettingTab {
 		this.saveCollapsed();
 	}
 
-	/** Hides rows that don't match the query and groups left empty; a query shows collapsed groups. */
+	/**
+	 * Keeps what contains the query in its name or description: modules, and inside them the options
+	 * (all of them when the module's name has the query). A query shows collapsed groups.
+	 */
 	private applyFilter(): void {
-		const words = normalize(this.query).split(/\s+/).filter(Boolean);
+		const words = queryWords(this.query);
 		this.containerEl.toggleClass("opc-settings-searching", words.length > 0);
 		for (const groupEl of Array.from(this.containerEl.querySelectorAll<HTMLElement>(".setting-group"))) {
 			if (groupEl.hasClass("opc-settings-search-group")) continue;
 			let any = false;
 			for (const row of Array.from(groupEl.querySelectorAll<HTMLElement>(".setting-items > .setting-item[data-opc-search]"))) {
-				const text = row.getAttribute("data-opc-search") ?? "";
-				const match = words.every((w) => text.includes(w));
-				row.toggleClass("opc-search-hidden", !match);
+				const shownOptions = filterOptions(row, words);
+				const match = shownOptions || matches(words, row.getAttribute("data-opc-search") ?? "");
+				row.toggleClass(SEARCH_HIDDEN, !match);
 				any ||= match;
 			}
-			groupEl.toggleClass("opc-search-hidden", words.length > 0 && !any);
+			groupEl.toggleClass(SEARCH_HIDDEN, words.length > 0 && !any);
 		}
 	}
 
@@ -314,15 +315,15 @@ export class OpcSettingTab extends PluginSettingTab {
 		const { host } = this;
 		const t = host.t();
 		const status = host.modules.status(def.id);
-		const prefix = def.name.replace(/name$/, "");
-		setting.settingEl.setAttr("data-opc-search", searchText(t, (Object.keys(en) as I18nKey[]).filter((k) => k.startsWith(prefix))));
+		const simpleOfModule = simpleKey(def.name);
+		setting.settingEl.setAttr("data-opc-search", searchText(t, [def.name, def.description, ...(simpleOfModule ? [simpleOfModule] : [])]));
+		setting.settingEl.setAttr("data-opc-search-name", searchText(t, [def.name]));
 		setting.settingEl.setAttr("data-opc-group", def.group);
 		setting.setName(t(def.name));
 
 		const desc = createFragment((f) => {
 			f.appendText(t(def.description));
-			const simple = simpleKey(def.name);
-			if (simple) addSimpleLine(f, t(simple));
+			if (simpleOfModule) addSimpleLine(f, t(simpleOfModule));
 			const notes: string[] = [];
 			if (status === "unavailable") notes.push(t("settings.module.desktopOnly"));
 			if (status === "failed") notes.push(t("settings.module.failed"));
@@ -364,7 +365,7 @@ export class OpcSettingTab extends PluginSettingTab {
 			setting.settingEl.addClass("opc-has-options");
 			const optionsEl = setting.settingEl.createDiv({ cls: "opc-module-options" });
 			def.renderSettings(optionsEl, ctx);
-			addOptionSimpleLines(optionsEl, def, t);
+			finishOptionRows(optionsEl, def, t);
 			return () => {
 				optionsEl.remove();
 				setting.settingEl.removeClass("opc-has-options");
@@ -386,18 +387,44 @@ function addSimpleLine(parent: DocumentFragment | HTMLElement, text: string): vo
 	line.createSpan({ text });
 }
 
-/** Adds the plain-language line to each option row, found by its (translated) name. */
-function addOptionSimpleLines(optionsEl: HTMLElement, def: AnyModule, t: Translate): void {
+/** Adds the plain-language line to each option row, found by its (translated) name, and what it is searched by. */
+function finishOptionRows(optionsEl: HTMLElement, def: AnyModule, t: Translate): void {
 	const prefix = def.name.replace(/name$/, "");
 	const byName = new Map<string, I18nKey>();
-	for (const key of Object.keys(en) as I18nKey[]) if (key !== def.name && key.startsWith(prefix) && simpleKey(key)) byName.set(t(key), key);
+	for (const key of Object.keys(en) as I18nKey[]) if (key !== def.name && key.startsWith(prefix)) byName.set(t(key), key);
 	for (const row of Array.from(optionsEl.querySelectorAll<HTMLElement>(".setting-item"))) {
 		const name = row.querySelector(".setting-item-name")?.textContent ?? "";
 		const key = byName.get(name);
 		const descEl = row.querySelector<HTMLElement>(".setting-item-description");
 		const simple = key && simpleKey(key);
 		if (simple && descEl) addSimpleLine(descEl, t(simple));
+		const desc = key?.replace(/name$/, "desc") as I18nKey | undefined;
+		const english = [key, desc, simple].flatMap((k) => (k && k in en ? [en[k]] : []));
+		row.setAttr("data-opc-search", normalize([name, descEl?.textContent ?? "", ...english].join(" | ")));
 	}
+}
+
+/**
+ * Shows only a module's options that contain the query (words of the module's name count for all of
+ * them); a heading stays with what is shown below it. Returns whether the module has anything to show.
+ */
+function filterOptions(row: HTMLElement, words: readonly string[]): boolean {
+	const optionsEl = row.querySelector<HTMLElement>(".opc-module-options");
+	if (!optionsEl) return false;
+	const name = row.getAttribute("data-opc-search-name") ?? "";
+	const options = Array.from(optionsEl.querySelectorAll<HTMLElement>(".setting-item"));
+	for (const option of options) {
+		const text = option.getAttribute("data-opc-search") ?? normalize(option.textContent ?? "");
+		option.toggleClass(SEARCH_HIDDEN, !matches(words, text, name));
+	}
+	for (const heading of options.filter((o) => o.hasClass("setting-item-heading"))) {
+		for (let el = heading.nextElementSibling; el && !el.hasClass("setting-item-heading"); el = el.nextElementSibling) {
+			if (el.hasClass("setting-item") && !el.hasClass(SEARCH_HIDDEN)) heading.removeClass(SEARCH_HIDDEN);
+		}
+	}
+	const shown = matches(words, name) || options.some((o) => !o.hasClass(SEARCH_HIDDEN));
+	optionsEl.toggleClass(SEARCH_HIDDEN, !shown);
+	return shown;
 }
 
 /** Names of a module's own settings (keys "<module>.….name"), so the settings search finds them. */

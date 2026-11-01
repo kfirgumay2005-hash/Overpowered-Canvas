@@ -558,7 +558,12 @@ export const pagesModule = defineModule<PagesSettings>({
 			const info = pagesOf(c).find((p) => p.id === current(c));
 			if (info) goTo(c, info.anchor);
 		});
-		command("merge-page", ctx.t("pages.merge"), "combine", (c) => !c.readonly && hasPages(c) && current(c) !== "", (c) => void mergePage(c, current(c)));
+		/** The page a selected card opens, else the page shown ("" = the main page: nothing to merge). */
+		const pageToMerge = (c: CanvasLike): string => {
+			const n = oneCard(c);
+			return (n && pageLinkOf(c, n).leadsTo?.id) || current(c);
+		};
+		command("merge-page", ctx.t("pages.merge"), "combine", (c) => !c.readonly && hasPages(c) && !!pageToMerge(c), (c) => void mergePage(c, pageToMerge(c)));
 		command("follow-link", ctx.t("pages.follow"), "arrow-right-left", (c) => {
 			const n = oneCard(c);
 			if (!n) return false;
@@ -574,7 +579,9 @@ export const pagesModule = defineModule<PagesSettings>({
 			const l = pageLinkOf(canvas, node);
 			if (l.leadsTo) {
 				const target = l.leadsTo.root;
+				const page = l.leadsTo.id;
 				menu.addItem((i) => i.setSection("opc-pages").setTitle(ctx.t("pages.openPage")).setIcon("arrow-right-from-line").onClick(() => goTo(canvas, target)));
+				if (!canvas.readonly) menu.addItem((i) => i.setSection("opc-pages").setTitle(ctx.t("pages.merge")).setIcon("combine").onClick(() => void mergePage(canvas, page)));
 			}
 			if (l.rootOf) {
 				const info = l.rootOf;
@@ -693,6 +700,15 @@ class PagesView extends ItemView {
 			setIcon(item.createSpan({ cls: "opc-pages-icon" }), id ? "file-text" : "home");
 			item.createSpan({ cls: "opc-pages-title", text: this.host.pageTitle(canvas, id) });
 			item.createSpan({ cls: "opc-pages-count", text: String(this.host.count(canvas, id)) });
+			if (id && !canvas.readonly) {
+				const merge = item.createEl("button", { cls: "clickable-icon opc-pages-merge", attr: { "aria-label": this.ctx.t("pages.merge") } });
+				setIcon(merge, "combine");
+				setTooltip(merge, this.ctx.t("pages.merge"));
+				merge.addEventListener("click", (evt) => {
+					evt.stopPropagation();
+					this.host.merge(canvas, id);
+				});
+			}
 			const open = () => {
 				this.host.show(canvas, id);
 				this.render();
