@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { TEdge, TNode } from "../mindmap/tree";
-import { largestRoot, treeStep, walkStep } from "./walk";
+import { childrenOnLeft, largestRoot, pathTo, tapDirection, treeStep, walkStep } from "./walk";
 
 const box = (id: string, x: number, y: number): TNode => ({ id, x, y, width: 100, height: 40 });
 const map = (...n: TNode[]) => new Map(n.map((b) => [b.id, b]));
@@ -96,5 +96,58 @@ describe("walking a map by its hierarchy", () => {
 		expect(treeStep(n, e, "r", "right", new Map([["r", "c"]]))).toBe("c");
 		const twoParents: TEdge[] = [...e, { from: "c", to: "a1" }];
 		expect(treeStep(n, twoParents, "a1", "left", new Map([["c", "a1"]]))).toBe("c");
+	});
+});
+
+describe("tapDirection", () => {
+	const card = { left: 100, top: 100, right: 300, bottom: 200 };
+	it("reads the four sides", () => {
+		expect(tapDirection(card, 200, 50)).toBe("up");
+		expect(tapDirection(card, 200, 250)).toBe("down");
+		expect(tapDirection(card, 50, 150)).toBe("left");
+		expect(tapDirection(card, 350, 150)).toBe("right");
+	});
+	it("ignores the card itself", () => {
+		expect(tapDirection(card, 200, 150)).toBeNull();
+		expect(tapDirection(card, 100, 200)).toBeNull();
+	});
+	it("takes the side the tap is furthest beyond in the corners", () => {
+		expect(tapDirection(card, 90, 20)).toBe("up");
+		expect(tapDirection(card, 20, 90)).toBe("left");
+		expect(tapDirection(card, 380, 210)).toBe("right");
+		expect(tapDirection(card, 310, 280)).toBe("down");
+	});
+});
+
+describe("pathTo", () => {
+	const box = (id: string) => ({ id, x: 0, y: 0, width: 1, height: 1 });
+	const nodes = new Map(["a", "b", "c", "d"].map((id) => [id, box(id)]));
+	it("climbs to the top of the map", () => {
+		expect(pathTo(nodes, [{ from: "a", to: "b" }, { from: "b", to: "c" }], "c", new Map())).toEqual(["a", "b", "c"]);
+	});
+	it("follows the parent the card was reached from", () => {
+		const edges = [{ from: "a", to: "c" }, { from: "b", to: "c" }];
+		expect(pathTo(nodes, edges, "c", new Map([["b", "c"]]))).toEqual(["b", "c"]);
+	});
+	it("survives cycles", () => {
+		expect(pathTo(nodes, [{ from: "a", to: "b" }, { from: "b", to: "a" }], "a", new Map())).toEqual(["b", "a"]);
+	});
+});
+
+describe("childrenOnLeft", () => {
+	const at = (id: string, x: number) => [id, { id, x, y: 0, width: 10, height: 10 }] as const;
+	const nodes = new Map([at("root", 0), at("right", 100), at("left", -100), at("alone", 0)]);
+	const edges = [{ from: "root", to: "right" }, { from: "root", to: "left" }];
+	it("follows the card's children", () => {
+		expect(childrenOnLeft(new Map([at("a", 0), at("b", -50)]), [{ from: "a", to: "b" }], "a", new Map(), false)).toBe(true);
+		expect(childrenOnLeft(new Map([at("a", 0), at("b", 50)]), [{ from: "a", to: "b" }], "a", new Map(), true)).toBe(false);
+	});
+	it("reads a card without children from its parent", () => {
+		expect(childrenOnLeft(nodes, edges, "left", new Map(), false)).toBe(true);
+		expect(childrenOnLeft(nodes, edges, "right", new Map(), true)).toBe(false);
+	});
+	it("falls back to the canvas direction", () => {
+		expect(childrenOnLeft(nodes, [], "alone", new Map(), true)).toBe(true);
+		expect(childrenOnLeft(nodes, [], "alone", new Map(), false)).toBe(false);
 	});
 });

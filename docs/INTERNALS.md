@@ -154,3 +154,11 @@ Verified against: **Obsidian 1.14.4 (desktop, Windows)**.
 | `canvas.getEdgesForNode(node)` + `removeEdge` / `importData` | Re-pointing edges when a branch moves to a page (edges are re-created with the new end). | 🟢 runtime |
 | 2D canvas `font` setter / `fillText` | Resolve the font against computed style: inside a frame with pending DOM changes this forces a full style pass. Set the font once per context state. | 🟢 runtime |
 
+## Auto-link and text pages additions
+
+| Member | What it does | Status |
+|---|---|---|
+| Links in canvas text cards | The core canvas index parses text cards like notes, so `[[links]]` in them reach `resolvedLinks`, `getBacklinksForFile`, the backlinks pane and the graph. Auto-link only has to write real links. | 🟢 runtime |
+| `getBacklinksForFile(file).data` | A `Map` in 1.14, not a plain object: `Object.keys` on it is empty even when backlinks exist. | 🟢 runtime |
+| `window.electron.remote.getCurrentWebContents().printToPDF(options)` | Prints the window. Used by the text pages PDF: the pages go in a `.print` element under `body`, which core print styles show alone. Desktop only. | 🟢 runtime |
+

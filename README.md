@@ -21,6 +21,8 @@ own, inside the same canvas file.
 - **Follow the links** between a card and its page, in both directions.
 - **Jump around with the pages index**, a tree of every page on the board.
 - **Export to Markdown**: the pages become nested headings in one clean note.
+- **Read it as text**: the book button shows the same canvas as a paginated document, with the same
+  index and links. Edit cards from there, or export a PDF with one PDF page per page.
 - **Change your mind**: *Bring this page back into the map* puts the branch back under its card
   and removes the links.
 
@@ -59,7 +61,10 @@ drag a card onto another card's "Add as child" / "Add as sibling" targets to mov
 branch (the view follows dropped note blocks to the middle of the screen), Alt+arrows to move
 between cards, walk through a map with the arrow keys at your zoom (or with on-screen arrows on
 touch screens) without making slides — Right into the children, Left to the parent, Up and Down
-along the siblings, wherever the cards sit (groups with arrows are stops too),
+along the siblings, wherever the cards sit (groups with arrows are stops too). No keyboard needed:
+tap the empty board around the card, or the small arrows beside it, to move that way. The column
+view shows the same walk as columns: the parents on the left, the card and its siblings in the
+middle, its children on the right. Also
 collapsible branches with child counts, and automatic layout (mind map in any direction,
 collision-free radial that respects every card's size, balanced, layered flowchart, grid) as one
 animated undo step; groups move as rigid blocks (also when a dropped card re-arranges the map), a
@@ -75,6 +80,19 @@ bullets past the sixth level), and a page can be brought back into the map (from
 the card it comes from, the pages index or the command palette). Or move a branch to
 another spot of the same page, linked the same way. Without the plugin the pages simply sit side
 by side on the board.
+
+**Text pages** — a second view of the same canvas, for studying in text: each page reads as an
+outline (a map's root is a heading, the rest nested bullets, every other map on the page gets its
+own heading), one page at a time instead of one endless note. The bar, the pages index and the
+links between pages work inside the view. Edit a card's text from there, or export a PDF with one
+PDF page per page and working links. It doesn't replace Canvas → Markdown, which still writes a
+standard note.
+
+**Auto-link** — finds the titles and aliases of your notes and canvases mentioned in canvas cards
+(and in notes, if you want) and turns them into real `[[links]]`, so the graph and the backlinks
+show the connection, not just a link drawn on top of the text. The text you read stays the same
+(`[[Title|what you wrote]]`). You see the list before anything is written, the last run can be
+undone, and a setting links each card when you finish editing it.
 
 **Vault integration** — canvases get properties, tags, aliases and outgoing links in Obsidian's
 metadata cache; edges from frontmatter links; links and embeds to a single card

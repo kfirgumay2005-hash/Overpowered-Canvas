@@ -934,6 +934,7 @@ const mindmap: TutorialDefinition = {
 				}
 			},
 		},
+		{ title: "tut.mindmap.walkTouch.title", body: "tut.mindmap.walkTouch.body" },
 	],
 };
 
@@ -1600,6 +1601,7 @@ const vault: TutorialDefinition = {
 				await setProperty(rt, "hotel", key, [`[[${noteName(rt.t, "tickets")}]]`]);
 			},
 		},
+		{ title: "tut.vault.autolink.title", body: "tut.vault.autolink.body" },
 	],
 };
 
@@ -2082,6 +2084,7 @@ const pages: TutorialDefinition = {
 				rt.command("pages:merge-page");
 			},
 		},
+		{ title: "tut.pages.text.title", body: "tut.pages.text.body" },
 		{ title: "tut.pages.s7.title", body: "tut.pages.s7.body" },
 	],
 };

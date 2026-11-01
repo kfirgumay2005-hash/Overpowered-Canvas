@@ -15,6 +15,10 @@ interface PresentationSettings {
 	fullscreen: boolean;
 	/** What the arrow keys follow when walking through a map. */
 	walkKeys: WalkKeys;
+	/** A tap on the empty board around the card moves like an arrow key. */
+	walkTapZones: boolean;
+	/** Small arrows around the card while walking. */
+	walkHints: boolean;
 }
 
 interface Session {
@@ -59,12 +63,12 @@ export const presentationModule = defineModule<PresentationSettings>({
 	description: "presentation.desc",
 	group: "interaction",
 	defaultEnabled: true,
-	defaultSettings: { slideWidth: 1200, slideHeight: 675, fullscreen: true, walkKeys: "tree" },
+	defaultSettings: { slideWidth: 1200, slideHeight: 675, fullscreen: true, walkKeys: "tree", walkTapZones: true, walkHints: true },
 	overlapsWith: ["advanced-canvas"],
 
 	enable(ctx) {
 		const sessions = new Map<CanvasLike, Session>();
-		const walker = enableWalk(ctx, (canvas) => sessions.has(canvas), () => ctx.settings.walkKeys);
+		const walker = enableWalk(ctx, (canvas) => sessions.has(canvas), () => ({ keys: ctx.settings.walkKeys, tapZones: ctx.settings.walkTapZones, hints: ctx.settings.walkHints }));
 
 		const show = (canvas: CanvasLike, session: Session) => {
 			const id = session.history[session.history.length - 1]!;
@@ -211,6 +215,7 @@ export const presentationModule = defineModule<PresentationSettings>({
 		const idle = (c: CanvasLike) => !sessions.has(c) && !walker.walking(c);
 		command("walk", ctx.t("presentation.walk.start"), "route", idle, (c) => walker.start(c));
 		command("walk-end", ctx.t("presentation.walk.end"), "x", walker.walking, walker.stop);
+		command("walk-columns", ctx.t("presentation.walk.columns"), "columns-3", (c) => !sessions.has(c), (c) => walker.start(c, undefined, true));
 		command("set-start", ctx.t("presentation.setStart"), "flag", (c) => !c.readonly && selectedNodes(c).length === 1, (c) => setStart(c, selectedNodes(c)[0]!));
 		command("set-edge-order", ctx.t("presentation.edgeOrder"), "list-ordered", (c) => !c.readonly && selectedEdges(c).length === 1, (c) => promptOrder(c, selectedEdges(c)[0]!));
 
@@ -330,5 +335,13 @@ export const presentationModule = defineModule<PresentationSettings>({
 					.setValue(ctx.settings.walkKeys)
 					.onChange((v) => ctx.updateSettings({ walkKeys: v as WalkKeys })),
 			);
+		new Setting(el)
+			.setName(ctx.t("presentation.walkTapZones.name"))
+			.setDesc(ctx.t("presentation.walkTapZones.desc"))
+			.addToggle((t) => t.setValue(ctx.settings.walkTapZones).onChange((v) => ctx.updateSettings({ walkTapZones: v })));
+		new Setting(el)
+			.setName(ctx.t("presentation.walkHints.name"))
+			.setDesc(ctx.t("presentation.walkHints.desc"))
+			.addToggle((t) => t.setValue(ctx.settings.walkHints).onChange((v) => ctx.updateSettings({ walkHints: v })));
 	},
 });

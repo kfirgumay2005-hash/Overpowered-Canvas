@@ -46,7 +46,7 @@ body.opc-mod-presentation .opc-walk-pad {
 	display: grid;
 	grid-template-columns: repeat(3, 44px);
 	grid-template-rows: repeat(3, 44px);
-	grid-template-areas: "zin up close" "left zout right" ". down .";
+	grid-template-areas: "zin up close" "left zout right" "cols down .";
 	gap: var(--size-2-2);
 	padding: var(--size-2-3);
 	background-color: var(--background-primary);
@@ -83,4 +83,108 @@ body.opc-mod-presentation .opc-walk-zoom-out {
 }
 body.opc-mod-presentation .opc-walk-close {
 	grid-area: close;
+}
+body.opc-mod-presentation .opc-walk-columns {
+	grid-area: cols;
+}
+body.opc-mod-presentation .opc-walk-columns.is-active {
+	color: var(--text-accent);
+}
+
+/* Arrows around the card being walked; their size does not follow the zoom. */
+body.opc-mod-presentation .opc-walk-hints {
+	position: absolute;
+	inset: 0;
+	pointer-events: none;
+}
+body.opc-mod-presentation .opc-walk-hint {
+	--opc-hint-size: calc(32px * var(--opc-hint-unit, 1));
+	--opc-hint-gap: calc(8px * var(--opc-hint-unit, 1));
+	position: absolute;
+	width: var(--opc-hint-size);
+	height: var(--opc-hint-size);
+	padding: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: 50%;
+	color: var(--text-muted);
+	background-color: var(--background-primary);
+	border: calc(1px * var(--opc-hint-unit, 1)) solid var(--background-modifier-border);
+	box-shadow: none;
+	opacity: 0.75;
+	pointer-events: auto;
+}
+body.opc-mod-presentation .opc-walk-hint svg {
+	width: calc(18px * var(--opc-hint-unit, 1));
+	height: calc(18px * var(--opc-hint-unit, 1));
+}
+body.opc-mod-presentation .opc-walk-hint-up {
+	bottom: calc(100% + var(--opc-hint-gap));
+	left: calc(50% - var(--opc-hint-size) / 2);
+}
+body.opc-mod-presentation .opc-walk-hint-down {
+	top: calc(100% + var(--opc-hint-gap));
+	left: calc(50% - var(--opc-hint-size) / 2);
+}
+body.opc-mod-presentation .opc-walk-hint-left {
+	right: calc(100% + var(--opc-hint-gap));
+	top: calc(50% - var(--opc-hint-size) / 2);
+}
+body.opc-mod-presentation .opc-walk-hint-right {
+	left: calc(100% + var(--opc-hint-gap));
+	top: calc(50% - var(--opc-hint-size) / 2);
+}
+
+/* Column view: the map as columns, with the current card in the middle. */
+body.opc-mod-presentation .opc-columns {
+	position: absolute;
+	inset: 0;
+	z-index: calc(var(--layer-popover) - 2);
+	overflow: hidden;
+	background-color: var(--background-primary);
+	touch-action: none;
+}
+body.opc-mod-presentation .opc-columns-track {
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	left: 0;
+	display: flex;
+	gap: var(--size-4-6);
+	transition: transform 160ms ease-out;
+}
+body.opc-mod-presentation .opc-columns-column {
+	flex: 0 0 min(340px, 72vw);
+	display: flex;
+	flex-direction: column;
+	gap: var(--size-4-2);
+	transition: transform 160ms ease-out;
+}
+body.opc-mod-presentation .opc-columns-card {
+	padding: var(--size-4-2) var(--size-4-3);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-m);
+	background-color: var(--background-primary-alt);
+	opacity: 0.45;
+	cursor: pointer;
+	overflow-wrap: anywhere;
+}
+body.opc-mod-presentation .opc-columns-card.is-path {
+	opacity: 0.8;
+}
+body.opc-mod-presentation .opc-columns-card.is-child {
+	opacity: 0.75;
+}
+body.opc-mod-presentation .opc-columns-card.is-current {
+	opacity: 1;
+	border-color: var(--color-accent);
+	box-shadow: 0 0 0 2px var(--color-accent);
+	background-color: var(--background-primary);
+}
+body.opc-mod-presentation .opc-columns-card > :first-child > :first-child {
+	margin-top: 0;
+}
+body.opc-mod-presentation .opc-columns-card > :first-child > :last-child {
+	margin-bottom: 0;
 }
