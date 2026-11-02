@@ -177,3 +177,42 @@ export function withoutPage(pages: PageInfo[], id: string): PageInfo[] {
 			return next;
 		});
 }
+
+/** `[[path#id]]` and `[[path#id|label]]`: a link to a card (or to a heading of another file). */
+const CARD_LINK = /\[\[([^\]|#]*)#([^\]|#]+)(\|[^\]]*)?\]\]/g;
+
+/**
+ * The text with each link to a card rewritten: `map` gets the link's path and id and returns
+ * where it should point, or null to leave it as it is.
+ */
+export function rewriteCardLinks(text: string, map: (path: string, id: string) => { path: string; id: string } | null): string {
+	return text.replace(CARD_LINK, (whole, path: string, id: string, label?: string) => {
+		const to = map(path, id);
+		return to ? `[[${to.path}#${to.id}${label ?? ""}]]` : whole;
+	});
+}
+
+interface LinkedNode {
+	id: string;
+	type: string;
+	text?: string;
+	[key: string]: unknown;
+}
+
+/**
+ * Links between the cards of one canvas point at that canvas (`linktext`): after a copy (a
+ * duplicate, a template) they still name the file they came from. `elsewhere` says whether a
+ * link's path names another file; only those links change. Null when nothing changed.
+ */
+export function pointLinksAt<N extends LinkedNode>(nodes: N[], linktext: string, elsewhere: (path: string) => boolean): N[] | null {
+	const ids = new Set(nodes.map((n) => n.id));
+	let changed = false;
+	const out = nodes.map((n) => {
+		if (n.type !== "text" || typeof n.text !== "string") return n;
+		const text = rewriteCardLinks(n.text, (path, id) => (ids.has(id) && path !== linktext && elsewhere(path) ? { path: linktext, id } : null));
+		if (text === n.text) return n;
+		changed = true;
+		return { ...n, text };
+	});
+	return changed ? out : null;
+}

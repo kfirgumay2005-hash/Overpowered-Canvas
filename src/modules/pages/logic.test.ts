@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { branchOf, cardLink, freeRegion, pageChildren, pageDepth, pagePath, titleOf, withLink, withoutLink, withoutPage, type PlanNode } from "./logic";
+import { branchOf, cardLink, freeRegion, pageChildren, pageDepth, pagePath, pointLinksAt, rewriteCardLinks, titleOf, withLink, withoutLink, withoutPage, type PlanNode } from "./logic";
 
 const n = (id: string, x: number, y: number, extra: Partial<PlanNode> = {}): PlanNode => ({ id, x, y, width: 100, height: 40, group: false, page: "", ...extra });
 
@@ -74,5 +74,28 @@ describe("the page tree", () => {
 	});
 	it("puts a new page right of everything", () => {
 		expect(freeRegion([n("a", -50, 20), n("b", 300, -10)])).toEqual({ x: 1400, y: -10 });
+	});
+});
+
+describe("links in copies", () => {
+	it("rewrites only the links the map chooses, keeping labels", () => {
+		const text = "Go [[Disease.canvas#a1|Link]] and [[Other#Heading]] and [[Disease.canvas#zz]]";
+		const out = rewriteCardLinks(text, (path, id) => (id === "a1" ? { path: "Flu.canvas", id: "b1" } : null));
+		expect(out).toBe("Go [[Flu.canvas#b1|Link]] and [[Other#Heading]] and [[Disease.canvas#zz]]");
+	});
+	it("points links between a canvas's own cards at that canvas", () => {
+		const nodes = [
+			{ id: "a", type: "text", text: "Etiology\n\n[[Disease.canvas#r|Link]]" },
+			{ id: "r", type: "text", text: "Etiology\n\n[[Disease.canvas#a|Link]] [[Note#x]]" },
+			{ id: "g", type: "group" },
+		];
+		const out = pointLinksAt(nodes, "Flu.canvas", (path) => path === "Disease.canvas")!;
+		expect(out[0]!.text).toBe("Etiology\n\n[[Flu.canvas#r|Link]]");
+		expect(out[1]!.text).toBe("Etiology\n\n[[Flu.canvas#a|Link]] [[Note#x]]");
+		expect(out[2]).toBe(nodes[2]);
+	});
+	it("leaves links to cards of other canvases and already right links alone", () => {
+		const nodes = [{ id: "a", type: "text", text: "[[Other.canvas#q]] [[Flu.canvas#a]]" }];
+		expect(pointLinksAt(nodes, "Flu.canvas", () => true)).toBeNull();
 	});
 });

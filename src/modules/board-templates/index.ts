@@ -7,6 +7,9 @@ import type { CanvasLike, CanvasNodeLike } from "../../internals/types";
 import { mergeWithDefaults } from "../../settings/settings";
 import { TextPromptModal } from "../../ui/text-prompt";
 import { canvasDirection, mutate, randomId, selectedNodes } from "../shared";
+import { SCHEMA_KEY } from "../../data/schema";
+import { pagesHost } from "../pages/api";
+import { pointLinksAt } from "../pages/logic";
 import { BUILTIN_ICONS, BUILTIN_IDS, builtinTemplate, type BuiltinId } from "./builtins";
 import { bounds, extract, instantiate, normalize, uniqueName } from "./logic";
 
@@ -111,32 +114,62 @@ export const boardTemplatesModule = defineModule<TemplateSettings>({
 			return path;
 		};
 
-		const newCanvas = (choice: TemplateChoice) =>
-			void (async () => {
-				const template = await load(choice);
-				if (!template) return;
-				const rtl = getComputedStyle(activeDocument.body).direction === "rtl";
-				const data = instantiate(template, { x: 0, y: 0 }, () => randomId(), rtl);
-				const parent = app.fileManager.getNewFileParent(app.workspace.getActiveFile()?.path ?? "");
-				const base = parent.isRoot() ? "" : `${parent.path}/`;
-				const name = uniqueName(choice.name, (n) => !!app.vault.getAbstractFileByPath(`${base}${n}.canvas`));
-				const file = await app.vault.create(`${base}${name}.canvas`, JSON.stringify(data, null, "\t"));
-				await app.workspace.getLeaf(false).openFile(file);
-				const canvas = ctx.activeCanvas();
-				if (canvas) ctx.events.emit("board-template-applied", canvas, choice.name);
-			})();
+		/** How links name a canvas about to be made at `path` (as the Pages module writes them). */
+		const linktextFor = (path: string) => {
+			const name = path.split("/").pop()!;
+			// A name another file already has needs the full path to stay unambiguous.
+			return app.metadataCache.getFirstLinkpathDest(name, "") ? path : name;
+		};
+
+		/**
+		 * A new canvas from a template, in `folder`: its pages come along, and the links between a
+		 * card and its page lead within the new canvas.
+		 */
+		const createFrom = async (choice: TemplateChoice, folder: TFolder) => {
+			const template = await load(choice);
+			if (!template) return;
+			const rtl = getComputedStyle(activeDocument.body).direction === "rtl";
+			const data = instantiate(template, { x: 0, y: 0 }, () => randomId(), rtl);
+			const base = folder.isRoot() ? "" : `${folder.path}/`;
+			const name = uniqueName(choice.name, (n) => !!app.vault.getAbstractFileByPath(`${base}${n}.canvas`));
+			const path = `${base}${name}.canvas`;
+			const nodes = pointLinksAt(data.nodes, linktextFor(path), () => true) ?? data.nodes;
+			const file = await app.vault.create(path, JSON.stringify({ ...data, nodes }, null, "\t"));
+			await app.workspace.getLeaf(false).openFile(file);
+			const canvas = ctx.activeCanvas();
+			if (canvas) ctx.events.emit("board-template-applied", canvas, choice.name);
+		};
+
+		const newCanvas = (choice: TemplateChoice) => void createFrom(choice, app.fileManager.getNewFileParent(app.workspace.getActiveFile()?.path ?? ""));
 
 		const insert = (canvas: CanvasLike, choice: TemplateChoice) =>
 			void (async () => {
 				const template = await load(choice);
 				if (!template || canvas.readonly) return;
-				const b = bounds(template);
 				const view = canvas.getViewportBBox();
-				const at = { x: (view.minX + view.maxX) / 2 - (b.maxX - b.minX) / 2, y: (view.minY + view.maxY) / 2 - (b.maxY - b.minY) / 2 };
-				const data = instantiate(template, at, () => randomId(), canvasDirection(canvas) === "rtl");
+				const center = { x: (view.minX + view.maxX) / 2, y: (view.minY + view.maxY) / 2 };
+				const linktext = canvas.view.file ? app.metadataCache.fileToLinktext(canvas.view.file, "", false) : "";
+				const rtl = canvasDirection(canvas) === "rtl";
+				// A template with pages brings them: its main page lands here, its pages under this one.
+				if ((template[SCHEMA_KEY] as { pages?: unknown[] } | undefined)?.pages?.length && pagesHost.api) {
+					const data = instantiate(template, { x: 0, y: 0 }, () => randomId(), rtl);
+					const nodes = linktext ? (pointLinksAt(data.nodes, linktext, () => true) ?? data.nodes) : data.nodes;
+					const added = pagesHost.api.insertWithPages(canvas, { ...data, nodes }, center);
+					const shown = (added ?? []).filter((n) => !n.nodeEl.hasClass("opc-page-hidden"));
+					if (shown.length) {
+						canvas.selectAll(new Set(shown));
+						canvas.zoomToSelection();
+					}
+					ctx.events.emit("board-template-applied", canvas, choice.name);
+					return;
+				}
+				const b = bounds(template);
+				const at = { x: center.x - (b.maxX - b.minX) / 2, y: center.y - (b.maxY - b.minY) / 2 };
+				const data = instantiate(template, at, () => randomId(), rtl);
+				const nodes = linktext ? (pointLinksAt(data.nodes, linktext, () => true) ?? data.nodes) : data.nodes;
 				let added: Set<CanvasNodeLike> | undefined;
 				mutate(ctx, canvas, () => {
-					added = canvas.importData({ nodes: data.nodes, edges: data.edges }, false);
+					added = canvas.importData({ nodes, edges: data.edges }, false);
 				});
 				if (added?.size) {
 					canvas.selectAll(added);
@@ -217,17 +250,7 @@ export const boardTemplatesModule = defineModule<TemplateSettings>({
 						.setTitle(ctx.t("templates.newFrom"))
 						.setIcon("layout-template")
 						.onClick(() =>
-							new TemplateSuggest(app, ctx.t, choices(), (choice) =>
-								void (async () => {
-									const template = await load(choice);
-									if (!template) return;
-									const data = instantiate(template, { x: 0, y: 0 }, () => randomId(), getComputedStyle(activeDocument.body).direction === "rtl");
-									const base = file.isRoot() ? "" : `${file.path}/`;
-									const name = uniqueName(choice.name, (n) => !!app.vault.getAbstractFileByPath(`${base}${n}.canvas`));
-									const created = await app.vault.create(`${base}${name}.canvas`, JSON.stringify(data, null, "\t"));
-									await app.workspace.getLeaf(false).openFile(created);
-								})(),
-							).open(),
+							new TemplateSuggest(app, ctx.t, choices(), (choice) => void createFrom(choice, file)).open(),
 						),
 				);
 			}),

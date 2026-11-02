@@ -74,3 +74,35 @@ describe("board templates", () => {
 		expect(uniqueName("New", (n) => taken.has(n))).toBe("New");
 	});
 });
+
+describe("templates with pages", () => {
+	const template = {
+		"x-opc": { v: 1, pages: [{ id: "p1", anchor: "anc", root: "root1" }, { id: "p2", anchor: "c1", root: "root2", parent: "p1" }], mapLayouts: { main: "right" } },
+		nodes: [
+			{ id: "main", type: "text", text: "Disease", x: 0, y: 0, width: 100, height: 50 },
+			{ id: "anc", type: "text", text: "Etiology\n\n[[Disease.canvas#root1|Link]]", x: 200, y: 0, width: 100, height: 50 },
+			{ id: "root1", type: "text", text: "Etiology\n\n[[Disease.canvas#anc|Link]]", x: 2000, y: 0, width: 100, height: 50, "x-opc": { v: 1, page: "p1" } },
+			{ id: "c1", type: "text", text: "Cause", x: 2200, y: 0, width: 100, height: 50, "x-opc": { v: 1, page: "p1" } },
+			{ id: "root2", type: "text", text: "Cause", x: 4000, y: 0, width: 100, height: 50, "x-opc": { v: 1, page: "p2" } },
+			{ id: "ink", type: "text", text: "✏️", x: 0, y: 0, width: 10, height: 10, "x-opc": { v: 1, kind: "ink", anchor: "main" } },
+		],
+		edges: [{ id: "e", fromNode: "main", toNode: "anc" }],
+	};
+	let n = 0;
+	const out = reid(template, () => `n${++n}`);
+	const id = (old: string) => out.nodes[template.nodes.findIndex((x) => x.id === old)]!.id;
+	const root = out["x-opc"] as { pages: { id: string; anchor: string; root: string; parent?: string }[]; mapLayouts: Record<string, string> };
+
+	it("gives the pages fresh ids and points them at the new cards", () => {
+		expect(root.pages[0]).toEqual({ id: expect.not.stringMatching(/^p1$/), anchor: id("anc"), root: id("root1") });
+		expect(root.pages[1]!.parent).toBe(root.pages[0]!.id);
+		expect((out.nodes[2]!["x-opc"] as { page: string }).page).toBe(root.pages[0]!.id);
+		expect((out.nodes[4]!["x-opc"] as { page: string }).page).toBe(root.pages[1]!.id);
+	});
+	it("rewrites the links between a card and its page, the ink anchor and the map layouts", () => {
+		expect(out.nodes[1]!.text).toBe(`Etiology\n\n[[Disease.canvas#${id("root1")}|Link]]`);
+		expect(out.nodes[2]!.text).toBe(`Etiology\n\n[[Disease.canvas#${id("anc")}|Link]]`);
+		expect((out.nodes[5]!["x-opc"] as { anchor: string }).anchor).toBe(id("main"));
+		expect(root.mapLayouts).toEqual({ [id("main")]: "right" });
+	});
+});
