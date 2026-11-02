@@ -157,8 +157,8 @@ prefer, in a hidden section of the note). Edit the note by hand or with an
 assistant, switch back, and cards keep their place and look while new lines become new cards
 ([docs/canvas-markdown-summary.md](docs/canvas-markdown-summary.md)).
 
-**Languages and right-to-left** — the UI is available in English, Chinese (Mandarin), Japanese
-and Hindi. A canvas can be right-to-left (globally or per canvas): mind maps grow to the left,
+**Languages and right-to-left** — the UI is available in English, Chinese (Mandarin), Japanese,
+Hindi and Russian. A canvas can be right-to-left (globally or per canvas): mind maps grow to the left,
 templates and frames run right to left, menus and panels mirror — or, in "text only" mode, only
 the text turns right-to-left and the canvas UI stays as it is. Card text takes its direction per
 paragraph (also while typing), so right-to-left and left-to-right text mix naturally; it can also be fixed per

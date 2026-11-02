@@ -67,7 +67,7 @@ export function mutate(ctx: ModuleContext<object>, canvas: CanvasLike, fn: () =>
 	} catch (error) {
 		if (!(error instanceof ReadOnlyExtraDataError)) {
 			logError(`[overpowered-canvas] ${ctx.moduleId}: change failed and was undone`, error);
-			if (error instanceof InvalidExtraDataError) new Notice(`Overpowered Canvas: ${error.message}`);
+			if (error instanceof InvalidExtraDataError) new Notice(ctx.t("common.invalidData"));
 		}
 		return false;
 	}

@@ -42,7 +42,7 @@ class QueryModal extends Modal {
 		let links = (this.initial.linksTo ?? []).join(", ");
 		let auto = !!this.initial.auto;
 		new Setting(this.contentEl).setName(t("query.tags")).setDesc(t("query.tags.desc")).addText((x) => x.setPlaceholder(EXAMPLE_TAGS).setValue(tags).onChange((v) => (tags = v)));
-		new Setting(this.contentEl).setName(t("query.folder")).addText((x) => x.setPlaceholder("Projects").setValue(folder).onChange((v) => (folder = v)));
+		new Setting(this.contentEl).setName(t("query.folder")).addText((x) => x.setPlaceholder(t("query.folder.placeholder")).setValue(folder).onChange((v) => (folder = v)));
 		new Setting(this.contentEl)
 			.setName(t("query.properties"))
 			.setDesc(t("query.properties.desc"))

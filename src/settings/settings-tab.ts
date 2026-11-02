@@ -88,6 +88,7 @@ export class OpcSettingTab extends PluginSettingTab {
 								zh: t("settings.language.zh"),
 								ja: t("settings.language.ja"),
 								hi: t("settings.language.hi"),
+								ru: t("settings.language.ru"),
 							})
 							.setValue(host.settings.language)
 							.onChange(async (value) => {

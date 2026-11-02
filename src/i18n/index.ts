@@ -1,16 +1,17 @@
 import { en, type I18nKey } from "./locales/en";
 import { hi } from "./locales/hi";
 import { ja } from "./locales/ja";
+import { ru } from "./locales/ru";
 import { zh } from "./locales/zh";
 
 export type { I18nKey };
-export type Locale = "en" | "zh" | "ja" | "hi";
+export type Locale = "en" | "zh" | "ja" | "hi" | "ru";
 export type LanguageSetting = "auto" | Locale;
 export type I18nVars = Readonly<Record<string, string | number>>;
 export type Translate = (key: I18nKey, vars?: I18nVars) => string;
 
-export const LOCALE_IDS: readonly Locale[] = ["en", "zh", "ja", "hi"];
-export const LOCALES: Readonly<Record<Locale, Readonly<Record<I18nKey, string>>>> = { en, zh, ja, hi };
+export const LOCALE_IDS: readonly Locale[] = ["en", "zh", "ja", "hi", "ru"];
+export const LOCALES: Readonly<Record<Locale, Readonly<Record<I18nKey, string>>>> = { en, zh, ja, hi, ru };
 
 /** Picks the UI locale: an explicit setting wins, otherwise follow Obsidian's language. */
 export function resolveLocale(setting: LanguageSetting, obsidianLanguage: string): Locale {

@@ -26,7 +26,7 @@ a fake canvas that mirrors Obsidian 1.14's behavior), benchmark statistics, and 
 5. Restart Obsidian → the enabled state and settings are remembered.
 
 ### 0.3 Language
-1. Set *Interface language* to Japanese (or Chinese / Hindi) → the settings tab redraws in that language.
+1. Set *Interface language* to Japanese (or Chinese / Hindi / Russian) → the settings tab redraws in that language.
 2. Reload the plugin → command names are translated too. Set it back to "Same as Obsidian".
 
 ### 0.4 Coexistence notice
@@ -246,7 +246,7 @@ Automated runtime checks of every item below were run in an isolated Obsidian 1.
 2. **Mixed text:** a card with `שלום world`, `Hello עולם`, a Hebrew bullet list and a task →
    each paragraph takes its own direction; bullets, numbers and checkboxes sit on the right for
    Hebrew lists. Toolbar → *Text direction* forces LTR/RTL for a card (also while editing).
-3. **UI languages:** Settings → language → Chinese / Japanese / Hindi → reload the plugin: every
+3. **UI languages:** Settings → language → Chinese / Japanese / Hindi / Russian → reload the plugin: every
    command, menu, tooltip and setting is translated. (The Hebrew UI was removed in 0.2.)
 4. **Large canvas:** `npm run stress` → open `stress-1000.canvas` → zoom to fit: the canvas
    switches to the fast renderer (cards as simple boxes, group labels readable); panning and

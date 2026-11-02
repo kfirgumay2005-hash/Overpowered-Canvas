@@ -23,7 +23,7 @@ class NodeEmbed extends Component {
 		private readonly ctx: EmbedContext,
 		private readonly file: TFile,
 		private readonly nodeId: string,
-		private readonly labels: { notFound: string; open: string },
+		private readonly labels: { notFound: string; open: string; group: string },
 	) {
 		super();
 		this.containerEl = ctx.containerEl;
@@ -43,7 +43,7 @@ class NodeEmbed extends Component {
 		const node = data.nodes?.find((n) => n.id === this.nodeId);
 		const header = el.createDiv({ cls: "opc-node-embed-header" });
 		setIcon(header.createSpan({ cls: "opc-node-embed-icon" }), "layout-dashboard");
-		header.createSpan({ text: `${this.file.basename} › ${node ? labelOf(node) : this.nodeId}` });
+		header.createSpan({ text: `${this.file.basename} › ${node ? labelOf(node, this.labels.group) : this.nodeId}` });
 		header.setAttr("aria-label", this.labels.open);
 		header.addEventListener("click", (evt) => void app.workspace.openLinkText(`${this.file.path}#${this.nodeId}`, this.ctx.sourcePath, evt.ctrlKey || evt.metaKey));
 		const body = el.createDiv({ cls: "opc-node-embed-content markdown-rendered" });
@@ -66,8 +66,8 @@ class NodeEmbed extends Component {
 	}
 }
 
-function labelOf(node: CanvasNodeData): string {
-	if (node.type === "group") return node.label || "Group";
+function labelOf(node: CanvasNodeData, groupName: string): string {
+	if (node.type === "group") return node.label || groupName;
 	if (node.type === "file" && typeof node.file === "string") return node.file.split("/").pop() ?? node.file;
 	if (node.type === "link" && typeof node.url === "string") return node.url;
 	const first = typeof node.text === "string" ? node.text.split("\n").find((l) => l.trim()) : "";
@@ -159,7 +159,7 @@ export const nodeLinksModule = defineModule({
 		// Embeds: wrap the core canvas embed for subpaths that name a node.
 		const registry = embedRegistry(ctx.app);
 		if (registry?.embedByExtension.canvas) {
-			const labels = { notFound: ctx.t("nodeLinks.notFound"), open: ctx.t("nodeLinks.open") };
+			const labels = { notFound: ctx.t("nodeLinks.notFound"), open: ctx.t("nodeLinks.open"), group: ctx.t("nodeLinks.group") };
 			ctx.patch("embedRegistry.canvas", registry.embedByExtension, {
 				canvas: (next) =>
 					function (this: unknown, embedCtx: EmbedContext, file: TFile, subpath: string) {
