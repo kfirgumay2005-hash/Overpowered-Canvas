@@ -63,7 +63,7 @@ arrowheads, routing (curved, straight, right-angle, A\* around cards), floating 
 highlight / select connected edges, draggable bend points and labels.
 
 **Drawing** — pen, pencil, marker and highlighter with pressure and tilt (perfect-freehand),
-palm rejection, pen-only mode, the pen's eraser end, whole-stroke and partial eraser, lasso to
+palm rejection, palm navigation and a drag button, the pen's eraser end, whole-stroke and partial eraser, lasso to
 move / scale / delete / lock strokes, recent colors, smoothing, and shape recognition (hold at
 the end of a stroke). Marks drawn on a card stick to it: they move, copy and delete with the card.
 Highlight words inside a card without editing it (swipe or tap with a pen or the mouse; the

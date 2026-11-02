@@ -1,3 +1,4 @@
+import { syncCanvasRect } from "../../core/canvas-rect";
 import { defineModule, type ModuleContext } from "../../core/module";
 import type { I18nKey, Translate } from "../../i18n";
 import type { Stroke } from "../../data/schema";
@@ -61,7 +62,7 @@ class InkSession {
 	private readonly hover: SVGCircleElement;
 	private readonly toolbar: InkToolbar;
 	private current: {
-		mode: "draw" | "erase" | "lasso" | "move" | "scale" | "line";
+		mode: "draw" | "erase" | "lasso" | "move" | "scale" | "line" | "pan";
 		pointerId: number;
 		points: InkPoint[];
 		erasing: boolean;
@@ -76,6 +77,8 @@ class InkSession {
 		straight?: boolean;
 	} | null = null;
 	private penUntil = 0;
+	/** The drag button: until it is pressed again or a tool is picked, input moves the view. */
+	private panning = false;
 	private lastCarrier: CanvasNodeLike | null = null;
 	/** Lasso selection: carrier → stroke ids. */
 	readonly selection = new Map<CanvasNodeLike, Set<string>>();
@@ -87,6 +90,8 @@ class InkSession {
 		private readonly rerender: (node: CanvasNodeLike) => void,
 	) {
 		const wrapper = canvas.wrapperEl;
+		// A hovering pen shows its brush before any press.
+		syncCanvasRect(canvas);
 		this.overlay = wrapper.createDiv({ cls: "opc-ink-overlay" });
 		this.preview = canvas.canvasEl.createSvg("svg", { cls: "opc-ink-preview" });
 		this.hover = this.preview.createSvg("circle", { cls: "opc-ink-hover" });
@@ -94,6 +99,7 @@ class InkSession {
 			t: ctx.t,
 			settings: () => ctx.settings,
 			update: (patch) => {
+				if (patch.tool) this.panning = false;
 				void ctx.updateSettings(patch).then(() => {
 					this.toolbar.render();
 					this.updateCursor();
@@ -101,6 +107,13 @@ class InkSession {
 			},
 			hasSelection: () => this.selection.size > 0,
 			lockSelection: () => this.lockSelection(),
+			panning: () => this.panning,
+			togglePan: () => {
+				this.panning = !this.panning;
+				this.hover.setAttribute("r", "0");
+				this.toolbar.render();
+				this.updateCursor();
+			},
 			close: () => this.onClose(),
 			colorName: (color) => colorName(ctx.t, color),
 		});
@@ -128,7 +141,7 @@ class InkSession {
 	}
 
 	private updateCursor(): void {
-		this.overlay.dataset.tool = this.tool;
+		this.overlay.dataset.tool = this.panning ? "pan" : this.tool;
 	}
 
 	private size(tool: InkTool): number {
@@ -146,8 +159,8 @@ class InkSession {
 				evt.stopPropagation();
 				return;
 			}
-			// Pen-only mode: fingers pan and zoom (the event reaches the canvas).
-			if (this.ctx.settings.penOnly) return;
+			// Palm navigation or the drag button: fingers pan and zoom (the event reaches the canvas).
+			if (this.ctx.settings.penOnly || this.panning) return;
 		}
 		if (evt.pointerType === "mouse" && evt.button !== 0) return; // middle/right: core panning
 		// A pen or mouse can't press twice: the last stroke lost its release (it happens on
@@ -160,6 +173,10 @@ class InkSession {
 		capturePointer(this.overlay, evt.pointerId);
 		const p = this.canvas.posFromEvt(evt);
 		const base = { pointerId: evt.pointerId, points: [] as InkPoint[], erasing: false, changed: false, holdTimer: 0, lastHold: { x: evt.clientX, y: evt.clientY }, recognized: null };
+		if (this.panning) {
+			this.current = { ...base, mode: "pan" };
+			return;
+		}
 		if (this.tool === "eraser" || eraserInput(evt)) {
 			this.current = { ...base, mode: "erase", erasing: true };
 			this.eraseAt(p);
@@ -191,6 +208,12 @@ class InkSession {
 		const cur = this.current;
 		if (!cur || evt.pointerId !== cur.pointerId) return;
 		evt.preventDefault();
+		if (cur.mode === "pan") {
+			const { x, y, zoom, scale } = this.canvas;
+			this.canvas.setViewport(x - (evt.clientX - cur.lastHold.x) / scale, y - (evt.clientY - cur.lastHold.y) / scale, zoom);
+			cur.lastHold = { x: evt.clientX, y: evt.clientY };
+			return;
+		}
 		const events = typeof evt.getCoalescedEvents === "function" ? evt.getCoalescedEvents() : [evt];
 		if (cur.mode === "erase") {
 			for (const e of events.length ? events : [evt]) this.eraseAt(this.canvas.posFromEvt(e));
@@ -266,7 +289,7 @@ class InkSession {
 	}
 
 	private showHover(p: P, evt: PointerEvent): void {
-		if (evt.pointerType === "touch") return;
+		if (evt.pointerType === "touch" || this.panning) return;
 		const r = this.tool === "eraser" || eraserInput(evt) ? this.ctx.settings.eraserSize / 2 / this.canvas.scale : this.tool === "select" ? 0 : this.size(this.tool) / 2;
 		this.hover.setAttribute("cx", String(p.x));
 		this.hover.setAttribute("cy", String(p.y));
@@ -548,7 +571,8 @@ class InkSession {
  * Freehand drawing layer: pen, pencil, marker, highlighter, eraser (whole strokes or partial),
  * lasso to select / move / scale / delete / lock strokes, lines and arrows, and shape
  * recognition (hold still at the end of a stroke). Stylus pressure and tilt, palm rejection,
- * pen-only mode (fingers pan) and the pen's eraser end are supported. P toggles, Esc exits.
+ * palm navigation (fingers pan), a drag button (any input pans) and the pen's eraser end are
+ * supported. P toggles, Esc exits.
  */
 export const drawingModule = defineModule<DrawingSettings>({
 	id: "drawing",

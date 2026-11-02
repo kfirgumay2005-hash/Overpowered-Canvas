@@ -1,5 +1,6 @@
 import { getLanguage, Notice, Plugin, setIcon, setTooltip, type EventRef, type Menu } from "obsidian";
 import { CanvasHooks } from "./core/canvas-hooks";
+import { trackCanvasRects } from "./core/canvas-rect";
 import { CanvasTracker } from "./core/canvas-tracker";
 import { CanvasUi } from "./core/canvas-ui";
 import { checkCoexistence } from "./core/coexistence";
@@ -39,6 +40,7 @@ export default class OverpoweredCanvasPlugin extends Plugin {
 		const tracker = new CanvasTracker(this.app, (problems) => {
 			logError("[overpowered-canvas] Canvas internals changed; this canvas is left untouched.", problems);
 		});
+		this.register(trackCanvasRects(tracker));
 		const hooks = (this.hooks = new CanvasHooks(this.patcher, tracker));
 		const saveGuard = new SaveGuard(this.patcher, tracker, () => this.translate("saveGuard.dropped"));
 		this.register(() => saveGuard.setActive(false));

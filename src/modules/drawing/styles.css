@@ -68,6 +68,9 @@ body.opc-mod-drawing .opc-ink-overlay[data-tool="eraser"] {
 body.opc-mod-drawing .opc-ink-overlay[data-tool="select"] {
 	cursor: default;
 }
+body.opc-mod-drawing .opc-ink-overlay[data-tool="pan"] {
+	cursor: grab;
+}
 body.opc-mod-drawing .canvas-wrapper.opc-drawing .canvas-card-menu,
 body.opc-mod-drawing .canvas-wrapper.opc-drawing .canvas-menu-container {
 	display: none;
