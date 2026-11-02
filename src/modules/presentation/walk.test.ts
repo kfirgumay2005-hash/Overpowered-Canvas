@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { TEdge, TNode } from "../mindmap/tree";
-import { childrenOnLeft, largestRoot, pathTo, tapDirection, treeStep, walkStep } from "./walk";
+import { largestRoot, pathTo, tapDirection, treeStep, walkStep } from "./walk";
 
 const box = (id: string, x: number, y: number): TNode => ({ id, x, y, width: 100, height: 40 });
 const map = (...n: TNode[]) => new Map(n.map((b) => [b.id, b]));
@@ -134,20 +134,3 @@ describe("pathTo", () => {
 	});
 });
 
-describe("childrenOnLeft", () => {
-	const at = (id: string, x: number) => [id, { id, x, y: 0, width: 10, height: 10 }] as const;
-	const nodes = new Map([at("root", 0), at("right", 100), at("left", -100), at("alone", 0)]);
-	const edges = [{ from: "root", to: "right" }, { from: "root", to: "left" }];
-	it("follows the card's children", () => {
-		expect(childrenOnLeft(new Map([at("a", 0), at("b", -50)]), [{ from: "a", to: "b" }], "a", new Map(), false)).toBe(true);
-		expect(childrenOnLeft(new Map([at("a", 0), at("b", 50)]), [{ from: "a", to: "b" }], "a", new Map(), true)).toBe(false);
-	});
-	it("reads a card without children from its parent", () => {
-		expect(childrenOnLeft(nodes, edges, "left", new Map(), false)).toBe(true);
-		expect(childrenOnLeft(nodes, edges, "right", new Map(), true)).toBe(false);
-	});
-	it("falls back to the canvas direction", () => {
-		expect(childrenOnLeft(nodes, [], "alone", new Map(), true)).toBe(true);
-		expect(childrenOnLeft(nodes, [], "alone", new Map(), false)).toBe(false);
-	});
-});

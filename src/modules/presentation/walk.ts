@@ -126,20 +126,3 @@ export function pathTo(nodes: Map<string, TNode>, edges: TEdge[], id: string, vi
 	}
 	return path;
 }
-
-/**
- * Whether the children of `id` lie to its left on screen, as in right-to-left maps and on the left
- * side of balanced maps. A tap or an on-screen arrow then goes by what it points at: left leads to
- * the children, right to the parent. Judged from the first child, else from the parent.
- */
-export function childrenOnLeft(nodes: Map<string, TNode>, edges: TEdge[], id: string, visited: ReadonlyMap<string, string>, rtl: boolean): boolean {
-	const node = nodes.get(id);
-	if (!node) return false;
-	const cx = center(node).x;
-	const child = orderedChildren(nodes, edges, id, rtl)[0];
-	if (child && center(child).x !== cx) return center(child).x < cx;
-	const parentId = treeParent(nodes, edges, id, visited);
-	const parent = parentId ? nodes.get(parentId) : undefined;
-	if (parent && center(parent).x !== cx) return center(parent).x > cx;
-	return rtl;
-}

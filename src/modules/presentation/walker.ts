@@ -5,7 +5,7 @@ import { type Dir, type TEdge, type TNode } from "../mindmap/tree";
 import { pagesHost } from "../pages/api";
 import { canvasDirection, centerOn, nodeType, selectedNodes } from "../shared";
 import { ColumnView } from "./columns";
-import { childrenOnLeft, largestRoot, orderedChildren, pathTo, tapDirection, treeStep, walkStep } from "./walk";
+import { largestRoot, orderedChildren, pathTo, tapDirection, treeStep, walkStep } from "./walk";
 
 /** What the arrow keys follow: the map's hierarchy, or where the cards sit. */
 export type WalkKeys = "tree" | "layout";
@@ -99,14 +99,6 @@ export function enableWalk(ctx: ModuleContext<object>, presenting: (canvas: Canv
 		return { edges, next: byTree ? treeStep(nodes, edges, walk.current, dir, walk.visited, rtl) : walkStep(nodes, edges, walk.current, dir, walk.visited) };
 	};
 
-	/** The step a tap on side `dir` of the screen stands for: toward the children leads to them. */
-	const onScreen = (canvas: CanvasLike, walk: Walk, dir: Dir): Dir => {
-		if (options().keys !== "tree" || (dir !== "left" && dir !== "right")) return dir;
-		const { nodes, onPage } = model(canvas);
-		if (!childrenOnLeft(nodes, onPage, walk.current, walk.visited, canvasDirection(canvas) === "rtl")) return dir;
-		return dir === "left" ? "right" : "left";
-	};
-
 	const labelOf = (move: Dir) => (options().keys === "tree" && move === "left" ? "presentation.walk.parent" : options().keys === "tree" && move === "right" ? "presentation.walk.child" : LABELS[move]);
 
 	/** Keeps the arrows the same size on screen at any zoom. */
@@ -121,16 +113,17 @@ export function enableWalk(ctx: ModuleContext<object>, presenting: (canvas: Canv
 		const hints = node.nodeEl.createDiv({ cls: "opc-walk-hints", attr: { dir: "ltr" } });
 		walk.hints = hints;
 		sizeHints(canvas, walk);
+		// Each arrow does what the same arrow of the walking pad does (by the hierarchy: right is
+		// always deeper, left always back up), wherever the cards sit on the board.
 		for (const dir of DIRS) {
-			const move = onScreen(canvas, walk, dir);
-			if (!nextFrom(canvas, walk, move).next) continue;
-			const hint = hints.createEl("button", { cls: `clickable-icon opc-walk-hint opc-walk-hint-${dir}`, attr: { "aria-label": ctx.t(labelOf(move)) } });
+			if (!nextFrom(canvas, walk, dir).next) continue;
+			const hint = hints.createEl("button", { cls: `clickable-icon opc-walk-hint opc-walk-hint-${dir}`, attr: { "aria-label": ctx.t(labelOf(dir)) } });
 			setIcon(hint, `arrow-${dir}`);
 			hint.addEventListener("pointerdown", (evt) => evt.stopPropagation());
 			hint.addEventListener("click", (evt) => {
 				evt.preventDefault();
 				evt.stopPropagation();
-				step(canvas, move, "tap");
+				step(canvas, dir, "tap");
 			});
 		}
 	};
@@ -280,11 +273,11 @@ export function enableWalk(ctx: ModuleContext<object>, presenting: (canvas: Canv
 				if (node && shown(node) && node.id !== walk.current) go(canvas, walk, node.id);
 				return;
 			}
-			// Empty board: the side of the card it is on stands for that arrow key.
+			// Empty board: the side of the card it is on stands for that arrow of the pad.
 			if (!options().tapZones || (target !== wrapper && !target?.closest?.(".canvas, .canvas-background"))) return;
 			const rect = canvas.nodes.get(walk.current)?.nodeEl.getBoundingClientRect();
 			const dir = rect ? tapDirection(rect, evt.clientX, evt.clientY) : null;
-			if (dir) step(canvas, onScreen(canvas, walk, dir), "tap");
+			if (dir) step(canvas, dir, "tap");
 		};
 		win.addEventListener("keydown", onKey, true);
 		wrapper.addEventListener("pointerdown", onDown, true);

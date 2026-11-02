@@ -188,3 +188,9 @@ body.opc-mod-presentation .opc-columns-card > :first-child > :first-child {
 body.opc-mod-presentation .opc-columns-card > :first-child > :last-child {
 	margin-bottom: 0;
 }
+
+/* Walking through a map is for reading: no buttons that fold branches or groups. */
+body.opc-mod-presentation .canvas-wrapper.opc-walking .canvas-node > .opc-branch-toggle,
+body.opc-mod-presentation .canvas-wrapper.opc-walking .canvas-node .opc-collapse-toggle {
+	display: none;
+}

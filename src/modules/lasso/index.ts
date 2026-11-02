@@ -132,8 +132,20 @@ class LassoSession {
 	private lastTap: { at: number; node: CanvasNodeLike | null } = { at: 0, node: null };
 	/** When a menu last closed: the app closes menus on Esc before our key handler runs. */
 	private menuClosedAt = 0;
+	/** A menu item was picked in a menu opened during this session: the board as it was then. */
+	private destroyed = false;
+	private action: { selection: Set<CanvasItemLike>; history: number; undoable: number } | null = null;
 	private readonly menus = new MutationObserver((records) => {
-		for (const r of records) for (const n of r.removedNodes) if (n.instanceOf(HTMLElement) && n.hasClass("menu")) this.menuClosedAt = Date.now();
+		for (const r of records) {
+			for (const n of r.addedNodes) if (n.instanceOf(HTMLElement) && n.hasClass("menu")) n.addEventListener("click", this.onMenuClick, true);
+			for (const n of r.removedNodes) {
+				if (!n.instanceOf(HTMLElement) || !n.hasClass("menu")) continue;
+				this.menuClosedAt = Date.now();
+				n.removeEventListener("click", this.onMenuClick, true);
+				// The action runs on the click; what it does to the board is done a moment later.
+				if (this.action && !this.canvas.wrapperEl.doc.querySelector(".menu")) window.setTimeout(() => this.afterAction(), 0);
+			}
+		}
 	});
 
 	constructor(
@@ -155,8 +167,36 @@ class LassoSession {
 		this.menus.observe(canvas.wrapperEl.doc.body, { childList: true });
 	}
 
+	/** An item of a menu (not one that only opens a submenu) was picked. */
+	private onMenuClick = (e: MouseEvent) => {
+		const item = (e.target as HTMLElement | null)?.closest?.(".menu-item");
+		if (!item || item.hasClass("is-disabled") || item.hasClass("has-submenu") || item.querySelector(".menu-item-icon.mod-submenu")) return;
+		const history = this.canvas.history;
+		this.action ??= { selection: new Set(this.canvas.selection), history: history?.current ?? 0, undoable: history?.data?.length ?? 0 };
+	};
+
+	/**
+	 * After an action on the selection (group, auto layout, move to a page, a layer…) the lasso is
+	 * done: the tool turns off, and a selection the action left as it was is let go once the board
+	 * changed, so nothing stays half active.
+	 */
+	private afterAction(): void {
+		const action = this.action;
+		this.action = null;
+		if (!action || this.destroyed) return;
+		const canvas = this.canvas;
+		const history = canvas.history;
+		const changed = (history?.current ?? 0) !== action.history || (history?.data?.length ?? 0) !== action.undoable;
+		const same = canvas.selection.size === action.selection.size && [...canvas.selection].every((i) => action.selection.has(i));
+		this.reset();
+		this.onEnd();
+		if (changed && same && canvas.selection.size) canvas.deselectAll();
+	}
+
 	destroy(): void {
+		this.destroyed = true;
 		this.canvas.wrapperEl.win.removeEventListener("keydown", this.onKey, true);
+		for (const menu of this.canvas.wrapperEl.doc.querySelectorAll<HTMLElement>(".menu")) menu.removeEventListener("click", this.onMenuClick, true);
 		this.menus.disconnect();
 		this.overlay.remove();
 		this.canvas.wrapperEl.removeClass("opc-lasso-active");
