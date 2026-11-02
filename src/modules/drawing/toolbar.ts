@@ -29,6 +29,7 @@ export interface DrawingSettings {
 	smoothing: number;
 	eraserMode: "stroke" | "partial";
 	eraserSize: number;
+	/** Palm navigation: fingers and palm pan and zoom instead of drawing. */
 	penOnly: boolean;
 	recognize: boolean;
 	holdMs: number;
@@ -91,6 +92,9 @@ export interface ToolbarHost {
 	update(patch: Partial<DrawingSettings>): void;
 	lockSelection(): void;
 	hasSelection(): boolean;
+	/** The drag button is on: the pen, a finger or the mouse drags the view. */
+	panning(): boolean;
+	togglePan(): void;
 	close(): void;
 	/** Names a color for people ("Red"), or returns it as is. */
 	colorName(color: string): string;
@@ -128,7 +132,11 @@ export class InkToolbar {
 			b.addEventListener("click", onClick);
 			return b;
 		};
-		for (const { tool, icon, key } of TOOLS) button(icon, t(key), () => this.host.update({ tool }), s.tool === tool);
+		const panning = this.host.panning();
+		for (const { tool, icon, key } of TOOLS) button(icon, t(key), () => this.host.update({ tool }), !panning && s.tool === tool);
+		this.el.createDiv({ cls: "opc-ink-separator" });
+		button("move", t("drawing.pan"), () => this.host.togglePan(), panning);
+		button("hand", t("drawing.palm"), () => this.host.update({ penOnly: !s.penOnly }), s.penOnly);
 		this.el.createDiv({ cls: "opc-ink-separator" });
 		this.renderPens();
 		this.el.createDiv({ cls: "opc-ink-separator" });
@@ -274,7 +282,6 @@ export class InkToolbar {
 			cb.addEventListener("change", () => onChange(cb.checked));
 		};
 		toggle(t("drawing.pressure"), s.pressure, (v) => this.host.update({ pressure: v }));
-		toggle(t("drawing.penOnly"), s.penOnly, (v) => this.host.update({ penOnly: v }));
 		toggle(t("drawing.recognize"), s.recognize, (v) => this.host.update({ recognize: v }));
 		toggle(t("drawing.stickToCards"), s.stickToCards, (v) => this.host.update({ stickToCards: v }));
 	}

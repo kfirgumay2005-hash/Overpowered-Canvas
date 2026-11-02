@@ -1,4 +1,5 @@
 import { MarkdownView, Notice, Platform, Setting, setIcon, setTooltip } from "obsidian";
+import { syncCanvasRect } from "../../core/canvas-rect";
 import { defineModule, type ModuleContext } from "../../core/module";
 import type { EdgeSide } from "../../data/json-canvas";
 import type { CanvasLike, CanvasNodeLike, CanvasViewLike, SelectionDragLike } from "../../internals/types";
@@ -310,14 +311,6 @@ export const noteBlocksModule = defineModule<NoteBlocksSettings>({
 
 		// ---- Dragging --------------------------------------------------------------------
 
-		/** Screen → canvas conversions use a rect the core measures on resize only; a layout
-		 * change around the pane (a toolbar appearing above it) leaves it stale. */
-		const fresh = (canvas: CanvasLike) => {
-			const r = canvas.wrapperEl.getBoundingClientRect();
-			const c = canvas.canvasRect;
-			if (Math.abs(r.top - c.top) > 1 || Math.abs(r.left - c.left) > 1 || Math.abs(r.height - c.height) > 1 || Math.abs(r.width - c.width) > 1) canvas.onResize?.();
-		};
-
 		/** The canvas (and drop zone) under a screen point. */
 		const targetAt = (x: number, y: number, zonesEl: HTMLElement | null): Target | null => {
 			const el = activeDocument.elementFromPoint(x, y);
@@ -326,7 +319,7 @@ export const noteBlocksModule = defineModule<NoteBlocksSettings>({
 			for (const leaf of app.workspace.getLeavesOfType("canvas")) {
 				const canvas = (leaf.view as CanvasViewLike).canvas;
 				if (!canvas || canvas.wrapperEl !== wrapper) continue;
-				fresh(canvas);
+				syncCanvasRect(canvas);
 				let zone: Target["zone"] = null;
 				const z = el?.closest<HTMLElement>(".opc-note-blocks-zone");
 				if (z && zonesEl?.contains(z)) {
@@ -413,7 +406,7 @@ export const noteBlocksModule = defineModule<NoteBlocksSettings>({
 			};
 			const onOver = (e: DragEvent) => {
 				if (!ctx.settings.dropZones || canvas.readonly || !textDrag(e)) return;
-				fresh(canvas);
+				syncCanvasRect(canvas);
 				const hot = zoneUnder(e);
 				zones?.querySelectorAll(".opc-note-blocks-zone").forEach((z) => z.toggleClass("is-hot", (z as HTMLElement).dataset.zone === hot?.kind));
 				if (hot) {

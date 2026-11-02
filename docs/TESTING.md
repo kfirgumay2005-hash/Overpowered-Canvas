@@ -186,7 +186,8 @@ Automated runtime checks of every item below were run in an isolated Obsidian 1.
    makes the line thicker; with the *Pencil* tool, tilting the Pencil widens the stroke.
 2. Rest your palm on the screen while drawing: no stray marks (touches are ignored while the
    Pencil is active and for a moment after).
-3. *More options* → *Pen only*: the Pencil draws, one or two fingers pan and pinch-zoom.
+3. Hand button on (palm navigation): the Pencil draws, one or two fingers pan and pinch-zoom.
+   Four-arrows button on: the Pencil and fingers both drag the view; pick a tool to draw again.
 4. Hover the Pencil above the screen (M2 iPad and newer): a circle previews the brush.
 5. Double-tapping the Pencil (if set to *switch to eraser* in iPadOS) is not reported to web
    apps; use the eraser button.
@@ -196,7 +197,7 @@ Automated runtime checks of every item below were run in an isolated Obsidian 1.
    without changing tools; flip back → the previous tool continues.
 2. Hold the barrel button while drawing → it erases (where the hardware reports it as the
    eraser button).
-3. With a finger on a touchscreen: *Pen only* off → the finger draws; on → the finger pans.
+3. With a finger on a touchscreen: hand button off → the finger draws; on → the finger pans.
 4. Devices that don't report pressure or tilt (mouse, some pens) draw an even line.
 
 ## Manual — Phase 6 (navigation)
