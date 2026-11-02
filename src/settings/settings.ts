@@ -47,7 +47,7 @@ export function defaultSettings(): PluginSettings {
 	return { settingsVersion: SETTINGS_VERSION, language: "auto", modules: {}, coexistence: { acknowledged: [] }, tutorials: { done: [] }, filesFolder: DEFAULT_FILES_FOLDER };
 }
 
-const LANGUAGES: readonly LanguageSetting[] = ["auto", "en", "zh", "ja", "hi"];
+const LANGUAGES: readonly LanguageSetting[] = ["auto", "en", "zh", "ja", "hi", "ru"];
 
 export function sanitizeSettings(raw: unknown): PluginSettings {
 	const out = defaultSettings();

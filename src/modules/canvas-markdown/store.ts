@@ -100,7 +100,12 @@ export class DataStore {
 	private async removeFolderIfEmpty(): Promise<void> {
 		const adapter = this.app.vault.adapter;
 		if (!(await adapter.exists(this.root))) return;
-		const list = await adapter.list(this.root);
-		if (!list.files.length && !list.folders.length) await adapter.rmdir(this.root, false);
+		try {
+			const list = await adapter.list(this.root);
+			if (!list.files.length && !list.folders.length) await adapter.rmdir(this.root, false);
+		} catch (error) {
+			// Notes deleted together race here: the folder may already be gone.
+			if (await adapter.exists(this.root)) throw error;
+		}
 	}
 }

@@ -11,6 +11,7 @@ describe("resolveLocale", () => {
 		expect(resolveLocale("auto", "zh-TW")).toBe("zh");
 		expect(resolveLocale("auto", "ja")).toBe("ja");
 		expect(resolveLocale("auto", "hi")).toBe("hi");
+		expect(resolveLocale("auto", "ru")).toBe("ru");
 		expect(resolveLocale("auto", "he")).toBe("en");
 		expect(resolveLocale("auto", "fr")).toBe("en");
 		expect(resolveLocale("auto", "")).toBe("en");
