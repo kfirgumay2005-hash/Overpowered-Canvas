@@ -1,5 +1,5 @@
 // Walking through a mind map with the arrow keys (pure, unit-tested).
-import { orderChildren } from "../canvas-markdown/structure";
+import { orderChildren, readingOrder } from "../canvas-markdown/structure";
 import { childrenOf, directionBetween, parentOf, type Dir, type TEdge, type TNode } from "../mindmap/tree";
 
 const OPPOSITE: Record<Dir, Dir> = { right: "left", left: "right", down: "up", up: "down" };
@@ -69,12 +69,57 @@ function treeParent(nodes: Map<string, TNode>, edges: TEdge[], id: string, visit
 	return parents.find((p) => visited.get(p) === id) ?? parents[0] ?? null;
 }
 
-/** Children of `id` in reading order (as the outline lists them). */
-export function orderedChildren(nodes: Map<string, TNode>, edges: TEdge[], id: string, rtl: boolean): TNode[] {
+/** An edge of the walk. `inside`: from a group to a card in it that no arrow leads to. */
+export interface WalkEdge extends TEdge {
+	inside?: boolean;
+}
+
+/**
+ * Children of `id` in reading order (as the outline lists them). A group lists the cards it holds
+ * first, then where its own arrows lead.
+ */
+export function orderedChildren(nodes: Map<string, TNode>, edges: WalkEdge[], id: string, rtl: boolean): TNode[] {
 	const parent = nodes.get(id);
 	if (!parent) return [];
-	const kids = [...new Set(childrenOf(edges, id))].map((c) => nodes.get(c)).filter((n): n is TNode => !!n);
-	return orderChildren(parent, kids, rtl);
+	const seen = new Set<string>();
+	const held: TNode[] = [];
+	const linked: TNode[] = [];
+	for (const e of edges) {
+		if (e.from !== id || e.to === id || seen.has(e.to)) continue;
+		seen.add(e.to);
+		const n = nodes.get(e.to);
+		if (n) (e.inside ? held : linked).push(n);
+	}
+	// What a group holds reads like a page: top to bottom, then along the reading direction.
+	return [...held.sort(readingOrder(rtl)), ...orderChildren(parent, linked, rtl)];
+}
+
+export interface WalkBox extends TNode {
+	group?: boolean;
+	/** "" for the main page. */
+	page?: string;
+}
+
+function holds(outer: TNode, inner: TNode): boolean {
+	return inner.x >= outer.x && inner.y >= outer.y && inner.x + inner.width <= outer.x + outer.width && inner.y + inner.height <= outer.y + outer.height;
+}
+
+/**
+ * The edges a walk follows through groups: each card (or group) that no arrow leads to hangs from
+ * the smallest group around it on the same page, so a group reads as a card with its name whose
+ * children are what it holds, followed by where its own arrows lead. Nested groups nest.
+ */
+export function groupEdges(nodes: Iterable<WalkBox>, edges: TEdge[]): WalkEdge[] {
+	const list = [...nodes];
+	const hasParent = new Set(edges.filter((e) => e.from !== e.to).map((e) => e.to));
+	const groups = list.filter((n) => n.group).sort((a, b) => a.width * a.height - b.width * b.height);
+	const out: WalkEdge[] = [];
+	for (const n of list) {
+		if (hasParent.has(n.id)) continue;
+		const g = groups.find((g) => g.id !== n.id && holds(g, n) && g.width * g.height > n.width * n.height && (g.page ?? "") === (n.page ?? ""));
+		if (g) out.push({ from: g.id, to: n.id, inside: true });
+	}
+	return out;
 }
 
 /**
@@ -82,7 +127,7 @@ export function orderedChildren(nodes: Map<string, TNode>, edges: TEdge[], id: s
  * children (the one visited last under this card, else the first), Left back to the parent, Up
  * and Down to the previous and next sibling, stopping at the first and last. Null at the ends.
  */
-export function treeStep(nodes: Map<string, TNode>, edges: TEdge[], current: string, key: Dir, visited: ReadonlyMap<string, string>, rtl = false): string | null {
+export function treeStep(nodes: Map<string, TNode>, edges: WalkEdge[], current: string, key: Dir, visited: ReadonlyMap<string, string>, rtl = false): string | null {
 	if (!nodes.has(current)) return null;
 	if (key === "right") {
 		const kids = orderedChildren(nodes, edges, current, rtl);

@@ -4,6 +4,7 @@ import type { OpcNode } from "../../data/schema";
 import { LOCALES } from "../../i18n";
 import type { CanvasLike, CanvasNodeLike } from "../../internals/types";
 import { NumberPromptModal } from "../../ui/number-prompt";
+import { mergeWithDefaults } from "../../settings/settings";
 import { mutate, nodeType, selectedEdges, selectedNodes } from "../shared";
 import { nextSlide, slideOrder, type SlideEdge } from "./path";
 import { enableWalk, type WalkKeys } from "./walker";
@@ -19,6 +20,12 @@ interface PresentationSettings {
 	walkTapZones: boolean;
 	/** Small arrows around the card while walking. */
 	walkHints: boolean;
+	/** Card text size in the column view (px); 0 = as on the board. */
+	columnFontSize: number;
+	/** Widest card in the column view (px). */
+	columnWidth: number;
+	/** The column view shows cards at their size on the board, with their ink. */
+	columnActualSize: boolean;
 }
 
 interface Session {
@@ -63,12 +70,31 @@ export const presentationModule = defineModule<PresentationSettings>({
 	description: "presentation.desc",
 	group: "interaction",
 	defaultEnabled: true,
-	defaultSettings: { slideWidth: 1200, slideHeight: 675, fullscreen: true, walkKeys: "tree", walkTapZones: true, walkHints: true },
+	defaultSettings: { slideWidth: 1200, slideHeight: 675, fullscreen: true, walkKeys: "tree", walkTapZones: true, walkHints: true, columnFontSize: 0, columnWidth: 340, columnActualSize: false },
+	sanitizeSettings: (raw, defaults) => {
+		const s = mergeWithDefaults(raw, defaults);
+		const num = (v: unknown, min: number, max: number, fallback: number) => (typeof v === "number" && Number.isFinite(v) && v >= min && v <= max ? Math.round(v) : fallback);
+		return {
+			...s,
+			walkKeys: s.walkKeys === "layout" ? "layout" : "tree",
+			columnFontSize: s.columnFontSize === 0 ? 0 : num(s.columnFontSize, 8, 48, defaults.columnFontSize),
+			columnWidth: num(s.columnWidth, 160, 1200, defaults.columnWidth),
+			columnActualSize: typeof s.columnActualSize === "boolean" ? s.columnActualSize : defaults.columnActualSize,
+		};
+	},
 	overlapsWith: ["advanced-canvas"],
 
 	enable(ctx) {
 		const sessions = new Map<CanvasLike, Session>();
-		const walker = enableWalk(ctx, (canvas) => sessions.has(canvas), () => ({ keys: ctx.settings.walkKeys, tapZones: ctx.settings.walkTapZones, hints: ctx.settings.walkHints }));
+		const walker = enableWalk(ctx, (canvas) => sessions.has(canvas), () => ({
+			keys: ctx.settings.walkKeys,
+			tapZones: ctx.settings.walkTapZones,
+			hints: ctx.settings.walkHints,
+			columns: { fontSize: ctx.settings.columnFontSize, width: ctx.settings.columnWidth, actualSize: ctx.settings.columnActualSize },
+		}));
+		ctx.onSettingsChange((next, prev) => {
+			if (next.columnFontSize !== prev.columnFontSize || next.columnWidth !== prev.columnWidth || next.columnActualSize !== prev.columnActualSize) walker.refresh();
+		});
 
 		const show = (canvas: CanvasLike, session: Session) => {
 			const id = session.history[session.history.length - 1]!;
@@ -343,5 +369,32 @@ export const presentationModule = defineModule<PresentationSettings>({
 			.setName(ctx.t("presentation.walkHints.name"))
 			.setDesc(ctx.t("presentation.walkHints.desc"))
 			.addToggle((t) => t.setValue(ctx.settings.walkHints).onChange((v) => ctx.updateSettings({ walkHints: v })));
+		new Setting(el)
+			.setName(ctx.t("presentation.columnFontSize.name"))
+			.setDesc(ctx.t("presentation.columnFontSize.desc"))
+			.addText((t) => {
+				t.inputEl.type = "number";
+				t.setPlaceholder(ctx.t("presentation.columnFontSize.auto"))
+					.setValue(ctx.settings.columnFontSize ? String(ctx.settings.columnFontSize) : "")
+					.onChange((v) => {
+						const n = Number(v);
+						if (!v.trim()) void ctx.updateSettings({ columnFontSize: 0 });
+						else if (n >= 8 && n <= 48) void ctx.updateSettings({ columnFontSize: Math.round(n) });
+					});
+			});
+		new Setting(el)
+			.setName(ctx.t("presentation.columnWidth.name"))
+			.setDesc(ctx.t("presentation.columnWidth.desc"))
+			.addText((t) => {
+				t.inputEl.type = "number";
+				t.setValue(String(ctx.settings.columnWidth)).onChange((v) => {
+					const n = Number(v);
+					if (n >= 160 && n <= 1200) void ctx.updateSettings({ columnWidth: Math.round(n) });
+				});
+			});
+		new Setting(el)
+			.setName(ctx.t("presentation.columnActualSize.name"))
+			.setDesc(ctx.t("presentation.columnActualSize.desc"))
+			.addToggle((t) => t.setValue(ctx.settings.columnActualSize).onChange((v) => ctx.updateSettings({ columnActualSize: v })));
 	},
 });

@@ -1180,6 +1180,17 @@ export const en = {
 	"textPages.saveFailed": "The card could not be saved. The debug log has the details.",
 	"textPages.previous": "Previous page",
 	"textPages.next": "Next page",
+	"presentation.columnFontSize.name": "Column view: text size",
+	"presentation.columnFontSize.desc": "Size of the card text in the column view, in pixels (8–48). Leave it empty to use the size the canvas shows its cards at, including sizes set by the canvas's CSS classes.",
+	"presentation.columnFontSize.simple": "Makes the text in the column view bigger or smaller.",
+	"presentation.columnFontSize.auto": "As on the canvas",
+	"presentation.columnWidth.name": "Column view: widest card",
+	"presentation.columnWidth.desc": "How wide a card gets in the column view, in pixels (160–1200). Longer text wraps onto more lines.",
+	"presentation.columnWidth.simple": "Sets how wide the columns are.",
+	"presentation.columnActualSize.name": "Column view: use actual card size",
+	"presentation.columnActualSize.desc": "Shows each card at its size on the canvas, with the handwriting and marks drawn on it. The next column then starts right after the selected card, however wide it is.",
+	"presentation.columnActualSize.simple": "Cards look exactly as on the board, ink included.",
+	"presentation.columns.saveFailed": "Could not save the card.",
 } as const;
 
 export type I18nKey = keyof typeof en;
