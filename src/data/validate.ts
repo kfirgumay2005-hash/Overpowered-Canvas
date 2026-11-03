@@ -241,6 +241,7 @@ export const NODE_SHAPE: Shape<OpcNode> = {
 	layer: nonEmptyStr,
 	page: nonEmptyStr,
 	slide: bool,
+	smartGroup: nonEmptyStr,
 };
 
 export const EDGE_SHAPE: Shape<OpcEdge> = {

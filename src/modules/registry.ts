@@ -61,6 +61,9 @@ import { pagesModule } from "./pages";
 import { textPagesModule } from "./text-pages";
 import { autoLinkModule } from "./auto-link";
 import { viewMemoryModule } from "./view-memory";
+import { smartGroupsModule } from "./smart-groups";
+import { paragraphIndentModule } from "./paragraph-indent";
+import { noteFontSizeModule } from "./note-font-size";
 
 /** Every feature module, in display order within its settings group. */
 export const MODULES: readonly AnyModule[] = [
@@ -117,11 +120,14 @@ export const MODULES: readonly AnyModule[] = [
 	imageCropModule,
 	edgeEditingModule,
 	lockItemsModule,
+	smartGroupsModule,
 	minimapModule,
 	gridModule,
 	framesModule,
 	boardTemplatesModule,
 	canvasMarkdownModule,
+	paragraphIndentModule,
+	noteFontSizeModule,
 	noteBlocksModule,
 	kanbanModule,
 	queryGroupsModule,

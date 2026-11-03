@@ -641,3 +641,28 @@ Automated runtime checks of every item below were run in an isolated Obsidian 1.
   and inserting the Drug card template, whose two pages land under the page shown.
 - Finding your way ends with "Back where you left off"; Lasso, Groups and templates and Mind maps
   mention the new behavior.
+
+## Smart groups, paragraph indents, font size per note
+
+- [ ] Select two cards, Ctrl/Cmd+G: no frame appears. Click empty space, click one card → both are
+  selected; drag → both move; Ctrl/Cmd+Z undoes the move in one step.
+- [ ] Double-click a grouped card → only it is selected (no editing); drag moves it alone; click a
+  sibling → that one alone; double-click again → editing. Click empty space, click → whole group.
+- [ ] Shift-click a card of a selected group → the whole group leaves the selection.
+- [ ] Selection box over one card of a group, and the lasso around one card → the whole group.
+- [ ] Copy/paste, Ctrl/Alt-drag and a template made from a group → a new, separate group.
+- [ ] Ctrl/Cmd+Shift+G ungroups; with nothing selected Ctrl/Cmd+G opens the graph view; outside
+  canvases Ctrl/Cmd+G always opens the graph view; with the setting off it does in canvases too.
+- [ ] Group a card with a native group: dragging moves the native group and its contents.
+- [ ] Alt+arrows from a card picked inside a group move to single cards; Tab adds a child only to a
+  single selected card. Move a branch of a grouped card to a page: the page's first card has no
+  group; on each page the group acts separately.
+- [ ] Touch: Group / Ungroup button in the selection toolbar; long-press → Select only this card.
+- [ ] Paragraph indent (turn the module on): Tab at the start and in the middle of a paragraph adds
+  em spaces; repeated Tabs never show as code in Live Preview; Shift+Tab removes them. Tab in a
+  list, a table cell, a code block, `$math$` and properties behaves as before (also with LaTeX
+  Suite and Advanced Tables). Reading view shows the same indent, no code block.
+- [ ] Font size: Increase twice → `font-size: 18` in properties; switching Live Preview / Source /
+  Reading keeps the exact same size; `font-size: 150%` gives 24 px with a 16 px vault size; Reset
+  removes the property. Same on mobile.
+- [ ] Tutorials 25–27 run to the end with "Show me", in every language.

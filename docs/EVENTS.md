@@ -73,4 +73,5 @@ read-only unless you know the internals. Payloads are listed below; types are in
 | `text-highlighted` | canvas, node (words highlighted or unhighlighted with the text highlighter) |
 | `lasso-selected` | canvas, items (what the lasso selected) |
 | `selection-cut` | canvas, count |
+| `smart-group-changed` | canvas, change (`"group"` or `"ungroup"`), cards (how many cards were grouped or ungrouped) |
 | `canvas-updated-from-note` | canvasFile, note, added, removed, updated |

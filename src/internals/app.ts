@@ -49,3 +49,35 @@ export function metadataCacheInternal(app: App): MetadataCacheInternal | null {
 	const mc = app.metadataCache as unknown as MetadataCacheInternal;
 	return typeof mc.getCache === "function" && typeof mc.iterateFileCache === "function" ? mc : null;
 }
+
+interface HotkeyManagerInternal {
+	bakedHotkeys: { modifiers: string; key: string }[];
+	bakedIds: string[];
+}
+
+/**
+ * Runs the command a key press is bound to in Settings → Hotkeys (other than those `skip`
+ * names). A canvas key handler that matched a combo but has nothing to do calls this, because
+ * the view's scope swallows the key and the global hotkey would not run any more. Returns true
+ * when a command ran.
+ */
+export function runHotkeyCommand(app: App, evt: KeyboardEvent, skip: (id: string) => boolean): boolean {
+	const manager = (app as unknown as { hotkeyManager?: Partial<HotkeyManagerInternal> }).hotkeyManager;
+	const runner = commandRunner(app);
+	if (!runner || !Array.isArray(manager?.bakedHotkeys) || !Array.isArray(manager.bakedIds)) return false;
+	const pressed = new Set<string>();
+	if (evt.ctrlKey) pressed.add("Ctrl");
+	if (evt.metaKey) pressed.add("Meta");
+	if (evt.altKey) pressed.add("Alt");
+	if (evt.shiftKey) pressed.add("Shift");
+	const key = evt.key.length === 1 ? evt.key.toUpperCase() : evt.key;
+	for (let i = 0; i < manager.bakedHotkeys.length; i++) {
+		const hotkey = manager.bakedHotkeys[i]!;
+		const id = manager.bakedIds[i];
+		if (!id || skip(id) || hotkey.key.toUpperCase() !== key.toUpperCase()) continue;
+		const mods = new Set(hotkey.modifiers.split(",").filter(Boolean));
+		if (mods.size !== pressed.size || [...mods].some((m) => !pressed.has(m))) continue;
+		if (runner.executeCommandById(id)) return true;
+	}
+	return false;
+}

@@ -77,6 +77,7 @@ export interface PublicEventMap {
 	"text-highlighted": [canvas: CanvasLike, node: CanvasNodeLike];
 	"lasso-selected": [canvas: CanvasLike, items: CanvasItemLike[]];
 	"selection-cut": [canvas: CanvasLike, count: number];
+	"smart-group-changed": [canvas: CanvasLike, change: "group" | "ungroup", cards: number];
 }
 
 export type PublicEventName = keyof PublicEventMap;

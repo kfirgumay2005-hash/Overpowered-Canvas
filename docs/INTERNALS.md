@@ -177,3 +177,13 @@ Verified against: **Obsidian 1.14.4 (desktop, Windows)**.
   no `data-load`; its first `canvas-frame` with a file is the place to restore it.
 - Module contexts can add editor extensions (`registerEditorExtension`): the module manager
   registers one shared array with the plugin and calls `workspace.updateOptions()` on changes.
+
+## Smart groups, paragraph indent, note font size (verified at runtime in Obsidian 1.15.0)
+
+| Member | What it does | Status |
+|---|---|---|
+| `canvas.updateSelection(fn)` | Every selection change (`select`, `selectOnly`, `selectAll`, `deselectAll`, box select, `handleSelectionDrag`'s `selectOnly` on an unselected card) runs through it. Smart groups wrap `fn` and add the rest of a group **inside** it, so the toolbar and every listener see the whole group. | 🟢 runtime |
+| `canvas.handleSelectionDrag` | Drags every node in `selection` (plus the contents of native groups), so a selection widened by smart groups moves as one with no extra code. | 🟢 runtime |
+| `view.scope` + a matched key | A scope handler that matched a combo keeps the key even when it returns `true`: the global hotkey (e.g. Ctrl/Cmd+G → graph view) no longer runs. A canvas key with nothing to do runs the command bound to the combo itself (`runHotkeyCommand`). | 🟢 runtime |
+| `app.hotkeyManager.bakedHotkeys` / `bakedIds` | Parallel arrays of every effective hotkey (`modifiers` like `"Ctrl,Shift"`, `key` like `"G"`) and its command id. | 🟢 runtime |
+| `--font-text-size` / `--font-preferred-size` | Note text in Live Preview, Source mode and Reading mode is sized from `--font-preferred-size`, which `<body>` derives from `--font-text-size` (× `--preferred-text-scale` on mobile). Both are resolved on `<body>`, so a per-note size must redefine both on the note view. | 🟢 runtime |

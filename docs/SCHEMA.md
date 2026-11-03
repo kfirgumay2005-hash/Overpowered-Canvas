@@ -81,6 +81,8 @@ interface OpcNode {
   layer?: string;                         // layer id; absent or unknown = bottom layer
   page?: string;                          // page id (root `pages`); absent = the main page
   slide?: boolean;                        // a presentation slide (group)
+  smartGroup?: string;                    // smart group id: cards sharing it select and move as one
+                                          // (no frame); copies get a fresh id, a lone copy none
 }
 
 interface OpcEdge {

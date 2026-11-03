@@ -14,6 +14,7 @@ export type SettingsGroup =
 	| "nodes"
 	| "edges"
 	| "vault"
+	| "notes"
 	| "interaction"
 	| "mindmap"
 	| "drawing"
@@ -26,6 +27,7 @@ export const SETTINGS_GROUP_ORDER: readonly SettingsGroup[] = [
 	"nodes",
 	"edges",
 	"vault",
+	"notes",
 	"interaction",
 	"mindmap",
 	"drawing",

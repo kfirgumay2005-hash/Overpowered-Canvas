@@ -1,0 +1,13 @@
+/*
+ * Per-note font size. Obsidian sizes note text in every mode from --font-text-size /
+ * --font-preferred-size, which are resolved once on <body>; redefining both on the note's view
+ * makes Live Preview, Source mode and Reading mode compute the very same size. The explicit
+ * font-size below also wins over themes that size one of the modes on its own.
+ */
+body.opc-mod-note-font-size .opc-note-font-size {
+	--font-text-size: var(--opc-note-font-size);
+	--font-preferred-size: calc(var(--opc-note-font-size) * var(--preferred-text-scale, 1));
+}
+body.opc-mod-note-font-size .opc-note-font-size :is(.markdown-source-view, .markdown-preview-view) {
+	font-size: var(--font-preferred-size);
+}
