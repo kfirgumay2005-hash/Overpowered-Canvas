@@ -75,6 +75,8 @@ export interface PublicEventMap {
 	"note-block-dropped": [canvas: CanvasLike, node: CanvasNodeLike];
 	"card-relinked": [canvas: CanvasLike, node: CanvasNodeLike];
 	"text-highlighted": [canvas: CanvasLike, node: CanvasNodeLike];
+	"text-colored": [canvas: CanvasLike, node: CanvasNodeLike];
+	"column-card-added": [canvas: CanvasLike, node: CanvasNodeLike, kind: "child" | "sibling"];
 	"lasso-selected": [canvas: CanvasLike, items: CanvasItemLike[]];
 	"selection-cut": [canvas: CanvasLike, count: number];
 	"smart-group-changed": [canvas: CanvasLike, change: "group" | "ungroup", cards: number];

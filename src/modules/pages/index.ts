@@ -1,4 +1,4 @@
-import { ItemView, Notice, Setting, TFile, setIcon, setTooltip, type Menu, type WorkspaceLeaf } from "obsidian";
+import { ItemView, Notice, Setting, TFile, setIcon, setTooltip, type App, type Menu, type WorkspaceLeaf } from "obsidian";
 import { defineModule, type ModuleContext } from "../../core/module";
 import type { CanvasEdgeData, CanvasFileData, CanvasNodeData } from "../../data/json-canvas";
 import { SCHEMA_KEY, type MapLayout, type PageInfo } from "../../data/schema";
@@ -191,6 +191,7 @@ export const pagesModule = defineModule<PagesSettings>({
 		/** The pages of a canvas on the board, for the bar and the index. */
 		const sourceOf = (canvas: CanvasLike): PagesSource => ({
 			key: canvas,
+			path: canvas.view.file?.path,
 			alive: () => canvas.wrapperEl.isConnected,
 			pages: () => pagesOf(canvas),
 			current: () => current(canvas),
@@ -746,9 +747,36 @@ function nodeLabel(node: CanvasNodeLike): string {
 }
 
 /** The pages of the canvas in front (on the board or as text), as a tree; a click shows that page. */
+/** Where the index remembers the folded pages (per vault): file path → ids of the pages folded there. */
+const FOLDED_KEY = "overpowered-canvas:pages-folded";
+/** Files remembered at most (the oldest are forgotten). */
+const FOLDED_FILES = 200;
+
+function readFolded(app: App): Record<string, string[]> {
+	try {
+		const raw: unknown = app.loadLocalStorage(FOLDED_KEY);
+		return raw && typeof raw === "object" && !Array.isArray(raw) ? (raw as Record<string, string[]>) : {};
+	} catch {
+		return {};
+	}
+}
+
+function writeFolded(app: App, all: Record<string, string[]>): void {
+	try {
+		const entries = Object.entries(all).filter(([, ids]) => Array.isArray(ids) && ids.length);
+		app.saveLocalStorage(FOLDED_KEY, Object.fromEntries(entries.slice(-FOLDED_FILES)));
+	} catch {
+		// Storage blocked or full: the folds last for this session only.
+	}
+}
+
 class PagesView extends ItemView {
 	private source: PagesSource | null = null;
 	private timer = 0;
+	/** Pages whose pages are folded away, per file (and without a file, for this session). */
+	private readonly folded = new Map<string, Set<string>>();
+	/** The page shown at the last drawing: a page newly shown inside a folded one unfolds it. */
+	private lastCurrent: string | null = null;
 
 	constructor(
 		leaf: WorkspaceLeaf,
@@ -797,6 +825,24 @@ class PagesView extends ItemView {
 		}, 80);
 	}
 
+	private foldsOf(source: PagesSource): Set<string> {
+		const key = source.path ?? "";
+		let set = this.folded.get(key);
+		if (!set) {
+			set = new Set(source.path ? (readFolded(this.app)[source.path] ?? []) : []);
+			this.folded.set(key, set);
+		}
+		return set;
+	}
+
+	private saveFolds(source: PagesSource): void {
+		if (!source.path) return;
+		const all = readFolded(this.app);
+		delete all[source.path];
+		all[source.path] = [...(this.folded.get(source.path) ?? [])];
+		writeFolded(this.app, all);
+	}
+
 	render(): void {
 		const root = this.contentEl;
 		root.empty();
@@ -809,12 +855,48 @@ class PagesView extends ItemView {
 		const pages = source.pages();
 		const children = pageChildren(pages);
 		const current = source.current();
+		const folded = this.foldsOf(source);
+		// A page just shown inside a folded one: the pages above it open, so it can be seen.
+		if (current !== this.lastCurrent) {
+			const parents = new Map(pages.map((p) => [p.id, p.parent ?? ""]));
+			let changed = false;
+			for (let up = parents.get(current); up !== undefined; up = up ? parents.get(up) : undefined) {
+				if (folded.delete(up)) changed = true;
+				if (!up) break;
+			}
+			if (changed) this.saveFolds(source);
+			this.lastCurrent = current;
+		}
 		const list = root.createDiv({ cls: "opc-pages-tree", attr: { role: "tree" } });
 		const row = (id: string, depth: number) => {
+			const kids = children.get(id) ?? [];
+			const closed = kids.length > 0 && folded.has(id);
 			const item = list.createDiv({ cls: "opc-pages-item", attr: { role: "treeitem", tabindex: "0" } });
 			item.setCssProps({ "--opc-pages-depth": String(depth) });
 			item.toggleClass("is-current", id === current);
-			setIcon(item.createSpan({ cls: "opc-pages-icon" }), id ? "file-text" : "home");
+			item.toggleClass("has-pages", kids.length > 0);
+			item.toggleClass("is-folded", closed);
+			if (kids.length) item.setAttr("aria-expanded", String(!closed));
+			// The page's icon folds and unfolds its pages; its name shows it.
+			const marker = item.createSpan({ cls: "opc-pages-icon" });
+			if (kids.length) setIcon(marker.createSpan({ cls: "opc-pages-fold" }), "right-triangle");
+			setIcon(marker.createSpan({ cls: "opc-pages-glyph" }), id ? "file-text" : "home");
+			const fold = (to: boolean) => {
+				if (!kids.length || to === folded.has(id)) return;
+				if (to) folded.add(id);
+				else folded.delete(id);
+				this.saveFolds(source);
+				this.render();
+			};
+			if (kids.length) {
+				const label = this.ctx.t(closed ? "pages.index.unfold" : "pages.index.fold");
+				marker.setAttrs({ role: "button", "aria-label": label });
+				setTooltip(marker, label);
+				marker.addEventListener("click", (evt) => {
+					evt.stopPropagation();
+					fold(!folded.has(id));
+				});
+			}
 			item.createSpan({ cls: "opc-pages-title", text: source.title(id) });
 			item.createSpan({ cls: "opc-pages-count", text: String(source.count(id)) });
 			if (id && source.merge) {
@@ -833,8 +915,13 @@ class PagesView extends ItemView {
 			item.addEventListener("click", open);
 			item.addEventListener("keydown", (evt) => {
 				if (evt.key === "Enter") open();
+				else if (evt.key === "ArrowLeft" || evt.key === "ArrowRight") {
+					// Toward the end of the line opens, toward its start folds (as file trees do).
+					const rtl = getComputedStyle(item).direction === "rtl";
+					fold((evt.key === "ArrowLeft") !== rtl);
+				}
 			});
-			for (const child of children.get(id) ?? []) row(child.id, depth + 1);
+			if (!closed) for (const child of kids) row(child.id, depth + 1);
 		};
 		row("", 0);
 		if (pages.length === 0) root.createDiv({ cls: "opc-pages-empty", text: this.ctx.t("pages.index.empty") });

@@ -1,6 +1,6 @@
 import type { CanvasLike, CanvasNodeLike } from "../../internals/types";
 import { canvasDirection } from "../shared";
-import { childrenOf, descendants, siblingSlot, type TEdge } from "./tree";
+import { childrenOf, descendants, directionBetween, logical, parentOf, siblingSlot, type Dir, type TEdge } from "./tree";
 
 export const edgesOf = (canvas: CanvasLike): TEdge[] => [...canvas.edges.values()].map((e) => ({ from: e.from.node.id, to: e.to.node.id }));
 
@@ -20,4 +20,15 @@ export function makeSiblingRoom(canvas: CanvasLike, parent: CanvasNodeLike, node
 		}
 	}
 	return slot.pos;
+}
+
+/** The way a map grows from `node`: toward its children, else away from its parent, else forward. */
+export function growthOf(canvas: CanvasLike, node: CanvasNodeLike): Dir {
+	const edges = edgesOf(canvas);
+	const kid = childrenOf(edges, node.id).map((id) => canvas.nodes.get(id)).find((n) => !!n);
+	if (kid) return directionBetween(node, kid);
+	const parent = parentOf(edges, node.id);
+	const p = parent ? canvas.nodes.get(parent) : undefined;
+	if (p) return directionBetween(p, node);
+	return logical("right", canvasDirection(canvas) === "rtl");
 }

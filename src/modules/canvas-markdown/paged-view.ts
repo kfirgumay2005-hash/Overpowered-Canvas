@@ -268,6 +268,7 @@ export class PagedNotes {
 		const open = () => this.open.get(path);
 		return {
 			key: view,
+			path,
 			alive: () => view.containerEl.isConnected && !!open(),
 			pages: () => (open()?.note.pages ?? []).filter((p) => open()!.note.sections.some((s) => s.page === p.id)).map((p) => ({ id: p.id, anchor: p.anchor, root: p.root, ...(p.parent ? { parent: p.parent } : {}) })),
 			current: () => open()?.page ?? "",
@@ -277,6 +278,14 @@ export class PagedNotes {
 		};
 	}
 
+	/**
+	 * The bar above a note with pages: the index button and where you are (left), the previous
+	 * and next page in reading order with "n / total", and the whole note (right). The buttons
+	 * are made once per view and only updated, and each one reads the page shown when it is
+	 * pressed: a bar drawn again (the note changed, the keyboard of a tablet closed) never leaves
+	 * a press on a button that is gone or on a page that is no longer shown. Pressing them keeps
+	 * the editor's focus, so a tablet's keyboard doesn't close and move the view mid-tap.
+	 */
 	private renderBar(view: MarkdownView, open: Open): void {
 		let bar = this.bars.get(view);
 		if (!bar || !bar.isConnected) {
@@ -284,28 +293,65 @@ export class PagedNotes {
 			bar = createDiv({ cls: "opc-pages-bar opc-md-pages-bar" });
 			view.containerEl.insertBefore(bar, view.contentEl);
 			this.bars.set(view, bar);
+			const keepFocus = (evt: Event) => {
+				if ((evt.target as HTMLElement | null)?.closest?.("button")) evt.preventDefault();
+			};
+			bar.addEventListener("mousedown", keepFocus);
+			bar.addEventListener("pointerdown", keepFocus);
+			bar.createDiv({ cls: "opc-md-pages-where" });
+			this.makeTools(view, bar.createDiv({ cls: "opc-md-pages-tools" }));
 		}
-		const source = this.sourceFor(view);
+		const where = bar.querySelector<HTMLElement>(".opc-md-pages-where")!;
+		renderPagesBar(where, this.sourceFor(view), this.ctx.t, () => void pagesHost.api?.openIndex());
+		where.querySelector(".opc-pages-index")?.toggleClass("is-hidden", !pagesHost.api);
+		this.updateTools(bar, open);
+	}
+
+	private makeTools(view: MarkdownView, tools: HTMLElement): void {
 		const t = this.ctx.t;
-		renderPagesBar(bar, source, t, () => void pagesHost.api?.openIndex());
-		bar.querySelector(".opc-pages-index")?.toggleClass("is-hidden", !pagesHost.api);
-		const tools = bar.createDiv({ cls: "opc-md-pages-tools" });
-		const order = open.note.sections;
-		const at = order.findIndex((s) => s.page === open.page);
-		const button = (icon: string, label: string, run: (() => void) | null, active = false) => {
-			const b = tools.createEl("button", { cls: "clickable-icon", attr: { "aria-label": label } });
+		const button = (cls: string, icon: string, label: string, run: () => void) => {
+			const b = tools.createEl("button", { cls: `clickable-icon ${cls}`, attr: { "aria-label": label } });
 			setIcon(b, icon);
 			setTooltip(b, label);
-			b.toggleClass("is-active", active);
-			if (run) b.addEventListener("click", run);
-			else b.disabled = true;
+			b.addEventListener("click", (evt) => {
+				evt.preventDefault();
+				run();
+			});
 		};
-		const path = view.file!.path;
-		const step = (d: number) => (open.page !== null && order[at + d] ? () => this.show(path, order[at + d]!.page) : null);
-		button("chevron-left", t("textPages.previous"), step(-1));
-		if (open.page !== null) tools.createSpan({ cls: "opc-md-pages-count", text: `${at + 1} / ${order.length}` });
-		button("chevron-right", t("textPages.next"), step(1));
-		button("list", t("canvasMarkdown.paged.all"), () => this.show(path, open.page === null ? this.host.initialPage(path) || "" : null), open.page === null);
+		button("opc-md-pages-prev", "chevron-left", t("textPages.previous"), () => this.step(view, -1));
+		tools.createSpan({ cls: "opc-md-pages-count" });
+		button("opc-md-pages-next", "chevron-right", t("textPages.next"), () => this.step(view, 1));
+		button("opc-md-pages-all", "list", t("canvasMarkdown.paged.all"), () => {
+			const path = view.file?.path;
+			const open = path ? this.open.get(path) : undefined;
+			if (path && open) this.show(path, open.page === null ? this.host.initialPage(path) || "" : null);
+		});
+	}
+
+	private updateTools(bar: HTMLElement, open: Open): void {
+		const order = open.note.sections;
+		const at = order.findIndex((s) => s.page === open.page);
+		const paged = open.page !== null && at >= 0;
+		const prev = bar.querySelector<HTMLButtonElement>(".opc-md-pages-prev");
+		const next = bar.querySelector<HTMLButtonElement>(".opc-md-pages-next");
+		const count = bar.querySelector<HTMLElement>(".opc-md-pages-count");
+		if (prev) prev.disabled = !paged || at === 0;
+		if (next) next.disabled = !paged || at >= order.length - 1;
+		if (count) {
+			count.setText(paged ? `${at + 1} / ${order.length}` : "");
+			count.toggle(paged);
+		}
+		bar.querySelector(".opc-md-pages-all")?.toggleClass("is-active", open.page === null);
+	}
+
+	/** The page before or after the one shown, in reading order (main page, then each page with its pages). */
+	private step(view: MarkdownView, delta: number): void {
+		const path = view.file?.path;
+		const open = path ? this.open.get(path) : undefined;
+		if (!path || !open || open.page === null) return;
+		const order = open.note.sections;
+		const target = order[order.findIndex((s) => s.page === open.page) + delta];
+		if (target) this.show(path, target.page);
 	}
 
 	// ---------- links and jumps ----------

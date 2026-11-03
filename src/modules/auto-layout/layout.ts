@@ -2,7 +2,9 @@
  * Auto layout with ELK (elkjs). No Obsidian imports, so it runs in unit tests with the
  * in-thread ELK build; the plugin passes a worker-backed instance.
  */
-import { balance, childrenOf, descendants, roots, type TEdge, type TNode } from "../mindmap/tree";
+import { orderChildren } from "../canvas-markdown/structure";
+import { tidyTree } from "../canvas-markdown/tidy";
+import { balance, childrenOf, roots, type TEdge, type TNode } from "../mindmap/tree";
 import { radialLayout } from "./radial";
 
 export interface ElkNode {
@@ -94,52 +96,6 @@ function anchor(positions: Positions, nodes: TNode[], anchorId: string | null): 
 	return out;
 }
 
-/**
- * ELK's mrtree places siblings along the cross axis; the main axis is then set from the tree
- * depth so levels are exactly `levelSpacing` apart (mrtree has no reliable option for that).
- */
-async function treeLayout(elk: ElkLike, nodes: TNode[], edges: TEdge[], dir: "right" | "left" | "down" | "up", opts: LayoutOptions): Promise<Positions> {
-	const pos = read(
-		await elk.layout(
-			graph(nodes, edges, {
-				"elk.algorithm": "mrtree",
-				"elk.direction": ELK_DIR[dir],
-				"elk.spacing.nodeNode": String(opts.spacing),
-				"elk.spacing.componentComponent": String(opts.levelSpacing),
-			}),
-		),
-	);
-	const horizontal = dir === "right" || dir === "left";
-	const sign = dir === "right" || dir === "down" ? 1 : -1;
-	const byId = new Map(nodes.map((n) => [n.id, n]));
-	const extent = (id: string) => (horizontal ? byId.get(id)?.width : byId.get(id)?.height) ?? 0;
-	// Depth of every node from its root.
-	const depth = new Map<string, number>();
-	for (const root of roots(nodes, edges)) {
-		depth.set(root, 0);
-		const queue = [root];
-		while (queue.length) {
-			const cur = queue.shift()!;
-			for (const c of childrenOf(edges, cur)) if (!depth.has(c)) {
-				depth.set(c, depth.get(cur)! + 1);
-				queue.push(c);
-			}
-		}
-	}
-	const maxDepth = Math.max(0, ...depth.values());
-	const levelSize: number[] = Array.from({ length: maxDepth + 1 }, () => 0);
-	for (const [id, d] of depth) levelSize[d] = Math.max(levelSize[d]!, extent(id));
-	const offset: number[] = [0];
-	for (let d = 1; d <= maxDepth; d++) offset[d] = offset[d - 1]! + levelSize[d - 1]! + opts.levelSpacing;
-	for (const [id, p] of pos) {
-		const d = depth.get(id) ?? 0;
-		// Leading edge of each level lines up; "left"/"up" mirror around the root.
-		const main = sign > 0 ? offset[d]! : -offset[d]! - extent(id) + extent(roots(nodes, edges)[0] ?? id);
-		pos.set(id, horizontal ? { x: main, y: p.y } : { x: p.x, y: main });
-	}
-	return pos;
-}
-
 export async function computeLayout(elk: ElkLike, nodes: TNode[], edges: TEdge[], opts: LayoutOptions): Promise<Positions> {
 	if (nodes.length === 0) return new Map();
 	const ids = new Set(nodes.map((n) => n.id));
@@ -178,38 +134,74 @@ export async function computeLayout(elk: ElkLike, nodes: TNode[], edges: TEdge[]
 	// Radial: our own collision-free layout (ELK's radial ignores card sizes and overlaps them).
 	if (opts.direction === "radial") return anchor(radialLayout(nodes, tree, rootIds, opts), nodes, firstRoot);
 
-	if (opts.direction === "balanced") {
-		// Lay out each tree as two half-trees (right and left) around its root.
-		const byId = new Map(nodes.map((n) => [n.id, n]));
-		const out: Positions = new Map();
-		let offsetY = 0;
-		for (const root of rootIds) {
-			const kids = childrenOf(tree, root);
-			const sizeOf = (id: string) => descendants(tree, id).length + 1;
-			const [rightKids, leftKids] = balance(kids, sizeOf);
-			const half = async (side: string[], dir: "right" | "left") => {
-				const keep = new Set([root, ...side.flatMap((k) => [k, ...descendants(tree, k)])]);
-				const sub = nodes.filter((n) => keep.has(n.id));
-				return treeLayout(elk, sub, tree.filter((e) => keep.has(e.from) && keep.has(e.to)), dir, opts);
-			};
-			const right = await half(rightKids, "right");
-			const left = await half(leftKids, "left");
-			const r0 = right.get(root)!;
-			const l0 = left.get(root)!;
-			const placed: Positions = new Map();
-			for (const [id, p] of right) placed.set(id, { x: p.x - r0.x, y: p.y - r0.y });
-			for (const [id, p] of left) if (id !== root) placed.set(id, { x: p.x - l0.x, y: p.y - l0.y });
-			const minY = Math.min(...[...placed.values()].map((p) => p.y));
-			const maxY = Math.max(...[...placed.entries()].map(([id, p]) => p.y + (byId.get(id)?.height ?? 0)));
-			for (const [id, p] of placed) out.set(id, { x: p.x, y: p.y - minY + offsetY });
-			offsetY += maxY - minY + opts.levelSpacing;
-		}
-		// Nodes outside any tree (no root reached them) keep their place.
-		for (const n of nodes) if (!out.has(n.id)) out.set(n.id, { x: n.x, y: n.y });
-		return anchor(out, nodes, firstRoot);
-	}
+	return anchor(orderedTrees(nodes, tree, rootIds, opts.direction, opts), nodes, firstRoot);
+}
 
-	return anchor(await treeLayout(elk, nodes, tree, opts.direction, opts), nodes, firstRoot);
+/**
+ * Directional and balanced mind maps, laid out without ELK: ELK's tree algorithm reorders
+ * siblings, so a map the user rearranged by dragging came back in another order. Here children
+ * keep the order they show on the board (see siblingOrder), every run of the layout.
+ */
+function orderedTrees(nodes: TNode[], tree: TEdge[], rootIds: string[], direction: "right" | "left" | "down" | "up" | "balanced", opts: LayoutOptions): Positions {
+	const byId = new Map(nodes.map((n) => [n.id, n]));
+	const kids = siblingOrder(nodes, tree);
+	const horizontal = direction !== "down" && direction !== "up";
+	const out: Positions = new Map();
+	// Several maps: each one keeps its root where it is, then they are stacked across the main
+	// axis (in the order their roots sit) so none overlaps the one before.
+	const ordered = [...rootIds].sort((a, b) => (horizontal ? byId.get(a)!.y - byId.get(b)!.y : byId.get(a)!.x - byId.get(b)!.x));
+	let next = -Infinity;
+	for (const root of ordered) {
+		const pos = direction === "balanced" ? balancedTree(byId, kids, root, opts) : tidyTree(nodes, kids, root, { direction, spacing: opts.spacing, levelSpacing: opts.levelSpacing, rtl: false });
+		const span = (id: string, p: { x: number; y: number }): [number, number] => (horizontal ? [p.y, p.y + byId.get(id)!.height] : [p.x, p.x + byId.get(id)!.width]);
+		const lo = Math.min(...[...pos].map(([id, p]) => span(id, p)[0]));
+		const hi = Math.max(...[...pos].map(([id, p]) => span(id, p)[1]));
+		const shift = next === -Infinity || lo >= next ? 0 : next - lo;
+		for (const [id, p] of pos) out.set(id, horizontal ? { x: p.x, y: p.y + shift } : { x: p.x + shift, y: p.y });
+		next = hi + shift + opts.levelSpacing;
+	}
+	// Nodes outside any tree (no root reached them) keep their place.
+	for (const n of nodes) if (!out.has(n.id)) out.set(n.id, { x: n.x, y: n.y });
+	return out;
+}
+
+/** Children of every parent in the order they show on the board (see orderChildren). */
+export function siblingOrder(nodes: TNode[], tree: TEdge[]): Map<string, string[]> {
+	const byId = new Map(nodes.map((n) => [n.id, n]));
+	const kids = new Map<string, string[]>();
+	for (const e of tree) if (byId.has(e.from) && byId.has(e.to)) (kids.get(e.from) ?? kids.set(e.from, []).get(e.from)!).push(e.to);
+	for (const [parent, list] of kids)
+		kids.set(
+			parent,
+			orderChildren(byId.get(parent)!, list.map((id) => byId.get(id)!), false).map((n) => n.id),
+		);
+	return kids;
+}
+
+/**
+ * A balanced map: children that already sit on the left of the root stay on the left, the
+ * others on the right, each side top to bottom as on the board. A map whose children are all on
+ * one side (the first balanced run) is split by subtree size, keeping their order.
+ */
+function balancedTree(byId: Map<string, TNode>, kids: Map<string, string[]>, root: string, opts: LayoutOptions): Positions {
+	const r = byId.get(root)!;
+	const all = kids.get(root) ?? [];
+	const cx = (id: string) => byId.get(id)!.x + byId.get(id)!.width / 2;
+	const cy = (id: string) => byId.get(id)!.y + byId.get(id)!.height / 2;
+	let right = all.filter((id) => cx(id) >= r.x + r.width / 2);
+	let left = all.filter((id) => cx(id) < r.x + r.width / 2);
+	if (!right.length || !left.length) {
+		const size = (id: string): number => 1 + (kids.get(id) ?? []).reduce((s, k) => s + size(k), 0);
+		const byY = [...all].sort((a, b) => cy(a) - cy(b));
+		[right, left] = balance(byY, size);
+	}
+	right.sort((a, b) => cy(a) - cy(b));
+	left.sort((a, b) => cy(a) - cy(b));
+	const nodes = [...byId.values()];
+	const base = { spacing: opts.spacing, levelSpacing: opts.levelSpacing, rtl: false };
+	const forward = tidyTree(nodes, new Map([...kids, [root, right]]), root, { ...base, direction: "right" });
+	const back = tidyTree(nodes, new Map([...kids, [root, left]]), root, { ...base, direction: "left" });
+	return new Map([...back, ...forward]);
 }
 
 /** Ease-out cubic interpolation of positions, for the animated transition. */

@@ -67,8 +67,9 @@ palm rejection, palm navigation and a drag button, the pen's eraser end, whole-s
 move / scale / delete / lock strokes, recent colors, smoothing, a size slider with an exact
 number box, and shape recognition (hold at the end of a stroke). Every stroke is its own
 drawing; resize a drawing's card and its strokes scale with it. Marks drawn on a card stick to it: they move, copy and delete with the card.
-Highlight words inside a card without editing it (swipe or tap with a pen or the mouse; the
-highlight goes into the card's text). Free lines and arrows whose ends stick to cards and that
+Highlight words inside a card without editing it, or color their letters (swipe or tap with a pen
+or the mouse; the highlight or color goes into the card's text, so it shows in every view and in
+Markdown). Free lines and arrows whose ends stick to cards and that
 keep the corners you draw; bend points keep the route's shape when cards move (square routes stay
 square), drawn above the cards (or under them). Standalone shapes with
 fill, outline, opacity and rotation. Sticky notes in any color (the last 10 custom colors are
@@ -76,8 +77,8 @@ kept) whose text shrinks to fit. Floating text without a card around it. Infinit
 lines at any angle (turn them live with a slider from the selection toolbar) with their own
 color and thickness. Non-destructive image crop.
 Lock items in place. Smart groups (Ctrl/Cmd+G, like in other whiteboard apps): cards that
-select and move as one with no frame around them; double-click a card to work on it alone, copies
-form their own group.
+select and move as one with no frame around them; double-click (or double-tap with a finger or
+pen) a card to work on it alone, copies form their own group.
 
 **Mind maps** — Tab / Enter to add children and siblings (a sibling goes right after its card),
 drag a card onto another card's "Add as child" / "Add as sibling" targets to move it with its
@@ -86,9 +87,12 @@ between cards, walk through a map with the arrow keys at your zoom (or with on-s
 touch screens) without making slides — Right into the children, Left to the parent, Up and Down
 along the siblings, wherever the cards sit (groups with arrows are stops too). No keyboard needed:
 tap the empty board around the card, or the small arrows beside it, to move that way. The column
-view shows the same walk as columns: the parents on the left, the card and its siblings in the
-middle, its children on the right. Also
-collapsible branches with child counts, and automatic layout (mind map in any direction,
+view shows the same walk as columns, one page at a time: the parents on the left, the card and its
+siblings in the middle, its children on the right; groups are cards whose children are what they
+hold. Add children and siblings there (+ buttons, Tab, Enter), edit cards, highlight or color words
+and write on cards shown at their exact board layout. Also
+collapsible branches with child counts, and automatic layout that keeps the order the cards show
+on the board (mind map in any direction,
 collision-free radial that respects every card's size, balanced, layered flowchart, grid) as one
 animated undo step; groups move as rigid blocks (also when a dropped card re-arranges the map), a
 group around the whole map grows to hold it, and every arrow gets the sides of its shortest path
@@ -97,9 +101,10 @@ that passes under no card and crosses no other arrow (or bends around the cards 
 **Pages** — split a huge map into pages of the same canvas: _Move branch to a new page_ takes
 everything below a card to a page of its own; the card stays in the map and it and the page's
 first card link to each other. One page shows at a time in each tab (two tabs can show two pages),
-a bar at the top shows where you are, and a pages index in the left sidebar lists them as a tree.
-Walking through the map crosses pages, Canvas → Markdown writes pages as nested headings (nested
-bullets past the sixth level), and a page can be brought back into the map (from its first card,
+a bar at the top shows where you are, and a pages index in the left sidebar lists them as a tree
+(a page's icon folds the pages under it). Walking through the map crosses pages, Canvas → Markdown
+writes pages as nested headings (nested bullets past the sixth level) or a note with pages, with
+the links between a card and its page at the end of their lines, and a page can be brought back into the map (from its first card,
 the card it comes from, the pages index or the command palette). Or move a branch to
 another spot of the same page, linked the same way. Without the plugin the pages simply sit side
 by side on the board.

@@ -459,7 +459,11 @@ describe("pages in the outline", () => {
 	it("writes each page as a heading under the map it comes from", () => {
 		const md = exportClean(paged(), { ...exportOpts, notePath: "H.md" }).md;
 		const headings = md.split("\n").filter((l) => l.startsWith("#"));
-		expect(headings).toEqual(["# Hypertension", "## Beta-blockers", "### Contraindications"]);
+		// The link back to the break-point card ends the page's heading line.
+		expect(headings).toEqual(["# Hypertension", "## Beta-blockers [[H.canvas#bb000001|Link]]", "### Contraindications"]);
+		// The break-point card's link ends its own line: no blank line, no lone link.
+		expect(md).toContain("- Beta-blockers [[H.canvas#bbroot01|Link]]\n");
+		expect(md.split("\n").some((l) => /^\s*\[\[/.test(l))).toBe(false);
 		expect(md.indexOf("Asthma")).toBeGreaterThan(md.indexOf("### Contraindications"));
 	});
 
@@ -474,6 +478,19 @@ describe("pages in the outline", () => {
 		expect(md).toContain("###### Hypertension");
 		expect(md).toMatch(/\t\t- Beta-blockers/);
 		expect(md).toMatch(/\t\t\t\t- Contraindications/);
+	});
+
+	it("reads inline page links back without changing the cards, and edits keep the board's form", async () => {
+		const canvas = paged();
+		const { md, data } = exportClean(canvas, { ...exportOpts, notePath: "H.md" });
+		const untouched = parseOutline(md);
+		matchOutline(untouched, data.outline ?? []);
+		const same = await applyNote(untouched, data, canvas, elk, options());
+		expect(same.updated).toBe(0);
+		const edited = parseOutline(md.replace("- Beta-blockers [[", "- Beta blockers (drugs) [["));
+		matchOutline(edited, data.outline ?? []);
+		const result = await applyNote(edited, data, canvas, elk, options());
+		expect(result.data.nodes!.find((n) => n.id === "bb000001")!.text).toBe("Beta blockers (drugs)\n\n[[H.canvas#bbroot01|Link]]");
 	});
 
 	it("keeps pages when the note is read back, and new lines join the page", async () => {
@@ -527,7 +544,7 @@ describe("a note with pages", () => {
 	it("writes each page as a section of its own, main page first, parents before their pages", () => {
 		const md = exportClean(paged(), { ...opts, notePath: "H.md" }).md;
 		const headings = md.split("\n").filter((l) => l.startsWith("#"));
-		expect(headings).toEqual(["# Hypertension", "# Beta-blockers", "# Contraindications", "# Diet"]);
+		expect(headings).toEqual(["# Hypertension", "# Beta-blockers [[H.canvas#bb000001|Link]]", "# Contraindications", "# Diet"]);
 		expect(md.indexOf("Atenolol")).toBeLessThan(md.indexOf("# Contraindications"));
 		expect(md.indexOf("Asthma")).toBeGreaterThan(md.indexOf("# Contraindications"));
 	});
@@ -540,7 +557,9 @@ describe("a note with pages", () => {
 		expect(note.sections.map((s) => s.page)).toEqual(["", "p1", "p2", "p3"]);
 		const lines = edited.split("\n");
 		const p1 = note.sections[1]!;
-		expect(lines[p1.from]).toBe("# Beta-blockers");
+		expect(lines[p1.from]).toBe("# Beta-blockers [[H.canvas#bb000001|Link]]");
+		// The page's title has no link in it.
+		expect(p1.title).toBe("Beta-blockers");
 		expect(lines.slice(p1.from, p1.to).join("\n")).toContain("Metoprolol");
 		expect(lines.slice(p1.from, p1.to).join("\n")).not.toContain("Asthma");
 		expect(note.sections[0]!.from).toBe(0);

@@ -9,6 +9,7 @@ import { matchOutline } from "./match";
 import type { NoteData } from "./note";
 import { DATA_HEADING } from "./note";
 import { parseOutline, stripFrontmatter, type OutlineItem } from "./outline";
+import { withoutTrailingLinks } from "./page-links";
 import { pageOfNode, pageOrder, pagesOfRoot, type PageRef } from "./structure";
 
 export interface PageSection {
@@ -72,7 +73,7 @@ export function readPagedNote(md: string, data: NoteData | null): PagedNote | nu
 	const titles = new Map<number, string>();
 	const collectTitles = (list: OutlineItem[]) => {
 		for (const item of list) {
-			if (item.line !== undefined) titles.set(item.line + offset, item.text.split("\n")[0]!.replace(/^#+\s*/, "").trim());
+			if (item.line !== undefined) titles.set(item.line + offset, withoutTrailingLinks(item.text.split("\n")[0]!.replace(/^#+\s*/, "")));
 			collectTitles(item.children);
 		}
 	};

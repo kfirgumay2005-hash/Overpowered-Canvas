@@ -69,6 +69,8 @@ const WATCHED_EVENTS = [
 	"selection-encapsulated",
 	"portal-opened",
 	"text-highlighted",
+	"text-colored",
+	"column-card-added",
 	"lasso-selected",
 	"selection-cut",
 	"note-exported",

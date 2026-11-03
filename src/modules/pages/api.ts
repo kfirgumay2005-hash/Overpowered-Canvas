@@ -42,6 +42,8 @@ export interface PagesApi {
 export interface PagesSource {
 	/** Identifies what is shown: the index draws again when it changes. */
 	key: object;
+	/** The file the pages are of (the index remembers which pages are folded in it). */
+	path?: string;
 	alive(): boolean;
 	pages(): PageInfo[];
 	/** "" for the main page. */

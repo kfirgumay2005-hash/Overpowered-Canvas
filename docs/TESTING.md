@@ -666,3 +666,37 @@ Automated runtime checks of every item below were run in an isolated Obsidian 1.
   Reading keeps the exact same size; `font-size: 150%` gives 24 px with a 16 px vault size; Reset
   removes the property. Same on mobile.
 - [ ] Tutorials 25–27 run to the end with "Show me", in every language.
+
+## Feedback round 8 (column view, notes with pages, touch)
+
+- [ ] Auto layout: add children A, B, C, D (Tab), drag D above A, run Auto layout (and Repeat)
+  twice → D, A, B, C in every direction (forward, backward, down, up, balanced keeps each side).
+  Drop a card on a sibling target → it lands after that sibling and stays there on re-layout.
+- [ ] Column view, actual size: a card with headings, lists (nested, numbered, tasks), a quote, a
+  callout, code, a table, right-to-left text and long text → its text sits exactly as on the board;
+  ink drawn on the board lands on the same words at any zoom. Images too.
+- [ ] Groups in the column view: an arrow to the group box or to any card inside it shows the
+  group's card; its children are the cards and sub-groups directly inside, then its own arrows'
+  targets; no connected card is missing.
+- [ ] Pages: the column view shows only the current page; a page link opens the page there, the
+  backlink returns; switching page from the bar or the index moves the column view along.
+- [ ] Adding: + beside the card (child), + below (sibling), Tab / Enter / F2. The card is on the
+  board, linked, placed beside its siblings; a map with a layout re-arranges. Leave it empty or
+  press Esc → it disappears with no undo step left. Inside a group → the card is placed in the group
+  and the group grows. Ctrl/Cmd+Z in the column view undoes.
+- [ ] Tools (bottom left): pen (cards switch to actual size while it is on; no line/arrow tools),
+  highlighter, text color. Esc ends the tool, then the walk. Strokes drawn here are at the same
+  place on the board. Touch: fingers move the columns once a pen was used.
+- [ ] Text color: on the board and in columns; bold / highlighted words take the color; the eraser
+  takes colors off; the mode button switches tools; the color shows in Canvas → Markdown notes,
+  reading view, text pages and after the round trip.
+- [ ] Notes with pages: links at the end of the card's line and of the page heading, no blank
+  lines; reading the note back changes no card. Arrows (prev / next) work by mouse, touch, and
+  with the editor focused (tablet keyboard stays); index button opens the index; index icon
+  folds sub-pages (remembered per file), the name opens the page.
+- [ ] Smart groups on a tablet: double-tap a grouped card → only it; double-tap again → edit;
+  long-press a card of a selected group → Select only this card picks that card.
+- [ ] Font size per note on a tablet: with the left drawer open, the command palette lists the
+  commands; the note's ⋮ menu and a long press in the text have "Font size of this note".
+- [ ] Tutorials Drawing, Mind maps, Big maps in pages, Column view, Smart groups and Font size
+  per note run to the end with "Show me", in every language.

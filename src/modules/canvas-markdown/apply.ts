@@ -14,6 +14,7 @@ import { childPosition, directionBetween, logical, type Dir, type TEdge, type TN
 import type { MapLayout, NoteData } from "./note";
 import { rootMapLayouts } from "./note";
 import { normalizeText, type OutlineItem } from "./outline";
+import { inlinePageLinks, outlinePageLinks, pageLinkTargets } from "./page-links";
 import { estimateSize } from "./size";
 import { tidyTree } from "./tidy";
 import { isDrawing, nodeText, pageOfNode, pagesOfRoot } from "./structure";
@@ -69,9 +70,14 @@ function withContent(node: CanvasNodeData, fields: Partial<CanvasNodeData>): Can
 	return { ...rest, ...fields };
 }
 
-/** The node with the note's text, or itself when the text didn't change (whitespace aside). */
-function updateText(node: CanvasNodeData, text: string, resolveFile: ApplyOptions["resolveFile"]): CanvasNodeData | null {
+/**
+ * The node with the note's text, or itself when the text didn't change (whitespace aside, and the
+ * links to its page written at the end of its line, see page-links.ts).
+ */
+function updateText(node: CanvasNodeData, text: string, resolveFile: ApplyOptions["resolveFile"], linkTargets: ReadonlySet<string> = new Set()): CanvasNodeData | null {
 	if (normalizeText(nodeText(node)) === normalizeText(text)) return null;
+	if (normalizeText(inlinePageLinks(nodeText(node), linkTargets)) === normalizeText(text)) return null;
+	text = outlinePageLinks(text, linkTargets);
 	if (node.type === "group") return { ...node, label: text };
 	if (node.type === "text") return withContent(node, { type: "text", text });
 	const fields = contentFields(text, resolveFile);
@@ -111,7 +117,9 @@ export async function applyNote(items: OutlineItem[], note: NoteData | null, bas
 	const idToAlias = new Map([...aliasToId].map(([a, id]) => [id, a]));
 	const baseNodes = new Map((base?.nodes ?? []).map((n) => [n.id, n]));
 	// A page's root card heads a map of its own, wherever the note nests it.
-	const pageRoots = new Set(pagesOfRoot(base ? (base as unknown as Record<string, unknown>) : note?.root).map((p) => p.root));
+	const pageRefs = pagesOfRoot(base ?? note?.root);
+	const pageRoots = new Set(pageRefs.map((p) => p.root));
+	const linkTargets = pageLinkTargets(pageRefs);
 	const known = new Set(fromNote.keys());
 
 	// 1. Walk the outline: resolve ids, update text, create cards.
@@ -134,7 +142,7 @@ export async function applyNote(items: OutlineItem[], note: NoteData | null, bas
 			}
 			const existing = resolve(item.id);
 			if (item.kind === "group" && existing?.type === "group") {
-				const next = updateText(existing, item.text, opts.resolveFile);
+				const next = updateText(existing, item.text, opts.resolveFile, linkTargets);
 				if (next) updated++;
 				nodes.set(existing.id, next ?? existing);
 				walk(item.children, null, existing.id);
@@ -146,7 +154,7 @@ export async function applyNote(items: OutlineItem[], note: NoteData | null, bas
 				continue;
 			}
 			if (existing && existing.type !== "group" && !isDrawing(existing)) {
-				const next = updateText(existing, item.text, opts.resolveFile);
+				const next = updateText(existing, item.text, opts.resolveFile, linkTargets);
 				if (next) updated++;
 				nodes.set(existing.id, next ?? existing);
 				placed.push({ id: existing.id, parent: pageRoots.has(existing.id) ? null : parent, group, isNew: false });

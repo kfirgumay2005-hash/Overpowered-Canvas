@@ -154,6 +154,7 @@ export class TextPagesView extends FileView {
 		const file = this.file;
 		return {
 			key: this,
+			path: file.path,
 			alive: () => this.contentEl.isConnected,
 			pages: () => book.pages.filter((p) => p.id).map((p) => ({ id: p.id, anchor: p.anchor!, root: "", ...(p.parent ? { parent: p.parent } : {}) })),
 			current: () => this.page,

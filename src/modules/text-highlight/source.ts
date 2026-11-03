@@ -1,14 +1,17 @@
 /**
  * From words picked on a rendered card back to its Markdown (pure, unit-tested): which source
- * characters a stretch of rendered text came from, and how to highlight or unhighlight them.
+ * characters a stretch of rendered text came from, and how to highlight them or color their
+ * text (and take that off again).
  */
 
 /** How far ahead (characters) a rendered character is looked for in the source. */
 const LOOKAHEAD = 48;
 /** Inline markup that may sit right around a highlighted stretch. */
 const MARKUP = new Set(["*", "_", "~", "=", "`"]);
-/** A highlight in Markdown: `==text==` or `<mark …>text</mark>`. */
-const HIGHLIGHTS = /==([^=\n]+)==|<mark\b[^>]*>([\s\S]*?)<\/mark>/g;
+/** A highlight in Markdown: `==text==` (a single "=" may be inside) or `<mark …>text</mark>`. */
+const HIGHLIGHTS = /==((?:[^=\n]|=(?!=))+)==|<mark\b[^>]*>([\s\S]*?)<\/mark>/g;
+/** Text in a color of its own, as the text color tool writes it: `<span style="color: …;">text</span>`. */
+const COLORED = /<span style="color: ?[^";<>]+;?">([\s\S]*?)<\/span>/g;
 /** List markers, quote markers and heading signs at the start of a source line. */
 const LINE_PREFIX = /^(\s*(?:[-*+]\s+(?:\[.\]\s+)?|\d+[.)]\s+|>\s?|#{1,6}\s+))*/;
 
@@ -87,6 +90,11 @@ export function withoutHighlights(source: string): string {
 	return unhighlight(source, 0, source.length);
 }
 
+/** The text with every text color taken off: coloring must change nothing else. */
+export function withoutColors(source: string): string {
+	return uncolor(source, 0, source.length);
+}
+
 /** Widens [start, end) of `text` to whole words. */
 export function toWords(text: string, start: number, end: number): [number, number] {
 	if (start > end) [start, end] = [end, start];
@@ -119,10 +127,22 @@ export interface HighlightStyle {
  * properly, and a stretch over several lines is highlighted line by line (list markers stay out).
  */
 export function highlight(source: string, start: number, end: number, style: HighlightStyle): string {
-	while (start > 0 && MARKUP.has(source[start - 1]!) && source[start - 1] !== "=") start--;
-	while (end < source.length && MARKUP.has(source[end]!) && source[end] !== "=") end++;
 	const open = style.color ? `<mark style="background: ${style.color};">` : "==";
 	const close = style.color ? "</mark>" : "==";
+	return wrap(source, start, end, open, close);
+}
+
+/**
+ * Puts `open` … `close` around source [start, end), line by line (list markers stay out).
+ * `takeMarkup`: inline markup right around the stretch goes inside (a highlight around **bold**);
+ * otherwise the tags go inside the markup (a color inside **bold**, so the theme's color for bold
+ * text does not win over it).
+ */
+function wrap(source: string, start: number, end: number, open: string, close: string, takeMarkup = true): string {
+	if (takeMarkup) {
+		while (start > 0 && MARKUP.has(source[start - 1]!) && source[start - 1] !== "=") start--;
+		while (end < source.length && MARKUP.has(source[end]!) && source[end] !== "=") end++;
+	}
 	const lines = source.slice(start, end).split("\n");
 	const wrapped = lines.map((line, i) => {
 		const prefix = i === 0 ? "" : (LINE_PREFIX.exec(line)?.[0] ?? "");
@@ -137,8 +157,18 @@ export function highlight(source: string, start: number, end: number, style: Hig
 
 /** Removes every highlight (`==…==` or `<mark>…</mark>`) that overlaps source [start, end). */
 export function unhighlight(source: string, start: number, end: number): string {
+	return unwrap(source, start, end, HIGHLIGHTS);
+}
+
+/** Removes every text color that overlaps source [start, end). */
+export function uncolor(source: string, start: number, end: number): string {
+	return unwrap(source, start, end, COLORED);
+}
+
+/** `pattern` matches with their text in group 1 or 2: each one overlapping [start, end) is undone. */
+function unwrap(source: string, start: number, end: number, pattern: RegExp): string {
 	const spans: { from: number; to: number; inner: string }[] = [];
-	for (const m of source.matchAll(HIGHLIGHTS)) {
+	for (const m of source.matchAll(pattern)) {
 		const from = m.index;
 		const to = from + m[0].length;
 		if (from < end && to > start) spans.push({ from, to, inner: m[1] ?? m[2] ?? "" });
@@ -149,10 +179,39 @@ export function unhighlight(source: string, start: number, end: number): string 
 }
 
 /**
+ * [start, end) widened over every `pattern` element it cuts through, so the tag that goes
+ * around it nests properly: an element the stretch lies inside, or one it holds whole, stays.
+ */
+function widen(source: string, start: number, end: number, pattern: RegExp): [number, number] {
+	for (let changed = true; changed; ) {
+		changed = false;
+		for (const m of source.matchAll(pattern)) {
+			const from = m.index;
+			const to = from + m[0].length;
+			const inner = m[1] ?? m[2] ?? "";
+			const close = m[0].startsWith("==") ? 2 : m[0].length - m[0].lastIndexOf("<");
+			const innerEnd = to - close;
+			const innerStart = innerEnd - inner.length;
+			const overlaps = from < end && to > start;
+			const inside = start >= innerStart && end <= innerEnd;
+			const holds = start <= from && end >= to;
+			if (overlaps && !inside && !holds) {
+				start = Math.min(start, from);
+				end = Math.max(end, to);
+				changed = true;
+			}
+		}
+	}
+	return [start, end];
+}
+
+/**
  * Highlights source [start, end) in `style`; highlights it overlaps are taken in and recolored,
  * so marking part of a highlight again changes its color instead of nesting a second one.
  */
 export function rehighlight(source: string, start: number, end: number, style: HighlightStyle): string {
+	// A text color it cuts through is taken in whole.
+	[start, end] = widen(source, start, end, COLORED);
 	let from = start;
 	let to = end;
 	for (const m of source.matchAll(HIGHLIGHTS)) {
@@ -166,4 +225,25 @@ export function rehighlight(source: string, start: number, end: number, style: H
 	if (from === start && to === end) return highlight(source, start, end, style);
 	const inner = unhighlight(source.slice(from, to), 0, to - from);
 	return highlight(source.slice(0, from) + inner + source.slice(to), from, from + inner.length, style);
+}
+
+/**
+ * Colors the text of source [start, end) (`<span style="color: …;">`); colors it overlaps are
+ * taken in and replaced, and a highlight it cuts through is taken in whole. Line by line, like
+ * highlights.
+ */
+export function recolor(source: string, start: number, end: number, color: string): string {
+	[start, end] = widen(source, start, end, HIGHLIGHTS);
+	let from = start;
+	let to = end;
+	for (const m of source.matchAll(COLORED)) {
+		const a = m.index;
+		const b = a + m[0].length;
+		if (a < end && b > start) {
+			from = Math.min(from, a);
+			to = Math.max(to, b);
+		}
+	}
+	const inner = uncolor(source.slice(from, to), 0, to - from);
+	return wrap(source.slice(0, from) + inner + source.slice(to), from, from + inner.length, `<span style="color: ${color};">`, "</span>", false);
 }
