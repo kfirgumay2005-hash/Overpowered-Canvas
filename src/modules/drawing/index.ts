@@ -1,3 +1,4 @@
+import { Notice } from "obsidian";
 import { syncCanvasRect } from "../../core/canvas-rect";
 import { defineModule, type ModuleContext } from "../../core/module";
 import type { I18nKey, Translate } from "../../i18n";
@@ -7,10 +8,10 @@ import type { CanvasLike, CanvasNodeLike } from "../../internals/types";
 import { mergeWithDefaults } from "../../settings/settings";
 import { attachTarget } from "../free-lines/attach";
 import { cornersOf, lineNodeData, shapeNodeData, snapEnds, type P } from "../free-lines/model";
-import { capturePointer, claimTool, mutate, nodeType, randomId, releaseTool } from "../shared";
+import { capturePointer, claimTool, mutate, nodeType, randomId, releaseTool, selectedNodes } from "../shared";
 import { anchorOf, enableAnchors, stickyTargets } from "./anchors";
 import { cardUnder } from "./stick";
-import { absolutePoints, CARRIER_TEXT, makeStroke, refit, shiftStroke } from "./carriers";
+import { absolutePoints, CARRIER_TEXT, makeStroke, refit, scaleStrokes, shiftStroke } from "./carriers";
 import { renderInk } from "./render";
 import { DRAWING_DEFAULTS, INK_DEFAULT, InkToolbar, PEN_TOOLS, sanitizePens, type DrawingSettings, type InkTool, type PenTool } from "./toolbar";
 import { logError } from "../../core/log";
@@ -98,10 +99,10 @@ class InkSession {
 		this.toolbar = new InkToolbar(wrapper, {
 			t: ctx.t,
 			settings: () => ctx.settings,
-			update: (patch) => {
+			update: (patch, render = true) => {
 				if (patch.tool) this.panning = false;
 				void ctx.updateSettings(patch).then(() => {
-					this.toolbar.render();
+					if (render) this.toolbar.render();
 					this.updateCursor();
 				});
 			},
@@ -353,7 +354,8 @@ class InkSession {
 		// Drawn on a card: the stroke sticks to it, in that card's own ink.
 		const anchor = s.stickToCards ? cardUnder(points, stickyTargets(this.ctx, this.canvas)) : null;
 		mutate(this.ctx, this.canvas, () => {
-			const near = this.carriersNear(box, 60).filter((c) => (anchorOf(this.ctx, c) ?? null) === anchor);
+			// Each stroke is its own drawing, unless strokes are set to join the drawing nearby.
+			const near = s.groupStrokes ? this.carriersNear(box, 60).filter((c) => (anchorOf(this.ctx, c) ?? null) === anchor) : [];
 			const carrier = this.lastCarrier && near.includes(this.lastCarrier) ? this.lastCarrier : near.sort((a, b) => b.zIndex - a.zIndex)[0];
 			const id = randomId(8);
 			if (!carrier) {
@@ -589,16 +591,18 @@ export const drawingModule = defineModule<DrawingSettings>({
 
 	enable(ctx) {
 		const sessions = new Map<CanvasLike, InkSession>();
+		/** Drawings being resized by hand → the size their strokes are laid out for. */
+		const resizing = new Map<CanvasNodeLike, { width: number; height: number }>();
 		const rerender = (node: CanvasNodeLike) => {
 			const extra = ctx.data.node(node).get();
-			if (extra.kind === "ink") renderInk(node, extra.strokes ?? [], sessions.get(node.canvas)?.selectedOf(node) ?? new Set(), forward(node));
+			if (extra.kind === "ink") renderInk(node, extra.strokes ?? [], sessions.get(node.canvas)?.selectedOf(node) ?? new Set(), forward(node), resizing.get(node));
 		};
 		/** Clicking ink selects / drags its carrier like a card (the card box itself is click-through). */
 		const forward = (node: CanvasNodeLike) => (evt: PointerEvent) => (node as unknown as { onPointerdown(e: PointerEvent): void }).onPointerdown(evt);
 
 		ctx.decorateNodes({
 			apply: (node, extra) => {
-				if (extra.kind === "ink" && nodeType(node) === "text") renderInk(node, extra.strokes ?? [], sessions.get(node.canvas)?.selectedOf(node) ?? new Set(), forward(node));
+				if (extra.kind === "ink" && nodeType(node) === "text") renderInk(node, extra.strokes ?? [], sessions.get(node.canvas)?.selectedOf(node) ?? new Set(), forward(node), resizing.get(node));
 				else if (node.nodeEl.getAttribute("data-opc-kind") === "ink") renderInk(node, undefined, new Set(), forward(node));
 			},
 			clear: (node) => {
@@ -606,6 +610,93 @@ export const drawingModule = defineModule<DrawingSettings>({
 			},
 		});
 		enableAnchors(ctx);
+
+		// Resizing a drawing's card stretches the strokes with it: live while dragging (the
+		// drawing is scaled to the box), written into the strokes when the handle is let go.
+		ctx.on("node-moved", (node) => {
+			if (resizing.has(node)) rerender(node);
+		});
+		ctx.onCanvas((canvas) => {
+			const win = canvas.wrapperEl.win;
+			const onDown = (evt: PointerEvent) => {
+				const handle = (evt.target as Element | null)?.closest(".canvas-node-resizer");
+				if (!handle || canvas.readonly) return;
+				const layer = canvas.nodeInteractionLayer;
+				const nodes = layer && handle.parentElement === layer.interactionEl ? (layer.target ? [layer.target] : []) : selectedNodes(canvas);
+				for (const n of nodes) if (isCarrier(ctx, n) && !ctx.data.node(n).get().locked) resizing.set(n, { width: n.width, height: n.height });
+			};
+			const onUp = () => {
+				const mine = [...resizing].filter(([n]) => n.canvas === canvas);
+				if (!mine.length) return;
+				// Let the core finish the resize first.
+				win.setTimeout(() => {
+					const changed: [CanvasNodeLike, { width: number; height: number }][] = [];
+					for (const [node, from] of mine) {
+						resizing.delete(node);
+						if (Math.abs(node.width - from.width) > 0.5 || Math.abs(node.height - from.height) > 0.5) changed.push([node, from]);
+						else rerender(node);
+					}
+					if (!changed.length) return;
+					try {
+						// Joins the core's pending undo step for the resize.
+						for (const [node, from] of changed) {
+							const strokes = ctx.data.node(node).get().strokes ?? [];
+							const fit = refit(scaleStrokes(strokes, from, node), node);
+							if (!fit) continue;
+							node.moveAndResize(fit.box);
+							ctx.data.node(node).set({ strokes: fit.strokes });
+							rerender(node);
+						}
+						canvas.requestSave();
+					} catch (error) {
+						logError("[overpowered-canvas] drawing: resizing a drawing failed", error);
+					}
+				});
+			};
+			canvas.wrapperEl.addEventListener("pointerdown", onDown, true);
+			win.addEventListener("pointerup", onUp, true);
+			win.addEventListener("pointercancel", onUp, true);
+			return () => {
+				canvas.wrapperEl.removeEventListener("pointerdown", onDown, true);
+				win.removeEventListener("pointerup", onUp, true);
+				win.removeEventListener("pointercancel", onUp, true);
+			};
+		});
+
+		// Drawings saved with many strokes in one card: split them into one drawing per stroke.
+		const split = (canvas: CanvasLike) => {
+			const chosen = selectedNodes(canvas).filter((n) => isCarrier(ctx, n));
+			const carriers = (chosen.length ? chosen : [...canvas.nodes.values()].filter((n) => isCarrier(ctx, n))).filter((c) => !ctx.data.node(c).get().locked && (ctx.data.node(c).get().strokes ?? []).length > 1);
+			let count = 0;
+			mutate(ctx, canvas, () => {
+				for (const carrier of carriers) {
+					const extra = ctx.data.node(carrier).get();
+					const [first, ...rest] = extra.strokes ?? [];
+					if (!first) continue;
+					for (const stroke of rest) {
+						const fit = refit([stroke], carrier);
+						if (!fit) continue;
+						canvas.importData({ nodes: [{ id: randomId(), type: "text", text: CARRIER_TEXT, ...fit.box, "x-opc": { kind: "ink", strokes: fit.strokes, ...(extra.anchor ? { anchor: extra.anchor } : {}) } }], edges: [] }, false);
+						count++;
+					}
+					const keep = refit([first], carrier)!;
+					carrier.moveAndResize(keep.box);
+					ctx.data.node(carrier).set({ strokes: keep.strokes });
+				}
+			});
+			new Notice(ctx.t("drawing.split.done", { count: String(count) }));
+		};
+		ctx.addCommand({
+			id: "split-ink",
+			name: ctx.t("drawing.split"),
+			icon: "ungroup",
+			checkCallback: (checking) => {
+				const canvas = ctx.activeCanvas();
+				if (!canvas || canvas.readonly) return false;
+				if (!checking) split(canvas);
+				return true;
+			},
+		});
 		// Ink cards are not text to edit.
 		ctx.intercept("node-start-editing", (node) => (isCarrier(ctx, node) ? true : undefined));
 

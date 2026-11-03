@@ -151,6 +151,10 @@ Automated runtime checks of every item below were run in an isolated Obsidian 1.
 1. **Drawing:** open a canvas, press **P** (or the pen button in the bottom bar). Draw with the
    pen, pencil, marker and highlighter; change color and size. With a stylus, pressure changes
    the width; touch while the pen is down is ignored. Esc or ✕ leaves drawing mode.
+   Drag the size slider (it follows the pointer) or type a number into the box next to it
+   (Enter applies, Esc restores). Two strokes drawn close together stay two separate
+   drawings; leave drawing mode, select one and drag a corner: its strokes stretch with it,
+   and Ctrl+Z puts it back in one step.
 2. **Shape recognition:** draw a rough rectangle / ellipse / triangle / line and **hold still**
    at the end for half a second: a dashed preview appears; release → a clean shape (or line).
 3. **Eraser:** whole-stroke mode removes touched strokes; *More options → Eraser → Partial*

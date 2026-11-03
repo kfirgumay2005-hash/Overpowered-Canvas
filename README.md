@@ -64,8 +64,9 @@ highlight / select connected edges, draggable bend points and labels.
 
 **Drawing** — pen, pencil, marker and highlighter with pressure and tilt (perfect-freehand),
 palm rejection, palm navigation and a drag button, the pen's eraser end, whole-stroke and partial eraser, lasso to
-move / scale / delete / lock strokes, recent colors, smoothing, and shape recognition (hold at
-the end of a stroke). Marks drawn on a card stick to it: they move, copy and delete with the card.
+move / scale / delete / lock strokes, recent colors, smoothing, a size slider with an exact
+number box, and shape recognition (hold at the end of a stroke). Every stroke is its own
+drawing; resize a drawing's card and its strokes scale with it. Marks drawn on a card stick to it: they move, copy and delete with the card.
 Highlight words inside a card without editing it (swipe or tap with a pen or the mouse; the
 highlight goes into the card's text). Free lines and arrows whose ends stick to cards and that
 keep the corners you draw; bend points keep the route's shape when cards move (square routes stay

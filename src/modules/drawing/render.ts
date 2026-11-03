@@ -14,7 +14,11 @@ export function strokeD(s: Stroke): string {
 	return d;
 }
 
-export function renderInk(node: CanvasNodeLike, strokes: Stroke[] | undefined, selected: ReadonlySet<string>, onPointerDown: (evt: PointerEvent) => void): void {
+/**
+ * Draws the strokes. `view` is the card size the strokes were laid out for: while the card is
+ * being resized it differs from the card, and the drawing stretches to fill the new box.
+ */
+export function renderInk(node: CanvasNodeLike, strokes: Stroke[] | undefined, selected: ReadonlySet<string>, onPointerDown: (evt: PointerEvent) => void, view?: { width: number; height: number }): void {
 	let svg = node.nodeEl.querySelector<SVGSVGElement>(":scope > svg.opc-ink");
 	if (!strokes) {
 		svg?.remove();
@@ -30,7 +34,8 @@ export function renderInk(node: CanvasNodeLike, strokes: Stroke[] | undefined, s
 	}
 	svg.setAttribute("width", String(node.width));
 	svg.setAttribute("height", String(node.height));
-	svg.setAttribute("viewBox", `0 0 ${node.width} ${node.height}`);
+	svg.setAttribute("viewBox", `0 0 ${view?.width ?? node.width} ${view?.height ?? node.height}`);
+	svg.setAttribute("preserveAspectRatio", "none");
 	const existing = new Map<string, SVGPathElement>();
 	for (const p of Array.from(svg.children) as SVGPathElement[]) existing.set(p.dataset.id ?? "", p);
 	const keep = new Set<string>();

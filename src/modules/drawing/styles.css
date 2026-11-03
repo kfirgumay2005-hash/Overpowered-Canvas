@@ -15,9 +15,13 @@ body.opc-mod-drawing .canvas-node[data-opc-kind="ink"].is-focused > .canvas-node
 	border: 1px dashed var(--color-accent);
 	border-radius: var(--radius-s);
 }
-body.opc-mod-drawing .canvas-node[data-opc-kind="ink"] > .canvas-node-resizer,
+body.opc-mod-drawing .canvas-node[data-opc-kind="ink"]:not(.is-selected) > .canvas-node-resizer,
 body.opc-mod-drawing .canvas-node[data-opc-kind="ink"] .canvas-node-connection-point {
 	display: none;
+}
+/* A selected drawing can be resized: its strokes stretch with the card. */
+body.opc-mod-drawing .canvas-node[data-opc-kind="ink"].is-selected > .canvas-node-resizer {
+	pointer-events: auto;
 }
 body.opc-mod-drawing .canvas-node > svg.opc-ink {
 	position: absolute;
@@ -175,8 +179,21 @@ body.opc-mod-drawing .opc-ink-custom-color {
 	background: none;
 	cursor: pointer;
 }
+body.opc-mod-drawing .opc-ink-size-box {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+}
 body.opc-mod-drawing .opc-ink-size {
 	width: 90px;
+	touch-action: none;
+}
+body.opc-mod-drawing .opc-ink-size-number {
+	width: 3.6em;
+	height: 26px;
+	padding: 0 4px;
+	text-align: center;
+	font-variant-numeric: tabular-nums;
 }
 body.opc-mod-drawing .opc-ink-more {
 	position: absolute;
