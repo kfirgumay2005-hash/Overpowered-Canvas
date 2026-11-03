@@ -15,6 +15,7 @@ import { absolutePoints, CARRIER_TEXT, makeStroke, refit, scaleStrokes, shiftStr
 import { renderInk } from "./render";
 import { DRAWING_DEFAULTS, INK_DEFAULT, InkToolbar, PEN_TOOLS, sanitizePens, type DrawingSettings, type InkTool, type PenTool } from "./toolbar";
 import { logError } from "../../core/log";
+import { inkHost, type InkSurface } from "./api";
 
 type Ctx = ModuleContext<DrawingSettings>;
 
@@ -57,9 +58,24 @@ function eraserInput(evt: PointerEvent): boolean {
 	return evt.pointerType === "pen" && ((evt.buttons & 32) !== 0 || evt.button === 5 || (evt.buttons & 2) !== 0);
 }
 
+/** The board as a surface to draw on. */
+function boardSurface(canvas: CanvasLike): InkSurface {
+	return {
+		host: canvas.wrapperEl,
+		toCanvas: (x, y) => canvas.posFromEvt({ clientX: x, clientY: y } as MouseEvent),
+		scale: () => canvas.scale,
+		placePreview: (svg) => {
+			if (svg.parentElement !== canvas.canvasEl) canvas.canvasEl.appendChild(svg);
+		},
+		pan: (dx, dy) => canvas.setViewport(canvas.x - dx / canvas.scale, canvas.y - dy / canvas.scale, canvas.zoom),
+	};
+}
+
 class InkSession {
 	private readonly overlay: HTMLElement;
 	private readonly preview: SVGSVGElement;
+	/** What the preview draws in: board coordinates. */
+	private readonly layer: SVGGElement;
 	private readonly hover: SVGCircleElement;
 	private readonly toolbar: InkToolbar;
 	private current: {
@@ -87,16 +103,19 @@ class InkSession {
 	constructor(
 		private readonly ctx: Ctx,
 		private readonly canvas: CanvasLike,
+		private readonly surface: InkSurface,
 		private readonly onClose: () => void,
 		private readonly rerender: (node: CanvasNodeLike) => void,
 	) {
-		const wrapper = canvas.wrapperEl;
+		const host = surface.host;
 		// A hovering pen shows its brush before any press.
 		syncCanvasRect(canvas);
-		this.overlay = wrapper.createDiv({ cls: "opc-ink-overlay" });
-		this.preview = canvas.canvasEl.createSvg("svg", { cls: "opc-ink-preview" });
-		this.hover = this.preview.createSvg("circle", { cls: "opc-ink-hover" });
-		this.toolbar = new InkToolbar(wrapper, {
+		this.overlay = host.createDiv({ cls: "opc-ink-overlay" });
+		this.preview = host.createSvg("svg", { cls: "opc-ink-preview" });
+		this.layer = this.preview.createSvg("g");
+		surface.placePreview(this.preview, this.layer, Number.NaN, Number.NaN);
+		this.hover = this.layer.createSvg("circle", { cls: "opc-ink-hover" });
+		this.toolbar = new InkToolbar(host, {
 			t: ctx.t,
 			settings: () => ctx.settings,
 			update: (patch, render = true) => {
@@ -117,28 +136,36 @@ class InkSession {
 			},
 			close: () => this.onClose(),
 			colorName: (color) => colorName(ctx.t, color),
+			hiddenTools: surface.inkOnly ? ["line", "arrow"] : [],
 		});
-		wrapper.addClass("opc-drawing");
+		host.addClass("opc-drawing");
 		this.overlay.addEventListener("pointerdown", this.onDown);
 		this.overlay.addEventListener("pointermove", this.onMove);
 		this.overlay.addEventListener("pointerup", this.onUp);
 		this.overlay.addEventListener("pointercancel", this.onUp);
 		this.overlay.addEventListener("pointerleave", () => this.hover.setAttribute("r", "0"));
-		wrapper.win.addEventListener("keydown", this.onKey, true);
+		host.win.addEventListener("keydown", this.onKey, true);
 		this.updateCursor();
 	}
 
 	destroy(): void {
 		this.clearSelection();
-		this.canvas.wrapperEl.win.removeEventListener("keydown", this.onKey, true);
+		this.surface.host.win.removeEventListener("keydown", this.onKey, true);
 		this.overlay.remove();
 		this.preview.remove();
 		this.toolbar.destroy();
-		this.canvas.wrapperEl.removeClass("opc-drawing");
+		this.surface.host.removeClass("opc-drawing");
 	}
 
 	private get tool(): InkTool {
-		return this.ctx.settings.tool;
+		const tool = this.ctx.settings.tool;
+		// Lines and arrows are cards of their own, which a surface for ink only doesn't show.
+		return this.surface.inkOnly && (tool === "line" || tool === "arrow") ? "pen" : tool;
+	}
+
+	/** The board point under the pointer (inside a gesture, always one). */
+	private pos(evt: { clientX: number; clientY: number }): P {
+		return this.surface.toCanvas(evt.clientX, evt.clientY, false) ?? { x: 0, y: 0 };
 	}
 
 	private updateCursor(): void {
@@ -169,10 +196,13 @@ class InkSession {
 		const stale = this.current;
 		if (stale && evt.pointerType !== "touch" && evt.pointerId !== stale.pointerId) this.onUp(new PointerEvent("pointerup", { pointerId: stale.pointerId }));
 		if (this.canvas.readonly || this.current) return;
+		// Pressing where nothing can be drawn (between the cards of another view): left to it.
+		const p = this.panning ? { x: 0, y: 0 } : this.surface.toCanvas(evt.clientX, evt.clientY, true);
+		if (!p) return;
 		evt.preventDefault();
 		evt.stopPropagation();
 		capturePointer(this.overlay, evt.pointerId);
-		const p = this.canvas.posFromEvt(evt);
+		this.surface.placePreview(this.preview, this.layer, evt.clientX, evt.clientY);
 		const base = { pointerId: evt.pointerId, points: [] as InkPoint[], erasing: false, changed: false, holdTimer: 0, lastHold: { x: evt.clientX, y: evt.clientY }, recognized: null };
 		if (this.panning) {
 			this.current = { ...base, mode: "pan" };
@@ -185,7 +215,7 @@ class InkSession {
 		}
 		if (this.tool === "select") {
 			const box = this.selectionBox();
-			const handle = 12 / this.canvas.scale;
+			const handle = 12 / this.surface.scale();
 			if (box && Math.abs(p.x - box.maxX) < handle && Math.abs(p.y - box.maxY) < handle) return this.startTransform("scale", evt, p, box);
 			if (box && p.x >= box.minX && p.x <= box.maxX && p.y >= box.minY && p.y <= box.maxY) return this.startTransform("move", evt, p, box);
 			this.clearSelection();
@@ -204,31 +234,33 @@ class InkSession {
 
 	private onMove = (evt: PointerEvent) => {
 		if (evt.pointerType === "pen") this.penUntil = Date.now() + 800;
-		const p = this.canvas.posFromEvt(evt);
-		this.showHover(p, evt);
 		const cur = this.current;
+		if (!cur) this.surface.placePreview(this.preview, this.layer, evt.clientX, evt.clientY);
+		const over = this.surface.toCanvas(evt.clientX, evt.clientY, false);
+		if (over) this.showHover(over, evt);
+		else this.hover.setAttribute("r", "0");
 		if (!cur || evt.pointerId !== cur.pointerId) return;
+		const p = over ?? this.pos(evt);
 		evt.preventDefault();
 		if (cur.mode === "pan") {
-			const { x, y, zoom, scale } = this.canvas;
-			this.canvas.setViewport(x - (evt.clientX - cur.lastHold.x) / scale, y - (evt.clientY - cur.lastHold.y) / scale, zoom);
+			this.surface.pan(evt.clientX - cur.lastHold.x, evt.clientY - cur.lastHold.y);
 			cur.lastHold = { x: evt.clientX, y: evt.clientY };
 			return;
 		}
 		const events = typeof evt.getCoalescedEvents === "function" ? evt.getCoalescedEvents() : [evt];
 		if (cur.mode === "erase") {
-			for (const e of events.length ? events : [evt]) this.eraseAt(this.canvas.posFromEvt(e));
+			for (const e of events.length ? events : [evt]) this.eraseAt(this.pos(e));
 			return;
 		}
 		if (cur.mode === "move" || cur.mode === "scale") return this.applyTransform(p);
 		if (cur.mode === "line") {
 			// The whole trail: its corners become the line's bend points (Shift: straight).
-			for (const e of events.length ? events : [evt]) cur.points.push({ ...this.canvas.posFromEvt(e), p: 0.5 });
+			for (const e of events.length ? events : [evt]) cur.points.push({ ...this.pos(e), p: 0.5 });
 			cur.straight = evt.shiftKey;
 			this.drawPreview();
 			return;
 		}
-		for (const e of events.length ? events : [evt]) cur.points.push(cur.mode === "lasso" ? { ...this.canvas.posFromEvt(e), p: 0.5 } : this.point(e));
+		for (const e of events.length ? events : [evt]) cur.points.push(cur.mode === "lasso" ? { ...this.pos(e), p: 0.5 } : this.point(e));
 		if (cur.mode === "draw" && Math.hypot(evt.clientX - cur.lastHold.x, evt.clientY - cur.lastHold.y) > 4) {
 			cur.recognized = null;
 			this.armHold(evt);
@@ -241,7 +273,7 @@ class InkSession {
 		if (!cur || evt.pointerId !== cur.pointerId) return;
 		this.current = null;
 		window.clearTimeout(cur.holdTimer);
-		this.preview.querySelectorAll(".opc-ink-live").forEach((el) => el.remove());
+		this.layer.querySelectorAll(".opc-ink-live").forEach((el) => el.remove());
 		try {
 			if (cur.mode === "draw") this.commitStroke(cur.points, cur.recognized);
 			else if (cur.mode === "line") this.commitLine(cur.points, !!cur.straight);
@@ -262,6 +294,8 @@ class InkSession {
 		if (evt.key === "Escape") {
 			evt.preventDefault();
 			evt.stopPropagation();
+			// Esc ends drawing only (not the walk or the view it draws on).
+			evt.stopImmediatePropagation();
 			if (this.selection.size) this.clearSelection();
 			else this.onClose();
 		} else if ((evt.key === "Delete" || evt.key === "Backspace") && this.selection.size) {
@@ -272,14 +306,14 @@ class InkSession {
 	};
 
 	private point(evt: PointerEvent): InkPoint {
-		const p = this.canvas.posFromEvt(evt);
+		const p = this.pos(evt);
 		const pressure = evt.pointerType === "mouse" ? 0.5 : evt.pressure || 0.5;
 		return { x: p.x, y: p.y, p: pressure, ...tiltOf(evt) };
 	}
 
 	private armHold(evt: PointerEvent): void {
 		const cur = this.current;
-		if (!cur || !this.ctx.settings.recognize) return;
+		if (!cur || !this.ctx.settings.recognize || this.surface.inkOnly) return;
 		window.clearTimeout(cur.holdTimer);
 		cur.lastHold = { x: evt.clientX, y: evt.clientY };
 		cur.holdTimer = window.setTimeout(() => {
@@ -291,7 +325,7 @@ class InkSession {
 
 	private showHover(p: P, evt: PointerEvent): void {
 		if (evt.pointerType === "touch" || this.panning) return;
-		const r = this.tool === "eraser" || eraserInput(evt) ? this.ctx.settings.eraserSize / 2 / this.canvas.scale : this.tool === "select" ? 0 : this.size(this.tool) / 2;
+		const r = this.tool === "eraser" || eraserInput(evt) ? this.ctx.settings.eraserSize / 2 / this.surface.scale() : this.tool === "select" ? 0 : this.size(this.tool) / 2;
 		this.hover.setAttribute("cx", String(p.x));
 		this.hover.setAttribute("cy", String(p.y));
 		this.hover.setAttribute("r", String(Math.max(0, r)));
@@ -302,16 +336,16 @@ class InkSession {
 
 	private drawPreview(): void {
 		const cur = this.current;
-		this.preview.querySelectorAll(".opc-ink-live").forEach((el) => el.remove());
+		this.layer.querySelectorAll(".opc-ink-live").forEach((el) => el.remove());
 		if (!cur) return;
 		const s = this.ctx.settings;
 		if (cur.mode === "lasso") {
-			const pl = this.preview.createSvg("polyline", { cls: ["opc-ink-live", "opc-ink-lasso"] });
+			const pl = this.layer.createSvg("polyline", { cls: ["opc-ink-live", "opc-ink-lasso"] });
 			pl.setAttribute("points", cur.points.map((p) => `${p.x},${p.y}`).join(" "));
 			return;
 		}
 		if (cur.mode === "line") {
-			const l = this.preview.createSvg("polyline", { cls: ["opc-ink-live", "opc-ink-line-preview"] });
+			const l = this.layer.createSvg("polyline", { cls: ["opc-ink-live", "opc-ink-line-preview"] });
 			const pts = this.lineCorners(cur.points, !!cur.straight);
 			l.setAttrs({ points: pts.map((q) => `${q.x},${q.y}`).join(" "), stroke: s.color, "stroke-width": s.sizes.pen, fill: "none" });
 			return;
@@ -321,15 +355,15 @@ class InkSession {
 			const r = cur.recognized;
 			const el =
 				r.kind === "line" || r.kind === "arrow"
-					? this.preview.createSvg("line", { cls: ["opc-ink-live", "opc-ink-recognized"], attr: { x1: r.from.x, y1: r.from.y, x2: r.to.x, y2: r.to.y } })
+					? this.layer.createSvg("line", { cls: ["opc-ink-live", "opc-ink-recognized"], attr: { x1: r.from.x, y1: r.from.y, x2: r.to.x, y2: r.to.y } })
 					: r.kind === "ellipse"
-						? this.preview.createSvg("ellipse", { cls: ["opc-ink-live", "opc-ink-recognized"], attr: { cx: (r.box.minX + r.box.maxX) / 2, cy: (r.box.minY + r.box.maxY) / 2, rx: (r.box.maxX - r.box.minX) / 2, ry: (r.box.maxY - r.box.minY) / 2 } })
-						: this.preview.createSvg("rect", { cls: ["opc-ink-live", "opc-ink-recognized"], attr: { x: r.box.minX, y: r.box.minY, width: r.box.maxX - r.box.minX, height: r.box.maxY - r.box.minY } });
+						? this.layer.createSvg("ellipse", { cls: ["opc-ink-live", "opc-ink-recognized"], attr: { cx: (r.box.minX + r.box.maxX) / 2, cy: (r.box.minY + r.box.maxY) / 2, rx: (r.box.maxX - r.box.minX) / 2, ry: (r.box.maxY - r.box.minY) / 2 } })
+						: this.layer.createSvg("rect", { cls: ["opc-ink-live", "opc-ink-recognized"], attr: { x: r.box.minX, y: r.box.minY, width: r.box.maxX - r.box.minX, height: r.box.maxY - r.box.minY } });
 			el.setAttribute("stroke", s.color);
 			return;
 		}
 		const tool = this.tool as PenTool;
-		const path = this.preview.createSvg("path", { cls: tool === "highlighter" ? ["opc-ink-live", "is-highlighter"] : "opc-ink-live" });
+		const path = this.layer.createSvg("path", { cls: tool === "highlighter" ? ["opc-ink-live", "is-highlighter"] : "opc-ink-live" });
 		path.setAttribute("d", strokePath(cur.points, tool, this.size(tool), s.smoothing, !s.pressure));
 		path.setAttribute("fill", s.color);
 		path.style.opacity = tool === "highlighter" ? "0.35" : tool === "pencil" ? "0.85" : "1";
@@ -396,7 +430,7 @@ class InkSession {
 		const b = trail[trail.length - 1]!;
 		if (straight || trail.length < 3) return [a, b];
 		const box = (n: CanvasNodeLike | null) => n && { x: n.x, y: n.y, width: n.width, height: n.height };
-		return cornersOf(trail, 14 / this.canvas.scale, box(attachTarget(this.ctx, this.canvas, a)), box(attachTarget(this.ctx, this.canvas, b)));
+		return cornersOf(trail, 14 / this.surface.scale(), box(attachTarget(this.ctx, this.canvas, a)), box(attachTarget(this.ctx, this.canvas, b)));
 	}
 
 	private commitLine(trail: P[], straight: boolean): void {
@@ -417,7 +451,7 @@ class InkSession {
 	private eraseAt(p: P): void {
 		const cur = this.current;
 		if (!cur) return;
-		const r = this.ctx.settings.eraserSize / 2 / this.canvas.scale;
+		const r = this.ctx.settings.eraserSize / 2 / this.surface.scale();
 		const partial = this.ctx.settings.eraserMode === "partial";
 		for (const carrier of this.carriersNear({ minX: p.x, minY: p.y, maxX: p.x, maxY: p.y }, r)) {
 			const origin = { x: carrier.x, y: carrier.y };
@@ -479,13 +513,13 @@ class InkSession {
 	}
 
 	private renderSelection(): void {
-		this.preview.querySelectorAll(".opc-ink-selection").forEach((el) => el.remove());
+		this.layer.querySelectorAll(".opc-ink-selection").forEach((el) => el.remove());
 		const box = this.selectionBox();
 		if (!box) return;
-		const rect = this.preview.createSvg("rect", { cls: "opc-ink-selection", attr: { x: box.minX, y: box.minY, width: box.maxX - box.minX, height: box.maxY - box.minY } });
-		rect.style.strokeWidth = `${1.5 / this.canvas.scale}px`;
-		const h = 10 / this.canvas.scale;
-		this.preview.createSvg("rect", { cls: ["opc-ink-selection", "opc-ink-handle"], attr: { x: box.maxX - h / 2, y: box.maxY - h / 2, width: h, height: h } });
+		const rect = this.layer.createSvg("rect", { cls: "opc-ink-selection", attr: { x: box.minX, y: box.minY, width: box.maxX - box.minX, height: box.maxY - box.minY } });
+		rect.style.strokeWidth = `${1.5 / this.surface.scale()}px`;
+		const h = 10 / this.surface.scale();
+		this.layer.createSvg("rect", { cls: ["opc-ink-selection", "opc-ink-handle"], attr: { x: box.maxX - h / 2, y: box.maxY - h / 2, width: h, height: h } });
 	}
 
 	private clearSelection(): void {
@@ -700,6 +734,7 @@ export const drawingModule = defineModule<DrawingSettings>({
 		// Ink cards are not text to edit.
 		ctx.intercept("node-start-editing", (node) => (isCarrier(ctx, node) ? true : undefined));
 
+		const ended = new Map<CanvasLike, () => void>();
 		const stop = (canvas: CanvasLike) => {
 			releaseTool(canvas, "drawing");
 			const session = sessions.get(canvas);
@@ -707,16 +742,22 @@ export const drawingModule = defineModule<DrawingSettings>({
 			sessions.delete(canvas);
 			session.destroy();
 			ctx.events.emit("drawing-mode-changed", canvas, null);
+			const onEnd = ended.get(canvas);
+			ended.delete(canvas);
+			onEnd?.();
 		};
-		const start = (canvas: CanvasLike) => {
-			if (sessions.has(canvas) || canvas.readonly) return;
+		const start = (canvas: CanvasLike, surface: InkSurface = boardSurface(canvas), onEnd?: () => void) => {
+			if (sessions.has(canvas)) stop(canvas);
+			if (canvas.readonly) return;
 			// The lasso or the highlighter ends first.
 			claimTool(canvas, "drawing", () => stop(canvas));
 			canvas.deselectAll();
-			sessions.set(canvas, new InkSession(ctx, canvas, () => stop(canvas), rerender));
+			sessions.set(canvas, new InkSession(ctx, canvas, surface, () => stop(canvas), rerender));
+			if (onEnd) ended.set(canvas, onEnd);
 			ctx.events.emit("drawing-mode-changed", canvas, ctx.settings.tool);
 		};
 		const toggle = (canvas: CanvasLike) => (sessions.has(canvas) ? stop(canvas) : start(canvas));
+		inkHost.api = { start, stop, active: (canvas) => sessions.has(canvas) };
 
 		ctx.addCanvasKey({ modifiers: [], key: "P", handle: (canvas) => (canvas.readonly ? false : (toggle(canvas), true)) });
 		ctx.onCanvas((canvas) => () => stop(canvas));
@@ -741,6 +782,7 @@ export const drawingModule = defineModule<DrawingSettings>({
 			onClick: (canvas) => toggle(canvas),
 		});
 		ctx.register(() => {
+			inkHost.api = null;
 			for (const canvas of [...sessions.keys()]) stop(canvas);
 		});
 	},

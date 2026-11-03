@@ -273,3 +273,115 @@ body.opc-mod-presentation .canvas-wrapper.opc-walking .canvas-node > .opc-branch
 body.opc-mod-presentation .canvas-wrapper.opc-walking .canvas-node .opc-collapse-toggle {
 	display: none;
 }
+
+/* Actual size, text cards: built like the board's card, so its styles lay the text out. */
+body.opc-mod-presentation .opc-columns-card.is-replica {
+	border: none;
+	background-color: transparent;
+	/* The board's text size, whatever the column text size is set to. */
+	font-size: inherit;
+}
+body.opc-mod-presentation .opc-columns-replica.canvas-node {
+	position: relative;
+	inset: auto;
+	transform: none;
+	width: var(--opc-card-width);
+	height: var(--opc-card-height);
+	opacity: 1;
+}
+body.opc-mod-presentation .opc-columns-replica .markdown-preview-pusher {
+	width: 1px;
+	height: 0.1px;
+	margin-bottom: 0;
+}
+body.opc-mod-presentation .opc-columns-replica .el-table {
+	overflow-x: auto;
+}
+
+/* Tools of the column view (drawing, highlighter, text color). */
+body.opc-mod-presentation .opc-columns-tools {
+	position: absolute;
+	/* Bottom left, across from the walking pad (the columns always run left to right). */
+	bottom: calc(var(--size-4-4) + var(--opc-pad-lift, 0px));
+	left: var(--size-4-4);
+	z-index: 20;
+	display: flex;
+	gap: var(--size-2-2);
+	padding: var(--size-2-3);
+	background-color: var(--background-primary);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-l);
+	box-shadow: var(--shadow-s);
+}
+body.opc-mod-presentation .opc-columns-tool {
+	width: 40px;
+	height: 40px;
+	padding: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+body.opc-mod-presentation .opc-columns-tool.is-active {
+	color: var(--text-on-accent);
+	background-color: var(--interactive-accent);
+}
+/* The tools' own bars sit above the columns. */
+body.opc-mod-presentation .opc-columns > :is(.opc-ink-toolbar, .opc-hl-bar) {
+	z-index: 21;
+}
+/* "+" on the current card: a child beside it, a sibling below it. */
+body.opc-mod-presentation .opc-columns-add {
+	position: absolute;
+	z-index: 2;
+	width: 28px;
+	height: 28px;
+	padding: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: 50%;
+	color: var(--text-on-accent);
+	background-color: var(--interactive-accent);
+	box-shadow: var(--shadow-s);
+	opacity: 0.9;
+}
+body.opc-mod-presentation .opc-columns-add:hover {
+	opacity: 1;
+	background-color: var(--interactive-accent-hover);
+}
+body.opc-mod-presentation .opc-columns-add.is-child {
+	top: 50%;
+	right: -14px;
+	transform: translateY(-50%);
+}
+body.opc-mod-presentation .opc-columns-add.is-sibling {
+	left: 50%;
+	bottom: -14px;
+	transform: translateX(-50%);
+}
+body.opc-mod-presentation .opc-columns.has-tool .opc-columns-add,
+body.opc-mod-presentation .opc-columns-card.is-editing .opc-columns-add {
+	display: none;
+}
+/* Cards at their board size without a replica (files, links): the frame takes no room, so the
+   card's top-left corner is the board's. */
+body.opc-mod-presentation .opc-columns-card.is-actual:not(.is-replica) {
+	border: none;
+	outline: 1px solid var(--background-modifier-border);
+	outline-offset: -1px;
+}
+body.opc-mod-presentation .opc-columns-card.is-actual.has-color:not(.is-replica) {
+	outline: 2px solid var(--opc-card-color);
+	outline-offset: -2px;
+}
+/* The highlighter and the text color tool find the words under the pen. */
+body.opc-mod-presentation .opc-columns.is-marking .opc-columns-card,
+body.opc-mod-presentation .opc-columns.is-marking .opc-columns-card * {
+	user-select: text;
+	-webkit-user-select: text;
+	cursor: text;
+}
+/* The default ink is drawn light in dark themes, as on the board. */
+body.theme-dark.opc-mod-presentation .opc-columns-ink path[fill="#1e1e1e"] {
+	fill: #e8e8e8;
+}

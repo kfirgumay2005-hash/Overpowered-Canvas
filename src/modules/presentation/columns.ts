@@ -1,12 +1,12 @@
-import { Component, Keymap, MarkdownRenderer, Notice, type App } from "obsidian";
+import { Component, Keymap, MarkdownRenderer, Notice, setIcon, type App } from "obsidian";
 import { logError } from "../../core/log";
 import type { ModuleContext } from "../../core/module";
 import type { CanvasLike, CanvasNodeLike } from "../../internals/types";
 import { nodeText } from "../canvas-markdown/structure";
+import type { InkSurface } from "../drawing/api";
 import { strokeD } from "../drawing/render";
-import { pagesHost } from "../pages/api";
-import { withoutLink } from "../pages/logic";
 import { nodeType } from "../shared";
+import type { MarkSurface } from "../text-highlight/api";
 import { columnPositions, keepZoom, zoomAround, type View } from "./column-layout";
 
 export interface Column {
@@ -24,6 +24,9 @@ export interface ColumnOptions {
 	actualSize: boolean;
 }
 
+/** A tool of the column view: drawing, the highlighter, the text color tool. */
+export type ColumnTool = "ink" | "highlight" | "color";
+
 export interface ColumnHost {
 	/** A card was tapped. */
 	open(id: string): void;
@@ -32,8 +35,24 @@ export interface ColumnHost {
 	options(): ColumnOptions;
 	/** A card's text was edited here: write it to the canvas. */
 	save(id: string, text: string): boolean;
+	/** Cards can be added and edited (the board is not read-only). */
+	editable(): boolean;
+	/** Adds a child of the current card, or a sibling after it. */
+	add(kind: "child" | "sibling"): void;
+	/** A card just added here was left empty: take it away. */
+	discard(id: string): void;
+	/** The tools offered (by the modules that are on). */
+	tools(): ColumnTool[];
+	/** A tool button was pressed: turn it on (or off, when it is on). */
+	useTool(tool: ColumnTool): void;
 }
 
+const TOOL_ICONS: Record<ColumnTool, string> = { ink: "pen-tool", highlight: "highlighter", color: "baseline" };
+const TOOL_LABELS = { ink: "drawing.command", highlight: "textHighlight.button", color: "textHighlight.color.button" } as const;
+/** How near a card (screen px) a pen press still draws on it. */
+const INK_REACH = 12;
+
+const IMAGE_EXTENSIONS: ReadonlySet<string> = new Set(["png", "jpg", "jpeg", "gif", "bmp", "svg", "webp", "avif"]);
 /** Wheel distance that counts as one step along the siblings. */
 const WHEEL_STEP = 60;
 /** Inertial wheels keep sending events: at most one step in this time. */
@@ -85,6 +104,13 @@ export class ColumnView {
 	private editing: { id: string; input: HTMLTextAreaElement } | null = null;
 	private last: { columns: Column[]; current: string; path: string[] } | null = null;
 	private readonly resizer: ResizeObserver;
+	private readonly toolsEl: HTMLElement;
+	/** The tool on, if any. */
+	private tool: ColumnTool | null = null;
+	/** Drawing shows every card at its size on the board, whatever the setting. */
+	private forcedActual = false;
+	/** The card a pen gesture draws on (from its press to its release). */
+	private inkCard: string | null = null;
 
 	constructor(
 		private readonly app: App,
@@ -102,6 +128,10 @@ export class ColumnView {
 		this.el.addEventListener("pointercancel", this.onCancel);
 		this.el.addEventListener("click", this.onClick, true);
 		this.el.addEventListener("wheel", this.onWheel, { passive: false });
+		const release = () => (this.inkCard = null);
+		this.el.addEventListener("pointerup", release, true);
+		this.el.addEventListener("pointercancel", release, true);
+		this.toolsEl = this.el.createDiv({ cls: "opc-columns-tools", attr: { role: "toolbar" } });
 		// The view's own size (window, split, a tablet turned): the columns stay centered.
 		this.resizer = new ResizeObserver(() => {
 			this.view = keepZoom(this.view.zoom, this.size());
@@ -113,19 +143,23 @@ export class ColumnView {
 
 	// ---------- drawing ----------
 
-	show(columns: Column[], current: string, path: string[]): void {
+	/** `keep`: the same zoom, scroll and dragged columns (the board changed, not the card). */
+	show(columns: Column[], current: string, path: string[], keep = false): void {
 		this.last = { columns, current, path };
 		this.editing = null;
 		this.component.unload();
 		this.component = new Component();
 		this.component.load();
 		this.track.empty();
-		const asked = this.host.options();
+		const asked = { ...this.host.options() };
+		if (this.forcedActual) asked.actualSize = true;
 		// A column never takes more than about three quarters of the view (phones), so the next shows.
 		const room = this.el.clientWidth ? Math.max(160, Math.round(this.el.clientWidth * 0.72)) : asked.width;
 		const opts = { ...asked, width: Math.min(asked.width, room) };
 		this.el.toggleClass("is-actual-size", opts.actualSize);
 		this.el.setCssProps({ "--opc-columns-font-size": `${opts.fontSize > 0 ? opts.fontSize : this.canvasFontSize()}px`, "--opc-columns-width": `${opts.width}px` });
+		this.renderTools();
+		const editable = this.host.editable();
 		const onPath = new Set(path);
 		const source = this.canvas.view.file?.path ?? "";
 		const pending: Promise<void>[] = [];
@@ -148,29 +182,46 @@ export class ColumnView {
 				this.colorCard(card, node);
 				if (id === column.active) activeCard = card;
 				if (id === current) this.middle = this.placed.length;
-				const body = card.createDiv({ cls: "opc-columns-body markdown-preview-view markdown-rendered" });
-				pending.push(MarkdownRenderer.render(this.app, this.textOf(id, nodeText(node.getData())), body, source, this.component));
 				// A group is its name: at its size on the board it would be a big empty box.
 				const actual = opts.actualSize && nodeType(node) !== "group";
 				const width = actual ? node.width : opts.width;
 				card.toggleClass("is-actual", actual);
+				const text = nodeText(node.getData());
+				const image = actual ? this.imageOf(node) : null;
+				if (actual && nodeType(node) === "text") {
+					// Laid out by the board's own styles, so handwriting lands on the same words.
+					const sizer = this.textReplica(this.replica(card, node), node);
+					pending.push(MarkdownRenderer.render(this.app, text, sizer, source, this.component).then(() => wrapBlocks(sizer)));
+				} else if (image) {
+					const content = this.replica(card, node).createDiv({ cls: "canvas-node-content media-embed image-embed is-loaded" });
+					content.createEl("img", { attr: { src: image, draggable: "false" } });
+				} else {
+					const body = card.createDiv({ cls: "opc-columns-body markdown-preview-view markdown-rendered" });
+					pending.push(MarkdownRenderer.render(this.app, text, body, source, this.component));
+				}
 				if (actual) {
 					card.setCssProps({ "--opc-card-width": `${node.width}px`, "--opc-card-height": `${node.height}px` });
 					this.drawInk(card, node);
 				}
+				if (id === current && editable) this.addButtons(card, path.length > 1);
 				widest = Math.max(widest, width);
 				if (id === column.active) activeWidth = width;
 			}
 			columnEl.setCssProps({ "--opc-column-width": `${widest}px` });
 			this.placed.push({ column: columnEl, card: activeCard, reach: opts.actualSize && activeWidth ? activeWidth : widest, width: widest });
 		}
-		this.shifts = this.placed.map(() => 0);
-		this.el.removeClass("is-moved");
-		this.view = keepZoom(this.view.zoom, this.size());
-		this.layout(true);
+		if (keep) {
+			const before = this.shifts;
+			this.shifts = this.placed.map((_, i) => before[i] ?? 0);
+		} else {
+			this.shifts = this.placed.map(() => 0);
+			this.el.removeClass("is-moved");
+			this.view = keepZoom(this.view.zoom, this.size());
+		}
+		this.layout(!keep);
 		// Rendered text and images change the heights the columns are centered by.
 		Promise.all(pending).then(
-			() => this.layout(true),
+			() => this.layout(!keep),
 			(e) => logError("[overpowered-canvas] columns: render", e),
 		);
 	}
@@ -184,8 +235,145 @@ export class ColumnView {
 	}
 
 	/** Draws the walk again, keeping zoom (after an edit or a change on the board). */
-	redraw(): void {
-		if (this.last) this.show(this.last.columns, this.last.current, this.last.path);
+	redraw(keep = false): void {
+		if (this.last) this.show(this.last.columns, this.last.current, this.last.path, keep);
+	}
+
+	/** Draws the ink of the cards again (strokes added, erased or moved), nothing else. */
+	refreshInk(): void {
+		for (const card of Array.from(this.track.querySelectorAll<HTMLElement>(".opc-columns-card.is-actual"))) {
+			const node = card.dataset.id ? this.canvas.nodes.get(card.dataset.id) : undefined;
+			if (!node) continue;
+			card.querySelector(".opc-columns-ink")?.remove();
+			this.drawInk(card, node);
+			// The pen's live preview stays on top.
+			const preview = card.querySelector(":scope > svg.opc-ink-preview");
+			if (preview) card.appendChild(preview);
+		}
+	}
+
+	// ---------- tools and new cards ----------
+
+	/** The tool buttons at the side of the view (drawing, highlighter, text color). */
+	private renderTools(): void {
+		this.toolsEl.empty();
+		const tools = this.host.tools();
+		this.toolsEl.toggle(tools.length > 0);
+		for (const tool of tools) {
+			const b = this.toolsEl.createEl("button", { cls: "clickable-icon opc-columns-tool", attr: { "aria-label": this.ctx.t(TOOL_LABELS[tool]), "data-tool": tool } });
+			setIcon(b, TOOL_ICONS[tool]);
+			b.toggleClass("is-active", this.tool === tool);
+			b.addEventListener("pointerdown", (e) => e.stopPropagation());
+			b.addEventListener("click", (e) => {
+				e.preventDefault();
+				e.stopPropagation();
+				this.host.useTool(tool);
+			});
+		}
+	}
+
+	/** The tool now on (null: none). Drawing shows the cards at their size on the board. */
+	setTool(tool: ColumnTool | null): void {
+		this.tool = tool;
+		this.el.toggleClass("has-tool", !!tool);
+		this.el.toggleClass("is-marking", tool === "highlight" || tool === "color");
+		const force = tool === "ink" && !this.host.options().actualSize;
+		if (force !== this.forcedActual) {
+			this.forcedActual = force;
+			this.redraw(true);
+		} else this.renderTools();
+	}
+
+	/** "+" buttons on the current card: a child (beside it) and a sibling (below it). */
+	private addButtons(card: HTMLElement, sibling: boolean): void {
+		const button = (kind: "child" | "sibling", label: string) => {
+			const b = card.createEl("button", { cls: `clickable-icon opc-columns-add is-${kind}`, attr: { "aria-label": label } });
+			setIcon(b, "plus");
+			b.addEventListener("pointerdown", (e) => e.stopPropagation());
+			b.addEventListener("click", (e) => {
+				e.preventDefault();
+				e.stopPropagation();
+				this.host.add(kind);
+			});
+		};
+		button("child", this.ctx.t("presentation.columns.addChild"));
+		if (sibling) button("sibling", this.ctx.t("presentation.columns.addSibling"));
+	}
+
+	private cardEl(id: string): HTMLElement | null {
+		return this.track.querySelector<HTMLElement>(`.opc-columns-card[data-id="${CSS.escape(id)}"]`);
+	}
+
+	/** The card shown at its board size under (or right next to) a screen point. */
+	private actualCardAt(x: number, y: number): string | null {
+		let best: { id: string; d: number } | null = null;
+		for (const card of Array.from(this.track.querySelectorAll<HTMLElement>(".opc-columns-card.is-actual"))) {
+			const r = card.getBoundingClientRect();
+			const dx = Math.max(r.left - x, 0, x - r.right);
+			const dy = Math.max(r.top - y, 0, y - r.bottom);
+			const d = Math.hypot(dx, dy);
+			if (d <= INK_REACH && card.dataset.id && (!best || d < best.d)) best = { id: card.dataset.id, d };
+		}
+		return best?.id ?? null;
+	}
+
+	/** The board point a screen point over card `id` stands for. */
+	private toBoard(id: string, x: number, y: number): { x: number; y: number } | null {
+		const node = this.canvas.nodes.get(id);
+		const r = this.cardEl(id)?.getBoundingClientRect();
+		if (!node || !r || !r.width) return null;
+		const k = node.width / r.width;
+		return { x: node.x + (x - r.left) * k, y: node.y + (y - r.top) * k };
+	}
+
+	/**
+	 * Where the pen draws in this view: on the cards at their board size, in board coordinates
+	 * (strokes land on the board exactly where they show here). Ink only: lines and shapes are
+	 * cards of their own, which the columns don't show.
+	 */
+	inkSurface(): InkSurface {
+		return {
+			host: this.el,
+			inkOnly: true,
+			toCanvas: (x, y, press) => {
+				if (press) this.inkCard = this.actualCardAt(x, y);
+				const id = this.inkCard ?? this.actualCardAt(x, y);
+				return id ? this.toBoard(id, x, y) : null;
+			},
+			scale: () => {
+				const id = this.inkCard ?? this.last?.current ?? "";
+				const node = this.canvas.nodes.get(id);
+				const r = this.cardEl(id)?.getBoundingClientRect();
+				return node && r?.width ? r.width / node.width : this.view.zoom;
+			},
+			placePreview: (svg, layer, x, y) => {
+				const id = this.inkCard ?? (Number.isFinite(x) ? this.actualCardAt(x, y) : null);
+				const card = id ? this.cardEl(id) : null;
+				const node = id ? this.canvas.nodes.get(id) : undefined;
+				if (!card || !node) return;
+				if (svg.parentElement !== card) card.appendChild(svg);
+				layer.setAttribute("transform", `translate(${-node.x} ${-node.y})`);
+			},
+			pan: (dx, dy) => {
+				this.el.addClass("is-moved");
+				this.view = { ...this.view, x: this.view.x + dx, y: this.view.y + dy };
+				this.applyView();
+			},
+		};
+	}
+
+	/** Where the highlighter and the text color tool mark words in this view. */
+	markSurface(): MarkSurface {
+		return {
+			host: this.el,
+			cardAt: (x, y) => {
+				const card = this.el.doc.elementFromPoint(x, y)?.closest<HTMLElement>(".opc-columns-card");
+				const node = card?.dataset.id ? this.canvas.nodes.get(card.dataset.id) : undefined;
+				if (!card || !node || card.hasClass("is-editing")) return null;
+				const root = card.querySelector<HTMLElement>(".markdown-preview-sizer") ?? card.querySelector<HTMLElement>(".opc-columns-body");
+				return root ? { node, root } : null;
+			},
+		};
 	}
 
 	private size(): { width: number; height: number } {
@@ -250,6 +438,47 @@ export class ColumnView {
 		return size > 0 ? size : 16;
 	}
 
+	/**
+	 * A text card built like the board builds it (the same nested elements, classes, data
+	 * attributes and color variables as its card there), so the board's styles, the theme's and
+	 * other modules' (alignment, fonts, colors) lay its content out exactly as on the board.
+	 * Returns its container, for the content.
+	 */
+	private replica(card: HTMLElement, node: CanvasNodeLike): HTMLElement {
+		card.addClass("is-replica");
+		const src = node.nodeEl;
+		const shell = card.createDiv({ cls: "opc-columns-replica" });
+		for (const cls of Array.from(src.classList)) if (keepClass(cls)) shell.addClass(cls);
+		shell.addClass("canvas-node");
+		for (const attr of Array.from(src.attributes)) if (attr.name.startsWith("data-")) shell.setAttribute(attr.name, attr.value);
+		const vars: Record<string, string> = {};
+		for (let i = 0; i < src.style.length; i++) {
+			const key = src.style.item(i);
+			if (key.startsWith("--") && !key.startsWith("--canvas-node-")) vars[key] = src.style.getPropertyValue(key);
+		}
+		shell.setCssProps({ ...vars, "--canvas-node-width": `${node.width}px`, "--canvas-node-height": `${node.height}px` });
+		return shell.createDiv({ cls: "canvas-node-container" });
+	}
+
+	/** The reading view inside a replica's container; returns where the Markdown goes. */
+	private textReplica(container: HTMLElement, node: CanvasNodeLike): HTMLElement {
+		const embed = container.createDiv({ cls: "canvas-node-content markdown-embed" }).createDiv({ cls: "markdown-embed-content" });
+		const live = node.contentEl?.querySelector<HTMLElement>(".markdown-preview-view");
+		const view = embed.createDiv({ cls: "markdown-preview-view markdown-rendered" });
+		for (const cls of live ? Array.from(live.classList) : ["show-indentation-guide", "allow-fold-headings", "allow-fold-lists"]) if (cls !== "node-insert-event") view.addClass(cls);
+		const sizer = view.createDiv({ cls: "markdown-preview-sizer markdown-preview-section" });
+		sizer.createDiv({ cls: "markdown-preview-pusher" });
+		return sizer;
+	}
+
+	/** The address of the image a file card shows, if it shows one. */
+	private imageOf(node: CanvasNodeLike): string | null {
+		const data = node.getData();
+		if (data.type !== "file" || typeof data.file !== "string" || data.subpath) return null;
+		const file = this.app.vault.getFileByPath(data.file);
+		return file && IMAGE_EXTENSIONS.has(file.extension.toLowerCase()) ? this.app.vault.getResourcePath(file) : null;
+	}
+
 	/** The card's canvas color on its border. */
 	private colorCard(card: HTMLElement, node: CanvasNodeLike): void {
 		if (!node.color) return;
@@ -291,16 +520,6 @@ export class ColumnView {
 				path.style.opacity = String(s.opacity ?? (s.tool === "highlighter" ? 0.35 : s.tool === "pencil" ? 0.85 : 1));
 			}
 		}
-	}
-
-	/** A card's text without the links between it and its page: the columns cross pages anyway. */
-	private textOf(id: string, text: string): string {
-		let out = text;
-		for (const link of pagesHost.api?.links(this.canvas) ?? []) {
-			if (link.anchor === id) out = withoutLink(out, link.root);
-			if (link.root === id) out = withoutLink(out, link.anchor);
-		}
-		return out;
 	}
 
 	// ---------- touch, mouse and wheel ----------
@@ -398,7 +617,8 @@ export class ColumnView {
 	/** Links open, a tap on a card goes there, a second tap on it edits it. */
 	private onClick = (evt: MouseEvent) => {
 		const target = evt.target as HTMLElement;
-		if (target.closest(".opc-columns-editor")) return;
+		// The bars of the tools and the buttons on the card take their own clicks.
+		if (target.closest(".opc-columns-editor, .opc-columns-add") || !target.closest(".opc-columns-zoom")) return;
 		evt.preventDefault();
 		evt.stopPropagation();
 		if (performance.now() < this.swallowUntil) {
@@ -415,7 +635,7 @@ export class ColumnView {
 		this.lastTap = { id, at: now };
 		if (twice && card.hasClass("is-current")) {
 			this.lastTap = { id: "", at: 0 };
-			this.startEditing(id);
+			this.edit(id);
 		} else if (card.hasClass("is-current")) this.recenter();
 		else this.host.open(id);
 	};
@@ -449,10 +669,11 @@ export class ColumnView {
 
 	// ---------- editing ----------
 
-	private startEditing(id: string): void {
+	/** Edits a text card in place; `fresh`: a card just added, taken away again if left empty. */
+	edit(id: string, fresh = false): void {
 		const node = this.canvas.nodes.get(id);
-		const card = this.track.querySelector<HTMLElement>(`.opc-columns-card[data-id="${CSS.escape(id)}"]`);
-		if (!node || !card || nodeType(node) !== "text" || this.editing) return;
+		const card = this.cardEl(id);
+		if (!node || !card || nodeType(node) !== "text" || this.editing || !this.host.editable()) return;
 		const before = node.text ?? "";
 		const body = card.querySelector<HTMLElement>(".opc-columns-body");
 		body?.hide();
@@ -476,6 +697,10 @@ export class ColumnView {
 		input.addEventListener("blur", () => {
 			this.editing = null;
 			card.removeClass("is-editing");
+			if (fresh && (cancelled || !input.value.trim())) {
+				this.host.discard(id);
+				return;
+			}
 			if (cancelled || input.value === before) {
 				input.remove();
 				body?.show();
@@ -500,4 +725,56 @@ export class ColumnView {
 		this.component.unload();
 		this.el.remove();
 	}
+}
+
+/** Classes of a board card that describe it, not its state on the board (selected, hidden…). */
+function keepClass(cls: string): boolean {
+	if (cls === "canvas-node" || cls === "opc-walk-current" || cls === "opc-hl-open") return false;
+	if (cls.startsWith("is-") && cls !== "is-themed") return false;
+	return !/^opc-(hidden|page-hidden|layer-hidden)/.test(cls);
+}
+
+/**
+ * Rendered Markdown made to look like the board's reading view of a card: each top-level block
+ * in its own wrapper, list bullets and fold arrows as elements of their own (they take room).
+ */
+export function wrapBlocks(sizer: HTMLElement): void {
+	const view = sizer.parentElement;
+	const foldHeadings = !!view?.hasClass("allow-fold-headings");
+	const foldLists = !!view?.hasClass("allow-fold-lists");
+	for (const child of Array.from(sizer.children)) {
+		if (child.hasClass("markdown-preview-pusher")) continue;
+		const wrap = sizer.createDiv({ cls: `el-${child.tagName.toLowerCase()}` });
+		sizer.insertBefore(wrap, child);
+		wrap.appendChild(child);
+		if (foldHeadings && /^H[1-6]$/.test(child.tagName)) child.prepend(foldArrow("heading-collapse-indicator"));
+		// The reading view gives a table the direction of its first letter, and each cell its own.
+		if (child.tagName === "TABLE") {
+			wrap.setAttribute("dir", firstStrongDir(child.textContent ?? ""));
+			for (const cell of Array.from(child.querySelectorAll("th, td"))) cell.setAttribute("dir", firstStrongDir(cell.textContent ?? ""));
+		}
+	}
+	for (const ul of Array.from(sizer.querySelectorAll("ul"))) {
+		ul.addClass("has-list-bullet");
+		for (const li of Array.from(ul.children)) if (li.tagName === "LI" && !li.querySelector(":scope > .list-bullet")) li.prepend(createSpan({ cls: "list-bullet" }));
+	}
+	if (foldLists) for (const li of Array.from(sizer.querySelectorAll("li"))) if (li.querySelector(":scope > ul, :scope > ol")) li.prepend(foldArrow("list-collapse-indicator"));
+}
+
+const RTL_CHAR = /[\u0590-\u08ff\ufb1d-\ufdff\ufe70-\ufefc]/;
+const LETTER = /\p{L}/u;
+
+/** The direction of the first letter in `text` (left-to-right when there is none). */
+export function firstStrongDir(text: string): "ltr" | "rtl" {
+	for (const ch of text) {
+		if (RTL_CHAR.test(ch)) return "rtl";
+		if (LETTER.test(ch)) return "ltr";
+	}
+	return "ltr";
+}
+
+function foldArrow(cls: string): HTMLElement {
+	const span = createSpan({ cls: [cls, "collapse-indicator", "collapse-icon"] });
+	setIcon(span, "right-triangle");
+	return span;
 }

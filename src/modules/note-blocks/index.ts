@@ -6,7 +6,7 @@ import type { CanvasLike, CanvasNodeLike, CanvasViewLike, SelectionDragLike } fr
 import { mergeWithDefaults } from "../../settings/settings";
 import { relayoutMap } from "../auto-layout/arrange";
 import { estimateSize } from "../canvas-markdown/size";
-import { makeSiblingRoom } from "../mindmap/room";
+import { growthOf, makeSiblingRoom } from "../mindmap/room";
 import { childPosition, childrenOf, descendants, directionBetween, logical, parentOf, type Dir, type TEdge } from "../mindmap/tree";
 import { canvasDirection, centerOn, isHiddenNode, isTextBox, mutate, nodeType, randomId, selectedNodes } from "../shared";
 import { blockAt, type Block } from "./block";
@@ -141,15 +141,7 @@ export const noteBlocksModule = defineModule<NoteBlocksSettings>({
 		const edgesOf = (canvas: CanvasLike): TEdge[] => [...canvas.edges.values()].map((e) => ({ from: e.from.node.id, to: e.to.node.id }));
 
 		/** Which way a card's children grow: from its children, else from its own parent, else forward. */
-		const growth = (canvas: CanvasLike, node: CanvasNodeLike): Dir => {
-			const edges = edgesOf(canvas);
-			const kid = childrenOf(edges, node.id).map((id) => canvas.nodes.get(id)).find((n) => !!n);
-			if (kid) return directionBetween(node, kid);
-			const parent = parentOf(edges, node.id);
-			const p = parent ? canvas.nodes.get(parent) : undefined;
-			if (p) return directionBetween(p, node);
-			return logical("right", canvasDirection(canvas) === "rtl");
-		};
+		const growth = growthOf;
 
 		const relayout = (canvas: CanvasLike, start: CanvasNodeLike, after?: string) => relayoutMap(ctx, canvas, start, after);
 

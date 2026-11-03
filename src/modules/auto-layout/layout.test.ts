@@ -127,3 +127,41 @@ describe("radial layout", () => {
 		expect(overlaps(pos, all)).toBe(false);
 	});
 });
+
+describe("sibling order", () => {
+	const at = (id: string, x: number, y: number): TNode => ({ id, x, y, width: 120, height: 50 });
+	// Created a, b, c (edges in that order), then dragged on the board to read c, a, b.
+	const board = [at("r", 0, 0), at("a", 300, 100), at("b", 300, 200), at("c", 300, -100)];
+	const tree: TEdge[] = ["a", "b", "c"].map((to) => ({ from: "r", to }));
+	const order = (pos: Positions, ids: string[], axis: "x" | "y") => [...ids].sort((p, q) => pos.get(p)![axis] - pos.get(q)![axis]);
+
+	it("keeps the order the cards show on the board, run after run", async () => {
+		for (const direction of ["right", "left"] as const) {
+			let all = board;
+			for (let run = 0; run < 3; run++) {
+				const pos = await computeLayout(elk, all, tree, { algorithm: "mindmap", direction, ...opts });
+				expect(order(pos, ["a", "b", "c"], "y")).toEqual(["c", "a", "b"]);
+				expect(pos.get("r")).toEqual({ x: 0, y: 0 });
+				all = all.map((n) => ({ ...n, ...pos.get(n.id)! }));
+			}
+		}
+	});
+
+	it("keeps left-to-right order in maps that grow down", async () => {
+		const below = [at("r", 0, 0), at("a", 200, 200), at("b", 400, 200), at("c", -200, 200)];
+		const pos = await computeLayout(elk, below, tree, { algorithm: "mindmap", direction: "down", ...opts });
+		expect(order(pos, ["a", "b", "c"], "x")).toEqual(["c", "a", "b"]);
+	});
+
+	it("balanced keeps each child on its side, in order", async () => {
+		const both = [at("r", 0, 0), at("a", 300, 100), at("b", -300, 0), at("c", 300, -100), at("d", -300, -200)];
+		const four: TEdge[] = ["a", "b", "c", "d"].map((to) => ({ from: "r", to }));
+		const pos = await computeLayout(elk, both, four, { algorithm: "mindmap", direction: "balanced", ...opts });
+		expect(pos.get("a")!.x).toBeGreaterThan(0);
+		expect(pos.get("c")!.x).toBeGreaterThan(0);
+		expect(pos.get("b")!.x).toBeLessThan(0);
+		expect(pos.get("d")!.x).toBeLessThan(0);
+		expect(pos.get("c")!.y).toBeLessThan(pos.get("a")!.y);
+		expect(pos.get("d")!.y).toBeLessThan(pos.get("b")!.y);
+	});
+});

@@ -106,6 +106,8 @@ export interface ToolbarHost {
 	close(): void;
 	/** Names a color for people ("Red"), or returns it as is. */
 	colorName(color: string): string;
+	/** Tools this surface doesn't offer (a picked one of them counts as the pen). */
+	hiddenTools?: InkTool[];
 }
 
 export class InkToolbar {
@@ -141,7 +143,8 @@ export class InkToolbar {
 			return b;
 		};
 		const panning = this.host.panning();
-		for (const { tool, icon, key } of TOOLS) button(icon, t(key), () => this.host.update({ tool }), !panning && s.tool === tool);
+		const hidden = this.host.hiddenTools ?? [];
+		for (const { tool, icon, key } of TOOLS) if (!hidden.includes(tool)) button(icon, t(key), () => this.host.update({ tool }), !panning && (s.tool === tool || (tool === "pen" && hidden.includes(s.tool))));
 		this.el.createDiv({ cls: "opc-ink-separator" });
 		button("move", t("drawing.pan"), () => this.host.togglePan(), panning);
 		button("hand", t("drawing.palm"), () => this.host.update({ penOnly: !s.penOnly }), s.penOnly);

@@ -105,19 +105,44 @@ function holds(outer: TNode, inner: TNode): boolean {
 }
 
 /**
- * The edges a walk follows through groups: each card (or group) that no arrow leads to hangs from
- * the smallest group around it on the same page, so a group reads as a card with its name whose
- * children are what it holds, followed by where its own arrows lead. Nested groups nest.
+ * The edges a walk (and the column view) follows, groups included. A group reads as a card with
+ * its name:
+ * - an arrow from outside a group to the group's box or to anything inside it leads to the
+ *   group's card instead (the outermost group the arrow enters);
+ * - a group's children are, all at the same level, the cards and sub-groups directly inside it
+ *   that nothing inside it leads to (marked `inside`), then where its own arrows lead;
+ * - inside, the hierarchy goes on as usual, also to cards outside the group.
+ * Groups nest, and a group counts only for cards on its own page. Returns every edge to follow
+ * (the arrows themselves, re-aimed where they enter a group).
  */
 export function groupEdges(nodes: Iterable<WalkBox>, edges: TEdge[]): WalkEdge[] {
 	const list = [...nodes];
-	const hasParent = new Set(edges.filter((e) => e.from !== e.to).map((e) => e.to));
-	const groups = list.filter((n) => n.group).sort((a, b) => a.width * a.height - b.width * b.height);
+	const byId = new Map(list.map((n) => [n.id, n]));
+	const area = (n: TNode) => n.width * n.height;
+	const groups = list.filter((n) => n.group);
+	// The groups around each node, outermost first.
+	const around = new Map<string, WalkBox[]>();
+	for (const n of list)
+		around.set(
+			n.id,
+			groups.filter((g) => g.id !== n.id && holds(g, n) && area(g) > area(n) && (g.page ?? "") === (n.page ?? "")).sort((a, b) => area(b) - area(a)),
+		);
 	const out: WalkEdge[] = [];
+	const aimed = new Set<string>();
+	for (const e of edges) {
+		if (e.from === e.to || !byId.has(e.from) || !byId.has(e.to)) continue;
+		const fromAround = new Set((around.get(e.from) ?? []).map((g) => g.id));
+		// The groups this arrow enters (around its end, not around its start or the start itself).
+		const entered = (around.get(e.to) ?? []).filter((g) => !fromAround.has(g.id) && g.id !== e.from);
+		const to = entered[0]?.id ?? e.to;
+		out.push({ from: e.from, to });
+		aimed.add(to);
+	}
+	// What nothing leads to hangs from the smallest group around it.
 	for (const n of list) {
-		if (hasParent.has(n.id)) continue;
-		const g = groups.find((g) => g.id !== n.id && holds(g, n) && g.width * g.height > n.width * n.height && (g.page ?? "") === (n.page ?? ""));
-		if (g) out.push({ from: g.id, to: n.id, inside: true });
+		if (aimed.has(n.id)) continue;
+		const inner = around.get(n.id)?.at(-1);
+		if (inner) out.push({ from: inner.id, to: n.id, inside: true });
 	}
 	return out;
 }

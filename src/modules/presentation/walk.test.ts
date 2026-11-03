@@ -145,10 +145,10 @@ describe("groups in the walk", () => {
 		{ from: "G", to: "e" },
 	];
 	const nodes = new Map(all.map((n) => [n.id, n]));
-	const edges = [...groupEdges(all, arrows), ...arrows];
+	const edges = groupEdges(all, arrows);
 
 	it("hangs cards no arrow leads to from the smallest group around them", () => {
-		expect(groupEdges(all, arrows)).toEqual([
+		expect(edges.filter((e) => e.inside)).toEqual([
 			{ from: "G", to: "a", inside: true },
 			{ from: "G", to: "b", inside: true },
 			{ from: "G", to: "H", inside: true },
@@ -165,12 +165,39 @@ describe("groups in the walk", () => {
 		expect(treeStep(nodes, edges, "a", "left", new Map())).toBe("G");
 		expect(pathTo(nodes, edges, "c", new Map())).toEqual(["root", "G", "H", "c"]);
 	});
-	it("leaves a card with an arrow into it where the arrow puts it", () => {
-		const withArrow = [...arrows, { from: "root", to: "b" }];
-		expect(groupEdges(all, withArrow).some((e) => e.to === "b")).toBe(false);
+	it("shows the group when an arrow points at a card inside it, not only at its box", () => {
+		const viaCard = groupEdges(all, [{ from: "root", to: "b" }, { from: "a", to: "d" }, { from: "G", to: "e" }]);
+		expect(orderedChildren(nodes, viaCard, "root", false).map((n) => n.id)).toEqual(["G"]);
+		// b is still listed in the group, with the other cards there.
+		expect(orderedChildren(nodes, viaCard, "G", false).map((n) => n.id)).toEqual(["a", "b", "H", "e"]);
+		expect(pathTo(nodes, viaCard, "e", new Map())).toEqual(["root", "G", "e"]);
+	});
+	it("enters by the outermost group an arrow crosses into", () => {
+		const deep = groupEdges(all, [{ from: "root", to: "c" }]);
+		expect(orderedChildren(nodes, deep, "root", false).map((n) => n.id)).toEqual(["G"]);
+		expect(pathTo(nodes, deep, "c", new Map())).toEqual(["root", "G", "H", "c"]);
+	});
+	it("keeps arrows between cards of the same group as they are", () => {
+		const within = groupEdges(all, [{ from: "root", to: "G" }, { from: "a", to: "b" }, { from: "a", to: "c" }]);
+		expect(orderedChildren(nodes, within, "G", false).map((n) => n.id)).toEqual(["a"]);
+		// An arrow into the sub-group shows the sub-group under the card it comes from.
+		expect(orderedChildren(nodes, within, "a", false).map((n) => n.id)).toEqual(["b", "H"]);
+		expect(orderedChildren(nodes, within, "H", false).map((n) => n.id)).toEqual(["c"]);
+	});
+	it("drops no card connected to a group", () => {
+		// The group's own arrow leads out; a card inside leads out too; something outside points in.
+		const mixed = groupEdges(all, [{ from: "root", to: "a" }, { from: "G", to: "e" }, { from: "c", to: "d" }]);
+		const reached = new Set<string>();
+		const walk = (id: string) => {
+			if (reached.has(id)) return;
+			reached.add(id);
+			for (const k of orderedChildren(nodes, mixed, id, false)) walk(k.id);
+		};
+		walk("root");
+		expect([...reached].sort()).toEqual(["G", "H", "a", "b", "c", "d", "e", "root"]);
 	});
 	it("keeps pages apart", () => {
 		const paged = all.map((n) => (n.id === "a" ? { ...n, page: "p1" } : n));
-		expect(groupEdges(paged, arrows).some((e) => e.to === "a")).toBe(false);
+		expect(groupEdges(paged, arrows).some((e) => e.to === "a" && e.inside)).toBe(false);
 	});
 });
