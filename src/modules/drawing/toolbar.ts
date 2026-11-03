@@ -39,6 +39,8 @@ export interface DrawingSettings {
 	pressure: boolean;
 	/** The pen rack. */
 	pens: PenPreset[];
+	/** New strokes join a nearby drawing; off: every stroke is its own drawing. */
+	groupStrokes: boolean;
 }
 
 export const DRAWING_DEFAULTS: DrawingSettings = {
@@ -59,7 +61,12 @@ export const DRAWING_DEFAULTS: DrawingSettings = {
 		{ tool: "pen", color: "#1971c2", size: 2, pressure: true },
 		{ tool: "marker", color: "#e03131", size: 10, pressure: false },
 	],
+	groupStrokes: false,
 };
+
+/** Brush widths the size controls accept. */
+export const MIN_SIZE = 1;
+export const MAX_SIZE = 60;
 
 /** Keeps only well-formed pens (settings come from disk). */
 export function sanitizePens(raw: unknown, fallback: PenPreset[]): PenPreset[] {
@@ -69,7 +76,7 @@ export function sanitizePens(raw: unknown, fallback: PenPreset[]): PenPreset[] {
 		if (!p || typeof p !== "object") continue;
 		if (!(PEN_TOOLS as readonly string[]).includes(p.tool as string)) continue;
 		if (typeof p.color !== "string" || !p.color) continue;
-		if (typeof p.size !== "number" || !(p.size >= 1 && p.size <= 60)) continue;
+		if (typeof p.size !== "number" || !(p.size >= MIN_SIZE && p.size <= MAX_SIZE)) continue;
 		pens.push({ tool: p.tool as PenTool, color: p.color, size: p.size, pressure: p.pressure !== false });
 	}
 	return pens.slice(0, MAX_PENS);
@@ -89,7 +96,8 @@ const TOOLS: { tool: InkTool; icon: string; key: I18nKey }[] = [
 export interface ToolbarHost {
 	t: Translate;
 	settings(): DrawingSettings;
-	update(patch: Partial<DrawingSettings>): void;
+	/** Saves the change; `render: false` keeps the toolbar as it is (a slider being dragged). */
+	update(patch: Partial<DrawingSettings>, render?: boolean): void;
 	lockSelection(): void;
 	hasSelection(): boolean;
 	/** The drag button is on: the pen, a finger or the mouse drags the view. */
@@ -157,14 +165,53 @@ export class InkToolbar {
 		this.el.createDiv({ cls: "opc-ink-separator" });
 
 		const penTool = (PEN_TOOLS as readonly string[]).includes(s.tool) ? (s.tool as PenTool) : null;
-		const size = this.el.createEl("input", { type: "range", cls: "opc-ink-size", attr: { min: "1", max: "60", "aria-label": t("drawing.size") } });
-		size.value = String(penTool ? s.sizes[penTool] : s.tool === "eraser" ? s.eraserSize : s.sizes.pen);
-		setTooltip(size, t("drawing.size"));
+		const sizeOf = () => {
+			const now = this.host.settings();
+			return penTool ? now.sizes[penTool] : now.tool === "eraser" ? now.eraserSize : now.sizes.pen;
+		};
+		const setSize = (v: number, render: boolean) => {
+			const now = this.host.settings();
+			if (penTool) this.host.update({ sizes: { ...now.sizes, [penTool]: v } }, render);
+			else if (now.tool === "eraser") this.host.update({ eraserSize: v }, render);
+			else this.host.update({ sizes: { ...now.sizes, pen: v } }, render);
+		};
+		const clamp = (v: number) => Math.min(MAX_SIZE, Math.max(MIN_SIZE, Math.round(v * 10) / 10));
+		const sizeBox = this.el.createDiv({ cls: "opc-ink-size-box" });
+		const size = sizeBox.createEl("input", { type: "range", cls: "opc-ink-size", attr: { min: String(MIN_SIZE), max: String(MAX_SIZE), step: "1", "aria-label": t("drawing.size") } });
+		const exact = sizeBox.createEl("input", { type: "number", cls: "opc-ink-size-number", attr: { min: String(MIN_SIZE), max: String(MAX_SIZE), step: "1", inputmode: "decimal", "aria-label": t("drawing.sizeExact") } });
+		size.value = exact.value = String(sizeOf());
+		setTooltip(size, t("drawing.size"), { placement: "bottom" });
+		setTooltip(exact, t("drawing.sizeExact"), { placement: "bottom" });
+		// Dragging must not rebuild the toolbar (that drops the slider under the pointer): save
+		// while it moves, redraw the pens once it is let go.
 		size.addEventListener("input", () => {
-			const v = Number(size.value);
-			if (penTool) this.host.update({ sizes: { ...s.sizes, [penTool]: v } });
-			else if (s.tool === "eraser") this.host.update({ eraserSize: v });
-			else this.host.update({ sizes: { ...s.sizes, pen: v } });
+			exact.value = size.value;
+			setSize(Number(size.value), false);
+		});
+		size.addEventListener("change", () => setSize(Number(size.value), true));
+		exact.addEventListener("input", () => {
+			const v = Number(exact.value);
+			if (!exact.value || !Number.isFinite(v) || v < MIN_SIZE || v > MAX_SIZE) return;
+			size.value = String(v);
+			setSize(clamp(v), false);
+		});
+		const commitExact = () => {
+			const v = Number(exact.value);
+			const next = exact.value && Number.isFinite(v) ? clamp(v) : sizeOf();
+			exact.value = size.value = String(next);
+			setSize(next, true);
+		};
+		exact.addEventListener("change", commitExact);
+		exact.addEventListener("keydown", (e) => {
+			e.stopPropagation();
+			if (e.key === "Enter") {
+				e.preventDefault();
+				exact.blur();
+			} else if (e.key === "Escape") {
+				e.preventDefault();
+				exact.value = String(sizeOf());
+				exact.blur();
+			}
 		});
 		if (this.host.hasSelection()) button("lock", t("drawing.lockSelection"), () => this.host.lockSelection());
 		button("sliders-horizontal", t("drawing.more"), () => this.toggleMore());
@@ -284,5 +331,6 @@ export class InkToolbar {
 		toggle(t("drawing.pressure"), s.pressure, (v) => this.host.update({ pressure: v }));
 		toggle(t("drawing.recognize"), s.recognize, (v) => this.host.update({ recognize: v }));
 		toggle(t("drawing.stickToCards"), s.stickToCards, (v) => this.host.update({ stickToCards: v }));
+		toggle(t("drawing.groupStrokes"), s.groupStrokes, (v) => this.host.update({ groupStrokes: v }));
 	}
 }

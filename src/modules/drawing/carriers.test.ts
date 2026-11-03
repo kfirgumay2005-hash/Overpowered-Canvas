@@ -2,11 +2,18 @@ import { describe, expect, it } from "vitest";
 import type { Stroke } from "../../data/schema";
 import type { CanvasNodeData } from "../../data/json-canvas";
 import { cardUnder, remapRefs } from "./stick";
-import { absolutePoints, CARRIER_PAD, makeStroke, refit } from "./carriers";
+import { absolutePoints, CARRIER_PAD, makeStroke, refit, scaleStrokes } from "./carriers";
 
 const style = { tool: "pen" as const, color: "#000", size: 4 };
 
 describe("carriers", () => {
+	it("stretches strokes to a resized card", () => {
+		const s = makeStroke("s1", [{ x: 10, y: 20, p: 0.5 }, { x: 50, y: 60, p: 0.6 }], { x: 0, y: 0 }, style);
+		const [scaled] = scaleStrokes([s], { width: 100, height: 100 }, { width: 200, height: 50 });
+		expect(scaled!.pts).toEqual([20, 10, 0.5, 100, 30, 0.6]);
+		expect(scaled!.size).toBe(2);
+	});
+
 	it("stores points relative to the carrier and restores them", () => {
 		const s = makeStroke("s1", [{ x: 110, y: 220, p: 0.5 }, { x: 150, y: 260, p: 0.6 }], { x: 100, y: 200 }, style);
 		expect(s.pts).toEqual([10, 20, 0.5, 50, 60, 0.6]);

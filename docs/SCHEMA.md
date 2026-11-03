@@ -149,9 +149,11 @@ Other Phase 5 fields: `crop` on image file nodes (normalized rectangle; the imag
 changed) and `locked` on any node.
 
 **Decision on stroke storage:** strokes live on ink carrier nodes, not on the root. Carriers
-take part in z-order, culling, copy/paste, selection and undo like any card, and a drawing that
-spans a large area is split into nearby carriers (a new stroke joins the topmost unlocked
-carrier within 60 px, else gets its own), which keeps each node's data small.
+take part in z-order, culling, copy/paste, selection and undo like any card. By default every
+stroke gets its own carrier, so strokes select, move and resize on their own (resizing a carrier
+by hand scales its strokes). With the drawing setting `groupStrokes` on, a new stroke joins the
+topmost unlocked carrier within 60 px instead. The command *Split drawings into separate strokes*
+turns carriers holding several strokes into one carrier per stroke.
 
 ## Existing Advanced Canvas data
 

@@ -62,6 +62,25 @@ export function makeStroke(id: string, points: InkPoint[], origin: { x: number; 
 	return { id, tool: style.tool, color: style.color, size: style.size, ...(style.smoothing !== undefined ? { smoothing: style.smoothing } : {}), ...(style.uniform ? { uniform: true } : {}), ...packed };
 }
 
+/**
+ * Stretches strokes laid out in a `from` box (relative to the card) to fill a `to` box: points
+ * scale on each axis, widths by the smaller of the two (a flat line made taller keeps its width).
+ * Returns strokes relative to the new box.
+ */
+export function scaleStrokes(strokes: Stroke[], from: { width: number; height: number }, to: { width: number; height: number }): Stroke[] {
+	const sx = to.width / Math.max(1, from.width);
+	const sy = to.height / Math.max(1, from.height);
+	const sw = Math.min(sx, sy);
+	return strokes.map((s) => {
+		const pts = s.pts.slice();
+		for (let i = 0; i + 2 < pts.length; i += 3) {
+			pts[i] = Math.round(pts[i]! * sx * 10) / 10;
+			pts[i + 1] = Math.round(pts[i + 1]! * sy * 10) / 10;
+		}
+		return { ...s, pts, size: Math.max(0.5, Math.round(s.size * sw * 10) / 10) };
+	});
+}
+
 /** Absolute points of a stored stroke. */
 export function absolutePoints(s: Stroke, origin: { x: number; y: number }): InkPoint[] {
 	return unpack(s.pts, s.tilt).map((p) => ({ ...p, x: p.x + origin.x, y: p.y + origin.y }));

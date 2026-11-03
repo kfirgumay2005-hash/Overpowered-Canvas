@@ -181,6 +181,15 @@ export function enableAnchors(ctx: Ctx): void {
 				const origin = { x: carrier.x, y: carrier.y };
 				for (const [card, list] of groups) {
 					if (card === null) continue;
+					// Separate strokes: each one becomes its own drawing on the card.
+					if (!ctx.settings.groupStrokes) {
+						for (const stroke of list) {
+							const one = refit([stroke], origin);
+							if (one) canvas.importData({ nodes: [{ id: randomId(), type: "text", text: CARRIER_TEXT, ...one.box, "x-opc": { kind: "ink", strokes: one.strokes, anchor: card } }], edges: [] }, false);
+						}
+						count += list.length;
+						continue;
+					}
 					const fit = refit(list, origin);
 					if (!fit) continue;
 					const existing = carriersOf(canvas.nodes.get(card)!)[0];
