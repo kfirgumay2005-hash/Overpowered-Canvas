@@ -1237,7 +1237,7 @@ export const en = {
 	"paragraphIndent.width.desc": "How wide one press of Tab indents, in em spaces (one em space is as wide as the text is tall).",
 	"paragraphIndent.width.simple": "Makes the indent smaller or bigger.",
 	"noteFontSize.name": "Font size per note",
-	"noteFontSize.desc": "Give a note its own text size with a property (font-size: 18, or 120%), or with the commands Set / Increase / Decrease / Reset font size for this note. The size is exactly the same in Live Preview, Source mode and Reading mode, on desktop and mobile.",
+	"noteFontSize.desc": "Give a note its own text size with a property (font-size: 18, or 120%), or with the commands Set / Increase / Decrease / Reset font size for this note. Without a keyboard, the same choices are in the note's menu (⋮) and in the menu of a long press in the text. The size is exactly the same in Live Preview, Source mode and Reading mode, on desktop and mobile.",
 	"noteFontSize.simple": "Make the text of one note bigger or smaller without changing the others. It doesn't jump when you switch between editing and reading.",
 	"noteFontSize.set": "Set font size for this note",
 	"noteFontSize.increase": "Increase font size of this note",
@@ -1256,6 +1256,9 @@ export const en = {
 	"presentation.columns.addChild": "Add a child card (Tab)",
 	"presentation.columns.addSibling": "Add a card below (Enter)",
 	"presentation.columns.noParent": "The top card of the map has no siblings to add. Add a child instead.",
+	"pages.index.fold": "Fold the pages under this one",
+	"pages.index.unfold": "Show the pages under this one",
+	"noteFontSize.menu": "Font size of this note",
 } as const;
 
 export type I18nKey = keyof typeof en;

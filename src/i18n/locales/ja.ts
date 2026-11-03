@@ -1235,7 +1235,7 @@ export const ja: Record<I18nKey, string> = {
 	"paragraphIndent.width.desc": "Tab 一回分の字下げの幅（em space の数。em space 一つは文字の高さと同じ幅です）。",
 	"paragraphIndent.width.simple": "字下げを狭く、または広くします。",
 	"noteFontSize.name": "ノートごとの文字サイズ",
-	"noteFontSize.desc": "プロパティ（font-size: 18 や 120%）か、コマンド「このノートの文字サイズを設定 / 大きく / 小さく / リセット」で、ノートごとに文字の大きさを決めます。ライブプレビュー、ソースモード、閲覧モードでまったく同じ大きさになり、デスクトップでもモバイルでも同じです。",
+	"noteFontSize.desc": "プロパティ（font-size: 18、または 120%）や「このノートの文字サイズを設定 / 大きく / 小さく / リセット」コマンドで、ノートごとに文字サイズを指定します。キーボードがないときは、ノートのメニュー（⋮）と、本文を長押ししたときのメニューに同じ項目があります。ライブプレビュー、ソースモード、閲覧モードで、デスクトップでもモバイルでもまったく同じサイズになります。",
 	"noteFontSize.simple": "一つのノートの文字だけを大きく、または小さくします。編集と閲覧を切り替えても大きさが変わりません。",
 	"noteFontSize.set": "このノートの文字サイズを設定",
 	"noteFontSize.increase": "このノートの文字を大きく",
@@ -1254,4 +1254,7 @@ export const ja: Record<I18nKey, string> = {
 	"presentation.columns.addChild": "子カードを追加（Tab）",
 	"presentation.columns.addSibling": "下にカードを追加（Enter）",
 	"presentation.columns.noParent": "マップの一番上のカードには兄弟を追加できません。代わりに子を追加してください。",
+	"pages.index.fold": "このページの下のページをたたむ",
+	"pages.index.unfold": "このページの下のページを表示",
+	"noteFontSize.menu": "このノートの文字サイズ",
 };

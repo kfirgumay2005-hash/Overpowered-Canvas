@@ -1235,7 +1235,7 @@ export const zh: Record<I18nKey, string> = {
 	"paragraphIndent.width.desc": "按一次 Tab 缩进的宽度，以全身空格计（一个全身空格的宽度等于文字的高度）。",
 	"paragraphIndent.width.simple": "让缩进变小或变大。",
 	"noteFontSize.name": "每篇笔记的字号",
-	"noteFontSize.desc": "用属性（font-size: 18 或 120%）或命令“设置 / 增大 / 减小 / 重置此笔记的字号”为笔记设置独立的文字大小。在实时预览、源码模式和阅读模式中字号完全相同，桌面端和移动端皆然。",
+	"noteFontSize.desc": "用属性（font-size: 18，或 120%）或命令“设置 / 增大 / 减小 / 重置此笔记的字号”，给某条笔记设定单独的文字大小。没有键盘时，同样的选项也在笔记菜单（⋮）和在文字上长按弹出的菜单中。在实时预览、源码模式和阅读模式下，桌面端和移动端的大小完全一致。",
 	"noteFontSize.simple": "只放大或缩小一篇笔记的文字，不影响其他笔记。在编辑和阅读之间切换时不会跳动。",
 	"noteFontSize.set": "设置此笔记的字号",
 	"noteFontSize.increase": "增大此笔记的字号",
@@ -1254,4 +1254,7 @@ export const zh: Record<I18nKey, string> = {
 	"presentation.columns.addChild": "添加子卡片（Tab）",
 	"presentation.columns.addSibling": "在下方添加卡片（Enter）",
 	"presentation.columns.noParent": "导图最顶层的卡片不能添加同级卡片。请改为添加子卡片。",
+	"pages.index.fold": "折叠此页下的页面",
+	"pages.index.unfold": "显示此页下的页面",
+	"noteFontSize.menu": "此笔记的字号",
 };

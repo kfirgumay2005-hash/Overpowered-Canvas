@@ -6,7 +6,8 @@ import { SCHEMA_KEY } from "../../data/schema";
 import { runHotkeyCommand } from "../../internals/app";
 import type { CanvasItemLike, CanvasLike, CanvasNodeLike } from "../../internals/types";
 import { mergeWithDefaults } from "../../settings/settings";
-import { isHiddenNode, mutate, randomId, selectedNodes } from "../shared";
+import { BackgroundDoubleClick, DOUBLE_CLICK_PRESETS } from "../better-defaults/double-click";
+import { isHiddenNode, mutate, nodeType, randomId, renderedZ, selectedNodes } from "../shared";
 import { fixSelection, leavesGroup, regroupCopies } from "./logic";
 
 export interface SmartGroupSettings {
@@ -20,6 +21,8 @@ type Ctx = ModuleContext<SmartGroupSettings>;
 
 /** A pointer that went down this recently (ms) still counts for the selection it caused. */
 const POINTER_GRACE = 450;
+/** A press on the board this recently (ms) is where its long-press menu was opened. */
+const MENU_GRACE = 3000;
 /** Pointer presses on these never pick cards (toolbars, bars, handles). */
 const NOT_ON_BOARD = ".canvas-menu-container, .canvas-card-menu, .canvas-controls, .opc-tutorial, .modal-container, .menu";
 
@@ -66,6 +69,21 @@ export const smartGroupsModule = defineModule<SmartGroupSettings>({
 		/** Per canvas: the group whose cards are picked one at a time ("entered", as in Miro). */
 		const entered = new Map<CanvasLike, string>();
 		const pointers = new WeakMap<CanvasLike, PointerState>();
+		/** Double-taps of a finger or pen (touch screens send no double-click for them). */
+		const taps = new WeakMap<CanvasLike, BackgroundDoubleClick>();
+		/** Where the last press on the board was (board coordinates), for its long-press menu. */
+		const presses = new WeakMap<CanvasLike, { x: number; y: number; at: number }>();
+
+		/** The card on top at a board point (not a group's box, nor one hidden). */
+		const nodeAt = (canvas: CanvasLike, p: { x: number; y: number }): CanvasNodeLike | null => {
+			let best: CanvasNodeLike | null = null;
+			for (const n of canvas.nodes.values()) {
+				if (nodeType(n) === "group" || isHiddenNode(n) || n.id.includes("~")) continue;
+				if (p.x < n.x || p.y < n.y || p.x > n.x + n.width || p.y > n.y + n.height) continue;
+				if (!best || renderedZ(n) > renderedZ(best)) best = n;
+			}
+			return best;
+		};
 
 		const pointerRecent = (canvas: CanvasLike) => {
 			const p = pointers.get(canvas);
@@ -125,21 +143,39 @@ export const smartGroupsModule = defineModule<SmartGroupSettings>({
 
 			const wrapper = canvas.wrapperEl;
 			const win = wrapper.win;
+			const tap = taps.get(canvas) ?? taps.set(canvas, new BackgroundDoubleClick(() => DOUBLE_CLICK_PRESETS.regular)).get(canvas)!;
 			const onDown = (e: PointerEvent) => {
-				if (!e.isPrimary) return;
-				if ((e.target as HTMLElement | null)?.closest?.(NOT_ON_BOARD)) return;
+				const elsewhere = !!(e.target as HTMLElement | null)?.closest?.(NOT_ON_BOARD);
+				// A finger or pen: its double-tap picks one card of a group, as a double-click does.
+				if (e.pointerType !== "mouse") tap.pointerDown({ id: e.pointerId, x: e.clientX, y: e.clientY, time: Date.now(), onBackground: !elsewhere, primary: e.isPrimary, leftButton: true, mouse: false });
+				if (!e.isPrimary || elsewhere) return;
 				pointers.set(canvas, { down: true, at: Date.now(), toggle: e.shiftKey || e.ctrlKey || e.metaKey });
+				const at = canvas.posFromEvt(e);
+				presses.set(canvas, { x: at.x, y: at.y, at: Date.now() });
+			};
+			const onMove = (e: PointerEvent) => {
+				if (e.pointerType !== "mouse") tap.pointerMove(e.pointerId, e.clientX, e.clientY);
 			};
 			const onUp = (e: PointerEvent) => {
+				if (e.pointerType !== "mouse" && e.type === "pointerup" && tap.pointerUp(e.pointerId, e.clientX, e.clientY, Date.now()) && !canvas.readonly) {
+					const node = nodeAt(canvas, canvas.posFromEvt(e));
+					// After the core has handled the tap itself.
+					if (node && closedGroup(node))
+						win.setTimeout(() => {
+							if (closedGroup(node) && !node.isEditing) enter(node);
+						}, 0);
+				} else if (e.type === "pointercancel") tap.cancel();
 				const p = pointers.get(canvas);
 				if (!p?.down || !e.isPrimary) return;
 				pointers.set(canvas, { ...p, down: false, at: Date.now() });
 			};
 			wrapper.addEventListener("pointerdown", onDown, true);
+			win.addEventListener("pointermove", onMove, true);
 			win.addEventListener("pointerup", onUp, true);
 			win.addEventListener("pointercancel", onUp, true);
 			return () => {
 				wrapper.removeEventListener("pointerdown", onDown, true);
+				win.removeEventListener("pointermove", onMove, true);
 				win.removeEventListener("pointerup", onUp, true);
 				win.removeEventListener("pointercancel", onUp, true);
 				entered.delete(canvas);
@@ -295,7 +331,13 @@ export const smartGroupsModule = defineModule<SmartGroupSettings>({
 				menu.addItem((item) => item.setTitle(ctx.t("smartGroups.selectOne")).setIcon("mouse-pointer-click").onClick(() => enter(node)));
 		};
 		ctx.onNodeMenu((menu, node) => addItems(menu, node.canvas, node));
-		ctx.onSelectionMenu((menu, canvas) => addItems(menu, canvas));
+		// A long press (or right-click) on a card of a selected group opens the selection's menu:
+		// it offers to pick just the card that was pressed.
+		ctx.onSelectionMenu((menu, canvas) => {
+			const press = presses.get(canvas);
+			const node = press && Date.now() - press.at < MENU_GRACE ? nodeAt(canvas, press) : null;
+			addItems(menu, canvas, node && canvas.selection.has(node) ? node : undefined);
+		});
 	},
 
 	renderSettings(el, ctx: Ctx) {

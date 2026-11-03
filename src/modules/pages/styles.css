@@ -121,3 +121,35 @@ body.opc-mod-pages .opc-pages-merge {
 	background: none;
 	--icon-size: var(--icon-xs);
 }
+/* A page's icon folds and unfolds the pages under it (its name shows it). */
+body.opc-mod-pages .opc-pages-item.has-pages .opc-pages-icon {
+	cursor: pointer;
+	border-radius: var(--radius-s);
+	padding: 0 2px;
+}
+body.opc-mod-pages .opc-pages-item.has-pages .opc-pages-icon:hover {
+	color: var(--text-normal);
+	background-color: var(--background-modifier-hover);
+}
+body.opc-mod-pages .opc-pages-icon {
+	align-items: center;
+	gap: 2px;
+}
+body.opc-mod-pages .opc-pages-fold {
+	display: flex;
+	transition: transform 120ms ease-out;
+}
+body.opc-mod-pages .opc-pages-fold svg {
+	width: 10px;
+	height: 10px;
+}
+/* Folded: the arrow points along the line, as in file trees (it points down when open). */
+body.opc-mod-pages .opc-pages-item.is-folded .opc-pages-fold {
+	transform: rotate(-90deg);
+}
+body.opc-mod-pages.mod-rtl .opc-pages-item.is-folded .opc-pages-fold {
+	transform: rotate(90deg);
+}
+body.opc-mod-pages .opc-pages-item:not(.has-pages) .opc-pages-icon {
+	padding-inline-start: 12px;
+}

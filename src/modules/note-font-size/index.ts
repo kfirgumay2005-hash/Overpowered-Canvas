@@ -1,4 +1,4 @@
-import { MarkdownView, Notice, Setting, TFile } from "obsidian";
+import { MarkdownView, Notice, Setting, TFile, type Menu } from "obsidian";
 import { defineModule, type ModuleContext } from "../../core/module";
 import { mergeWithDefaults } from "../../settings/settings";
 import { NumberPromptModal } from "../../ui/number-prompt";
@@ -106,9 +106,21 @@ export const noteFontSizeModule = defineModule<NoteFontSizeSettings>({
 
 		// ---- Commands -----------------------------------------------------------------------
 
+		/**
+		 * The note the commands act on: the note being edited or read, also when a sidebar, a
+		 * drawer (tablets and phones) or the command palette has the focus; else the note shown
+		 * in the most recent tab.
+		 */
 		const activeNote = (): TFile | null => {
+			const isNote = (f: unknown): f is TFile => f instanceof TFile && f.extension === "md";
 			const view = app.workspace.getActiveViewOfType(MarkdownView);
-			return view?.file instanceof TFile && view.file.extension === "md" ? view.file : null;
+			if (isNote(view?.file)) return view.file;
+			const editing = app.workspace.activeEditor?.file;
+			if (isNote(editing)) return editing;
+			const active = app.workspace.getActiveFile();
+			if (isNote(active) && markdownViews().some((v) => v.file === active)) return active;
+			const recent = app.workspace.getMostRecentLeaf()?.view;
+			return recent instanceof MarkdownView && isNote(recent.file) ? recent.file : null;
 		};
 		const write = async (file: TFile, size: number | null) => {
 			pending.set(file.path, size);
@@ -128,13 +140,19 @@ export const noteFontSizeModule = defineModule<NoteFontSizeSettings>({
 				throw error;
 			}
 		};
-		const step = (direction: 1 | -1) => {
-			const file = activeNote();
+		const step = (direction: 1 | -1, file = activeNote()) => {
 			if (!file) return;
 			const now = sizeOf(file) ?? baseSize();
 			void write(file, stepFontSize(now, ctx.settings.step, direction));
 		};
 
+		const prompt = (file: TFile) =>
+			new NumberPromptModal(
+				app,
+				ctx.t,
+				{ title: ctx.t("noteFontSize.set"), help: ctx.t("noteFontSize.prompt", { base: Math.round(baseSize()) }), value: sizeOf(file) ?? undefined, min: MIN_SIZE, max: MAX_SIZE, step: 1 },
+				(v) => void write(file, v ?? null),
+			).open();
 		ctx.addCommand({
 			id: "set",
 			name: ctx.t("noteFontSize.set"),
@@ -142,13 +160,7 @@ export const noteFontSizeModule = defineModule<NoteFontSizeSettings>({
 			checkCallback: (checking) => {
 				const file = activeNote();
 				if (!file) return false;
-				if (!checking)
-					new NumberPromptModal(
-						app,
-						ctx.t,
-						{ title: ctx.t("noteFontSize.set"), help: ctx.t("noteFontSize.prompt", { base: Math.round(baseSize()) }), value: sizeOf(file) ?? undefined, min: MIN_SIZE, max: MAX_SIZE, step: 1 },
-						(v) => void write(file, v ?? null),
-					).open();
+				if (!checking) prompt(file);
 				return true;
 			},
 		});
@@ -183,6 +195,33 @@ export const noteFontSizeModule = defineModule<NoteFontSizeSettings>({
 				return true;
 			},
 		});
+
+		// Without a keyboard or the command palette: the note's menu (⋮, or a long press on its
+		// tab or in the file list) and the editor's menu (right-click or long press in the text).
+		const addMenu = (menu: Menu, file: TFile) => {
+			menu.addItem((item) => {
+				item.setTitle(ctx.t("noteFontSize.menu")).setIcon("type").setSection("view");
+				const sub = (item as unknown as { setSubmenu?(): Menu }).setSubmenu?.();
+				if (!sub) {
+					item.onClick(() => prompt(file));
+					return;
+				}
+				sub.addItem((i) => i.setTitle(ctx.t("noteFontSize.set")).setIcon("type").onClick(() => prompt(file)));
+				sub.addItem((i) => i.setTitle(ctx.t("noteFontSize.increase")).setIcon("a-arrow-up").onClick(() => step(1, file)));
+				sub.addItem((i) => i.setTitle(ctx.t("noteFontSize.decrease")).setIcon("a-arrow-down").onClick(() => step(-1, file)));
+				if (sizeOf(file) !== null) sub.addItem((i) => i.setTitle(ctx.t("noteFontSize.reset")).setIcon("rotate-ccw").onClick(() => void write(file, null)));
+			});
+		};
+		ctx.registerEvent(
+			app.workspace.on("file-menu", (menu, file) => {
+				if (file instanceof TFile && file.extension === "md") addMenu(menu, file);
+			}),
+		);
+		ctx.registerEvent(
+			app.workspace.on("editor-menu", (menu, _editor, info) => {
+				if (info.file instanceof TFile && info.file.extension === "md") addMenu(menu, info.file);
+			}),
+		);
 	},
 
 	renderSettings(el, ctx: Ctx) {

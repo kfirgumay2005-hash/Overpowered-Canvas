@@ -9,6 +9,7 @@
 import type { CanvasFileData, CanvasNodeData } from "../../data/json-canvas";
 import type { TNode } from "../mindmap/tree";
 import type { OutlineItem } from "./outline";
+import { inlinePageLinks, pageLinkTargets } from "./page-links";
 
 /** Node kinds that are drawings, not text: kept only in the data block. */
 const DRAWING_KINDS: ReadonlySet<string> = new Set(["ink", "line", "guide"]);
@@ -245,10 +246,12 @@ export function buildStructure(data: CanvasFileData, opts: StructureOptions): St
 	const used = new Set(treeEdges.values());
 	const crossEdges = edges.filter((e) => !used.has(e.id)).map((e) => e.id);
 
+	// A link between a break-point card and its page goes at the end of the card's line.
+	const linkTargets = pageLinkTargets(pagesOfRoot(data as unknown as Record<string, unknown>));
 	const bullet = (id: string): OutlineItem => {
 		const node = byId.get(id)!;
 		const kids = orderChildren(node, (children.get(id) ?? []).map((c) => byId.get(c)!), opts.rtl);
-		return { kind: "node", text: nodeText(node), id: alias.get(id), children: kids.map((k) => bullet(k.id)) };
+		return { kind: "node", text: inlinePageLinks(nodeText(node), linkTargets), id: alias.get(id), children: kids.map((k) => bullet(k.id)) };
 	};
 
 	const container = containers(all.filter((n) => n.type === "group" || contentIds.has(n.id)));

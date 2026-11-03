@@ -25,6 +25,13 @@ body.opc-mod-canvas-markdown .workspace-leaf-content > .opc-pages-bar.opc-md-pag
 body.opc-mod-canvas-markdown .opc-md-pages-bar .opc-pages-index.is-hidden {
 	display: none;
 }
+body.opc-mod-canvas-markdown .opc-md-pages-where {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: var(--size-2-1);
+	min-width: 0;
+}
 body.opc-mod-canvas-markdown .opc-md-pages-tools {
 	display: flex;
 	align-items: center;
