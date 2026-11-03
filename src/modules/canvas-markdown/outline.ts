@@ -22,6 +22,8 @@ export interface OutlineItem {
 	heading?: number;
 	/** The root of a page (exports only; not read back from the text). */
 	page?: boolean;
+	/** Line of the item's first line in the parsed text (0-based), when asked for. */
+	line?: number;
 	children: OutlineItem[];
 }
 
@@ -119,7 +121,7 @@ interface Open {
  * Parses an outline into items. Plain paragraphs become items too: lines right after a card
  * heading continue its text; elsewhere each paragraph is an item of the enclosing heading.
  */
-export function parseOutline(md: string): OutlineItem[] {
+export function parseOutline(md: string, opts: { lines?: boolean } = {}): OutlineItem[] {
 	const top: OutlineItem[] = [];
 	const headings: { level: number; item: OutlineItem }[] = [];
 	let list: { indent: number; item: OutlineItem }[] = [];
@@ -132,8 +134,13 @@ export function parseOutline(md: string): OutlineItem[] {
 		open = null;
 	};
 
-	for (const rawLine of md.replace(/\r\n?/g, "\n").split("\n")) {
-		const line = rawLine;
+	const at = (item: OutlineItem, index: number) => {
+		if (opts.lines) item.line = index;
+		return item;
+	};
+	const rows = md.replace(/\r\n?/g, "\n").split("\n");
+	for (let index = 0; index < rows.length; index++) {
+		const line = rows[index]!;
 		const blank = line.trim() === "";
 
 		// Inside fenced code of a card: everything is text until the closing fence (or, in a
@@ -160,7 +167,7 @@ export function parseOutline(md: string): OutlineItem[] {
 			close();
 			const level = h[1]!.length;
 			const { text, kind, id } = splitMarker(h[2] ?? "");
-			const item: OutlineItem = { kind: kind ?? "node", text: text.trim(), heading: level, children: [], ...(id ? { id } : {}) };
+			const item = at({ kind: kind ?? "node", text: text.trim(), heading: level, children: [], ...(id ? { id } : {}) }, index);
 			while (headings.length && headings[headings.length - 1]!.level >= level) headings.pop();
 			add(scope(), item);
 			headings.push({ level, item });
@@ -175,7 +182,7 @@ export function parseOutline(md: string): OutlineItem[] {
 			const indent = columns(b[1]!);
 			// Groups and the free-cards list are headings only; a marker of theirs on a bullet is ignored.
 			const { text, kind, id } = splitMarker(b[3] ?? "");
-			const item: OutlineItem = { kind: "node", text, children: [], ...(id && kind === "node" ? { id } : {}) };
+			const item = at({ kind: "node", text, children: [], ...(id && kind === "node" ? { id } : {}) }, index);
 			while (list.length && list[list.length - 1]!.indent >= indent) list.pop();
 			add(list[list.length - 1]?.item ?? scope(), item);
 			list.push({ indent, item });
@@ -205,7 +212,7 @@ export function parseOutline(md: string): OutlineItem[] {
 		// A new paragraph: an item of the enclosing heading (or top level).
 		close();
 		list = [];
-		const item: OutlineItem = { kind: "node", text: line.trim(), children: [] };
+		const item = at({ kind: "node", text: line.trim(), children: [] }, index);
 		add(scope(), item);
 		open = { item, indent: -1, content: 0, lines: [line.trim()], blank: 0, fence: null, type: "paragraph" };
 	}

@@ -10,6 +10,7 @@ import { STICKY_COLORS } from "../modules/sticky-notes/logic";
 import { relayoutMap } from "../modules/auto-layout/arrange";
 import { BARS_TUTORIAL } from "./runner";
 import { added, addedEdges, arrow, card, count, edge, edgesOf, ellipsePoints, extraOf, findNode, group, ink, kindOf, nodesOf, practicePdf, randomId, shape, sticky, strokeCount, title } from "./board";
+import type { Translate } from "../i18n";
 import type { TutorialDefinition, TutorialRuntime } from "./types";
 
 // ---------- shared helpers ----------
@@ -985,6 +986,189 @@ const mindmap: TutorialDefinition = {
 	],
 };
 
+// ---------- 24. The column view ----------
+
+/** The column view's root element on the practice board, if it is open. */
+const columnsEl = (rt: TutorialRuntime) => rt.canvas.wrapperEl.querySelector<HTMLElement>(".opc-columns");
+const columnCard = (rt: TutorialRuntime, id: string) => columnsEl(rt)?.querySelector<HTMLElement>(`.opc-columns-card[data-id="${id}"]`) ?? null;
+const columnCurrent = (rt: TutorialRuntime) => columnsEl(rt)?.querySelector<HTMLElement>(".opc-columns-card.is-current")?.dataset.id ?? "";
+
+/** Opens the column view on the garden map, unless it is open. */
+async function ensureColumns(rt: TutorialRuntime, from = "c-root"): Promise<void> {
+	if (columnsEl(rt)) return;
+	rt.command("presentation:walk-end");
+	rt.select([from]);
+	rt.command("presentation:walk-columns");
+	await rt.wait(900);
+}
+
+/** Taps a card of the column view, as a finger would. */
+async function tapColumnCard(rt: TutorialRuntime, id: string): Promise<void> {
+	const card = columnCard(rt, id);
+	if (!card) return;
+	card.click();
+	await rt.wait(450);
+}
+
+/** A press-and-drag on a column, as a finger moving it by `dy` pixels. */
+async function dragColumn(rt: TutorialRuntime, card: HTMLElement, dy: number): Promise<void> {
+	const r = card.getBoundingClientRect();
+	const x = r.left + r.width / 2;
+	let y = r.top + Math.min(r.height / 2, 40);
+	const fire = (type: string, py: number) =>
+		card.dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true, pointerId: 7, pointerType: "touch", isPrimary: true, clientX: x, clientY: py, button: 0, buttons: type === "pointerup" ? 0 : 1 }));
+	fire("pointerdown", y);
+	for (let i = 1; i <= 20; i++) {
+		y += dy / 20;
+		fire("pointermove", y);
+		await rt.wait(16);
+	}
+	fire("pointerup", y);
+	await rt.wait(200);
+}
+
+const columns: TutorialDefinition = {
+	id: "columns",
+	icon: "columns-3",
+	title: "tut.columns.title",
+	summary: "tut.columns.summary",
+	modules: ["presentation", "drawing"],
+	restoreSettings: [
+		{ module: "presentation", key: "columnActualSize" },
+		{ module: "presentation", key: "columnFontSize" },
+		{ module: "presentation", key: "columnWidth" },
+	],
+	board: (t) => {
+		const weeks = Array.from({ length: 16 }, (_, i) => `- ${t("tut.columns.board.week", { n: i + 1 })}`).join("\n");
+		return {
+			nodes: [
+				card("c-root", t("tut.columns.board.root"), 0, 300, 220, 70, { color: "5" }),
+				card("c-veg", t("tut.columns.board.veg"), 340, 0, 220, 60, { color: "4" }),
+				card("c-tom", t("tut.columns.board.tom"), 660, -100, 240, 90, { color: "1" }),
+				ink("c-tom-ink", ellipsePoints(780, -55, 105, 32), "#e03131", 4),
+				card("c-car", t("tut.columns.board.car"), 660, 40, 240, 60),
+				card("c-cal", `## ${t("tut.columns.board.cal")}\n\n${weeks}`, 340, 160, 260, 900),
+				group("c-herbs", t("tut.columns.board.herbs"), 340, 1150, 720, 600, { color: "4" }),
+				card("c-basil", t("tut.columns.board.basil"), 380, 1210, 300, 70),
+				card("c-mint", t("tut.columns.board.mint"), 380, 1300, 300, 60),
+				group("c-pots", t("tut.columns.board.pots"), 380, 1400, 440, 300),
+				card("c-chili", t("tut.columns.board.chili"), 420, 1470, 240, 60, { color: "2" }),
+				card("c-tea", t("tut.columns.board.tea"), 1200, 1300, 240, 60, { color: "6" }),
+			],
+			edges: [
+				edge("c-e1", "c-root", "right", "c-veg", "left"),
+				edge("c-e2", "c-root", "right", "c-cal", "left"),
+				edge("c-e3", "c-root", "right", "c-herbs", "left"),
+				edge("c-e4", "c-veg", "right", "c-tom", "left"),
+				edge("c-e5", "c-veg", "right", "c-car", "left"),
+				edge("c-e6", "c-herbs", "right", "c-tea", "left"),
+			],
+		};
+	},
+	steps: [
+		{
+			title: "tut.columns.s1.title",
+			body: "tut.columns.s1.body",
+			task: "tut.columns.s1.task",
+			target: ".opc-card-walk",
+			enter: (rt) => {
+				rt.setSetting("presentation", "columnActualSize", false);
+				rt.select(["c-root"]);
+			},
+			check: (rt) => !!columnsEl(rt),
+			demo: (rt) => ensureColumns(rt),
+		},
+		{
+			title: "tut.columns.drag.title",
+			body: "tut.columns.drag.body",
+			task: "tut.columns.drag.task",
+			touch: "tut.columns.drag.touch",
+			enter: (rt) => void ensureColumns(rt),
+			check: (rt) => !!columnsEl(rt)?.hasClass("is-moved"),
+			demo: async (rt) => {
+				await ensureColumns(rt);
+				const cal = columnCard(rt, "c-cal");
+				if (cal) await dragColumn(rt, cal, -Math.min(600, cal.getBoundingClientRect().height * 0.7));
+			},
+		},
+		{
+			title: "tut.columns.group.title",
+			body: "tut.columns.group.body",
+			task: "tut.columns.group.task",
+			enter: (rt) => void ensureColumns(rt),
+			check: (rt) => columnCurrent(rt) === "c-herbs",
+			demo: async (rt) => {
+				await ensureColumns(rt);
+				if (columnCurrent(rt) !== "c-root" && columnCard(rt, "c-root")) await tapColumnCard(rt, "c-root");
+				await tapColumnCard(rt, "c-herbs");
+			},
+		},
+		{
+			title: "tut.columns.nested.title",
+			body: "tut.columns.nested.body",
+			task: "tut.columns.nested.task",
+			enter: (rt) => void ensureColumns(rt, "c-herbs"),
+			check: (rt) => columnCurrent(rt) === "c-pots",
+			demo: async (rt) => {
+				await ensureColumns(rt, "c-herbs");
+				if (!columnCard(rt, "c-pots")) await tapColumnCard(rt, "c-herbs");
+				await tapColumnCard(rt, "c-pots");
+			},
+		},
+		{
+			title: "tut.columns.zoom.title",
+			body: "tut.columns.zoom.body",
+			task: "tut.columns.zoom.task",
+			touch: "tut.columns.zoom.touch",
+			target: ".opc-walk-zoom-in",
+			enter: (rt) => void ensureColumns(rt, "c-pots"),
+			check: (rt) => !!columnsEl(rt)?.hasClass("is-zoomed"),
+			demo: async (rt) => {
+				await ensureColumns(rt, "c-pots");
+				rt.canvas.wrapperEl.querySelector<HTMLElement>(".opc-walk-zoom-in")?.click();
+			},
+		},
+		{
+			title: "tut.columns.edit.title",
+			body: "tut.columns.edit.body",
+			task: "tut.columns.edit.task",
+			touch: "tut.columns.edit.touch",
+			enter: (rt) => void ensureColumns(rt, "c-pots"),
+			check: (rt) => changedAny(rt, (n) => n.text, isPlainCard),
+			demo: async (rt) => {
+				await ensureColumns(rt, "c-pots");
+				if (!columnCard(rt, "c-chili")) await tapColumnCard(rt, "c-pots");
+				// Two taps: the first goes to the card, the second edits it.
+				columnCard(rt, "c-chili")?.click();
+				await rt.wait(120);
+				columnCard(rt, "c-chili")?.click();
+				await rt.wait(400);
+				const input = columnsEl(rt)?.querySelector<HTMLTextAreaElement>("textarea.opc-columns-editor");
+				if (!input) return;
+				input.value = `${input.value} 🌶️`;
+				input.dispatchEvent(new Event("input"));
+				await rt.wait(600);
+				input.blur();
+				await rt.wait(400);
+			},
+		},
+		{
+			title: "tut.columns.actual.title",
+			body: "tut.columns.actual.body",
+			task: "tut.columns.actual.task",
+			enter: (rt) => void ensureColumns(rt, "c-veg"),
+			check: (rt) => rt.setting("presentation", "columnActualSize") === true && !!columnsEl(rt)?.hasClass("is-actual-size"),
+			demo: async (rt) => {
+				await ensureColumns(rt, "c-veg");
+				if (rt.setting("presentation", "columnActualSize") !== true) rt.command("presentation:columns-actual-size");
+				await rt.wait(600);
+				if (columnCurrent(rt) !== "c-veg" && columnCard(rt, "c-veg")) await tapColumnCard(rt, "c-veg");
+			},
+		},
+		{ title: "tut.columns.end.title", body: "tut.columns.end.body" },
+	],
+};
+
 // ---------- 9. Finding your way ----------
 
 const CAMP = { w: 900, h: 560 };
@@ -1090,6 +1274,7 @@ const navigate: TutorialDefinition = {
 			check: (rt) => rt.setting("grid", "visible") === true,
 			demo: (rt) => void rt.command("grid:toggle"),
 		},
+		{ title: "tut.navigate.memory.title", body: "tut.navigate.memory.body" },
 	],
 };
 
@@ -2043,12 +2228,73 @@ const showText = (rt: TutorialRuntime) => {
 };
 const pageOfCard = (rt: TutorialRuntime, id: string) => rt.extra(id).page ?? "";
 
+/** The pages bar of the note made from the practice board, if it is open. */
+const noteBar = (rt: TutorialRuntime) => noteTab(rt)?.view.containerEl.querySelector<HTMLElement>(".opc-md-pages-bar") ?? null;
+/** Crumbs of a pages bar: more than one means a page other than the main page is shown. */
+const crumbs = (bar: HTMLElement | null | undefined) => bar?.querySelectorAll(".opc-pages-crumb").length ?? 0;
+const TEMPLATES_FOLDER = "Templates";
+
+/**
+ * A template that has pages: a drug card whose dose and side effects have pages of their own,
+ * linked both ways, as "Move branch to a new page" leaves them.
+ */
+function pagedTemplate(t: Translate): CanvasFileData {
+	const link = (id: string) => `
+
+[[Template.canvas#${id}|${t("pages.link")}]]`;
+	const page = (p: string) => ({ [SCHEMA_KEY]: { v: 1, page: p } });
+	return {
+		[SCHEMA_KEY]: {
+			v: 1,
+			pages: [
+				{ id: "tp-p1", anchor: "tp-dose", root: "tp-dose-r" },
+				{ id: "tp-p2", anchor: "tp-side", root: "tp-side-r" },
+			],
+		},
+		nodes: [
+			card("tp-root", t("tut.pages.tpl.root"), 0, 100, 220, 70, { color: "5" }),
+			card("tp-dose", `${t("tut.pages.tpl.dose")}${link("tp-dose-r")}`, 320, 0, 220, 100, { color: "4" }),
+			card("tp-side", `${t("tut.pages.tpl.side")}${link("tp-side-r")}`, 320, 200, 220, 100, { color: "1" }),
+			card("tp-dose-r", `${t("tut.pages.tpl.dose")}${link("tp-dose")}`, 2000, 0, 220, 100, { color: "4", ...page("tp-p1") }),
+			card("tp-dose-a", t("tut.pages.tpl.adults"), 2320, -60, 200, 60, page("tp-p1")),
+			card("tp-dose-k", t("tut.pages.tpl.children"), 2320, 60, 200, 60, page("tp-p1")),
+			card("tp-side-r", `${t("tut.pages.tpl.side")}${link("tp-side")}`, 4000, 0, 220, 100, { color: "1", ...page("tp-p2") }),
+			card("tp-side-c", t("tut.pages.tpl.common"), 4320, -60, 200, 60, page("tp-p2")),
+			card("tp-side-x", t("tut.pages.tpl.rare"), 4320, 60, 200, 60, page("tp-p2")),
+		],
+		edges: [
+			edge("tp-e1", "tp-root", "right", "tp-dose", "left"),
+			edge("tp-e2", "tp-root", "right", "tp-side", "left"),
+			edge("tp-e3", "tp-dose-r", "right", "tp-dose-a", "left"),
+			edge("tp-e4", "tp-dose-r", "right", "tp-dose-k", "left"),
+			edge("tp-e5", "tp-side-r", "right", "tp-side-c", "left"),
+			edge("tp-e6", "tp-side-r", "right", "tp-side-x", "left"),
+		],
+	};
+}
+
+/** Picks a template in the open template list by its name. */
+async function pickTemplate(rt: TutorialRuntime, name: string): Promise<void> {
+	const input = activeDocument.querySelector<HTMLInputElement>(".prompt-input");
+	if (!input) return;
+	input.value = name;
+	input.dispatchEvent(new Event("input"));
+	await rt.wait(400);
+	activeDocument.querySelector<HTMLElement>(".suggestion-item.is-selected")?.click();
+	await rt.wait(900);
+}
+
 const pages: TutorialDefinition = {
 	id: "pages",
 	icon: "file-stack",
 	title: "tut.pages.title",
 	summary: "tut.pages.summary",
-	modules: ["pages", "text-pages", "auto-layout", "presentation", "node-links"],
+	modules: ["pages", "text-pages", "auto-layout", "presentation", "node-links", "canvas-markdown", "board-templates", "view-memory"],
+	restoreSettings: [
+		{ module: "canvas-markdown", key: "pages" },
+		{ module: "board-templates", key: "folder" },
+	],
+	files: (t) => [{ path: `${TEMPLATES_FOLDER}/${t("tut.pages.tpl.name")}.canvas`, content: JSON.stringify(pagedTemplate(t), null, "	") }],
 	board: (t) => ({
 		nodes: [
 			card("pg-root", t("tut.pages.board.root"), 0, 120, 240, 80, { color: "5" }),
@@ -2209,12 +2455,52 @@ const pages: TutorialDefinition = {
 			},
 		},
 		{
+			title: "tut.pages.note.title",
+			body: "tut.pages.note.body",
+			task: "tut.pages.note.task",
+			target: canvasSwitch,
+			enter: (rt) => {
+				textLeaf(rt)?.detach();
+				rt.setSetting("canvas-markdown", "pages", "paged");
+				rt.command("pages:main-page");
+			},
+			check: (rt) => !!noteBar(rt),
+			demo: (rt) => pressSwitch(rt, canvasSwitch(rt), false),
+		},
+		{
+			title: "tut.pages.noteLinks.title",
+			body: "tut.pages.noteLinks.body",
+			task: "tut.pages.noteLinks.task",
+			target: (rt) => noteBar(rt),
+			check: (rt) => crumbs(noteBar(rt)) > 1,
+			demo: async (rt) => {
+				if (!noteBar(rt)) await pressSwitch(rt, canvasSwitch(rt), false);
+				// The next page, from the bar's arrows.
+				const tools = noteBar(rt)?.querySelectorAll<HTMLElement>(".opc-md-pages-tools .clickable-icon");
+				tools?.[1]?.click();
+				await rt.wait(500);
+			},
+		},
+		{
+			title: "tut.pages.noteBack.title",
+			body: "tut.pages.noteBack.body",
+			task: "tut.pages.noteBack.task",
+			target: noteSwitch,
+			check: (rt) => rt.seen("canvas-updated-from-note") && crumbs(rt.canvas.wrapperEl.querySelector(".opc-pages-bar")) > 1,
+			demo: async (rt) => {
+				if (crumbs(noteBar(rt)) < 2) noteBar(rt)?.querySelectorAll<HTMLElement>(".opc-md-pages-tools .clickable-icon")[1]?.click();
+				await rt.wait(400);
+				await pressSwitch(rt, noteSwitch(rt), true);
+			},
+		},
+		{
 			title: "tut.pages.s6.title",
 			body: "tut.pages.s6.body",
 			task: "tut.pages.s6.task",
 			// Back on the board, with the page still to be merged.
 			enter: (rt) => {
 				textLeaf(rt)?.detach();
+				noteTab(rt)?.leaf.detach();
 				rt.command("pages:main-page");
 			},
 			check: (rt) => rt.seen("page-merged"),
@@ -2225,6 +2511,22 @@ const pages: TutorialDefinition = {
 					await rt.wait(700);
 				}
 				rt.command("pages:merge-page");
+			},
+		},
+		{
+			title: "tut.pages.template.title",
+			body: "tut.pages.template.body",
+			task: "tut.pages.template.task",
+			target: ".opc-card-insert-template",
+			enter: (rt) => {
+				rt.setSetting("board-templates", "folder", `${rt.folder}/${TEMPLATES_FOLDER}`);
+				rt.command("pages:main-page");
+			},
+			check: (rt) => pagesOfRoot(rt).length >= (extraOf(rt.before).pages as unknown[] | undefined ?? []).length + 2,
+			demo: async (rt) => {
+				rt.command("board-templates:insert-template");
+				await rt.wait(600);
+				await pickTemplate(rt, rt.t("tut.pages.tpl.name"));
 			},
 		},
 		{ title: "tut.pages.s7.title", body: "tut.pages.s7.body" },
@@ -2606,4 +2908,4 @@ const file: TutorialDefinition = {
 	],
 };
 
-export const TUTORIALS: readonly TutorialDefinition[] = [basics, notes, shapes, edges, drawing, layers, present, mindmap, navigate, organize, markdown, select, blocks, vault, style, big, direction, pdf, pages, arrows, bars, images, file];
+export const TUTORIALS: readonly TutorialDefinition[] = [basics, notes, shapes, edges, drawing, layers, present, mindmap, navigate, organize, markdown, select, blocks, vault, style, big, direction, pdf, pages, arrows, bars, images, file, columns];

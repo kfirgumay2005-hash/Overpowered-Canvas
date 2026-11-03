@@ -162,3 +162,18 @@ Verified against: **Obsidian 1.14.4 (desktop, Windows)**.
 | `getBacklinksForFile(file).data` | A `Map` in 1.14, not a plain object: `Object.keys` on it is empty even when backlinks exist. | 🟢 runtime |
 | `window.electron.remote.getCurrentWebContents().printToPDF(options)` | Prints the window. Used by the text pages PDF: the pages go in a `.print` element under `body`, which core print styles show alone. Desktop only. | 🟢 runtime |
 
+
+## Feedback round 7 additions
+
+- `canvas.getZIndex()` sets `cardMenuEl.style.zIndex` and `canvasControlsEl.style.zIndex` to
+  `zIndexCounter + 1` and the selection menu to `+3`: on a board with few cards that is ~10–15.
+  `.canvas` has a transform (its own stacking context), so tool overlays only need `z-index: 1`
+  to sit above every card and below every bar.
+- A tab that opens another canvas keeps its `canvas` object (only `data-load` fires): per-file
+  state (the walk) must check the file.
+- Reading view: `previewMode.renderer.sections[]` has `el`, `start.line`, `lines`; post
+  processors don't run again on `rerender(true)` for cached sections.
+- A canvas restored with the workspace at startup can load before the plugin's hooks, so it sends
+  no `data-load`; its first `canvas-frame` with a file is the place to restore it.
+- Module contexts can add editor extensions (`registerEditorExtension`): the module manager
+  registers one shared array with the plugin and calls `workspace.updateOptions()` on changes.

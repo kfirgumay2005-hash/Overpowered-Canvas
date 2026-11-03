@@ -137,3 +137,27 @@ holding the card it comes from (deeper pages nest further); past `######`, a pag
 bullets nested under that card. Links between pages are cross edges, so each page's map stays a
 tree of its own. Reading the note back keeps every page: a page's first card is never linked to
 the heading it is nested under, and new lines take the page of the card they are under.
+
+That is the *one long note* form (setting *Canvases with pages become → One long note*, or the
+command *Export canvas to one long Markdown note*). The default is a **note with pages**
+(`paged.ts`, `paged-view.ts`):
+
+- **Format.** Each page is a section of its own, one after the other: the main page first, then
+  each page followed by its own pages. A section starts with the page's root card as a `#`
+  heading (a root alone on its page becomes that heading). The data keeps `paged: true`.
+- **Reading it back** (`readPagedNote`). The note's text is parsed with line numbers; lines get
+  their cards by hidden id or, in a clean note, by matching the stored outline. A section runs
+  from its root's heading to the next root's heading, so edits, new lines and moved lines keep
+  their page. New lines of a section that hang from no card join that section's page.
+- **On screen.** A CodeMirror state field folds every line outside the page shown away (block
+  replace decorations, atomic for the cursor); reading view hides the other sections by line
+  (`renderer.sections[].start.line`, tagged as `data-opc-line`). The pages bar sits between the
+  tab header and the note (breadcrumb, previous/next, whole note); the pages index lists the
+  note's pages through `pageSources` (pages/api.ts).
+- **Links.** `workspace.openLinkText` is wrapped: a link from a paged note to a card of its own
+  canvas (the links between a break-point card and its page) shows that card's page and line
+  in the note instead of opening the canvas (a Ctrl/Cmd-click still opens it).
+  `MarkdownView.setEphemeralState` is wrapped too: a jump to a line (heading link, outline,
+  search) first shows the page that line is on.
+- **Switching** canvas ⇄ note keeps the page shown. The page a note opens on comes from *Remember
+  where you were* (else the main page).

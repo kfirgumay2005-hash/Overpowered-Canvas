@@ -1,11 +1,11 @@
 import { setIcon } from "obsidian";
 import type { ModuleContext } from "../../core/module";
 import type { CanvasLike, CanvasNodeLike } from "../../internals/types";
-import { type Dir, type TEdge, type TNode } from "../mindmap/tree";
+import type { Dir, TNode } from "../mindmap/tree";
 import { pagesHost } from "../pages/api";
-import { canvasDirection, centerOn, nodeType, selectedNodes } from "../shared";
-import { ColumnView } from "./columns";
-import { childrenOnLeft, largestRoot, orderedChildren, pathTo, tapDirection, treeStep, walkStep } from "./walk";
+import { canvasDirection, centerOn, mutate, nodeType, selectedNodes } from "../shared";
+import { ColumnView, type ColumnOptions } from "./columns";
+import { groupEdges, largestRoot, orderedChildren, pathTo, tapDirection, treeStep, walkStep, type WalkBox, type WalkEdge } from "./walk";
 
 /** What the arrow keys follow: the map's hierarchy, or where the cards sit. */
 export type WalkKeys = "tree" | "layout";
@@ -16,9 +16,12 @@ export interface WalkOptions {
 	tapZones: boolean;
 	/** Small arrows around the card, where a step is possible. */
 	hints: boolean;
+	columns: ColumnOptions;
 }
 
 interface Walk {
+	/** The file walked: a tab that opens another canvas keeps its canvas object. */
+	file: string;
 	start: string;
 	current: string;
 	/** Per parent: the child last visited under it. */
@@ -36,16 +39,13 @@ const ZOOM_STEP = 0.5;
 /** Controls drawn by the walk: a tap on them is not a tap on the board. */
 const WALK_UI = ".opc-walk-pad, .opc-walk-hints, .opc-columns";
 const DIRS: Dir[] = ["up", "down", "left", "right"];
+const DRAWINGS: ReadonlySet<string> = new Set(["ink", "line", "guide"]);
 const LABELS = { up: "presentation.walk.up", down: "presentation.walk.down", left: "presentation.walk.left", right: "presentation.walk.right" } as const;
 
 /** Cards (and groups) a walk can stop on. Cards on other pages count: a walk can go there. */
 function shown(node: CanvasNodeLike): boolean {
 	const el = node.nodeEl;
 	return !node.id.includes("~") && !el.hasClass("opc-hidden-by-collapse") && !el.hasClass("opc-hidden-by-branch") && !el.hasClass("opc-layer-hidden");
-}
-
-function inside(outer: TNode, inner: TNode): boolean {
-	return inner.x >= outer.x && inner.y >= outer.y && inner.x + inner.width <= outer.x + outer.width && inner.y + inner.height <= outer.y + outer.height;
 }
 
 /**
@@ -56,39 +56,27 @@ export function enableWalk(ctx: ModuleContext<object>, presenting: (canvas: Canv
 	const walks = new Map<CanvasLike, Walk>();
 
 	/**
-	 * The map as a walk sees it: cards and groups joined by their edges. A group without edges
-	 * of its own leads into the cards inside it that have no parent, and a card whose branch was
-	 * moved to a page leads to that page.
+	 * The map as a walk sees it: cards and groups joined by their edges. A group leads into the
+	 * cards inside it that no arrow leads to, then to where its own arrows go (see groupEdges), and
+	 * a card whose branch was moved to a page leads to that page.
 	 */
 	const model = (canvas: CanvasLike) => {
 		const nodes = new Map<string, TNode>();
-		const groups: TNode[] = [];
+		const boxes: WalkBox[] = [];
+		const page = pagesHost.api;
 		for (const n of canvas.nodes.values()) {
-			if (!shown(n)) continue;
+			// Ink, drawn lines and infinite lines are marks on the board, not stops.
+			if (!shown(n) || DRAWINGS.has(ctx.data.node(n).get().kind ?? "")) continue;
 			const box = { id: n.id, x: n.x, y: n.y, width: n.width, height: n.height };
 			nodes.set(n.id, box);
-			if (nodeType(n) === "group") groups.push(box);
+			boxes.push({ ...box, group: nodeType(n) === "group", page: page ? page.pageOf(n) : "" });
 		}
-		const edges: TEdge[] = [...canvas.edges.values()].map((e) => ({ from: e.from.node.id, to: e.to.node.id })).filter((e) => nodes.has(e.from) && nodes.has(e.to));
-		const hasParent = new Set(edges.map((e) => e.to));
-		const hasChildren = new Set(edges.map((e) => e.from));
-		const page = pagesHost.api;
-		const pageOf = (id: string) => {
-			const n = canvas.nodes.get(id);
-			return page && n ? page.pageOf(n) : "";
-		};
-		// Smallest group around each node, so nested groups lead into each other.
-		const byArea = [...groups].sort((a, b) => a.width * a.height - b.width * b.height);
-		const virtual: TEdge[] = [];
-		const pageLinks: TEdge[] = [];
-		for (const n of nodes.values()) {
-			if (hasParent.has(n.id)) continue;
-			const g = byArea.find((g) => g.id !== n.id && inside(g, n) && g.width * g.height > n.width * n.height && pageOf(g.id) === pageOf(n.id));
-			if (g && !hasChildren.has(g.id)) virtual.push({ from: g.id, to: n.id });
-		}
+		const edges: WalkEdge[] = [...canvas.edges.values()].map((e) => ({ from: e.from.node.id, to: e.to.node.id })).filter((e) => nodes.has(e.from) && nodes.has(e.to));
+		const virtual = groupEdges(boxes, edges);
+		const pageLinks: WalkEdge[] = [];
 		for (const link of page?.links(canvas) ?? []) if (nodes.has(link.anchor) && nodes.has(link.root)) pageLinks.push({ from: link.anchor, to: link.root });
 		// A page lies in a region of its own: where it is says nothing about the card it hangs from.
-		return { nodes, onPage: [...edges, ...virtual], edges: [...edges, ...virtual, ...pageLinks] };
+		return { nodes, edges: [...virtual, ...edges, ...pageLinks] };
 	};
 
 	const nextFrom = (canvas: CanvasLike, walk: Walk, dir: Dir) => {
@@ -97,14 +85,6 @@ export function enableWalk(ctx: ModuleContext<object>, presenting: (canvas: Canv
 		// The column view shows the hierarchy, so its arrows always follow it.
 		const byTree = options().keys === "tree" || !!walk.columns;
 		return { edges, next: byTree ? treeStep(nodes, edges, walk.current, dir, walk.visited, rtl) : walkStep(nodes, edges, walk.current, dir, walk.visited) };
-	};
-
-	/** The step a tap on side `dir` of the screen stands for: toward the children leads to them. */
-	const onScreen = (canvas: CanvasLike, walk: Walk, dir: Dir): Dir => {
-		if (options().keys !== "tree" || (dir !== "left" && dir !== "right")) return dir;
-		const { nodes, onPage } = model(canvas);
-		if (!childrenOnLeft(nodes, onPage, walk.current, walk.visited, canvasDirection(canvas) === "rtl")) return dir;
-		return dir === "left" ? "right" : "left";
 	};
 
 	const labelOf = (move: Dir) => (options().keys === "tree" && move === "left" ? "presentation.walk.parent" : options().keys === "tree" && move === "right" ? "presentation.walk.child" : LABELS[move]);
@@ -121,16 +101,17 @@ export function enableWalk(ctx: ModuleContext<object>, presenting: (canvas: Canv
 		const hints = node.nodeEl.createDiv({ cls: "opc-walk-hints", attr: { dir: "ltr" } });
 		walk.hints = hints;
 		sizeHints(canvas, walk);
+		// Each arrow does what the same arrow of the walking pad does (by the hierarchy: right is
+		// always deeper, left always back up), wherever the cards sit on the board.
 		for (const dir of DIRS) {
-			const move = onScreen(canvas, walk, dir);
-			if (!nextFrom(canvas, walk, move).next) continue;
-			const hint = hints.createEl("button", { cls: `clickable-icon opc-walk-hint opc-walk-hint-${dir}`, attr: { "aria-label": ctx.t(labelOf(move)) } });
+			if (!nextFrom(canvas, walk, dir).next) continue;
+			const hint = hints.createEl("button", { cls: `clickable-icon opc-walk-hint opc-walk-hint-${dir}`, attr: { "aria-label": ctx.t(labelOf(dir)) } });
 			setIcon(hint, `arrow-${dir}`);
 			hint.addEventListener("pointerdown", (evt) => evt.stopPropagation());
 			hint.addEventListener("click", (evt) => {
 				evt.preventDefault();
 				evt.stopPropagation();
-				step(canvas, move, "tap");
+				step(canvas, dir, "tap");
 			});
 		}
 	};
@@ -176,6 +157,8 @@ export function enableWalk(ctx: ModuleContext<object>, presenting: (canvas: Canv
 	};
 
 	const zoom = (canvas: CanvasLike, delta: number) => {
+		const columns = walks.get(canvas)?.columns;
+		if (columns) return columns.zoomBy(Math.pow(2, delta / 2));
 		canvas.tZoom = Math.min(1, Math.max(-4, canvas.tZoom + delta));
 		canvas.zoomCenter = null;
 		canvas.markViewportChanged();
@@ -202,12 +185,25 @@ export function enableWalk(ctx: ModuleContext<object>, presenting: (canvas: Canv
 			walk.columns.destroy();
 			walk.columns = null;
 		} else {
-			walk.columns = new ColumnView(ctx.app, canvas, {
+			walk.columns = new ColumnView(ctx.app, ctx, canvas, {
 				open: (id) => {
 					const w = walks.get(canvas);
 					if (w && id !== w.current) go(canvas, w, id);
 				},
 				sibling: (delta) => step(canvas, delta > 0 ? "down" : "up"),
+				options: () => options().columns,
+				// The walk keeps the board read-only; an edit from the columns is let through.
+				save: (id, text) => {
+					const node = canvas.nodes.get(id);
+					const w = walks.get(canvas);
+					if (!node || !w || w.wasReadonly) return false;
+					canvas.setReadonly(false);
+					try {
+						return mutate(ctx, canvas, () => node.setData({ ...node.getData(), text }));
+					} finally {
+						canvas.setReadonly(true);
+					}
+				},
 			});
 		}
 		go(canvas, walk, walk.current);
@@ -247,9 +243,16 @@ export function enableWalk(ctx: ModuleContext<object>, presenting: (canvas: Canv
 		button("columns", "columns-3", ctx.t("presentation.walk.columns"), () => toggleColumns(canvas));
 		// The pad is not part of the board: no panning or selecting through it.
 		pad.addEventListener("pointerdown", (evt) => evt.stopPropagation());
+		// On a phone the navigation bar lies over the bottom of the board: the pad sits above it.
+		const navbar = wrapper.doc.querySelector<HTMLElement>(".mobile-navbar");
+		const lift = navbar && navbar.offsetParent ? wrapper.getBoundingClientRect().bottom - navbar.getBoundingClientRect().top : 0;
+		if (lift > 0) pad.setCssProps({ "--opc-pad-lift": `${Math.round(lift)}px` });
 
 		const onKey = (evt: KeyboardEvent) => {
 			if (ctx.activeCanvas() !== canvas || evt.ctrlKey || evt.metaKey || evt.altKey) return;
+			// Typing in a card edited from the column view.
+			const typing = evt.target as HTMLElement | null;
+			if (typing?.closest?.("textarea, input, [contenteditable=true]") || walks.get(canvas)?.columns?.isEditing()) return;
 			const dir = ARROWS[evt.key];
 			const walk = walks.get(canvas);
 			if (!walk) return;
@@ -280,11 +283,11 @@ export function enableWalk(ctx: ModuleContext<object>, presenting: (canvas: Canv
 				if (node && shown(node) && node.id !== walk.current) go(canvas, walk, node.id);
 				return;
 			}
-			// Empty board: the side of the card it is on stands for that arrow key.
+			// Empty board: the side of the card it is on stands for that arrow of the pad.
 			if (!options().tapZones || (target !== wrapper && !target?.closest?.(".canvas, .canvas-background"))) return;
 			const rect = canvas.nodes.get(walk.current)?.nodeEl.getBoundingClientRect();
 			const dir = rect ? tapDirection(rect, evt.clientX, evt.clientY) : null;
-			if (dir) step(canvas, onScreen(canvas, walk, dir), "tap");
+			if (dir) step(canvas, dir, "tap");
 		};
 		win.addEventListener("keydown", onKey, true);
 		wrapper.addEventListener("pointerdown", onDown, true);
@@ -292,6 +295,7 @@ export function enableWalk(ctx: ModuleContext<object>, presenting: (canvas: Canv
 		wrapper.addClass("opc-walking");
 
 		const walk: Walk = {
+			file: canvas.view.file?.path ?? "",
 			start: id,
 			current: id,
 			visited: new Map(),
@@ -318,10 +322,19 @@ export function enableWalk(ctx: ModuleContext<object>, presenting: (canvas: Canv
 		for (const canvas of [...walks.keys()]) stop(canvas);
 	});
 	ctx.onCanvas((canvas) => () => stop(canvas));
+	ctx.on("data-load", (canvas) => {
+		const walk = walks.get(canvas);
+		if (walk && walk.file !== (canvas.view.file?.path ?? "")) stop(canvas);
+	});
 	ctx.on("canvas-frame", (canvas) => {
 		const walk = walks.get(canvas);
 		if (walk) sizeHints(canvas, walk);
 	});
 
-	return { start, stop, walking: (canvas: CanvasLike) => walks.has(canvas) };
+	/** Settings changed: the column views draw again. */
+	const refresh = () => {
+		for (const [canvas, walk] of walks) if (walk.columns) drawColumns(canvas, walk);
+	};
+
+	return { start, stop, refresh, walking: (canvas: CanvasLike) => walks.has(canvas) };
 }

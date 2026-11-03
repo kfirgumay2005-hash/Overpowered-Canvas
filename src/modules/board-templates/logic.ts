@@ -3,7 +3,8 @@
  * the origin, give it fresh ids and mirror it for RTL boards.
  */
 import type { CanvasEdgeData, CanvasFileData, CanvasNodeData, EdgeSide } from "../../data/json-canvas";
-import { SCHEMA_KEY } from "../../data/schema";
+import { SCHEMA_KEY, type PageInfo } from "../../data/schema";
+import { rewriteCardLinks } from "../pages/logic";
 
 type Data = { nodes: CanvasNodeData[]; edges: CanvasEdgeData[]; [key: string]: unknown };
 
@@ -48,32 +49,50 @@ export function normalize(data: CanvasFileData): Data {
 	return translate(data, -b.minX, -b.minY);
 }
 
-/** Fresh ids for every node and edge, with references inside our extra data remapped. */
+/**
+ * Fresh ids for every node, edge and page, with references inside our extra data remapped: lines'
+ * ends, ink stuck to a card, the page of each item, the pages' cards, map layouts, and the links
+ * between a break-point card and its page (their path still names the file copied from; see
+ * pointLinksAt).
+ */
 export function reid(data: CanvasFileData, newId: () => string): Data {
 	const d = parts(data);
 	const map = new Map<string, string>();
 	for (const n of d.nodes) map.set(n.id, newId());
 	const mapped = (id: string | undefined) => (id !== undefined ? (map.get(id) ?? id) : id);
+	const root = d[SCHEMA_KEY] as { presentation?: { start?: string; last?: string }; frameOrder?: string[]; pages?: PageInfo[]; mapLayouts?: Record<string, unknown> } | undefined;
+	const pageMap = new Map<string, string>();
+	for (const p of root?.pages ?? []) pageMap.set(p.id, newId());
 	const nodes = d.nodes.map((n) => {
 		const out: CanvasNodeData = { ...n, id: map.get(n.id)! };
+		if (n.type === "text" && typeof n.text === "string") out.text = rewriteCardLinks(n.text, (path, id) => (map.has(id) ? { path, id: map.get(id)! } : null));
 		const extra = n[SCHEMA_KEY] as Record<string, unknown> | undefined;
 		if (extra) {
-			const x = structuredClone(extra) as { line?: { from?: { node: string }; to?: { node: string } }; queryOwner?: string };
+			const x = structuredClone(extra) as { line?: { from?: { node: string }; to?: { node: string } }; queryOwner?: string; anchor?: string; page?: string };
 			if (x.line?.from) x.line.from.node = mapped(x.line.from.node)!;
 			if (x.line?.to) x.line.to.node = mapped(x.line.to.node)!;
 			if (x.queryOwner) x.queryOwner = mapped(x.queryOwner);
+			if (x.anchor) x.anchor = mapped(x.anchor);
+			if (x.page) x.page = pageMap.get(x.page) ?? x.page;
 			out[SCHEMA_KEY] = x;
 		}
 		return out;
 	});
 	const edges = d.edges.map((e) => ({ ...e, id: newId(), fromNode: mapped(e.fromNode)!, toNode: mapped(e.toNode)! }));
-	const root = d[SCHEMA_KEY] as { presentation?: { start?: string; last?: string }; frameOrder?: string[] } | undefined;
 	const out: Data = { ...d, nodes, edges };
 	if (root) {
 		const r = structuredClone(root);
 		if (r.presentation?.start) r.presentation.start = mapped(r.presentation.start);
 		if (r.presentation?.last) r.presentation.last = mapped(r.presentation.last);
 		if (r.frameOrder) r.frameOrder = r.frameOrder.map((id) => mapped(id)!);
+		if (r.pages)
+			r.pages = r.pages.map((p) => ({
+				id: pageMap.get(p.id)!,
+				anchor: mapped(p.anchor)!,
+				root: mapped(p.root)!,
+				...(p.parent ? { parent: pageMap.get(p.parent) ?? p.parent } : {}),
+			}));
+		if (r.mapLayouts) r.mapLayouts = Object.fromEntries(Object.entries(r.mapLayouts).map(([id, layout]) => [mapped(id)!, layout]));
 		out[SCHEMA_KEY] = r;
 	}
 	return out;

@@ -1,8 +1,12 @@
 body.opc-mod-lasso .opc-lasso-overlay {
 	position: absolute;
 	inset: 0;
-	/* Under the card bar, the controls and the selection menu, which stay usable. */
-	z-index: 14;
+	/*
+	 * Just above the board (a stacking context of its own) and under everything else: the core
+	 * lifts the card bar, the controls and the selection menu to its card counter + 1, which is
+	 * small on a board with few cards, so any higher value would cover them.
+	 */
+	z-index: 1;
 	cursor: crosshair;
 	touch-action: none;
 }

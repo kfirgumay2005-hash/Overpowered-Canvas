@@ -40,7 +40,8 @@ body.opc-mod-presentation .canvas-node.opc-walk-current .canvas-node-container {
 }
 body.opc-mod-presentation .opc-walk-pad {
 	position: absolute;
-	bottom: var(--size-4-4);
+	/* Lifted above a phone's navigation bar, which covers the bottom of the board. */
+	bottom: calc(var(--size-4-4) + var(--opc-pad-lift, 0px));
 	inset-inline-end: var(--size-4-4);
 	z-index: var(--layer-popover);
 	display: grid;
@@ -144,24 +145,38 @@ body.opc-mod-presentation .opc-columns {
 	overflow: hidden;
 	background-color: var(--background-primary);
 	touch-action: none;
+	user-select: none;
+	--opc-columns-gap: var(--size-4-2);
+}
+body.opc-mod-presentation .opc-columns-zoom {
+	position: absolute;
+	inset: 0;
+	transform-origin: 0 0;
 }
 body.opc-mod-presentation .opc-columns-track {
 	position: absolute;
 	top: 0;
 	bottom: 0;
 	left: 0;
-	display: flex;
-	gap: var(--size-4-6);
-	transition: transform 160ms ease-out;
 }
 body.opc-mod-presentation .opc-columns-column {
-	flex: 0 0 min(340px, 72vw);
+	position: absolute;
+	top: 0;
+	width: var(--opc-column-width, var(--opc-columns-width, 340px));
 	display: flex;
 	flex-direction: column;
-	gap: var(--size-4-2);
+	align-items: flex-start;
+	gap: var(--opc-columns-gap);
+}
+body.opc-mod-presentation .opc-columns.is-settling .opc-columns-track,
+body.opc-mod-presentation .opc-columns.is-settling .opc-columns-column,
+body.opc-mod-presentation .opc-columns.is-settling .opc-columns-zoom {
 	transition: transform 160ms ease-out;
 }
 body.opc-mod-presentation .opc-columns-card {
+	position: relative;
+	box-sizing: border-box;
+	width: min(100%, var(--opc-columns-width, 340px));
 	padding: var(--size-4-2) var(--size-4-3);
 	border: 1px solid var(--background-modifier-border);
 	border-radius: var(--radius-m);
@@ -169,6 +184,22 @@ body.opc-mod-presentation .opc-columns-card {
 	opacity: 0.45;
 	cursor: pointer;
 	overflow-wrap: anywhere;
+	font-size: var(--opc-columns-font-size, var(--font-text-size));
+}
+body.opc-mod-presentation .opc-columns-card.has-color {
+	border-width: 2px;
+	border-color: var(--opc-card-color);
+}
+body.opc-mod-presentation .opc-columns-card.is-group {
+	font-weight: var(--font-semibold);
+	border-style: dashed;
+}
+body.opc-mod-presentation .opc-columns-body {
+	padding: 0;
+	height: auto;
+	overflow: visible;
+	font-size: inherit;
+	user-select: text;
 }
 body.opc-mod-presentation .opc-columns-card.is-path {
 	opacity: 0.8;
@@ -178,13 +209,67 @@ body.opc-mod-presentation .opc-columns-card.is-child {
 }
 body.opc-mod-presentation .opc-columns-card.is-current {
 	opacity: 1;
-	border-color: var(--color-accent);
 	box-shadow: 0 0 0 2px var(--color-accent);
 	background-color: var(--background-primary);
 }
-body.opc-mod-presentation .opc-columns-card > :first-child > :first-child {
+body.opc-mod-presentation .opc-columns-card:not(.has-color).is-current {
+	border-color: var(--color-accent);
+}
+body.opc-mod-presentation .opc-columns-body > :first-child,
+body.opc-mod-presentation .opc-columns-body > :first-child > :first-child {
 	margin-top: 0;
 }
-body.opc-mod-presentation .opc-columns-card > :first-child > :last-child {
+body.opc-mod-presentation .opc-columns-body > :last-child,
+body.opc-mod-presentation .opc-columns-body > :last-child > :last-child {
 	margin-bottom: 0;
+}
+/* Actual size: each card as big as on the board, its text laid out as there, ink on top. */
+body.opc-mod-presentation .opc-columns-card.is-actual {
+	width: var(--opc-card-width);
+	height: var(--opc-card-height);
+	padding: 0;
+	overflow: visible;
+}
+body.opc-mod-presentation .opc-columns-card.is-actual > .opc-columns-body {
+	height: 100%;
+	overflow: hidden;
+	padding: 0 var(--size-4-4);
+	border-radius: inherit;
+}
+body.opc-mod-presentation .opc-columns-ink {
+	position: absolute;
+	left: var(--opc-ink-left);
+	top: var(--opc-ink-top);
+	overflow: visible;
+	pointer-events: none;
+}
+body.opc-mod-presentation .opc-columns-card:not(.is-current):hover {
+	opacity: 0.9;
+}
+body.opc-mod-presentation .opc-columns.is-dragging,
+body.opc-mod-presentation .opc-columns.is-dragging .opc-columns-card {
+	cursor: grabbing;
+}
+body.opc-mod-presentation .opc-columns-card.is-editing {
+	opacity: 1;
+	cursor: text;
+}
+body.opc-mod-presentation .opc-columns-editor {
+	display: block;
+	width: 100%;
+	min-height: 2.5em;
+	resize: none;
+	font-size: inherit;
+	user-select: text;
+}
+body.opc-mod-presentation .opc-columns-probe {
+	visibility: hidden;
+	position: absolute;
+	pointer-events: none;
+}
+
+/* Walking through a map is for reading: no buttons that fold branches or groups. */
+body.opc-mod-presentation .canvas-wrapper.opc-walking .canvas-node > .opc-branch-toggle,
+body.opc-mod-presentation .canvas-wrapper.opc-walking .canvas-node .opc-collapse-toggle {
+	display: none;
 }

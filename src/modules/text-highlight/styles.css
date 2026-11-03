@@ -2,14 +2,15 @@
 body.opc-mod-text-highlight .opc-hl-overlay {
 	position: absolute;
 	inset: 0;
-	z-index: 14;
+	/* Just above the board, under the bars (see the lasso overlay). */
+	z-index: 1;
 	cursor: text;
 	touch-action: none;
 }
 body.opc-mod-text-highlight .opc-hl-marks {
 	position: absolute;
 	inset: 0;
-	z-index: 13;
+	z-index: 1;
 	pointer-events: none;
 }
 body.opc-mod-text-highlight .opc-hl-mark {

@@ -13,6 +13,9 @@ import { matchOutline } from "./match";
 import { exportClean, exportNote, rootMapLayouts, splitNote, type SplitNote } from "./note";
 import { countItems, isOutline, stripFrontmatter, writeOutline } from "./outline";
 import { DataStore } from "./store";
+import { PagedNotes } from "./paged-view";
+import { pagesHost } from "../pages/api";
+import { viewMemory } from "../../core/view-memory";
 import { buildStructure } from "./structure";
 import { TUTORIAL_KEY } from "../../tutorials/runner";
 import { logError } from "../../core/log";
@@ -25,10 +28,13 @@ interface CanvasMarkdownSettings {
 	button: "all" | "canvas" | "off";
 	/** Where a note's canvas data is kept: a separate file (clean note) or inside the note. */
 	storage: "file" | "note";
+	/** A canvas with pages becomes a note with pages (one at a time), or one long note. */
+	pages: "paged" | "flat";
 }
 
 const BUTTONS: CanvasMarkdownSettings["button"][] = ["all", "canvas", "off"];
 const STORAGES: CanvasMarkdownSettings["storage"][] = ["file", "note"];
+const PAGE_MODES: CanvasMarkdownSettings["pages"][] = ["paged", "flat"];
 /** Class of the header switch button (tutorials point at it). */
 export const SWITCH_BUTTON_CLASS = "opc-markdown-switch";
 
@@ -139,7 +145,7 @@ export const canvasMarkdownModule = defineModule<CanvasMarkdownSettings>({
 	description: "canvasMarkdown.desc",
 	group: "data",
 	defaultEnabled: true,
-	defaultSettings: { indent: "tab", layout: "right", pasteOutlines: true, button: "all", storage: "file" },
+	defaultSettings: { indent: "tab", layout: "right", pasteOutlines: true, button: "all", storage: "file", pages: "paged" },
 	sanitizeSettings: (raw, defaults) => {
 		const s = mergeWithDefaults(raw, defaults);
 		return {
@@ -148,6 +154,7 @@ export const canvasMarkdownModule = defineModule<CanvasMarkdownSettings>({
 			pasteOutlines: typeof s.pasteOutlines === "boolean" ? s.pasteOutlines : defaults.pasteOutlines,
 			button: BUTTONS.includes(s.button) ? s.button : defaults.button,
 			storage: STORAGES.includes(s.storage) ? s.storage : defaults.storage,
+			pages: PAGE_MODES.includes(s.pages) ? s.pages : defaults.pages,
 		};
 	},
 
@@ -156,6 +163,8 @@ export const canvasMarkdownModule = defineModule<CanvasMarkdownSettings>({
 		ctx.register(disposeElk);
 		const t = ctx.t;
 		const store = new DataStore(app, () => ctx.filesFolder());
+		// A note's new lines already carry the page they belong to.
+		const keepPages = <T>(fn: () => T): T => (pagesHost.api ? pagesHost.api.keepingPages(fn) : fn());
 		const indent = () => INDENTS[ctx.settings.indent];
 		const rtlOf = (canvas: CanvasLike | null) => (canvas ? canvasDirection(canvas) === "rtl" : getComputedStyle(activeDocument.body).direction === "rtl");
 
@@ -302,8 +311,11 @@ export const canvasMarkdownModule = defineModule<CanvasMarkdownSettings>({
 
 		// ---- Phase 3: whole canvas ⇄ note ------------------------------------------------
 
-		/** Writes the canvas as a note; resolves to the note file (or null when cancelled). */
-		const exportCanvas = async (file: TFile): Promise<TFile | null> => {
+		/**
+		 * Writes the canvas as a note; resolves to the note file (or null when cancelled). A canvas
+		 * with pages becomes a note with pages, unless `flat` (or the setting) asks for one long note.
+		 */
+		const exportCanvas = async (file: TFile, flat = ctx.settings.pages === "flat"): Promise<TFile | null> => {
 			const data = await readCanvas(file);
 			// The note already linked to this canvas, else the one beside it (asking before replacing it).
 			const linked = await noteOf(file);
@@ -321,7 +333,7 @@ export const canvasMarkdownModule = defineModule<CanvasMarkdownSettings>({
 					previous = null;
 				}
 			}
-			const md = await noteText(data, file, path, previous !== null ? stripFrontmatter(previous).frontmatter : "");
+			const md = await noteText(data, file, path, previous !== null ? stripFrontmatter(previous).frontmatter : "", !flat);
 			let note: TFile;
 			if (existing instanceof TFile) {
 				await app.vault.modify(existing, md);
@@ -362,7 +374,7 @@ export const canvasMarkdownModule = defineModule<CanvasMarkdownSettings>({
 				if (live) {
 					const layouts = rootMapLayouts(result.data);
 					const ok = mutate(ctx, live, () => {
-						live.importData({ nodes: result.data.nodes ?? [], edges: result.data.edges ?? [] }, true);
+						keepPages(() => live.importData({ nodes: result.data.nodes ?? [], edges: result.data.edges ?? [] }, true));
 						ctx.data.root(live).set({ mapLayouts: Object.keys(layouts).length ? layouts : undefined });
 					});
 					if (!ok) return null;
@@ -403,7 +415,7 @@ export const canvasMarkdownModule = defineModule<CanvasMarkdownSettings>({
 			if (live && !live.readonly) {
 				const layouts = rootMapLayouts(result.data);
 				mutate(ctx, live, () => {
-					live.importData({ nodes: result.data.nodes ?? [], edges: result.data.edges ?? [] }, true);
+					keepPages(() => live.importData({ nodes: result.data.nodes ?? [], edges: result.data.edges ?? [] }, true));
 					if (Object.keys(layouts).length) ctx.data.root(live).set({ mapLayouts: layouts });
 				});
 				live.zoomToFit();
@@ -419,8 +431,8 @@ export const canvasMarkdownModule = defineModule<CanvasMarkdownSettings>({
 		 * The note text for a canvas. A clean note's data goes to its separate file; a note that
 		 * keeps its data inside loses any separate file it had.
 		 */
-		const noteText = async (data: CanvasFileData, canvasFile: TFile, notePath: string, frontmatter: string): Promise<string> => {
-			const opts = { canvasPath: canvasFile.path, rtl: rtlOf(openCanvasFor(canvasFile)), freeLabel: t("canvasMarkdown.freeNodes"), indent: indent(), frontmatter };
+		const noteText = async (data: CanvasFileData, canvasFile: TFile, notePath: string, frontmatter: string, paged: boolean): Promise<string> => {
+			const opts = { canvasPath: canvasFile.path, rtl: rtlOf(openCanvasFor(canvasFile)), freeLabel: t("canvasMarkdown.freeNodes"), indent: indent(), frontmatter, paged };
 			if (ctx.settings.storage === "file") {
 				const clean = exportClean(data, { ...opts, notePath });
 				await store.save(notePath, clean.data);
@@ -444,9 +456,20 @@ export const canvasMarkdownModule = defineModule<CanvasMarkdownSettings>({
 		/** Rewrites a linked note from its canvas (new cards known, fresh layout data); front matter stays. */
 		const syncNote = async (note: TFile, canvasFile: TFile, data: CanvasFileData) => {
 			const previous = await readNote(note);
-			const md = await noteText(data, canvasFile, note.path, stripFrontmatter(previous).frontmatter);
+			// The note keeps the form it has: with pages, or one long note.
+			const before = (await loadNote(note)).data;
+			const paged = before ? !!before.paged : ctx.settings.pages === "paged";
+			const md = await noteText(data, canvasFile, note.path, stripFrontmatter(previous).frontmatter, paged);
 			if (md !== previous) await app.vault.modify(note, md);
 		};
+
+		// Notes with pages: one page at a time, with the pages bar and index.
+		const paged = new PagedNotes(app, ctx, {
+			loadData: async (file, text) => splitNote(text).data ?? (await store.load(file.path)),
+			initialPage: (path) => viewMemory.page(path),
+			pageShown: (path, page) => viewMemory.setPage(path, page),
+		});
+		paged.enable();
 
 		// Separate data files follow their notes and canvases.
 		ctx.registerEvent(
@@ -510,24 +533,31 @@ export const canvasMarkdownModule = defineModule<CanvasMarkdownSettings>({
 		const switchFromCanvas = async (leaf: WorkspaceLeaf, canvas: CanvasLike) => {
 			const file = canvas.view.file;
 			if (!file) return;
+			// The page shown on the board is the page the note opens on.
+			const page = pagesHost.api?.current(canvas) ?? "";
 			const note = await exportCanvas(file);
 			if (!note) return;
 			const open = leafShowing(note);
-			if (open) {
-				app.workspace.setActiveLeaf(open, { focus: true });
-				return;
+			if (open) app.workspace.setActiveLeaf(open, { focus: true });
+			else {
+				const target = canvas.data[TUTORIAL_KEY] ? app.workspace.getLeaf("split", "vertical") : leaf;
+				await target.openFile(note, { active: true });
 			}
-			const target = canvas.data[TUTORIAL_KEY] ? app.workspace.getLeaf("split", "vertical") : leaf;
-			await target.openFile(note, { active: true });
+			await paged.refresh(note);
+			if (paged.pageOf(note.path) !== undefined) paged.show(note.path, page);
 		};
 
 		/** Note → its canvas (created or updated), in the same tab unless it is open elsewhere. */
 		const switchFromNote = async (leaf: WorkspaceLeaf, note: TFile) => {
+			// The page the note shows is the page the board opens on.
+			const page = paged.pageOf(note.path);
 			const file = await applyNoteFile(note, leaf);
 			if (!file) return;
 			const open = leafShowing(file);
 			if (open) app.workspace.setActiveLeaf(open, { focus: true });
 			else await leaf.openFile(file, { active: true });
+			const canvas = typeof page === "string" ? openCanvasFor(file) : null;
+			if (canvas && pagesHost.api && pagesHost.api.current(canvas) !== page) pagesHost.api.show(canvas, page!);
 		};
 
 		// Switch button in the header of canvases and (by default) notes.
@@ -584,6 +614,15 @@ export const canvasMarkdownModule = defineModule<CanvasMarkdownSettings>({
 		canvasCommand("insert-note", "canvasMarkdown.cmd.insertNote", "file-input", (c) => new NotePicker(app, t, (f) => insertNote(c, f)).open(), true);
 		canvasCommand("export-note", "canvasMarkdown.cmd.export", "file-output", (c) => {
 			if (c.view.file) void run(exportCanvas(c.view.file));
+		});
+		// The whole canvas as one long note, pages one after the other, whatever the setting.
+		canvasCommand("export-note-flat", "canvasMarkdown.cmd.exportFlat", "file-text", (c) => {
+			const file = c.view.file;
+			if (file) void run(exportCanvas(file, true).then((note) => openIn(null, note)));
+		});
+		canvasCommand("export-note-paged", "canvasMarkdown.cmd.exportPaged", "book-open", (c) => {
+			const file = c.view.file;
+			if (file) void run(exportCanvas(file, false).then((note) => openIn(null, note)));
 		});
 		canvasCommand(
 			"update-from-note",
@@ -659,8 +698,10 @@ export const canvasMarkdownModule = defineModule<CanvasMarkdownSettings>({
 				if (!(file instanceof TFile)) return;
 				if (file.extension === "md")
 					menu.addItem((item) => item.setTitle(t("canvasMarkdown.cmd.fromNote")).setIcon("git-fork").onClick(() => void run(applyNoteFile(file).then((f) => openIn(null, f)))));
-				else if (file.extension === "canvas")
+				else if (file.extension === "canvas") {
 					menu.addItem((item) => item.setTitle(t("canvasMarkdown.cmd.export")).setIcon("file-output").onClick(() => void run(exportCanvas(file).then((f) => openIn(null, f)))));
+					menu.addItem((item) => item.setTitle(t("canvasMarkdown.cmd.exportFlat")).setIcon("file-text").onClick(() => void run(exportCanvas(file, true).then((f) => openIn(null, f)))));
+				}
 			}),
 		);
 	},
@@ -694,6 +735,15 @@ export const canvasMarkdownModule = defineModule<CanvasMarkdownSettings>({
 					.addOptions({ all: ctx.t("canvasMarkdown.button.all"), canvas: ctx.t("canvasMarkdown.button.canvas"), off: ctx.t("canvasMarkdown.button.off") })
 					.setValue(ctx.settings.button)
 					.onChange((v) => ctx.updateSettings({ button: v as CanvasMarkdownSettings["button"] })),
+			);
+		new Setting(el)
+			.setName(ctx.t("canvasMarkdown.pages.name"))
+			.setDesc(ctx.t("canvasMarkdown.pages.desc"))
+			.addDropdown((d) =>
+				d
+					.addOptions({ paged: ctx.t("canvasMarkdown.pages.paged"), flat: ctx.t("canvasMarkdown.pages.flat") })
+					.setValue(ctx.settings.pages)
+					.onChange((v) => ctx.updateSettings({ pages: v as CanvasMarkdownSettings["pages"] })),
 			);
 		new Setting(el)
 			.setName(ctx.t("canvasMarkdown.storage.name"))

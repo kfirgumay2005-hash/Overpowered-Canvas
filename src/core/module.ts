@@ -1,4 +1,5 @@
-import type { App, Command, EventRef, Menu, ViewCreator } from "obsidian";
+import type { App, Command, EventRef, MarkdownPostProcessor, Menu, ViewCreator } from "obsidian";
+import type { Extension } from "@codemirror/state";
 import type { CanvasDataApi } from "../data/access";
 import type { I18nKey, Translate } from "../i18n";
 import type { CanvasEdgeLike, CanvasLike, CanvasNodeLike, CanvasViewLike } from "../internals/types";
@@ -94,6 +95,10 @@ export interface ModuleContext<S extends object> {
 	): void;
 	registerInterval(id: number): number;
 	register(cleanup: () => void): void;
+	/** A CodeMirror extension for every editor; taken out of them on disable. */
+	registerEditorExtension(extension: Extension): void;
+	/** A reading-view post processor; unregistered on disable. */
+	registerMarkdownPostProcessor(processor: MarkdownPostProcessor, sortOrder?: number): void;
 
 	readonly data: CanvasDataApi;
 	readonly history: HistoryApi;

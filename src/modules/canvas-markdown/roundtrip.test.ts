@@ -8,6 +8,7 @@ import { matchOutline, similarity } from "./match";
 import { exportClean, exportNote, formatData, readData, splitNote, type NoteData } from "./note";
 import { parseOutline, writeOutline, type OutlineItem } from "./outline";
 import { buildStructure } from "./structure";
+import { readPagedNote, sectionAt } from "./paged";
 
 const elk = new ELK() as unknown as ElkLike;
 
@@ -488,6 +489,91 @@ describe("pages in the outline", () => {
 		// No new edge ties a page's root to the map it was nested under.
 		expect(result.data.edges!.some((e) => e.toNode === "bbroot01" || e.toNode === "ciroot01")).toBe(false);
 		expect(byId.get("bbroot01")).toBeDefined();
+		expect(result.removed).toBe(0);
+	});
+});
+
+describe("a note with pages", () => {
+	const paged = (): CanvasFileData => ({
+		nodes: [
+			text("hyp00001", "Hypertension", 0, 0),
+			text("trt00001", "Treatment", 300, 0),
+			text("bb000001", "Beta-blockers\n\n[[H.canvas#bbroot01|Link]]", 600, 0),
+			text("bbroot01", "Beta-blockers\n\n[[H.canvas#bb000001|Link]]", 3000, 0, { "x-opc": { page: "p1" } }),
+			text("bbkid001", "Atenolol", 3300, 0, { "x-opc": { page: "p1" } }),
+			text("ci000001", "Contraindications", 3300, 100, { "x-opc": { page: "p1" } }),
+			text("ciroot01", "Contraindications", 6000, 0, { "x-opc": { page: "p2" } }),
+			text("cikid001", "Asthma", 6300, 0, { "x-opc": { page: "p2" } }),
+			text("lone0001", "Diet", 0, 900, { "x-opc": { page: "p3" } }),
+		],
+		edges: [
+			{ id: "e1", fromNode: "hyp00001", fromSide: "right", toNode: "trt00001", toSide: "left" },
+			{ id: "e2", fromNode: "trt00001", fromSide: "right", toNode: "bb000001", toSide: "left" },
+			{ id: "e3", fromNode: "bbroot01", fromSide: "right", toNode: "bbkid001", toSide: "left" },
+			{ id: "e4", fromNode: "bbroot01", fromSide: "right", toNode: "ci000001", toSide: "left" },
+			{ id: "e5", fromNode: "ciroot01", fromSide: "right", toNode: "cikid001", toSide: "left" },
+		],
+		"x-opc": {
+			v: 1,
+			pages: [
+				{ id: "p1", anchor: "bb000001", root: "bbroot01" },
+				{ id: "p2", anchor: "ci000001", root: "ciroot01", parent: "p1" },
+				{ id: "p3", anchor: "trt00001", root: "lone0001" },
+			],
+		},
+	});
+	const opts = { ...exportOpts, paged: true };
+
+	it("writes each page as a section of its own, main page first, parents before their pages", () => {
+		const md = exportClean(paged(), { ...opts, notePath: "H.md" }).md;
+		const headings = md.split("\n").filter((l) => l.startsWith("#"));
+		expect(headings).toEqual(["# Hypertension", "# Beta-blockers", "# Contraindications", "# Diet"]);
+		expect(md.indexOf("Atenolol")).toBeLessThan(md.indexOf("# Contraindications"));
+		expect(md.indexOf("Asthma")).toBeGreaterThan(md.indexOf("# Contraindications"));
+	});
+
+	it("finds the sections again in a clean note, after edits", () => {
+		const { md, data } = exportClean(paged(), { ...opts, notePath: "H.md" });
+		expect(data.paged).toBe(true);
+		const edited = `---\ntags: x\n---\n${md.replace("- Atenolol", "- Atenolol\n    - Metoprolol")}`;
+		const note = readPagedNote(edited, data)!;
+		expect(note.sections.map((s) => s.page)).toEqual(["", "p1", "p2", "p3"]);
+		const lines = edited.split("\n");
+		const p1 = note.sections[1]!;
+		expect(lines[p1.from]).toBe("# Beta-blockers");
+		expect(lines.slice(p1.from, p1.to).join("\n")).toContain("Metoprolol");
+		expect(lines.slice(p1.from, p1.to).join("\n")).not.toContain("Asthma");
+		expect(note.sections[0]!.from).toBe(0);
+		expect(note.sections[3]!.title).toBe("Diet");
+		expect(note.sections[1]!.count).toBe(4);
+		expect(sectionAt(note, note.lines.get("cikid001")!).page).toBe("p2");
+	});
+
+	it("finds the sections in a note with hidden ids, without the data section", () => {
+		const md = exportNote(paged(), opts);
+		const split = splitNote(md);
+		const note = readPagedNote(md, split.data)!;
+		const lines = md.split("\n");
+		const last = note.sections[note.sections.length - 1]!;
+		expect(lines.slice(last.from, last.to).join("\n")).not.toContain("canvas-data");
+		expect(lines[note.sections[2]!.from]).toMatch(/^# Contraindications/);
+	});
+
+	it("is not a note with pages when written as one long note", () => {
+		const { md, data } = exportClean(paged(), { ...exportOpts, notePath: "H.md" });
+		expect(readPagedNote(md, data)).toBeNull();
+	});
+
+	it("puts new lines of a page's section on that page", async () => {
+		const canvas = paged();
+		const { md, data } = exportClean(canvas, { ...opts, notePath: "H.md" });
+		const edited = md.replace("# Diet", "# Diet\n\n- Low salt").replace("# Contraindications", "Pregnancy\n\n# Contraindications");
+		const items = parseOutline(edited);
+		matchOutline(items, data.outline ?? []);
+		const result = await applyNote(items, data, canvas, elk, options());
+		const page = (t: string) => (result.data.nodes!.find((n) => n.text === t)!["x-opc"] as { page?: string } | undefined)?.page;
+		expect(page("Low salt")).toBe("p3");
+		expect(page("Pregnancy")).toBe("p1");
 		expect(result.removed).toBe(0);
 	});
 });

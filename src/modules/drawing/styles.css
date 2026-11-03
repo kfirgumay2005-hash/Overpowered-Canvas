@@ -58,7 +58,8 @@ body.theme-dark.opc-mod-drawing .opc-ink-swatch[aria-label="#1e1e1e"] {
 body.opc-mod-drawing .opc-ink-overlay {
 	position: absolute;
 	inset: 0;
-	z-index: 2;
+	/* Just above the board, under the bars (see the lasso overlay). */
+	z-index: 1;
 	touch-action: none;
 	cursor: crosshair;
 }

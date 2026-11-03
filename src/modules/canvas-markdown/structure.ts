@@ -33,6 +33,12 @@ export interface StructureOptions {
 	freeLabel: string;
 	/** Only these node ids (a selection); default: every node. */
 	scope?: ReadonlySet<string>;
+	/**
+	 * Pages as sections of their own, one after the other (main page first, then each page before
+	 * its own pages), each starting with its root as a top heading. Without it, each page's map
+	 * nests under the card it comes from.
+	 */
+	paged?: boolean;
 }
 
 function isPlainObject(v: unknown): v is Record<string, unknown> {
@@ -265,11 +271,12 @@ export function buildStructure(data: CanvasFileData, opts: StructureOptions): St
 		});
 	};
 
-	const items = sectionsIn(undefined, 0);
+	let items = sectionsIn(undefined, 0);
 	const topFree = free.filter((id) => !container.has(id)).map((id) => byId.get(id)!).sort(order);
 	if (topFree.length) items.push({ kind: "free", text: opts.freeLabel, heading: 1, children: topFree.map((n) => bullet(n.id)) });
 
-	nestPages(items, data, roots, children, alias);
+	if (opts.paged) items = pageSections(items, data, byId, alias);
+	else nestPages(items, data, roots, children, alias);
 
 	const rootOrder: string[] = [];
 	const byAlias = new Map([...alias].map(([id, a]) => [a, id]));
@@ -342,4 +349,78 @@ function nestPages(items: OutlineItem[], data: CanvasFileData, roots: string[], 
 		}
 		own.item.page = true;
 	}
+}
+
+/** Pages in reading order: the main page (""), then each page followed by its own pages. */
+export function pageOrder(pages: PageRef[]): string[] {
+	const ids = new Set(pages.map((p) => p.id));
+	const children = new Map<string, PageRef[]>();
+	for (const p of pages) {
+		const parent = p.parent && ids.has(p.parent) ? p.parent : "";
+		(children.get(parent) ?? children.set(parent, []).get(parent)!).push(p);
+	}
+	const out: string[] = [];
+	const seen = new Set<string>();
+	const visit = (id: string) => {
+		if (seen.has(id)) return;
+		seen.add(id);
+		out.push(id);
+		for (const child of children.get(id) ?? []) visit(child.id);
+	};
+	visit("");
+	return out;
+}
+
+/**
+ * Splits the top-level sections by page: the main page's first, then each page's, starting with
+ * its root (a card alone on its page becomes that page's heading). Free cards are listed per page.
+ */
+function pageSections(items: OutlineItem[], data: CanvasFileData, byId: Map<string, CanvasNodeData>, alias: Map<string, string>): OutlineItem[] {
+	const pages = pagesOfRoot(data);
+	if (pages.length === 0) return items;
+	const known = new Set(pages.map((p) => p.id));
+	const byAlias = new Map([...alias].map(([id, a]) => [a, id]));
+	const pageOf = (item: OutlineItem) => {
+		const id = item.id ? byAlias.get(item.id) : undefined;
+		const node = id ? byId.get(id) : undefined;
+		const page = node ? pageOfNode(node) : "";
+		return known.has(page) ? page : "";
+	};
+	const sections = new Map<string, OutlineItem[]>();
+	const put = (page: string, item: OutlineItem) => (sections.get(page) ?? sections.set(page, []).get(page)!).push(item);
+	for (const item of items) {
+		if (item.kind !== "free") {
+			put(pageOf(item), item);
+			continue;
+		}
+		const split = new Map<string, OutlineItem[]>();
+		for (const card of item.children) (split.get(pageOf(card)) ?? split.set(pageOf(card), []).get(pageOf(card))!).push(card);
+		for (const [page, cards] of split) put(page, { ...item, children: cards });
+	}
+	const out: OutlineItem[] = [];
+	for (const page of pageOrder(pages)) {
+		const list = sections.get(page) ?? [];
+		const ref = pages.find((p) => p.id === page);
+		const rootAlias = ref ? alias.get(ref.root) : undefined;
+		if (rootAlias) {
+			let root = list.find((i) => i.kind !== "free" && i.id === rootAlias);
+			if (!root) {
+				// Alone on its page: it was listed with the free cards.
+				const free = list.find((i) => i.kind === "free" && i.children.some((c) => c.id === rootAlias));
+				const own = free?.children.find((c) => c.id === rootAlias);
+				if (free && own) {
+					free.children.splice(free.children.indexOf(own), 1);
+					if (free.children.length === 0) list.splice(list.indexOf(free), 1);
+					root = { ...own, heading: 1 };
+					list.unshift(root);
+				}
+			}
+			if (root) {
+				list.splice(list.indexOf(root), 1);
+				list.unshift({ ...root, page: true });
+			}
+		}
+		out.push(...list);
+	}
+	return out;
 }

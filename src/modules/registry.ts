@@ -60,6 +60,7 @@ import { layersModule } from "./layers";
 import { pagesModule } from "./pages";
 import { textPagesModule } from "./text-pages";
 import { autoLinkModule } from "./auto-link";
+import { viewMemoryModule } from "./view-memory";
 
 /** Every feature module, in display order within its settings group. */
 export const MODULES: readonly AnyModule[] = [
@@ -104,6 +105,7 @@ export const MODULES: readonly AnyModule[] = [
 	autoLayoutModule,
 	pagesModule,
 	textPagesModule,
+	viewMemoryModule,
 	drawingModule,
 	lassoModule,
 	textHighlightModule,

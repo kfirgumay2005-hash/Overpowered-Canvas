@@ -1,13 +1,13 @@
-import { ItemView, Notice, Setting, setIcon, setTooltip, type Menu, type WorkspaceLeaf } from "obsidian";
+import { ItemView, Notice, Setting, TFile, setIcon, setTooltip, type Menu, type WorkspaceLeaf } from "obsidian";
 import { defineModule, type ModuleContext } from "../../core/module";
-import type { CanvasEdgeData, CanvasNodeData } from "../../data/json-canvas";
-import type { PageInfo } from "../../data/schema";
+import type { CanvasEdgeData, CanvasFileData, CanvasNodeData } from "../../data/json-canvas";
+import { SCHEMA_KEY, type MapLayout, type PageInfo } from "../../data/schema";
 import type { CanvasLike, CanvasNodeLike } from "../../internals/types";
 import { mapRootOf, relayoutMap } from "../auto-layout/arrange";
 import { centerOn, mutate, nodeType, randomId, renderedZ, selectedNodes } from "../shared";
-import { pagesHost, type PagesSource } from "./api";
+import { pageSources, pagesHost, type PagesSource } from "./api";
 import { renderPagesBar } from "./bar";
-import { boundsOf, branchOf, cardLink, freeRegion, pageChildren, titleOf, withLink, withoutLink, withoutPage, type PlanNode } from "./logic";
+import { boundsOf, branchOf, cardLink, freeRegion, pageChildren, pointLinksAt, titleOf, withLink, withoutLink, withoutPage, type PlanNode } from "./logic";
 import { logError } from "../../core/log";
 
 export const PAGES_VIEW = "opc-pages";
@@ -353,6 +353,95 @@ export const pagesModule = defineModule<PagesSettings>({
 			ctx.events.emit("page-merged", canvas, pageId);
 		};
 
+		// ---------- a copy with pages (templates) ----------
+
+		const insertWithPages = (canvas: CanvasLike, data: CanvasFileData, center: { x: number; y: number }): CanvasNodeLike[] | null => {
+			if (canvas.readonly) return null;
+			const extra = (data[SCHEMA_KEY] ?? {}) as { pages?: PageInfo[]; mapLayouts?: Record<string, string> };
+			const incoming = extra.pages ?? [];
+			const known = new Set(incoming.map((p) => p.id));
+			const pageOfData = (n: CanvasNodeData) => {
+				const page = (n[SCHEMA_KEY] as { page?: string } | undefined)?.page ?? "";
+				return known.has(page) ? page : "";
+			};
+			const nodes = data.nodes ?? [];
+			const here = current(canvas);
+			// The main page: centered where asked, on the page shown.
+			const parts = new Map<string, CanvasNodeData[]>();
+			for (const n of nodes) (parts.get(pageOfData(n)) ?? parts.set(pageOfData(n), []).get(pageOfData(n))!).push(n);
+			const placed: CanvasNodeData[] = [];
+			const occupied = planNodes(canvas).map((n) => ({ x: n.x, y: n.y, width: n.width, height: n.height }));
+			for (const [page, list] of parts) {
+				const box = boundsOf(list)!;
+				const target = page ? freeRegion([...occupied, ...placed]) : { x: Math.round(center.x - (box.maxX - box.minX) / 2), y: Math.round(center.y - (box.maxY - box.minY) / 2) };
+				const dx = target.x - box.minX;
+				const dy = target.y - box.minY;
+				for (const n of list) {
+					const x = { ...((n[SCHEMA_KEY] as Record<string, unknown> | undefined) ?? { v: 1 }) };
+					if (page) x.page = page;
+					else if (here) x.page = here;
+					else delete x.page;
+					placed.push({ ...n, x: n.x + dx, y: n.y + dy, [SCHEMA_KEY]: x });
+				}
+			}
+			const pages: PageInfo[] = incoming.map((p) => {
+				const parent = p.parent && known.has(p.parent) ? p.parent : here;
+				return { id: p.id, anchor: p.anchor, root: p.root, ...(parent ? { parent } : {}) };
+			});
+			for (const n of placed) ours.add(n.id);
+			let added: Set<CanvasNodeLike> | undefined;
+			const ok = mutate(ctx, canvas, () => {
+				added = canvas.importData({ nodes: placed, edges: data.edges ?? [] }, false);
+				const root = ctx.data.root(canvas);
+				root.set({ pages: [...pagesOf(canvas), ...pages] });
+				if (extra.mapLayouts && Object.keys(extra.mapLayouts).length) root.set({ mapLayouts: { ...(root.get().mapLayouts ?? {}), ...(extra.mapLayouts as Record<string, MapLayout>) } });
+			});
+			for (const n of placed) ours.delete(n.id);
+			if (!ok) return null;
+			decorate(canvas);
+			return [...(added ?? [])];
+		};
+
+		// ---------- copies of a canvas: links point at the copy ----------
+
+		/** Links between the cards of this canvas that still name the file it was copied from. */
+		const relink = (canvas: CanvasLike) => {
+			const file = canvas.view.file;
+			if (!file || canvas.readonly) return;
+			const linktext = linktextOf(canvas);
+			const nodes = [...canvas.nodes.values()].map((n) => ({ id: n.id, type: nodeType(n), ...(nodeType(n) === "text" ? { text: n.text ?? "" } : {}), node: n }));
+			const fixed = pointLinksAt(nodes, linktext, (path) => elsewhere(path, file));
+			if (!fixed) return;
+			for (const n of fixed) if (n.text !== undefined && n.text !== n.node.text) n.node.setData({ ...n.node.getData(), text: n.text });
+			canvas.requestSave();
+		};
+		/** A link path that names a canvas other than `file`. */
+		const elsewhere = (path: string, file: TFile) => {
+			const dest = ctx.app.metadataCache.getFirstLinkpathDest(path, file.path);
+			return !!dest && dest !== file && dest.extension === "canvas";
+		};
+		/** A canvas file just made (a copy, a template): fixed in the file, before it is opened. */
+		const relinkFile = async (file: TFile) => {
+			const text = await ctx.app.vault.read(file);
+			let data: CanvasFileData;
+			try {
+				data = JSON.parse(text) as CanvasFileData;
+			} catch {
+				return;
+			}
+			const linktext = ctx.app.metadataCache.fileToLinktext(file, "", false);
+			const fixed = pointLinksAt(data.nodes ?? [], linktext, (path) => elsewhere(path, file));
+			if (!fixed) return;
+			await ctx.app.vault.process(file, (current) => (current === text ? JSON.stringify({ ...data, nodes: fixed }, null, "	") : current));
+		};
+		ctx.app.workspace.onLayoutReady(() =>
+			ctx.registerEvent(
+				ctx.app.vault.on("create", (file) => {
+					if (file instanceof TFile && file.extension === "canvas") void relinkFile(file).catch((e) => logError("[overpowered-canvas] pages: relink a copy", e));
+				}),
+			),
+		);
+
 		// ---------- placing a branch by hand ----------
 
 		const stopPlacing = (canvas: CanvasLike) => {
@@ -458,6 +547,8 @@ export const pagesModule = defineModule<PagesSettings>({
 		});
 		ctx.on("root-extra-change", decorate);
 		ctx.on("data-load", (canvas) => {
+			// A copy made while the plugin was off still links to the canvas it was copied from.
+			relink(canvas);
 			decorate(canvas);
 			const path = canvas.view.file?.path;
 			if (!path || !framing.delete(path)) return;
@@ -520,6 +611,16 @@ export const pagesModule = defineModule<PagesSettings>({
 			},
 			openIndex: () => openIndex(),
 			refreshIndex: () => refreshViews(),
+			show: (canvas, page) => show(canvas, page),
+			keepingPages: (fn) => {
+				replaying++;
+				try {
+					return fn();
+				} finally {
+					replaying--;
+				}
+			},
+			insertWithPages: (canvas, data, center) => insertWithPages(canvas, data, center),
 		};
 		ctx.register(() => (pagesHost.api = null));
 
@@ -678,7 +779,8 @@ class PagesView extends ItemView {
 		const prev = this.source?.key;
 		const leaf = this.app.workspace.getMostRecentLeaf();
 		const view = leaf?.view as { getViewType(): string; canvas?: CanvasLike; pagesSource?(): PagesSource | null } | undefined;
-		const own = view?.pagesSource?.();
+		let own = view?.pagesSource?.() ?? null;
+		for (const provider of pageSources) own ??= provider(view);
 		if (own) this.source = own;
 		else if (view?.getViewType() === "canvas" && view.canvas) this.source = this.sourceOf(view.canvas);
 		else if (this.source && !this.source.alive()) this.source = null;
