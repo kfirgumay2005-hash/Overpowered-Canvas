@@ -626,6 +626,22 @@ const drawing: TutorialDefinition = {
 				rt.change(() => node.setData({ ...node.getData(), text: `==${text}==` }));
 			},
 		},
+		{
+			title: "tut.drawing.color.title",
+			body: "tut.drawing.color.body",
+			task: "tut.drawing.color.task",
+			touch: "tut.drawing.color.touch",
+			target: ".opc-card-text-color",
+			focus: ["d-target"],
+			check: (rt) => rt.seen("text-colored") || /<span style="color:/.test(findNode(rt.now(), "d-target")?.text ?? ""),
+			demo: (rt) => {
+				rt.command("text-highlight:toggle-color");
+				const node = rt.node("d-target");
+				if (!node) return;
+				const text = node.getData().text ?? "";
+				rt.change(() => node.setData({ ...node.getData(), text: `<span style="color: #e03131;">${text}</span>` }));
+			},
+		},
 	],
 };
 
@@ -1011,6 +1027,11 @@ async function tapColumnCard(rt: TutorialRuntime, id: string): Promise<void> {
 	await rt.wait(450);
 }
 
+/** Taps its way to a card from the top of the map (the first column always shows the top card). */
+async function walkToColumn(rt: TutorialRuntime, ...ids: string[]): Promise<void> {
+	for (const id of ids) if (columnCurrent(rt) !== id && columnCard(rt, id)) await tapColumnCard(rt, id);
+}
+
 /** A press-and-drag on a column, as a finger moving it by `dy` pixels. */
 async function dragColumn(rt: TutorialRuntime, card: HTMLElement, dy: number): Promise<void> {
 	const r = card.getBoundingClientRect();
@@ -1033,7 +1054,7 @@ const columns: TutorialDefinition = {
 	icon: "columns-3",
 	title: "tut.columns.title",
 	summary: "tut.columns.summary",
-	modules: ["presentation", "drawing"],
+	modules: ["presentation", "drawing", "text-highlight"],
 	restoreSettings: [
 		{ module: "presentation", key: "columnActualSize" },
 		{ module: "presentation", key: "columnFontSize" },
@@ -1063,6 +1084,8 @@ const columns: TutorialDefinition = {
 				edge("c-e4", "c-veg", "right", "c-tom", "left"),
 				edge("c-e5", "c-veg", "right", "c-car", "left"),
 				edge("c-e6", "c-herbs", "right", "c-tea", "left"),
+				// An arrow into a card inside a group: the column view shows the group there.
+				edge("c-e7", "c-car", "bottom", "c-basil", "top"),
 			],
 		};
 	},
@@ -1138,7 +1161,7 @@ const columns: TutorialDefinition = {
 			check: (rt) => changedAny(rt, (n) => n.text, isPlainCard),
 			demo: async (rt) => {
 				await ensureColumns(rt, "c-pots");
-				if (!columnCard(rt, "c-chili")) await tapColumnCard(rt, "c-pots");
+				await walkToColumn(rt, "c-root", "c-herbs", "c-pots");
 				// Two taps: the first goes to the card, the second edits it.
 				columnCard(rt, "c-chili")?.click();
 				await rt.wait(120);
@@ -1154,6 +1177,37 @@ const columns: TutorialDefinition = {
 			},
 		},
 		{
+			title: "tut.columns.add.title",
+			body: "tut.columns.add.body",
+			task: "tut.columns.add.task",
+			touch: "tut.columns.add.touch",
+			enter: (rt) => void ensureColumns(rt, "c-pots"),
+			check: (rt) => rt.seen("column-card-added"),
+			demo: async (rt) => {
+				await ensureColumns(rt, "c-pots");
+				columnsEl(rt)?.querySelector<HTMLElement>(".opc-columns-card.is-current .opc-columns-add.is-child")?.click();
+				await rt.wait(500);
+				const input = columnsEl(rt)?.querySelector<HTMLTextAreaElement>("textarea.opc-columns-editor");
+				if (!input) return;
+				input.value = "🌿";
+				input.dispatchEvent(new Event("input"));
+				await rt.wait(500);
+				input.blur();
+				await rt.wait(400);
+			},
+		},
+		{
+			title: "tut.columns.into.title",
+			body: "tut.columns.into.body",
+			task: "tut.columns.into.task",
+			enter: (rt) => void ensureColumns(rt, "c-veg"),
+			check: (rt) => columnCurrent(rt) === "c-car" && !!columnCard(rt, "c-herbs"),
+			demo: async (rt) => {
+				await ensureColumns(rt, "c-veg");
+				await walkToColumn(rt, "c-root", "c-veg", "c-car");
+			},
+		},
+		{
 			title: "tut.columns.actual.title",
 			body: "tut.columns.actual.body",
 			task: "tut.columns.actual.task",
@@ -1163,7 +1217,47 @@ const columns: TutorialDefinition = {
 				await ensureColumns(rt, "c-veg");
 				if (rt.setting("presentation", "columnActualSize") !== true) rt.command("presentation:columns-actual-size");
 				await rt.wait(600);
-				if (columnCurrent(rt) !== "c-veg" && columnCard(rt, "c-veg")) await tapColumnCard(rt, "c-veg");
+				await walkToColumn(rt, "c-root", "c-veg");
+			},
+		},
+		{
+			title: "tut.columns.ink.title",
+			body: "tut.columns.ink.body",
+			task: "tut.columns.ink.task",
+			touch: "tut.columns.ink.touch",
+			target: (rt) => columnsEl(rt)?.querySelector<HTMLElement>('.opc-columns-tool[data-tool="ink"]') ?? null,
+			enter: (rt) => void ensureColumns(rt, "c-veg"),
+			check: (rt) => !!columnsEl(rt) && strokeCount(rt.now()) > strokeCount(rt.before),
+			demo: async (rt) => {
+				await ensureColumns(rt, "c-veg");
+				const pen = columnsEl(rt)?.querySelector<HTMLElement>('.opc-columns-tool[data-tool="ink"]');
+				if (pen && !pen.hasClass("is-active")) pen.click();
+				await rt.wait(500);
+				// A tick under the words of Tomatoes, as a pen would write it there.
+				const tick = ink(randomId(), [{ x: 690, y: -30 }, { x: 760, y: -25 }, { x: 860, y: -32 }], "#1971c2", 4);
+				(tick[SCHEMA_KEY] as Record<string, unknown>).anchor = "c-tom";
+				rt.add([tick]);
+				await rt.wait(400);
+			},
+		},
+		{
+			title: "tut.columns.mark.title",
+			body: "tut.columns.mark.body",
+			task: "tut.columns.mark.task",
+			touch: "tut.columns.mark.touch",
+			target: (rt) => columnsEl(rt)?.querySelector<HTMLElement>('.opc-columns-tool[data-tool="highlight"]') ?? null,
+			enter: (rt) => void ensureColumns(rt, "c-veg"),
+			check: (rt) => rt.seen("text-highlighted") || rt.seen("text-colored") || /==|<mark|<span style="color:/.test(findNode(rt.now(), "c-car")?.text ?? ""),
+			demo: async (rt) => {
+				await ensureColumns(rt, "c-veg");
+				const tool = columnsEl(rt)?.querySelector<HTMLElement>('.opc-columns-tool[data-tool="highlight"]');
+				if (tool && !tool.hasClass("is-active")) tool.click();
+				await rt.wait(500);
+				const node = rt.node("c-car");
+				if (!node) return;
+				const text = node.getData().text ?? "";
+				rt.change(() => node.setData({ ...node.getData(), text: `==${text}==` }));
+				await rt.wait(400);
 			},
 		},
 		{ title: "tut.columns.end.title", body: "tut.columns.end.body" },
@@ -2376,6 +2470,28 @@ const pages: TutorialDefinition = {
 				rt.canvas.wrapperEl.querySelector<HTMLElement>(".opc-walk-right")?.click();
 				await rt.wait(700);
 				rt.canvas.wrapperEl.querySelector<HTMLElement>(".opc-walk-right")?.click();
+			},
+		},
+		{
+			title: "tut.pages.cols.title",
+			body: "tut.pages.cols.body",
+			task: "tut.pages.cols.task",
+			enter: (rt) => {
+				rt.command("presentation:walk-end");
+				rt.command("pages:main-page");
+				rt.select(["pg-bb"]);
+			},
+			check: (rt) => !!rt.canvas.wrapperEl.querySelector(".opc-columns") && rt.seen("page-shown", (_c, page) => page !== ""),
+			demo: async (rt) => {
+				if (!rt.canvas.wrapperEl.querySelector(".opc-columns")) {
+					rt.command("presentation:walk-end");
+					rt.command("pages:main-page");
+					rt.select(["pg-bb"]);
+					rt.command("presentation:walk-columns");
+					await rt.wait(900);
+				}
+				rt.canvas.wrapperEl.querySelector<HTMLElement>('.opc-columns-card.is-current a.internal-link')?.click();
+				await rt.wait(700);
 			},
 		},
 		{

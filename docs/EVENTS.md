@@ -71,6 +71,8 @@ read-only unless you know the internals. Payloads are listed below; types are in
 | `note-block-dropped` | canvas, node (a block dragged or sent from a note) |
 | `card-relinked` | canvas, node (a card moved onto a child / sibling target of another card) |
 | `text-highlighted` | canvas, node (words highlighted or unhighlighted with the text highlighter) |
+| `text-colored` | canvas, node (words colored, or their color taken off, with the text color tool) |
+| `column-card-added` | canvas, node, kind (`"child"` or `"sibling"`: a card added from the column view) |
 | `lasso-selected` | canvas, items (what the lasso selected) |
 | `selection-cut` | canvas, count |
 | `smart-group-changed` | canvas, change (`"group"` or `"ungroup"`), cards (how many cards were grouped or ungrouped) |

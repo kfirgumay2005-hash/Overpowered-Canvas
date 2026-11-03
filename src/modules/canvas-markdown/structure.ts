@@ -247,7 +247,7 @@ export function buildStructure(data: CanvasFileData, opts: StructureOptions): St
 	const crossEdges = edges.filter((e) => !used.has(e.id)).map((e) => e.id);
 
 	// A link between a break-point card and its page goes at the end of the card's line.
-	const linkTargets = pageLinkTargets(pagesOfRoot(data as unknown as Record<string, unknown>));
+	const linkTargets = pageLinkTargets(pagesOfRoot(data));
 	const bullet = (id: string): OutlineItem => {
 		const node = byId.get(id)!;
 		const kids = orderChildren(node, (children.get(id) ?? []).map((c) => byId.get(c)!), opts.rtl);

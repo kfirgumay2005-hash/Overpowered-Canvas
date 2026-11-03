@@ -187,3 +187,21 @@ Verified against: **Obsidian 1.14.4 (desktop, Windows)**.
 | `view.scope` + a matched key | A scope handler that matched a combo keeps the key even when it returns `true`: the global hotkey (e.g. Ctrl/Cmd+G → graph view) no longer runs. A canvas key with nothing to do runs the command bound to the combo itself (`runHotkeyCommand`). | 🟢 runtime |
 | `app.hotkeyManager.bakedHotkeys` / `bakedIds` | Parallel arrays of every effective hotkey (`modifiers` like `"Ctrl,Shift"`, `key` like `"G"`) and its command id. | 🟢 runtime |
 | `--font-text-size` / `--font-preferred-size` | Note text in Live Preview, Source mode and Reading mode is sized from `--font-preferred-size`, which `<body>` derives from `--font-text-size` (× `--preferred-text-scale` on mobile). Both are resolved on `<body>`, so a per-note size must redefine both on the note view. | 🟢 runtime |
+
+## Feedback round 8 additions (verified at runtime in Obsidian 1.15.0)
+
+- A text card's reading view on the board: `.canvas-node > .canvas-node-container >
+  .canvas-node-content.markdown-embed > .markdown-embed-content > .markdown-preview-view` (flex
+  column; `::before` / `::after` grow and center the text vertically; `scrollbar-gutter: stable`),
+  then `.markdown-preview-sizer` with a `.markdown-preview-pusher` and one `div.el-<tag>` per block.
+  The reading view adds `span.list-bullet` to `ul > li`, `ul.has-list-bullet`, fold arrows
+  (`.heading-collapse-indicator`, `.list-collapse-indicator`, icon `right-triangle`) and a `dir` on
+  each table wrapper and cell. `MarkdownRenderer.render` adds none of these, so the column view's
+  actual-size cards add them (`wrapBlocks`) to lay text out exactly as the board does.
+- An image card: `.canvas-node-content.media-embed.image-embed.is-loaded > img`.
+- `canvas.undo()` then `history.data.length = history.current + 1` drops a step without a redo.
+- Obsidian's `right-triangle` icon points down; folded items rotate it by -90° (+90° in RTL).
+- With a sidebar leaf (or a mobile drawer) active, `getActiveViewOfType(MarkdownView)` is null
+  while `workspace.getActiveFile()` and `activeEditor` still name the note.
+- Touch double-taps produce no `dblclick` on canvas cards; a long press on a card of a
+  multi-selection opens the selection's menu (`canvas:selection-menu`), not the node's.

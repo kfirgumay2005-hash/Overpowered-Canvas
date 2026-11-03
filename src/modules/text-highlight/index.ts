@@ -1,6 +1,6 @@
 import { Notice, Setting, setIcon, setTooltip } from "obsidian";
 import { defineModule, type ModuleContext } from "../../core/module";
-import type { CanvasLike, CanvasNodeLike } from "../../internals/types";
+import type { CanvasLike } from "../../internals/types";
 import { mergeWithDefaults } from "../../settings/settings";
 import { capturePointer, claimTool, isTextBox, mutate, nodeType, releaseTool } from "../shared";
 import { marksHost, type MarkMode, type MarkSurface, type MarkTarget } from "./api";

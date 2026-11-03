@@ -7,7 +7,7 @@ import { mergeWithDefaults } from "../../settings/settings";
 import { relayoutMap } from "../auto-layout/arrange";
 import { estimateSize } from "../canvas-markdown/size";
 import { growthOf, makeSiblingRoom } from "../mindmap/room";
-import { childPosition, childrenOf, descendants, directionBetween, logical, parentOf, type Dir, type TEdge } from "../mindmap/tree";
+import { childPosition, childrenOf, descendants, directionBetween, parentOf, type Dir, type TEdge } from "../mindmap/tree";
 import { canvasDirection, centerOn, isHiddenNode, isTextBox, mutate, nodeType, randomId, selectedNodes } from "../shared";
 import { blockAt, type Block } from "./block";
 import { CropModal, loadImage } from "./crop";

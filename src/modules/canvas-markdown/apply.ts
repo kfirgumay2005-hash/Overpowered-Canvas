@@ -117,7 +117,7 @@ export async function applyNote(items: OutlineItem[], note: NoteData | null, bas
 	const idToAlias = new Map([...aliasToId].map(([a, id]) => [id, a]));
 	const baseNodes = new Map((base?.nodes ?? []).map((n) => [n.id, n]));
 	// A page's root card heads a map of its own, wherever the note nests it.
-	const pageRefs = pagesOfRoot(base ? (base as unknown as Record<string, unknown>) : note?.root);
+	const pageRefs = pagesOfRoot(base ?? note?.root);
 	const pageRoots = new Set(pageRefs.map((p) => p.root));
 	const linkTargets = pageLinkTargets(pageRefs);
 	const known = new Set(fromNote.keys());

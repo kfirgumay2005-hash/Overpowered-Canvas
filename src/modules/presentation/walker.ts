@@ -504,8 +504,8 @@ export function enableWalk(ctx: ModuleContext<object>, presenting: (canvas: Canv
 			if (typing?.closest?.("textarea, input, [contenteditable=true]") || walks.get(canvas)?.columns?.isEditing()) return;
 			const walk = walks.get(canvas);
 			if (!walk) return;
-			// A tool of the column view takes its own keys (Esc ends the tool, not the walk).
-			if (walk.tool) return;
+			// Esc with a tool of the column view on ends the tool (it handles it), not the walk.
+			if (walk.tool && evt.key === "Escape") return;
 			const dir = ARROWS[evt.key];
 			const inColumns = !!walk.columns;
 			if (dir) step(canvas, dir);

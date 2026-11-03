@@ -153,7 +153,7 @@ function orderedTrees(nodes: TNode[], tree: TEdge[], rootIds: string[], directio
 	let next = -Infinity;
 	for (const root of ordered) {
 		const pos = direction === "balanced" ? balancedTree(byId, kids, root, opts) : tidyTree(nodes, kids, root, { direction, spacing: opts.spacing, levelSpacing: opts.levelSpacing, rtl: false });
-		const span = (id: string, p: { x: number; y: number }) => (horizontal ? [p.y, p.y + byId.get(id)!.height] : [p.x, p.x + byId.get(id)!.width]) as [number, number];
+		const span = (id: string, p: { x: number; y: number }): [number, number] => (horizontal ? [p.y, p.y + byId.get(id)!.height] : [p.x, p.x + byId.get(id)!.width]);
 		const lo = Math.min(...[...pos].map(([id, p]) => span(id, p)[0]));
 		const hi = Math.max(...[...pos].map(([id, p]) => span(id, p)[1]));
 		const shift = next === -Infinity || lo >= next ? 0 : next - lo;
