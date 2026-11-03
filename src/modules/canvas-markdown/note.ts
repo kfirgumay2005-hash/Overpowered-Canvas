@@ -10,7 +10,7 @@
 import type { CanvasEdgeData, CanvasFileData, CanvasNodeData } from "../../data/json-canvas";
 import { MAP_LAYOUTS, type MapLayout } from "../../data/schema";
 import { parseOutline, stripFrontmatter, writeOutline, type OutlineItem } from "./outline";
-import { buildStructure } from "./structure";
+import { buildStructure, pagesOfRoot } from "./structure";
 
 export const DATA_VERSION = 1;
 export const DATA_HEADING = "## canvas-data";
@@ -41,6 +41,8 @@ export interface NoteData {
 	note?: string;
 	/** Separate data file only: the outline last written to the note, with ids. */
 	outline?: OutlineItem[];
+	/** The note keeps the canvas's pages as sections, shown one at a time (see paged.ts). */
+	paged?: boolean;
 }
 
 export interface ExportOptions {
@@ -50,6 +52,8 @@ export interface ExportOptions {
 	indent: string;
 	/** Front matter to keep at the top (verbatim, including the --- lines). */
 	frontmatter?: string;
+	/** Pages as sections of their own, shown one at a time (else one long note). */
+	paged?: boolean;
 }
 
 function isPlainObject(v: unknown): v is Record<string, unknown> {
@@ -92,7 +96,8 @@ export function dataBlock(data: NoteData): string {
 
 /** Canvas → outline items (with ids) and the data block. */
 function build(canvas: CanvasFileData, opts: ExportOptions): { items: OutlineItem[]; data: NoteData } {
-	const s = buildStructure(canvas, { rtl: opts.rtl, freeLabel: opts.freeLabel });
+	const paged = !!opts.paged && pagesOfRoot(canvas).length > 0;
+	const s = buildStructure(canvas, { rtl: opts.rtl, freeLabel: opts.freeLabel, paged });
 	const byId = new Map((canvas.nodes ?? []).map((n) => [n.id, n]));
 	const edgeById = new Map((canvas.edges ?? []).map((e) => [e.id, e]));
 
@@ -118,6 +123,7 @@ function build(canvas: CanvasFileData, opts: ExportOptions): { items: OutlineIte
 		crossEdges: s.crossEdges.map((id) => edgeById.get(id)!),
 		drawings: s.drawings.map((id) => byId.get(id)!),
 		order: (canvas.nodes ?? []).map((n) => n.id),
+		...(paged ? { paged: true } : {}),
 	};
 	return { items: s.items, data };
 }
@@ -204,6 +210,7 @@ export function readData(raw: unknown): NoteData | null {
 	if (Array.isArray(raw.drawings)) out.drawings = raw.drawings.filter(nodeLike);
 	if (Array.isArray(raw.order)) out.order = raw.order.filter((v): v is string => typeof v === "string");
 	if (typeof raw.note === "string") out.note = raw.note;
+	if (raw.paged === true) out.paged = true;
 	if (Array.isArray(raw.outline)) out.outline = readOutline(raw.outline);
 	return out;
 }

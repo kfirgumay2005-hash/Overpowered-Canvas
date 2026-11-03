@@ -600,3 +600,28 @@ Automated runtime checks of every item below were run in an isolated Obsidian 1.
 3. **Big maps in pages, text steps:** text pages opens beside the practice board, not over it, and the panel stays. Following the link and editing a card complete their steps; the edit shows on the board. *Show as canvas* closes the text and returns to the board. "Bringing a page back" still works afterwards.
 4. **Notes as cards, auto-link steps:** set the scope to the whole vault first. The preview lists only the practice board. The real undo record is kept, and nothing outside the tutorial folder changes. Undo takes the links back, and a normal scan afterwards doesn't list practice files.
 5. **Ending:** closing any of them mid-step leaves no text tab, practice file or changed setting behind. Show me completes each step.
+
+## Feedback round 7
+
+1. **Lasso:** on a board with 3 cards, turn the lasso on, lasso them, long-press / right-click →
+   *Create group*: the lasso turns off and its button works. Also *Auto layout…*, *Move to the
+   layer above*, *Copy*: the lasso ends; a selection the action left unchanged is let go only
+   when the board changed.
+2. **Walk:** on a right-to-left map, the arrows beside the card and taps on the board beside it
+   do what the walking pad does (right = child, left = parent). No collapse "−" buttons while
+   walking.
+3. **Note with pages:** a canvas with nested pages → top-bar switch: one section per page, only
+   the page shown is visible (editor and reading view), bar and index list the pages as on the
+   board, card links and backlinks move between pages inside the note, heading links / outline
+   jump to the right page, new lines on a sub-page come back on that page, the switch keeps the
+   page. *Export canvas to one long Markdown note* still gives the flat note.
+4. **Column view:** pinch / Ctrl+wheel zoom; drag a column past a tall card; children centered on
+   their parent; text size (empty = canvas size incl. CSS classes), widest card, actual card size
+   with ink; card colors on borders; links open; double tap edits into the board; groups as
+   cards (held cards first, then arrow targets; nested groups).
+5. **Templates with pages:** *Make a copy* of a canvas with pages → its links lead within the
+   copy; *New canvas from template* recreates the pages; *Insert template* on a sub-page puts the
+   template's pages under it.
+6. **Remember where you were:** canvas (page, pan, zoom) and note (scroll, page) after a link and
+   Back, after closing and reopening, after restarting Obsidian; a link to a card or heading
+   still goes there; both toggles off → files open as before.

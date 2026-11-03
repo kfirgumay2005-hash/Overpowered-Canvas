@@ -157,8 +157,9 @@ export async function applyNote(items: OutlineItem[], note: NoteData | null, bas
 			const fields = contentFields(item.text, opts.resolveFile);
 			const size = fields.type === "file" ? opts.fileSize : estimateSize(fields.type === "link" ? (fields.url ?? "") : item.text, opts.textWidth);
 			const id = opts.newId();
-			// A new line under a card of a page belongs to that page.
-			const page = parent && nodes.get(parent) ? pageOfNode(nodes.get(parent)!) : "";
+			// A new line under a card of a page belongs to that page; in a note with pages, a new
+			// line of its own belongs to the page whose section it is in.
+			const page = parent && nodes.get(parent) ? pageOfNode(nodes.get(parent)!) : section;
 			nodes.set(id, { id, x: 0, y: 0, width: size.width, height: size.height, ...fields, ...(page ? { [SCHEMA_KEY]: { v: SCHEMA_VERSION, page } } : {}) } as CanvasNodeData);
 			unplaced.add(id);
 			created.push(id);
@@ -166,7 +167,17 @@ export async function applyNote(items: OutlineItem[], note: NoteData | null, bas
 			walk(item.children, id, group);
 		}
 	};
-	walk(items, null, null);
+	// In a note with pages, each page's section starts with its root: what follows is on that page.
+	let section = "";
+	const knownPages = new Set(pagesOfRoot(base ? (base as unknown as Record<string, unknown>) : note?.root).map((p) => p.id));
+	for (const item of items) {
+		if (note?.paged && item.kind !== "free" && item.id) {
+			const id = aliasToId.get(item.id) ?? (baseNodes.has(item.id) ? item.id : undefined);
+			const node = id ? (baseNodes.get(id) ?? fromNote.get(id)) : undefined;
+			if (node) section = knownPages.has(pageOfNode(node)) ? pageOfNode(node) : "";
+		}
+		walk([item], null, null);
+	}
 	const placedById = new Map(placed.map((p) => [p.id, p]));
 
 	// 2. Final node list: kept, deleted, untouched.

@@ -1,7 +1,6 @@
 import { Component, Keymap, MarkdownRenderer, Notice, type App } from "obsidian";
 import { logError } from "../../core/log";
 import type { ModuleContext } from "../../core/module";
-import type { Stroke } from "../../data/schema";
 import type { CanvasLike, CanvasNodeLike } from "../../internals/types";
 import { nodeText } from "../canvas-markdown/structure";
 import { strokeD } from "../drawing/render";
@@ -279,7 +278,7 @@ export class ColumnView {
 		for (const carrier of carriers) {
 			const g = svg.createSvg("g");
 			g.setAttribute("transform", `translate(${carrier.x - minX} ${carrier.y - minY})`);
-			for (const s of (this.ctx.data.node(carrier).get().strokes ?? []) as Stroke[]) {
+			for (const s of this.ctx.data.node(carrier).get().strokes ?? []) {
 				const path = g.createSvg("path");
 				path.setAttribute("d", strokeD(s));
 				path.setAttribute("fill", s.color);

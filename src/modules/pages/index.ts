@@ -5,7 +5,7 @@ import { SCHEMA_KEY, type MapLayout, type PageInfo } from "../../data/schema";
 import type { CanvasLike, CanvasNodeLike } from "../../internals/types";
 import { mapRootOf, relayoutMap } from "../auto-layout/arrange";
 import { centerOn, mutate, nodeType, randomId, renderedZ, selectedNodes } from "../shared";
-import { pagesHost, type PagesSource } from "./api";
+import { pageSources, pagesHost, type PagesSource } from "./api";
 import { renderPagesBar } from "./bar";
 import { boundsOf, branchOf, cardLink, freeRegion, pageChildren, pointLinksAt, titleOf, withLink, withoutLink, withoutPage, type PlanNode } from "./logic";
 import { logError } from "../../core/log";
@@ -612,6 +612,14 @@ export const pagesModule = defineModule<PagesSettings>({
 			openIndex: () => openIndex(),
 			refreshIndex: () => refreshViews(),
 			show: (canvas, page) => show(canvas, page),
+			keepingPages: (fn) => {
+				replaying++;
+				try {
+					return fn();
+				} finally {
+					replaying--;
+				}
+			},
 			insertWithPages: (canvas, data, center) => insertWithPages(canvas, data, center),
 		};
 		ctx.register(() => (pagesHost.api = null));
@@ -771,7 +779,8 @@ class PagesView extends ItemView {
 		const prev = this.source?.key;
 		const leaf = this.app.workspace.getMostRecentLeaf();
 		const view = leaf?.view as { getViewType(): string; canvas?: CanvasLike; pagesSource?(): PagesSource | null } | undefined;
-		const own = view?.pagesSource?.();
+		let own = view?.pagesSource?.() ?? null;
+		for (const provider of pageSources) own ??= provider(view);
 		if (own) this.source = own;
 		else if (view?.getViewType() === "canvas" && view.canvas) this.source = this.sourceOf(view.canvas);
 		else if (this.source && !this.source.alive()) this.source = null;

@@ -1,0 +1,45 @@
+/* Notes with pages: the pages bar sits between the tab's header and the note. */
+body.opc-mod-canvas-markdown .workspace-leaf-content.opc-md-paged > .view-content {
+	flex: 1 1 0;
+	min-height: 0;
+	height: auto;
+}
+body.opc-mod-canvas-markdown .workspace-leaf-content > .opc-pages-bar.opc-md-pages-bar {
+	position: static;
+	flex: 0 0 auto;
+	align-self: stretch;
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: var(--size-2-1);
+	max-width: none;
+	margin: 0;
+	padding: var(--size-2-1) var(--size-4-3);
+	background-color: var(--background-primary);
+	border: none;
+	border-bottom: 1px solid var(--background-modifier-border);
+	border-radius: 0;
+	box-shadow: none;
+	z-index: auto;
+}
+body.opc-mod-canvas-markdown .opc-md-pages-bar .opc-pages-index.is-hidden {
+	display: none;
+}
+body.opc-mod-canvas-markdown .opc-md-pages-tools {
+	display: flex;
+	align-items: center;
+	gap: var(--size-2-1);
+	margin-inline-start: auto;
+}
+body.opc-mod-canvas-markdown .opc-md-pages-tools .clickable-icon.is-active {
+	color: var(--text-accent);
+}
+body.opc-mod-canvas-markdown .opc-md-pages-count {
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+	font-variant-numeric: tabular-nums;
+}
+/* Reading view: the other pages' sections are left out. */
+body.opc-mod-canvas-markdown .markdown-reading-view .opc-md-page-off {
+	display: none;
+}

@@ -1,6 +1,7 @@
 import { ChoiceModal } from "../ui/choice-modal";
 import type { ChoiceAnchor } from "../ui/picker";
-import { Component, Notice, Platform, type App, type Command, type Plugin } from "obsidian";
+import { Component, MarkdownPreviewRenderer, Notice, Platform, type App, type Command, type Plugin } from "obsidian";
+import type { Extension } from "@codemirror/state";
 import type { CanvasDataApi } from "../data/access";
 import type { Translate } from "../i18n";
 import { mergeWithDefaults, type ModuleState, type PluginSettings } from "../settings/settings";
@@ -46,6 +47,20 @@ interface ActiveModule {
 
 /** Owns the enable/disable lifecycle of every module, in dependency order, with error isolation. */
 export class ModuleManager {
+	/**
+	 * Editor extensions of all modules: Obsidian can't unregister one, so the plugin registers this
+	 * list once and modules add to it and take theirs out (then the editors are told).
+	 */
+	private sharedExtensions: Extension[] | null = null;
+
+	private editorExtensions(): Extension[] {
+		if (!this.sharedExtensions) {
+			this.sharedExtensions = [];
+			this.host.plugin.registerEditorExtension(this.sharedExtensions);
+		}
+		return this.sharedExtensions;
+	}
+
 	private readonly byId = new Map<string, AnyModule>();
 	private readonly active = new Map<string, ActiveModule>();
 	private readonly failed = new Set<string>();
@@ -263,6 +278,20 @@ export class ModuleManager {
 					app.workspace.detachLeavesOfType(type);
 					(app as unknown as { viewRegistry: { unregisterView(type: string): void } }).viewRegistry.unregisterView(type);
 				});
+			},
+			registerEditorExtension: (extension) => {
+				const list = this.editorExtensions();
+				list.push(extension);
+				host.app.workspace.updateOptions();
+				component.register(() => {
+					const at = list.indexOf(extension);
+					if (at >= 0) list.splice(at, 1);
+					host.app.workspace.updateOptions();
+				});
+			},
+			registerMarkdownPostProcessor: (processor, sortOrder) => {
+				const added = host.plugin.registerMarkdownPostProcessor(processor, sortOrder);
+				component.register(() => MarkdownPreviewRenderer.unregisterPostProcessor(added));
 			},
 			registerEvent: (ref) => component.registerEvent(ref),
 			registerDomEvent: (el: HTMLElement | Window, type: string, cb: (ev: Event) => unknown, options?: boolean | AddEventListenerOptions) =>

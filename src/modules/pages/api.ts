@@ -26,6 +26,8 @@ export interface PagesApi {
 	openIndex(): Promise<void>;
 	/** Tells the pages index that what it shows changed. */
 	refreshIndex(): void;
+	/** Runs `fn` (an import that set each card's page itself): new cards keep the page they have. */
+	keepingPages<T>(fn: () => T): T;
 	/** Shows `page` in this view (as the index does). */
 	show(canvas: CanvasLike, page: string): void;
 	/**
@@ -51,3 +53,6 @@ export interface PagesSource {
 }
 
 export const pagesHost: { api: PagesApi | null } = { api: null };
+
+/** Views other than canvases that show pages (notes with pages): the index asks them too. */
+export const pageSources = new Set<(view: unknown) => PagesSource | null>();

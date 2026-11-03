@@ -1191,6 +1191,23 @@ export const en = {
 	"presentation.columnActualSize.desc": "Shows each card at its size on the canvas, with the handwriting and marks drawn on it. The next column then starts right after the selected card, however wide it is.",
 	"presentation.columnActualSize.simple": "Cards look exactly as on the board, ink included.",
 	"presentation.columns.saveFailed": "Could not save the card.",
+	"canvasMarkdown.cmd.exportFlat": "Export canvas to one long Markdown note",
+	"canvasMarkdown.cmd.exportPaged": "Export canvas to a Markdown note with pages",
+	"canvasMarkdown.pages.name": "Canvases with pages become",
+	"canvasMarkdown.pages.desc": "A note with pages keeps the canvas's pages: each page of the canvas is a chapter of the note, shown one at a time with the same pages bar and index, and the links between a card and its page lead from chapter to chapter. One long note lists every page one after the other.",
+	"canvasMarkdown.pages.simple": "Choose whether a big map turns into chapters you read one at a time, or into one long note. The command \"Export canvas to one long Markdown note\" always gives the long note.",
+	"canvasMarkdown.pages.paged": "A note with pages",
+	"canvasMarkdown.pages.flat": "One long note",
+	"canvasMarkdown.paged.all": "Show the whole note",
+	"viewMemory.name": "Remember where you were",
+	"viewMemory.desc": "Canvases and notes open again where you left them: a canvas on the same page, place and zoom, a note at the same place (and on the same page, for a note with pages). It works after following a link and coming back, after closing and opening the file again, and after restarting Obsidian. Opening a link to a card or a heading still goes there.",
+	"viewMemory.simple": "No more starting over at the top or on the main page.",
+	"viewMemory.canvases.name": "In canvases",
+	"viewMemory.canvases.desc": "Reopen each canvas on the page, place and zoom it was left at.",
+	"viewMemory.canvases.simple": "Canvases open where you left them.",
+	"viewMemory.notes.name": "In notes",
+	"viewMemory.notes.desc": "Reopen each note at the place it was read, and a note with pages on the page it was left on.",
+	"viewMemory.notes.simple": "Notes open where you stopped reading.",
 } as const;
 
 export type I18nKey = keyof typeof en;
