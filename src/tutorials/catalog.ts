@@ -8,6 +8,7 @@ import { builtinTemplate } from "../modules/board-templates/builtins";
 import { reid, translate as shiftData } from "../modules/board-templates/logic";
 import { STICKY_COLORS } from "../modules/sticky-notes/logic";
 import { relayoutMap } from "../modules/auto-layout/arrange";
+import { parseFontSize } from "../modules/note-font-size/logic";
 import { BARS_TUTORIAL } from "./runner";
 import { added, addedEdges, arrow, card, count, edge, edgesOf, ellipsePoints, extraOf, findNode, group, ink, kindOf, nodesOf, practicePdf, randomId, shape, sticky, strokeCount, title } from "./board";
 import type { Translate } from "../i18n";
@@ -2908,4 +2909,297 @@ const file: TutorialDefinition = {
 	],
 };
 
-export const TUTORIALS: readonly TutorialDefinition[] = [basics, notes, shapes, edges, drawing, layers, present, mindmap, navigate, organize, markdown, select, blocks, vault, style, big, direction, pdf, pages, arrows, bars, images, file, columns];
+// ---------- 25. Smart groups ----------
+
+const SG_MEMBERS = ["sg-title", "sg-photo", "sg-caption"];
+const smartGroupOf = (rt: TutorialRuntime, id: string) => rt.extra(id).smartGroup;
+/** The three slide pieces share one smart group. */
+const piecesGrouped = (rt: TutorialRuntime) => {
+	const g = smartGroupOf(rt, SG_MEMBERS[0]!);
+	return !!g && SG_MEMBERS.every((id) => smartGroupOf(rt, id) === g);
+};
+
+const smartGroups: TutorialDefinition = {
+	id: "smart-groups",
+	icon: "group",
+	title: "tut.sg.title",
+	summary: "tut.sg.summary",
+	modules: ["smart-groups"],
+	board: (t) => ({
+		nodes: [
+			card("sg-title", `## ${t("tut.sg.board.title")}`, 0, 0, 420, 80, { color: "5" }),
+			card("sg-photo", t("tut.sg.board.photo"), 0, 110, 420, 180, { color: "4" }),
+			card("sg-caption", t("tut.sg.board.caption"), 0, 320, 420, 70),
+			card("sg-note", t("tut.sg.board.note"), 520, 110, 260, 100, { color: "3" }),
+		],
+		edges: [],
+	}),
+	steps: [
+		{ title: "tut.sg.s1.title", body: "tut.sg.s1.body" },
+		{
+			title: "tut.sg.s2.title",
+			body: "tut.sg.s2.body",
+			task: "tut.sg.s2.task",
+			touch: "tut.sg.s2.touch",
+			target: ".opc-menu-smart-group",
+			check: piecesGrouped,
+			demo: async (rt) => {
+				rt.select(SG_MEMBERS);
+				await rt.wait(600);
+				rt.command("smart-groups:group");
+			},
+		},
+		{
+			title: "tut.sg.s3.title",
+			body: "tut.sg.s3.body",
+			task: "tut.sg.s3.task",
+			enter: (rt) => rt.canvas.deselectAll(),
+			check: (rt) => piecesGrouped(rt) && SG_MEMBERS.every((id) => rt.selected().includes(id)),
+			demo: (rt) => rt.select(SG_MEMBERS),
+		},
+		{
+			title: "tut.sg.s4.title",
+			body: "tut.sg.s4.body",
+			task: "tut.sg.s4.task",
+			check: (rt) => SG_MEMBERS.every((id) => moved(rt, id)),
+			demo: async (rt) => {
+				rt.select(SG_MEMBERS);
+				await Promise.all(SG_MEMBERS.map((id) => glide(rt, id, -80, 60)));
+			},
+		},
+		{
+			title: "tut.sg.s5.title",
+			body: "tut.sg.s5.body",
+			task: "tut.sg.s5.task",
+			touch: "tut.sg.s5.touch",
+			check: (rt) => piecesGrouped(rt) && rt.selected().length === 1 && SG_MEMBERS.includes(rt.selected()[0]!),
+			demo: (rt) => rt.select(["sg-caption"]),
+		},
+		{
+			title: "tut.sg.s6.title",
+			body: "tut.sg.s6.body",
+			task: "tut.sg.s6.task",
+			touch: "tut.sg.s6.touch",
+			check: (rt) => SG_MEMBERS.every((id) => !smartGroupOf(rt, id)),
+			demo: async (rt) => {
+				rt.select(SG_MEMBERS);
+				await rt.wait(600);
+				rt.command("smart-groups:ungroup");
+			},
+		},
+		{ title: "tut.sg.s7.title", body: "tut.sg.s7.body" },
+	],
+};
+
+// ---------- 26–27. Writing in notes: paragraph indents, font size per note ----------
+
+/** The parts of a note's view the writing tutorials read and drive (no Obsidian import: tests load this file). */
+interface WritingTab {
+	file?: { path: string } | null;
+	editor?: { getValue(): string; setCursor(line: number, ch?: number): void; focus(): void };
+	getMode?(): string;
+}
+const writingNotePath = (rt: TutorialRuntime, name: string) => `${rt.folder}/${fileSafe(name)}.md`;
+const writingTab = (rt: TutorialRuntime, name: string) => {
+	const path = writingNotePath(rt, name);
+	const leaf = rt.app.workspace.getLeavesOfType("markdown").find((l) => (l.view as unknown as WritingTab).file?.path === path);
+	return leaf ? { leaf, view: leaf.view as unknown as WritingTab } : null;
+};
+/** Opens the practice note beside the board (it is written with the board and deleted with it). */
+async function openWritingNote(rt: TutorialRuntime, name: string): Promise<void> {
+	if (writingTab(rt, name)) return;
+	const file = rt.app.vault.getAbstractFileByPath(writingNotePath(rt, name));
+	const boardLeaf = rt.app.workspace.getLeavesOfType("canvas").find((l) => (l.view as unknown as { canvas?: unknown }).canvas === rt.canvas);
+	if (!file || !boardLeaf) return;
+	const leaf = rt.app.workspace.createLeafBySplit(boardLeaf, "vertical");
+	await leaf.openFile(file as Parameters<typeof leaf.openFile>[0], { active: false, state: { mode: "source" } });
+	await rt.wait(400);
+	frameClearOfPanel(rt);
+}
+/** Puts the cursor in the practice note (line, column) and focuses it, as a click would. */
+function focusNote(rt: TutorialRuntime, name: string, line: number, ch = 0): boolean {
+	const tab = writingTab(rt, name);
+	if (!tab?.view.editor) return false;
+	rt.app.workspace.setActiveLeaf(tab.leaf, { focus: true });
+	tab.view.editor.focus();
+	tab.view.editor.setCursor(line, ch);
+	return true;
+}
+/**
+ * Runs a command in the focused note ("<module>:<id>" of this plugin, or "core:<id>").
+ * rt.command focuses the board first, which would take the cursor out of the note.
+ */
+function runInNote(rt: TutorialRuntime, id: string): boolean {
+	const commands = (rt.app as unknown as { commands: { commands: Record<string, unknown>; executeCommandById(id: string): boolean } }).commands;
+	const full = id.startsWith("core:") ? id.slice("core:".length) : Object.keys(commands.commands).find((k) => k.endsWith(`:${id}`));
+	return !!full && commands.executeCommandById(full);
+}
+const noteLines = (rt: TutorialRuntime, name: string) => writingTab(rt, name)?.view.editor?.getValue().split("\n") ?? [];
+async function setNoteMode(rt: TutorialRuntime, name: string, mode: "source" | "preview"): Promise<void> {
+	const tab = writingTab(rt, name);
+	if (!tab) return;
+	const state = tab.leaf.getViewState();
+	await tab.leaf.setViewState({ ...state, state: { ...(state.state ?? {}), mode } });
+}
+const inReadingMode = (rt: TutorialRuntime, name: string) => writingTab(rt, name)?.view.getMode?.() === "preview";
+
+const EM = " ";
+const LIST_LINE = /^\s*[-*+] /;
+const indentNote = (t: Translate) => t("tut.indent.noteName");
+const emCount = (rt: TutorialRuntime) => noteLines(rt, indentNote(rt.t)).join("\n").split(EM).length - 1;
+/** Line numbers in the practice note: title, blank, first paragraph, blank, second, blank, two bullets. */
+const INDENT_P1 = 2;
+const INDENT_ITEM2 = 7;
+let emsAtStart = 0;
+
+const indent: TutorialDefinition = {
+	id: "indent",
+	icon: "indent-increase",
+	title: "tut.indent.title",
+	summary: "tut.indent.summary",
+	modules: ["paragraph-indent"],
+	files: (t) => [
+		{
+			path: `${fileSafe(indentNote(t))}.md`,
+			content: ["# " + t("tut.indent.note.title"), "", t("tut.indent.note.p1"), "", t("tut.indent.note.p2"), "", "- " + t("tut.indent.note.b1"), "- " + t("tut.indent.note.b2"), ""].join("\n"),
+		},
+	],
+	board: (t) => ({ nodes: [card("in-hint", t("tut.indent.board.hint"), 0, 0, 360, 120, { color: "5" })], edges: [] }),
+	steps: [
+		{ title: "tut.indent.s1.title", body: "tut.indent.s1.body", enter: (rt) => void openWritingNote(rt, indentNote(rt.t)) },
+		{
+			title: "tut.indent.s2.title",
+			body: "tut.indent.s2.body",
+			task: "tut.indent.s2.task",
+			touch: "tut.indent.s2.touch",
+			enter: (rt) => void openWritingNote(rt, indentNote(rt.t)),
+			check: (rt) => noteLines(rt, indentNote(rt.t)).some((l) => l.startsWith(EM) && !LIST_LINE.test(l)),
+			demo: (rt) => {
+				if (focusNote(rt, indentNote(rt.t), INDENT_P1, 0)) runInNote(rt, "paragraph-indent:insert");
+			},
+		},
+		{
+			title: "tut.indent.s3.title",
+			body: "tut.indent.s3.body",
+			task: "tut.indent.s3.task",
+			check: (rt) => noteLines(rt, indentNote(rt.t)).some((l) => /^[ \t]+[-*+] /.test(l)),
+			demo: (rt) => {
+				if (focusNote(rt, indentNote(rt.t), INDENT_ITEM2, 2)) runInNote(rt, "core:editor:indent-list");
+			},
+		},
+		{
+			title: "tut.indent.s4.title",
+			body: "tut.indent.s4.body",
+			task: "tut.indent.s4.task",
+			touch: "tut.indent.s4.touch",
+			enter: (rt) => {
+				emsAtStart = emCount(rt);
+			},
+			check: (rt) => emCount(rt) < emsAtStart,
+			demo: (rt) => {
+				const lines = noteLines(rt, indentNote(rt.t));
+				const line = lines.findIndex((l) => l.startsWith(EM));
+				if (line >= 0 && focusNote(rt, indentNote(rt.t), line, lines[line]!.length)) runInNote(rt, "paragraph-indent:remove");
+			},
+		},
+		{
+			title: "tut.indent.s5.title",
+			body: "tut.indent.s5.body",
+			task: "tut.indent.s5.task",
+			touch: "tut.indent.s5.touch",
+			check: (rt) => inReadingMode(rt, indentNote(rt.t)),
+			demo: (rt) => setNoteMode(rt, indentNote(rt.t), "preview"),
+		},
+		{ title: "tut.indent.s6.title", body: "tut.indent.s6.body" },
+	],
+};
+
+const sizeNote = (t: Translate) => t("tut.fontsize.noteName");
+const sizeProperty = (rt: TutorialRuntime) => {
+	const key = rt.setting("note-font-size", "property");
+	return (typeof key === "string" ? key.trim() : "") || "font-size";
+};
+const vaultTextSize = () => Number.parseFloat(getComputedStyle(activeDocument.body).getPropertyValue("--font-text-size")) || 16;
+/** The size the practice note asks for, in pixels (null: the vault's size). */
+function noteSize(rt: TutorialRuntime): number | null {
+	const file = rt.app.vault.getAbstractFileByPath(writingNotePath(rt, sizeNote(rt.t)));
+	if (!file) return null;
+	const fm = rt.app.metadataCache.getFileCache(file as Parameters<typeof rt.app.metadataCache.getFileCache>[0])?.frontmatter;
+	return parseFontSize(fm?.[sizeProperty(rt)], vaultTextSize());
+}
+let sizeAtStart: number | null = null;
+const rememberSize = (rt: TutorialRuntime) => {
+	sizeAtStart = noteSize(rt);
+};
+
+const fontSize: TutorialDefinition = {
+	id: "font-size",
+	icon: "a-large-small",
+	title: "tut.fontsize.title",
+	summary: "tut.fontsize.summary",
+	modules: ["note-font-size"],
+	files: (t) => [{ path: `${fileSafe(sizeNote(t))}.md`, content: ["# " + t("tut.fontsize.note.title"), "", t("tut.fontsize.note.p1"), "", "- " + t("tut.fontsize.note.b1"), ""].join("\n") }],
+	board: (t) => ({ nodes: [card("fs-hint", t("tut.fontsize.board.hint"), 0, 0, 360, 120, { color: "5" })], edges: [] }),
+	steps: [
+		{ title: "tut.fontsize.s1.title", body: "tut.fontsize.s1.body", enter: (rt) => void openWritingNote(rt, sizeNote(rt.t)) },
+		{
+			title: "tut.fontsize.s2.title",
+			body: "tut.fontsize.s2.body",
+			task: "tut.fontsize.s2.task",
+			touch: "tut.fontsize.s2.touch",
+			enter: (rt) => {
+				void openWritingNote(rt, sizeNote(rt.t));
+				rememberSize(rt);
+			},
+			check: (rt) => (noteSize(rt) ?? vaultTextSize()) > (sizeAtStart ?? vaultTextSize()),
+			demo: async (rt) => {
+				if (!focusNote(rt, sizeNote(rt.t), 2)) return;
+				runInNote(rt, "note-font-size:increase");
+				await rt.wait(400);
+				runInNote(rt, "note-font-size:increase");
+			},
+		},
+		{
+			title: "tut.fontsize.s3.title",
+			body: "tut.fontsize.s3.body",
+			task: "tut.fontsize.s3.task",
+			touch: "tut.fontsize.s3.touch",
+			enter: rememberSize,
+			check: (rt) => {
+				const size = noteSize(rt);
+				return size !== null && size !== sizeAtStart && !dialogOpen(".modal-container");
+			},
+			demo: async (rt) => {
+				const file = rt.app.vault.getAbstractFileByPath(writingNotePath(rt, sizeNote(rt.t)));
+				const key = sizeProperty(rt);
+				if (file)
+					await rt.app.fileManager.processFrontMatter(file as Parameters<typeof rt.app.fileManager.processFrontMatter>[0], (fm: Record<string, unknown>) => {
+						fm[key] = 22;
+					});
+			},
+		},
+		{
+			title: "tut.fontsize.s4.title",
+			body: "tut.fontsize.s4.body",
+			task: "tut.fontsize.s4.task",
+			touch: "tut.fontsize.s4.touch",
+			check: (rt) => inReadingMode(rt, sizeNote(rt.t)),
+			demo: (rt) => setNoteMode(rt, sizeNote(rt.t), "preview"),
+		},
+		{
+			title: "tut.fontsize.s5.title",
+			body: "tut.fontsize.s5.body",
+			task: "tut.fontsize.s5.task",
+			touch: "tut.fontsize.s5.touch",
+			check: (rt) => noteSize(rt) === null,
+			demo: async (rt) => {
+				await setNoteMode(rt, sizeNote(rt.t), "source");
+				await rt.wait(300);
+				if (focusNote(rt, sizeNote(rt.t), 2)) runInNote(rt, "note-font-size:reset");
+			},
+		},
+		{ title: "tut.fontsize.s6.title", body: "tut.fontsize.s6.body" },
+	],
+};
+
+export const TUTORIALS: readonly TutorialDefinition[] = [basics, notes, shapes, edges, drawing, layers, present, mindmap, navigate, organize, markdown, select, blocks, vault, style, big, direction, pdf, pages, arrows, bars, images, file, columns, smartGroups, indent, fontSize];

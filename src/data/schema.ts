@@ -242,6 +242,8 @@ export interface OpcNode {
 	page?: string;
 	/** A presentation slide (a group made with "Add slide"). */
 	slide?: boolean;
+	/** Smart group id: cards with the same id are selected and moved as one (no frame). */
+	smartGroup?: string;
 }
 
 export interface OpcEdge {

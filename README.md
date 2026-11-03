@@ -75,7 +75,9 @@ fill, outline, opacity and rotation. Sticky notes in any color (the last 10 cust
 kept) whose text shrinks to fit. Floating text without a card around it. Infinite
 lines at any angle (turn them live with a slider from the selection toolbar) with their own
 color and thickness. Non-destructive image crop.
-Lock items in place.
+Lock items in place. Smart groups (Ctrl/Cmd+G, like in other whiteboard apps): cards that
+select and move as one with no frame around them; double-click a card to work on it alone, copies
+form their own group.
 
 **Mind maps** — Tab / Enter to add children and siblings (a sibling goes right after its card),
 drag a card onto another card's "Add as child" / "Add as sibling" targets to move it with its
@@ -130,7 +132,7 @@ other canvases, collapsible groups, focus mode, move a selection to a new canvas
 cards for annotation, custom style attributes from CSS snippets, a public events API, a minimap,
 a frames panel to search, reorder and present the groups of a canvas, a line grid behind the
 content (a line every N dots), an adjustable selection toolbar size (separately for computers
-and phones), and twenty-four hands-on tutorials (at the top of the settings and in the canvas
+and phones), and twenty-seven hands-on tutorials (at the top of the settings and in the canvas
 controls). Each tutorial opens a temporary practice board with a coach panel: small tasks that
 tick themselves off as you do them, a "Show me" button that does each task live on the board, and
 highlights on the controls involved. The board (and any practice notes it uses) is deleted when the tutorial closes. At the top of the settings you choose the vault folder for the plugin's own files (note data and
@@ -165,6 +167,12 @@ the text turns right-to-left and the canvas UI stays as it is. Card text takes i
 paragraph (also while typing), so right-to-left and left-to-right text mix naturally; it can also be fixed per
 card.
 
+**Writing in notes** — Tab writes a paragraph (first-line) indent at the cursor instead of
+indenting the whole line, made of em spaces so it looks the same in Live Preview, Source mode and
+Reading mode and never becomes a code block; lists, tables and code keep their Tab (off until you
+turn it on). Give one note its own font size with a `font-size` property or the Set / Increase /
+Decrease / Reset commands; the size is identical in editing and reading, on desktop and mobile.
+
 **Large canvases** — below a zoom threshold, canvases with hundreds of cards switch to a
 level-of-detail renderer: ~90 fps instead of ~9 fps on a 1,000-card stress canvas, with cards
 still clickable ([docs/BENCHMARKS.md](docs/BENCHMARKS.md)).
@@ -178,6 +186,7 @@ still clickable ([docs/BENCHMARKS.md](docs/BENCHMARKS.md)).
 | H                                     | Highlight words in cards on/off (Esc leaves it)           |
 | M                                     | Minimap on/off                                            |
 | Ctrl/Cmd+F                            | Search the canvas                                         |
+| Ctrl/Cmd+G / Ctrl/Cmd+Shift+G         | Smart group / ungroup (nothing to group: graph view)      |
 | Tab                                   | Mind map: add a child (on a sticky note: the next sticky) |
 | Enter / Shift+Enter                   | Mind map: add a sibling (configurable)                    |
 | Alt+Arrows                            | Move between connected cards                              |

@@ -250,6 +250,8 @@ export const pagesModule = defineModule<PagesSettings>({
 			const anchorText = String((anchorData as { text?: string }).text ?? "");
 			const extra = { ...ctx.data.node(anchor).get() };
 			delete extra.page;
+			// The page's root is a copy: copies never join the anchor's smart group.
+			delete extra.smartGroup;
 			if (pageId) extra.page = pageId;
 			else if (parentPage) extra.page = parentPage;
 			// Text cards grow by the link's line so it shows.

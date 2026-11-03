@@ -38,6 +38,7 @@
 @import "./modules/image-crop/styles.css";
 @import "./modules/edge-editing/styles.css";
 @import "./modules/lock-items/styles.css";
+@import "./modules/note-font-size/styles.css";
 @import "./modules/minimap/styles.css";
 @import "./modules/grid/styles.css";
 @import "./modules/frames/styles.css";

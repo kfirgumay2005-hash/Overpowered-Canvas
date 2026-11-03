@@ -2,6 +2,56 @@
 
 Choices made where the spec left room. Newest section first.
 
+## Smart groups, paragraph indents, font size per note
+
+1. **Smart groups are a field on each card** (`x-opc.smartGroup`, shared id), not a node. No
+   frame means nothing to draw and nothing that vanilla Obsidian could show or drop; the file
+   stays JSON Canvas 1.0 and the cards are plain cards elsewhere.
+2. **Selection is widened inside `canvas.updateSelection`**, the one path every selection takes
+   (click, box, lasso, the drag's own `selectOnly`). The core then drags the whole selection by
+   itself, so moving needs no code of ours and snapping, undo and Ctrl/Alt-drag copies behave as
+   for any multi-selection.
+3. **Only pointer selections are widened.** Commands, mind map keys, search results and other
+   modules select exactly what they ask for; otherwise Alt+arrow navigation and every "one card
+   selected" feature would stop working on grouped cards. A shift/ctrl-click that takes a card
+   out drops its whole group; a selection box that shrinks while dragged never drops cards (it
+   would flicker).
+4. **Entering a group (Miro's double-click)**: the first double-click on a card of a closed group
+   picks that card instead of editing it (the core's `startEditing` is intercepted only right
+   after a pointer press, so programmatic edits are untouched); the second double-click edits.
+   Touch: double-tap, or long-press → "Select only this card". Leaving: select anything outside
+   the group, or nothing.
+5. **Groups never nest**; grouping cards from several groups makes one new group. Copies (paste,
+   duplicate, Ctrl/Alt-drag, board and card templates, the copy a page move leaves) get a fresh
+   group id per copied group, and a group with one copied card is dropped.
+6. **Pages and hidden layers split groups by visibility**: only members shown on the board are
+   picked, so a group spread over pages acts separately on each page and joins again when the
+   pages are merged. No data is rewritten when cards move between pages.
+7. **Ctrl/Cmd+G** is a canvas-scope key, so it never reaches the global hotkey while a canvas
+   has the focus. With nothing to group it runs whatever command Settings → Hotkeys binds to
+   that combo (the graph view by default), because a scope that matched a key keeps it. A
+   setting turns the canvas key off; the commands themselves have no default hotkey.
+8. **Paragraph indent = EM SPACE (U+2003)**, not tabs, ASCII spaces or `&emsp;`: Markdown strips
+   leading spaces/tabs and makes four of them a code block, HTML collapses them, and an entity
+   shows as code in Source mode. An em space is plain text that is never collapsed, 1em wide in
+   every mode and every app. Obsidian's *editor* (not Reading mode) counts any Unicode space as
+   indentation, so four em spaces after a blank line would look like indented code while
+   editing; a WORD JOINER (U+2060, invisible, zero width, not whitespace) after every third
+   leading em space keeps that run under four. Measured: 2/4/8 em indents are 32/64/128 px in
+   Live Preview, Source mode and Reading mode alike.
+9. **Where Tab stays the app's**: lists, tables (including Live Preview's cell editors), code
+   and math blocks, inline math/code, frontmatter, indented lines, multi-line selections, open
+   suggestion popups and vim normal mode. The keymap has `Prec.high`: above the app's own Tab,
+   below plugins that bind Tab at the highest precedence (snippet tab stops, math tab-out,
+   outliners), which still get it first.
+10. **Font size per note is a frontmatter property** (default `font-size`, configurable),
+    because notes already have properties: synced with the note, visible and editable in the
+    Properties panel, no plugin data to lose. The size redefines `--font-text-size` and
+    `--font-preferred-size` on the note view (both are resolved on `<body>`, so redefining one
+    is not enough) and sets `font-size` on both the editor and the reading view, so all modes
+    compute the same size (measured identical on desktop and emulated mobile). Canvases keep
+    using CSS classes in their properties for this.
+
 ## Canvas ⇄ Markdown (issue #1)
 
 1. **Separate note, not the canvas stored as Markdown.** The canvas stays a `.canvas` file (JSON

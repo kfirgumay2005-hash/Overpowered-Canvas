@@ -5,6 +5,7 @@
 import type { CanvasEdgeData, CanvasFileData, CanvasNodeData, EdgeSide } from "../../data/json-canvas";
 import { SCHEMA_KEY, type PageInfo } from "../../data/schema";
 import { rewriteCardLinks } from "../pages/logic";
+import { regroupCopies } from "../smart-groups/logic";
 
 type Data = { nodes: CanvasNodeData[]; edges: CanvasEdgeData[]; [key: string]: unknown };
 
@@ -79,7 +80,8 @@ export function reid(data: CanvasFileData, newId: () => string): Data {
 		return out;
 	});
 	const edges = d.edges.map((e) => ({ ...e, id: newId(), fromNode: mapped(e.fromNode)!, toNode: mapped(e.toNode)! }));
-	const out: Data = { ...d, nodes, edges };
+	// Smart groups of the copy are its own (a template used twice gives two groups).
+	const out: Data = { ...d, nodes: regroupCopies(nodes, SCHEMA_KEY, newId), edges };
 	if (root) {
 		const r = structuredClone(root);
 		if (r.presentation?.start) r.presentation.start = mapped(r.presentation.start);

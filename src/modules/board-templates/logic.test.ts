@@ -106,3 +106,23 @@ describe("templates with pages", () => {
 		expect(root.mapLayouts).toEqual({ [id("main")]: "right" });
 	});
 });
+
+describe("smart groups in copies", () => {
+	it("a template used twice gives two separate groups", () => {
+		let n = 0;
+		const newId = () => `id${++n}`;
+		const template = {
+			nodes: [
+				{ id: "a", type: "text", text: "A", x: 0, y: 0, width: 10, height: 10, "x-opc": { smartGroup: "g" } },
+				{ id: "b", type: "text", text: "B", x: 20, y: 0, width: 10, height: 10, "x-opc": { smartGroup: "g" } },
+			],
+			edges: [],
+		} as unknown as Parameters<typeof reid>[0];
+		const one = reid(template, newId).nodes.map((x) => (x["x-opc"] as { smartGroup?: string }).smartGroup);
+		const two = reid(template, newId).nodes.map((x) => (x["x-opc"] as { smartGroup?: string }).smartGroup);
+		expect(one[0]).toBe(one[1]);
+		expect(two[0]).toBe(two[1]);
+		expect(one[0]).not.toBe("g");
+		expect(one[0]).not.toBe(two[0]);
+	});
+});

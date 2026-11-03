@@ -1,10 +1,12 @@
 import { Menu, Notice } from "obsidian";
 import { defineModule, type ModuleContext } from "../../core/module";
 import { STANDARD_NODE_TYPES, type CanvasNodeData } from "../../data/json-canvas";
+import { SCHEMA_KEY } from "../../data/schema";
 import { isJsonSafe, isPlainObject } from "../../data/validate";
 import type { CanvasLike, Point } from "../../internals/types";
 import { IconPickerModal } from "../../ui/icon-picker";
 import { mutate, randomId, selectedNodes } from "../shared";
+import { regroupCopies } from "../smart-groups/logic";
 
 export interface NodeTemplate {
 	id: string;
@@ -58,7 +60,7 @@ export const nodeTemplatesModule = defineModule<TemplatesSettings>({
 
 		const create = (canvas: CanvasLike, template: NodeTemplate, pos: Point) =>
 			mutate(ctx, canvas, () => {
-				const data = { ...structuredClone(template.node), id: randomId(), x: Math.round(pos.x), y: Math.round(pos.y) } as CanvasNodeData;
+				const data = regroupCopies([{ ...structuredClone(template.node), id: randomId(), x: Math.round(pos.x), y: Math.round(pos.y) } as CanvasNodeData], SCHEMA_KEY, randomId)[0]!;
 				const created = canvas.importData({ nodes: [data], edges: [] }, false);
 				const node = created ? [...created][0] : undefined;
 				canvas.deselectAll();
