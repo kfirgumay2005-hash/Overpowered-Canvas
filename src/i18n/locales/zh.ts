@@ -1206,4 +1206,5 @@ export const zh: Record<I18nKey, string> = {
 	"viewMemory.notes.name": "在笔记中",
 	"viewMemory.notes.desc": "在阅读到的位置重新打开每篇笔记,分页笔记回到离开时的页面。",
 	"viewMemory.notes.simple": "笔记在你停下的地方打开。",
+	"presentation.columnActualSize.toggle": "列视图:切换卡片实际大小",
 };

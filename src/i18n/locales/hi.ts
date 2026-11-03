@@ -1206,4 +1206,5 @@ export const hi: Record<I18nKey, string> = {
 	"viewMemory.notes.name": "नोट में",
 	"viewMemory.notes.desc": "हर नोट को उसी जगह पर फिर खोलें जहाँ उसे पढ़ा गया था, और पन्नों वाले नोट को उसी पन्ने पर जहाँ उसे छोड़ा गया था।",
 	"viewMemory.notes.simple": "नोट वहीं खुलते हैं जहाँ आपने पढ़ना छोड़ा था।",
+	"presentation.columnActualSize.toggle": "कॉलम दृश्य: कार्ड का असली आकार चालू/बंद करें",
 };

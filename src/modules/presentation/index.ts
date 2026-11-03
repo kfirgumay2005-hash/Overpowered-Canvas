@@ -320,6 +320,13 @@ export const presentationModule = defineModule<PresentationSettings>({
 				});
 				ctx.data.node(slide).set({ slide: true });
 			});
+		// The column view's card size, from the keyboard or the command palette (a tablet has no settings at hand).
+		ctx.addCommand({
+			id: "columns-actual-size",
+			name: ctx.t("presentation.columnActualSize.toggle"),
+			icon: "scan",
+			callback: () => void ctx.updateSettings({ columnActualSize: !ctx.settings.columnActualSize }),
+		});
 		ctx.addCardMenuButton({
 			id: "walk",
 			icon: "route",

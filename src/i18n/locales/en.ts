@@ -1208,6 +1208,7 @@ export const en = {
 	"viewMemory.notes.name": "In notes",
 	"viewMemory.notes.desc": "Reopen each note at the place it was read, and a note with pages on the page it was left on.",
 	"viewMemory.notes.simple": "Notes open where you stopped reading.",
+	"presentation.columnActualSize.toggle": "Column view: toggle actual card size",
 } as const;
 
 export type I18nKey = keyof typeof en;

@@ -625,3 +625,15 @@ Automated runtime checks of every item below were run in an isolated Obsidian 1.
 6. **Remember where you were:** canvas (page, pan, zoom) and note (scroll, page) after a link and
    Back, after closing and reopening, after restarting Obsidian; a link to a card or heading
    still goes there; both toggles off → files open as before.
+
+## Tutorial 24 (Column view) and the wider Pages tutorial
+
+- `node lang_run.mjs en,hi,ja,ru,zh 7,8,9,11,18,23` (harness) runs the changed tutorials by
+  "Show me" in every language: Column view 7/7 tasks, Big maps in pages 13/13.
+- Column view: open, drag a column past the tall calendar, the Herbs group (held cards, then
+  Herbal tea), the nested Balcony pots group, zoom, edit Chili, actual size (red circle on
+  Tomatoes).
+- Big maps in pages: note with pages (switch, chapter links, back to the board on the same page)
+  and inserting the Drug card template, whose two pages land under the page shown.
+- Finding your way ends with "Back where you left off"; Lasso, Groups and templates and Mind maps
+  mention the new behavior.

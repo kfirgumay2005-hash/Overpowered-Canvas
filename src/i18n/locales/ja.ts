@@ -1206,4 +1206,5 @@ export const ja: Record<I18nKey, string> = {
 	"viewMemory.notes.name": "ノートで",
 	"viewMemory.notes.desc": "各ノートを読んでいた位置で、ページ付きノートは離れたときのページで開き直します。",
 	"viewMemory.notes.simple": "ノートが読み終えた場所で開きます。",
+	"presentation.columnActualSize.toggle": "列ビュー: 実際のカードサイズを切り替え",
 };

@@ -80,8 +80,8 @@ export class ColumnView {
 	private pinch: { dist: number; zoom: number } | null = null;
 	/** The last tap on a card, for a second tap that edits it. */
 	private lastTap = { id: "", at: 0 };
-	/** A drag or pinch just ended: the click that follows is not a tap. */
-	private swallowClick = false;
+	/** A drag or pinch just ended: a click right after it is not a tap. */
+	private swallowUntil = 0;
 	private editing: { id: string; input: HTMLTextAreaElement } | null = null;
 	private last: { columns: Column[]; current: string; path: string[] } | null = null;
 	private readonly resizer: ResizeObserver;
@@ -162,6 +162,7 @@ export class ColumnView {
 			this.placed.push({ column: columnEl, card: activeCard, reach: opts.actualSize && activeWidth ? activeWidth : widest, width: widest });
 		}
 		this.shifts = this.placed.map(() => 0);
+		this.el.removeClass("is-moved");
 		this.view = keepZoom(this.view.zoom, this.size());
 		this.layout(true);
 		// Rendered text and images change the heights the columns are centered by.
@@ -173,6 +174,7 @@ export class ColumnView {
 
 	/** Columns back where the current card puts them (after dragging), keeping the zoom. */
 	recenter(): void {
+		this.el.removeClass("is-moved");
 		this.shifts = this.placed.map(() => 0);
 		this.view = keepZoom(this.view.zoom, this.size());
 		this.layout(true);
@@ -216,6 +218,7 @@ export class ColumnView {
 
 	private applyView(): void {
 		this.zoomEl.style.transform = `translate(${this.view.x}px, ${this.view.y}px) scale(${this.view.zoom})`;
+		this.el.toggleClass("is-zoomed", Math.abs(this.view.zoom - 1) > 0.01);
 	}
 
 	/** Zooms by `factor` around a screen point (default: the middle). */
@@ -307,8 +310,8 @@ export class ColumnView {
 	private onDown = (evt: PointerEvent) => {
 		evt.stopPropagation();
 		if (this.editing && (evt.target as HTMLElement).closest(".opc-columns-editor")) return;
-		// A drag by touch fires no click: the flag only ever covers the click right after a drag.
-		if (this.pointers.size === 0) this.swallowClick = false;
+		// A drag by touch fires no click: only a click right after a drag is dropped.
+		if (this.pointers.size === 0) this.swallowUntil = 0;
 		this.pointers.set(evt.pointerId, { x: evt.clientX, y: evt.clientY });
 		if (this.pointers.size === 2) {
 			// A second finger: pinch to zoom.
@@ -352,6 +355,7 @@ export class ColumnView {
 		// Up and down: that column only (to reach what a big card hides); sideways: all columns.
 		const dy = (now.y - prev.y) / this.view.zoom;
 		if (press.column >= 0) this.shifts[press.column] = (this.shifts[press.column] ?? 0) + dy;
+		this.el.addClass("is-moved");
 		this.view = { ...this.view, x: this.view.x + (now.x - prev.x) };
 		this.layout(false);
 	};
@@ -363,7 +367,7 @@ export class ColumnView {
 		if (press?.id !== evt.pointerId) return;
 		this.press = null;
 		this.el.removeClass("is-dragging");
-		if (press.moved || press.pinch) this.swallowClick = true;
+		if (press.moved || press.pinch) this.swallowUntil = performance.now() + 300;
 	};
 
 	private onCancel = (evt: PointerEvent) => {
@@ -394,8 +398,8 @@ export class ColumnView {
 		if (target.closest(".opc-columns-editor")) return;
 		evt.preventDefault();
 		evt.stopPropagation();
-		if (this.swallowClick) {
-			this.swallowClick = false;
+		if (performance.now() < this.swallowUntil) {
+			this.swallowUntil = 0;
 			return;
 		}
 		const link = target.closest<HTMLAnchorElement>("a");

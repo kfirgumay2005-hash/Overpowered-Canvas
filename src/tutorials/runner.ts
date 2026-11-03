@@ -206,7 +206,12 @@ export class TutorialRunner {
 		const { vault } = this.host.app;
 		if (!vault.getAbstractFileByPath(this.root)) await vault.createFolder(this.root);
 		await vault.createFolder(folder);
-		for (const f of files) await vault.create(normalizePath(`${folder}/${f.path}`), f.content);
+		for (const f of files) {
+			const path = normalizePath(`${folder}/${f.path}`);
+			const parent = path.slice(0, path.lastIndexOf("/"));
+			if (parent !== folder && !vault.getAbstractFileByPath(parent)) await vault.createFolder(parent);
+			await vault.create(path, f.content);
+		}
 	}
 
 	/**

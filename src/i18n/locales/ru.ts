@@ -1206,4 +1206,5 @@ export const ru: Record<I18nKey, string> = {
 	"viewMemory.notes.name": "В заметках",
 	"viewMemory.notes.desc": "Открывать каждую заметку на том месте, где её читали, а заметку со страницами — на той странице, где её оставили.",
 	"viewMemory.notes.simple": "Заметки открываются там, где вы остановились.",
+	"presentation.columnActualSize.toggle": "Вид колонками: переключить настоящий размер карточек",
 };
