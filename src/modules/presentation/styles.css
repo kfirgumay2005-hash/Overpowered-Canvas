@@ -40,7 +40,8 @@ body.opc-mod-presentation .canvas-node.opc-walk-current .canvas-node-container {
 }
 body.opc-mod-presentation .opc-walk-pad {
 	position: absolute;
-	bottom: var(--size-4-4);
+	/* Lifted above a phone's navigation bar, which covers the bottom of the board. */
+	bottom: calc(var(--size-4-4) + var(--opc-pad-lift, 0px));
 	inset-inline-end: var(--size-4-4);
 	z-index: var(--layer-popover);
 	display: grid;

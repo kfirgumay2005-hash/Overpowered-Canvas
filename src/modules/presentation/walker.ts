@@ -243,6 +243,10 @@ export function enableWalk(ctx: ModuleContext<object>, presenting: (canvas: Canv
 		button("columns", "columns-3", ctx.t("presentation.walk.columns"), () => toggleColumns(canvas));
 		// The pad is not part of the board: no panning or selecting through it.
 		pad.addEventListener("pointerdown", (evt) => evt.stopPropagation());
+		// On a phone the navigation bar lies over the bottom of the board: the pad sits above it.
+		const navbar = wrapper.doc.querySelector<HTMLElement>(".mobile-navbar");
+		const lift = navbar && navbar.offsetParent ? wrapper.getBoundingClientRect().bottom - navbar.getBoundingClientRect().top : 0;
+		if (lift > 0) pad.setCssProps({ "--opc-pad-lift": `${Math.round(lift)}px` });
 
 		const onKey = (evt: KeyboardEvent) => {
 			if (ctx.activeCanvas() !== canvas || evt.ctrlKey || evt.metaKey || evt.altKey) return;

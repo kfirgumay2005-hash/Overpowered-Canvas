@@ -5,7 +5,7 @@
  * to that page within the note, and anything that jumps to a line (a heading link, the outline,
  * search) first shows the page that line is on. The note itself stays one ordinary file.
  */
-import { StateEffect, StateField, type EditorState, type Range } from "@codemirror/state";
+import { EditorState, StateEffect, StateField, type Range } from "@codemirror/state";
 import { Decoration, EditorView, type DecorationSet } from "@codemirror/view";
 import { MarkdownView, TFile, debounce, parseLinktext, resolveSubpath, setIcon, setTooltip, type App, type MarkdownPostProcessorContext } from "obsidian";
 import { logError } from "../../core/log";
@@ -59,8 +59,24 @@ const pageField = StateField.define<{ shown: Shown | null; decorations: Decorati
 	provide: (field) => [EditorView.decorations.from(field, (v) => v.decorations), EditorView.atomicRanges.of((view) => view.state.field(field).decorations)],
 });
 
-/** The editor extension: a note's other pages folded away. */
-export const pagedNoteExtension = [pageField];
+/**
+ * What the user types, deletes, pastes or drags changes only the page shown: a select-all and
+ * delete must not wipe the pages folded away. Changes from code (the file reloaded from disk,
+ * the note rewritten from its canvas) and undo pass as they are.
+ */
+const keepOtherPages = EditorState.changeFilter.of((tr) => {
+	const shown = tr.startState.field(pageField, false)?.shown;
+	if (!shown || !["input", "delete", "move", "drop"].some((e) => tr.isUserEvent(e))) return true;
+	// The ranges given are the ones changes are kept out of: everything before and after the page.
+	const end = tr.startState.doc.length;
+	const guarded: number[] = [];
+	if (shown.from > 0) guarded.push(0, shown.from - 1);
+	if (shown.to < end) guarded.push(shown.to, end);
+	return guarded.length ? guarded : true;
+});
+
+/** The editor extension: a note's other pages folded away, and kept safe from edits. */
+export const pagedNoteExtension = [pageField, keepOtherPages];
 
 interface Open {
 	data: NoteData;

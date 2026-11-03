@@ -120,7 +120,10 @@ export class ColumnView {
 		this.component = new Component();
 		this.component.load();
 		this.track.empty();
-		const opts = this.host.options();
+		const asked = this.host.options();
+		// A column never takes more than about three quarters of the view (phones), so the next shows.
+		const room = this.el.clientWidth ? Math.max(160, Math.round(this.el.clientWidth * 0.72)) : asked.width;
+		const opts = { ...asked, width: Math.min(asked.width, room) };
 		this.el.toggleClass("is-actual-size", opts.actualSize);
 		this.el.setCssProps({ "--opc-columns-font-size": `${opts.fontSize > 0 ? opts.fontSize : this.canvasFontSize()}px`, "--opc-columns-width": `${opts.width}px` });
 		const onPath = new Set(path);
