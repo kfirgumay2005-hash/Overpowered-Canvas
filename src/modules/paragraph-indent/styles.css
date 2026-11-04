@@ -1,12 +1,8 @@
 /*
  * Lines that start with a paragraph indent wrap flush with the left edge, as in Reading mode.
- * The editor writes its hanging indent (text-indent + padding) as an inline style on the line,
- * so only an important declaration takes it back.
+ * That is done by an inline style on the line (see flatLine in index.ts), because the editor's
+ * own hanging indent is an inline style that no rule here could outrank.
  */
-body.opc-mod-paragraph-indent .markdown-source-view.mod-cm6 .cm-line.opc-indent-line {
-	text-indent: 0 !important;
-	padding-inline-start: 0 !important;
-}
 /*
  * The editor wraps with `white-space: break-spaces`, where the space at the end of a row takes
  * room: a word that just fits in Reading mode moved to the next row while editing, and the rest

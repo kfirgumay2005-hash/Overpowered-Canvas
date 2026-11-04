@@ -82,7 +82,15 @@ function removeIndent(view: EditorView, width: number): boolean {
 	return true;
 }
 
-const flatLine = Decoration.line({ class: FLAT_CLASS });
+/**
+ * The app writes its hanging indent as an inline style from a line decoration of its own, which
+ * no stylesheet rule can outrank. This decoration adds an inline style too: the two are merged on
+ * the line, and the important declarations win whichever order they are merged in.
+ */
+const flatLine = Decoration.line({
+	class: FLAT_CLASS,
+	attributes: { style: "text-indent:0 !important;padding-inline-start:0 !important" },
+});
 
 function flatLines(view: EditorView): DecorationSet {
 	const builder = new RangeSetBuilder<Decoration>();
