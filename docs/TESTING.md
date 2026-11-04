@@ -712,3 +712,7 @@ Automated runtime checks of every item below were run in an isolated Obsidian 1.
   the bars brings it back. Add a command to the popup → its button comes last, runs on the
   selection (e.g. Increase text size), and the popup stays centered. Tutorial boards keep every
   button (except the bars tutorial).
+- [ ] Customize the bars: drag a row by its handle (mouse, finger, pen) up or down → the button
+  moves there in its bar right away, on every canvas; added commands can be dragged among the
+  bar's own buttons; on the side bar, grouped buttons (zoom, undo/redo) move together. Restore
+  the bars resets the order too. After the "Your own bars" tutorial, the bars are as before.

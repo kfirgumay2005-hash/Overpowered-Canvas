@@ -1101,11 +1101,11 @@ export const en = {
 	"pages.linkLabel.desc": "The word shown for the link added under a card and under its page's first card.",
 	"pages.linkLabel.simple": "The clickable word that jumps between a card and its page.",
 	"barButtons.name": "Customize the bars",
-	"barButtons.desc": "Choose what the bottom bar, the side bar and the popup over a selection show: take off any button, and add buttons that run any command, from this plugin, from the app or from other plugins.",
+	"barButtons.desc": "Choose what the bottom bar, the side bar and the popup over a selection show, and in what order: take off any button, drag buttons up or down in the list to reorder them, and add buttons that run any command, from this plugin, from the app or from other plugins.",
 	"barButtons.simple": "Keep only the buttons you use, and add your favorite commands to the canvas bars.",
 	"barButtons.edit": "Customize…",
 	"barButtons.edit.name": "Customize the bars",
-	"barButtons.edit.desc": "Opens the bars as lists, with a switch for each button and a way to add commands. The changes apply to every canvas.",
+	"barButtons.edit.desc": "Opens the bars as lists, with a switch for each button, a handle to drag it to another place, and a way to add commands. The changes apply to every canvas.",
 	"barButtons.edit.simple": "Pick which buttons appear at the bottom and at the side of the canvas.",
 	"barButtons.bottom": "Bottom bar",
 	"barButtons.side": "Side bar",
@@ -1268,6 +1268,7 @@ export const en = {
 	"textAlign.size.prompt": "Text size in pixels (6–200). Leave it empty to use the canvas's size again.",
 	"barButtons.popup": "Popup over the selection",
 	"barButtons.popupHint": "The popup shows only the buttons that fit what is selected: its buttons are listed here once it has shown them (select a card, a group or an arrow first). Added commands show for every selection.",
+	"barButtons.drag": "Drag up or down to move this button in its bar",
 } as const;
 
 export type I18nKey = keyof typeof en;

@@ -392,10 +392,16 @@ class Session {
 		window.clearTimeout(this.evalFrame);
 		this.clearHighlight();
 		for (const c of this.cleanups.splice(0)) c();
+		// One update per module: updates run one after another would each start from the settings
+		// before the others were saved, and put back what the earlier ones restored.
+		const patches = new Map<string, Record<string, unknown>>();
 		for (const [k, value] of this.saved) {
 			const [module, key] = k.split("\0") as [string, string];
-			if (this.rt.setting(module, key) !== value) void this.host.modules.contextOf(module)?.updateSettings({ [key]: value });
+			if (this.rt.setting(module, key) === value) continue;
+			const patch = patches.get(module) ?? patches.set(module, {}).get(module)!;
+			patch[key] = value;
 		}
+		for (const [module, patch] of patches) void this.host.modules.contextOf(module)?.updateSettings(patch);
 	}
 
 	private get step(): TutorialStep {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buttonKeys, buttonLabel, hiddenKey, sanitizeBarSettings, type ButtonFacts } from "./logic";
+import { buttonKeys, buttonLabel, hiddenKey, orderOf, sanitizeBarSettings, sortKeys, type ButtonFacts } from "./logic";
 
 const button = (over: Partial<ButtonFacts>): ButtonFacts => ({ classes: [], groupClasses: [], iconClasses: [], label: "", ...over });
 
@@ -34,8 +34,8 @@ describe("buttonLabel", () => {
 
 describe("sanitizeBarSettings", () => {
 	it("starts empty", () => {
-		expect(sanitizeBarSettings(undefined)).toEqual({ hidden: [], custom: [] });
-		expect(sanitizeBarSettings({ hidden: "x", custom: 3 })).toEqual({ hidden: [], custom: [] });
+		expect(sanitizeBarSettings(undefined)).toEqual({ hidden: [], custom: [], order: {} });
+		expect(sanitizeBarSettings({ hidden: "x", custom: 3 })).toEqual({ hidden: [], custom: [], order: {} });
 	});
 	it("keeps good entries and drops the rest", () => {
 		const s = sanitizeBarSettings({
@@ -68,5 +68,18 @@ describe("the popup over a selection", () => {
 	it("keeps commands added to the popup", () => {
 		const s = sanitizeBarSettings({ custom: [{ id: "p", bar: "popup", command: "app:reload" }, { id: "q", bar: "nowhere", command: "app:reload" }] });
 		expect(s.custom.map((c) => c.bar)).toEqual(["popup", "bottom"]);
+	});
+});
+
+describe("the order of a bar", () => {
+	it("puts chosen keys first, in their order, and new buttons after them as they come", () => {
+		expect(sortKeys(["a", "b", "c", "d"], ["c", "a"])).toEqual(["c", "a", "b", "d"]);
+		expect(sortKeys(["a", "b"], undefined)).toEqual(["a", "b"]);
+	});
+	it("keeps the order of added buttons and reads it back from settings", () => {
+		const s = sanitizeBarSettings({ order: { bottom: ["custom:x", "lucide-trash-2", "custom:x", 3], nowhere: ["a"] } });
+		expect(s.order).toEqual({ bottom: ["custom:x", "lucide-trash-2"] });
+		expect(orderOf("lucide-trash-2", 5, s.order.bottom)).toBe(1);
+		expect(orderOf("other", 5, s.order.bottom)).toBeGreaterThan(1);
 	});
 });

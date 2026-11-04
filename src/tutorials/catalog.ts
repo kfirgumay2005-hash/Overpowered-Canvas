@@ -2789,6 +2789,7 @@ const hiddenButtons = (rt: TutorialRuntime) => (rt.setting("bar-buttons", "hidde
 const customButtons = (rt: TutorialRuntime) => (rt.setting("bar-buttons", "custom") as { bar?: string }[] | undefined) ?? [];
 let hiddenAtStart = 0;
 let customAtStart = 0;
+let orderAtStart = "";
 
 const bars: TutorialDefinition = {
 	id: BARS_TUTORIAL,
@@ -2800,6 +2801,7 @@ const bars: TutorialDefinition = {
 	restoreSettings: [
 		{ module: "bar-buttons", key: "hidden" },
 		{ module: "bar-buttons", key: "custom" },
+		{ module: "bar-buttons", key: "order" },
 	],
 	board: (t) => ({
 		nodes: [title("br-title", t("tut.bars.board.title"), 0, -140, 700, 80), card("br-1", t("tut.bars.board.c1"), 0, 0, 280, 90, { color: "5" }), card("br-2", t("tut.bars.board.c2"), 340, 0, 280, 90, { color: "4" })],
@@ -2875,6 +2877,28 @@ const bars: TutorialDefinition = {
 			},
 			check: (rt) => hiddenButtons(rt).length < hiddenAtStart && !dialogOpen(BARS_DIALOG),
 			demo: (rt) => rt.setSetting("bar-buttons", "hidden", hiddenButtons(rt).slice(0, -1)),
+		},
+		{
+			title: "tut.bars.order.title",
+			body: "tut.bars.order.body",
+			task: "tut.bars.order.task",
+			touch: "tut.bars.order.touch",
+			target: settingsButton,
+			enter: (rt) => {
+				orderAtStart = JSON.stringify(rt.setting("bar-buttons", "order") ?? {});
+			},
+			check: (rt) => JSON.stringify(rt.setting("bar-buttons", "order") ?? {}) !== orderAtStart && !dialogOpen(BARS_DIALOG),
+			demo: async (rt) => {
+				rt.command("bar-buttons:customize");
+				await rt.wait(900);
+				// The first button of the bottom bar goes to the end of it, as a drag would put it.
+				const list = activeDocument.querySelector<HTMLElement>(`${BARS_DIALOG} .opc-bars-list`);
+				const keys = Array.from(list?.querySelectorAll<HTMLElement>(".opc-bars-row") ?? []).map((el) => el.dataset.key ?? "");
+				const order = (rt.setting("bar-buttons", "order") as Record<string, string[]> | undefined) ?? {};
+				if (keys.length > 1) rt.setSetting("bar-buttons", "order", { ...order, bottom: [...keys.slice(1), keys[0]!] });
+				await rt.wait(900);
+				closeDialog(BARS_DIALOG);
+			},
 		},
 		{ title: "tut.bars.s5.title", body: "tut.bars.s5.body" },
 	],

@@ -853,4 +853,8 @@ export const tutorialsEn = {
 	"tut.bars.popup.body": "The popup that appears over a selected card is in the list too, as **Popup over the selection**. Switch off the buttons you never use there, and **Add a command** to it: the command runs on what is selected, so commands like **Increase text size of selected cards** work right from the popup. The popup shows only the buttons that fit what is selected, so the list names the ones it has already shown.",
 	"tut.bars.popup.task": "With a card selected, open the list and switch off a button of the popup, or add a command to it.",
 	"tut.bars.popup.touch": "Tap a card, then open **Customize the bars** from the settings button of the side bar.",
+	"tut.bars.order.title": "Change the order",
+	"tut.bars.order.body": "Every row of the list has a handle on its left. **Drag it up or down** and the button moves to that place in its bar, as soon as you let go. Buttons you added can go anywhere among the bar's own buttons. On the side bar, buttons that belong together (like the zoom buttons) stay together.",
+	"tut.bars.order.task": "Open the list and drag any button to another place, then close it.",
+	"tut.bars.order.touch": "Put a finger on the handle at the left of a row and slide it up or down.",
 } as const;

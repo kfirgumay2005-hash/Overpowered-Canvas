@@ -17,3 +17,27 @@ body.opc-mod-bar-buttons .canvas-wrapper .canvas-menu > .opc-bar-hidden {
 	flex-shrink: 0;
 	color: var(--text-muted);
 }
+/* Drag a row by its handle to change where the button sits in its bar. */
+.opc-bars-grip {
+	display: inline-flex;
+	flex-shrink: 0;
+	color: var(--text-faint);
+	cursor: grab;
+	touch-action: none;
+	padding: var(--size-2-1);
+	margin-inline-start: calc(-1 * var(--size-2-1));
+}
+.opc-bars-grip:hover {
+	color: var(--text-normal);
+}
+.opc-bars-row.is-dragging {
+	background-color: var(--background-modifier-hover);
+	border-radius: var(--radius-s);
+	opacity: 0.85;
+}
+.opc-bars-row.is-dragging .opc-bars-grip {
+	cursor: grabbing;
+}
+.opc-bars-list {
+	touch-action: pan-y;
+}

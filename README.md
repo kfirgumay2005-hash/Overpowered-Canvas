@@ -202,7 +202,7 @@ still clickable ([docs/BENCHMARKS.md](docs/BENCHMARKS.md)).
 | Arrows, + / −, Home, Esc              | Walking through a map: child, parent, siblings; zoom      |
 
 The bottom bar, the side bar and the popup over a selection are yours to arrange: take off any
-button, and add a button for any command, from this plugin, the app or other plugins (_Customize
+button, drag buttons into the order you like, and add a button for any command, from this plugin, the app or other plugins (_Customize
 the bars_).
 
 Every toolbar action is also in the command palette ("Selection: …"), so you can assign your

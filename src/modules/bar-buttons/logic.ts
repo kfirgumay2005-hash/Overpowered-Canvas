@@ -24,7 +24,31 @@ export interface BarButtonsSettings {
 	/** `<bar>:<button key>` of the buttons taken off the bars. */
 	hidden: string[];
 	custom: CustomButton[];
+	/** Per bar, the order chosen: button keys and `custom:<id>` of added buttons. Absent: as it comes. */
+	order: Partial<Record<Bar, string[]>>;
 }
+
+/** The key of an added button in an order list. */
+export const customKey = (id: string) => `custom:${id}`;
+
+/** Places past the chosen order, for buttons it doesn't name (new ones come last, as they come). */
+const UNLISTED = 1000;
+
+/** Where a button goes: its place in the chosen order, else after all of them, in its own order. */
+export function orderOf(key: string, natural: number, saved: readonly string[] | undefined): number {
+	if (!saved) return natural;
+	const at = saved.indexOf(key);
+	return at >= 0 ? at : UNLISTED + natural;
+}
+
+/** Keys in the order the bar shows them. */
+export function sortKeys(keys: readonly string[], saved: readonly string[] | undefined): string[] {
+	return keys
+		.map((key, natural) => ({ key, at: orderOf(key, natural, saved) }))
+		.sort((a, b) => a.at - b.at)
+		.map((e) => e.key);
+}
+
 
 export interface ButtonFacts {
 	/** Classes of the button. */
@@ -72,7 +96,7 @@ export function hiddenKey(bar: Bar, key: string): string {
 const text = (v: unknown): string => (typeof v === "string" ? v.trim() : "");
 
 export function sanitizeBarSettings(raw: unknown): BarButtonsSettings {
-	const r = (raw ?? {}) as { hidden?: unknown; custom?: unknown };
+	const r = (raw ?? {}) as { hidden?: unknown; custom?: unknown; order?: unknown };
 	const hidden = Array.isArray(r.hidden) ? [...new Set(r.hidden.filter((k): k is string => typeof k === "string" && k.length > 0))] : [];
 	const ids = new Set<string>();
 	const custom: CustomButton[] = [];
@@ -83,5 +107,11 @@ export function sanitizeBarSettings(raw: unknown): BarButtonsSettings {
 		ids.add(id);
 		custom.push({ id, bar: BARS.includes(item.bar as Bar) ? (item.bar as Bar) : "bottom", command, icon: text(item.icon) || "lucide-terminal", name: text(item.name) || command });
 	}
-	return { hidden, custom };
+	const order: Partial<Record<Bar, string[]>> = {};
+	const savedOrder = r.order && typeof r.order === "object" ? (r.order as Record<string, unknown>) : {};
+	for (const bar of BARS) {
+		const list = savedOrder[bar];
+		if (Array.isArray(list)) order[bar] = [...new Set(list.filter((k): k is string => typeof k === "string" && k.length > 0))];
+	}
+	return { hidden, custom, order };
 }
