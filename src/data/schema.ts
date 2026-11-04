@@ -184,6 +184,8 @@ export interface OpcRoot {
 	mapLayouts?: Record<string, MapLayout>;
 	/** Pages: parts of the board shown one at a time (nodes carry `page`). */
 	pages?: PageInfo[];
+	/** Parent card id → its children's ids in outline order (sibling order kept by every layout). */
+	childOrder?: Record<string, string[]>;
 }
 
 /** A page made from a branch: `anchor` stays in the parent page and leads to `root`. */

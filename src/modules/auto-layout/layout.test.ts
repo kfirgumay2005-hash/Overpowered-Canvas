@@ -165,3 +165,77 @@ describe("sibling order", () => {
 		expect(pos.get("d")!.y).toBeLessThan(pos.get("b")!.y);
 	});
 });
+
+describe("stored sibling order", () => {
+	// Children stacked a, b, c, d on the board; the map's order says d, a, c, b.
+	const kids = ["a", "b", "c", "d"].map((id, i) => n(id, 300, i * 80));
+	const all = [n("r", 0, 120), ...kids];
+	const tree: TEdge[] = kids.map((k) => ({ from: "r", to: k.id }));
+	const order = { r: ["d", "a", "c", "b"] };
+	const byAxis = (pos: Positions, axis: "x" | "y") => ["a", "b", "c", "d"].sort((p, q) => pos.get(p)![axis] - pos.get(q)![axis]).join("");
+	for (const direction of ["right", "left"] as const)
+		it(`wins over board positions (${direction})`, async () => {
+			const pos = await computeLayout(elk, all, tree, { algorithm: "mindmap", direction, ...opts, order });
+			expect(byAxis(pos, "y")).toBe("dacb");
+		});
+	for (const direction of ["down", "up"] as const)
+		it(`wins over board positions (${direction})`, async () => {
+			const pos = await computeLayout(elk, all, tree, { algorithm: "mindmap", direction, ...opts, order });
+			expect(byAxis(pos, "x")).toBe("dacb");
+		});
+	for (const direction of ["down", "up"] as const)
+		it(`reads right to left in right-to-left canvases (${direction})`, async () => {
+			const pos = await computeLayout(elk, all, tree, { algorithm: "mindmap", direction, ...opts, order, rtl: true });
+			expect(byAxis(pos, "x")).toBe("bcad");
+		});
+	it("goes counter-clockwise in right-to-left radial maps", async () => {
+		const pos = await computeLayout(elk, all, tree, { algorithm: "mindmap", direction: "radial", ...opts, order, rtl: true });
+		const r = pos.get("r")!;
+		const angle = (id: string) => {
+			const p = pos.get(id)!;
+			return (Math.atan2(-(p.x + 60 - (r.x + 60)), -(p.y + 25 - (r.y + 25))) + 2 * Math.PI) % (2 * Math.PI);
+		};
+		expect(["a", "b", "c", "d"].sort((p, q) => angle(p) - angle(q)).join("")).toBe("dacb");
+	});
+	it("goes clockwise from the top in radial maps", async () => {
+		const pos = await computeLayout(elk, all, tree, { algorithm: "mindmap", direction: "radial", ...opts, order });
+		const r = pos.get("r")!;
+		const angle = (id: string) => {
+			const p = pos.get(id)!;
+			return (Math.atan2(p.x + 60 - (r.x + 60), -(p.y + 25 - (r.y + 25))) + 2 * Math.PI) % (2 * Math.PI);
+		};
+		expect(["a", "b", "c", "d"].sort((p, q) => angle(p) - angle(q)).join("")).toBe("dacb");
+	});
+	it("balanced maps read clockwise: right side top to bottom, then left side bottom to top", async () => {
+		const pos = await computeLayout(elk, all, tree, { algorithm: "mindmap", direction: "balanced", ...opts, order });
+		const r = pos.get("r")!;
+		const right = ["a", "b", "c", "d"].filter((id) => pos.get(id)!.x > r.x).sort((p, q) => pos.get(p)!.y - pos.get(q)!.y);
+		const left = ["a", "b", "c", "d"].filter((id) => pos.get(id)!.x < r.x).sort((p, q) => pos.get(q)!.y - pos.get(p)!.y);
+		expect([...right, ...left].join("")).toBe("dacb");
+	});
+});
+
+describe("radial stability", () => {
+	// A root with branches all around, each with a few children (one branch points straight up).
+	const all: TNode[] = [n("r", 0, 0)];
+	const tree: TEdge[] = [];
+	for (let i = 0; i < 5; i++) {
+		all.push(n(`b${i}`, 300 * Math.cos((i * 2 * Math.PI) / 5 - Math.PI / 2), 300 * Math.sin((i * 2 * Math.PI) / 5 - Math.PI / 2)));
+		tree.push({ from: "r", to: `b${i}` });
+		for (let j = 0; j < 3; j++) {
+			all.push(n(`b${i}k${j}`, (j - 1) * 150, -600 + i * 10));
+			tree.push({ from: `b${i}`, to: `b${i}k${j}` });
+		}
+	}
+	for (const rtl of [false, true])
+		it(`a second run changes nothing${rtl ? " (right to left)" : ""}`, async () => {
+			const run = async (nodes: TNode[]) => {
+				const pos = await computeLayout(elk, nodes, tree, { algorithm: "mindmap", direction: "radial", ...opts, rtl });
+				return nodes.map((node) => ({ ...node, ...pos.get(node.id)! }));
+			};
+			const once = await run(all);
+			const twice = await run(once);
+			const thrice = await run(twice);
+			expect(thrice).toEqual(twice);
+		});
+});

@@ -208,6 +208,7 @@ export const ROOT_SHAPE: Shape<OpcRoot> = {
 	activeLayer: nonEmptyStr,
 	mapLayouts: recordOf(oneOf(MAP_LAYOUTS)),
 	pages: arrayOf(objectOf<PageInfo>({ id: nonEmptyStr, anchor: nonEmptyStr, root: nonEmptyStr, parent: nonEmptyStr }, { required: ["id", "anchor", "root"] })),
+	childOrder: recordOf(arrayOf(nonEmptyStr)),
 };
 
 export const NODE_SHAPE: Shape<OpcNode> = {

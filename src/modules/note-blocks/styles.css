@@ -107,6 +107,9 @@ body.opc-mod-note-blocks .opc-note-blocks-zones[data-dir="left"] .opc-note-block
 body.opc-mod-note-blocks .opc-note-blocks-zones[data-dir="up"] .opc-note-blocks-zone.is-child {
 	transform: translate(-50%, -100%);
 }
+body.opc-mod-note-blocks .opc-note-blocks-zones.is-rtl .opc-note-blocks-zone.is-sibling {
+	transform: translate(-100%, -50%);
+}
 body.opc-mod-note-blocks .opc-note-blocks-zone.is-hot {
 	background: var(--interactive-accent);
 	color: var(--text-on-accent);

@@ -8,6 +8,7 @@ import { builtinTemplate } from "../modules/board-templates/builtins";
 import { reid, translate as shiftData } from "../modules/board-templates/logic";
 import { STICKY_COLORS } from "../modules/sticky-notes/logic";
 import { relayoutMap } from "../modules/auto-layout/arrange";
+import { recordChild } from "../modules/mindmap/order-store";
 import { parseFontSize } from "../modules/note-font-size/logic";
 import { BARS_TUTORIAL } from "./runner";
 import { added, addedEdges, arrow, card, count, edge, edgesOf, ellipsePoints, extraOf, findNode, group, ink, kindOf, nodesOf, practicePdf, randomId, shape, sticky, strokeCount, title } from "./board";
@@ -946,9 +947,33 @@ const mindmap: TutorialDefinition = {
 			title: "tut.mindmap.s5.title",
 			body: "tut.mindmap.s5.body",
 			task: "tut.mindmap.s5.task",
+			touch: "tut.mindmap.s5.touch",
 			enter: (rt) => rt.select(["m-root"]),
 			check: (rt) => rt.seen("layout-applied"),
 			demo: (rt) => {
+				rt.select(["m-root"]);
+				rt.command("auto-layout:layout-mindmap");
+			},
+		},
+		{
+			title: "tut.mindmap.order.title",
+			body: "tut.mindmap.order.body",
+			task: "tut.mindmap.order.task",
+			touch: "tut.mindmap.order.touch",
+			focus: ["m-tokyo", "m-kyoto"],
+			// Tokyo comes after Kyoto in the map's order, and a layout ran since.
+			check: (rt) => {
+				const list = rt.data.root(rt.canvas).get().childOrder?.["m-root"] ?? [];
+				return list.indexOf("m-kyoto") >= 0 && list.indexOf("m-kyoto") < list.indexOf("m-tokyo") && rt.seen("layout-applied");
+			},
+			demo: async (rt) => {
+				const root = rt.node("m-root");
+				const tokyo = rt.node("m-tokyo");
+				const kyoto = rt.node("m-kyoto");
+				if (!root || !tokyo || !kyoto) return;
+				await glide(rt, "m-tokyo", kyoto.x - tokyo.x, kyoto.y + kyoto.height + 40 - tokyo.y);
+				rt.change(() => recordChild({ data: rt.data }, rt.canvas, root, tokyo, "m-kyoto"));
+				await rt.wait(300);
 				rt.select(["m-root"]);
 				rt.command("auto-layout:layout-mindmap");
 			},

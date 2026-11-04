@@ -9,6 +9,7 @@
  * - when the tree needs more than a full turn, all rings grow until it fits.
  * A final check against the real boxes grows the rings further if anything still overlaps.
  */
+import { followStored, type ChildOrder } from "../mindmap/order";
 import type { TEdge, TNode } from "../mindmap/tree";
 
 export type Positions = Map<string, { x: number; y: number }>;
@@ -93,30 +94,57 @@ function layoutTree(nodes: Map<string, TNode>, kids: Map<string, string[]>, root
 }
 
 /**
- * Radial layout of a forest. `tree` must be a spanning forest of `nodes` (see spanningTree),
- * `rootIds` its roots in order; trees are placed side by side. Children keep the order of their
- * current angle around their parent (clockwise from the top), so running it again is stable.
+ * Children of every parent in the order a radial map goes around: the stored order (`order`),
+ * else clockwise (counter-clockwise right to left) as they sit now. Around a root that starts at
+ * 12 o'clock; around any other card it starts from the way back to its parent, so a branch reads
+ * the same way round as the whole map, wherever it points.
  */
-export function radialLayout(nodes: TNode[], tree: TEdge[], rootIds: string[], opts: Options): Positions {
+export function radialKids(nodes: TNode[], tree: TEdge[], order?: ChildOrder, rtl = false): Map<string, string[]> {
 	const byId = new Map(nodes.map((n) => [n.id, n]));
 	const cx = (n: TNode) => n.x + n.width / 2;
 	const cy = (n: TNode) => n.y + n.height / 2;
 	const kids = new Map<string, string[]>();
-	for (const e of tree) (kids.get(e.from) ?? kids.set(e.from, []).get(e.from)!).push(e.to);
+	const parentOf = new Map<string, string>();
+	for (const e of tree) {
+		if (!byId.has(e.from) || !byId.has(e.to)) continue;
+		(kids.get(e.from) ?? kids.set(e.from, []).get(e.from)!).push(e.to);
+		parentOf.set(e.to, e.from);
+	}
+	// Clockwise angle from 12 o'clock (counter-clockwise when right to left).
+	const turn = (from: TNode, to: TNode) => {
+		const dx = cx(to) - cx(from);
+		return Math.atan2(rtl ? -dx : dx, -(cy(to) - cy(from)));
+	};
 	for (const [parent, list] of kids) {
 		const p = byId.get(parent)!;
-		const angle = (id: string) => {
-			const n = byId.get(id)!;
-			return (Math.atan2(cx(n) - cx(p), -(cy(n) - cy(p))) + 2 * Math.PI) % (2 * Math.PI);
-		};
-		const order = new Map(list.map((id) => [id, angle(id)]));
-		list.sort((a, b) => order.get(a)! - order.get(b)!);
+		const up = parentOf.get(parent);
+		const start = up ? turn(p, byId.get(up)!) : 0;
+		const angle = (id: string) => (((turn(p, byId.get(id)!) - start) % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
+		const angles = new Map(list.map((id) => [id, angle(id)]));
+		list.sort((a, b) => angles.get(a)! - angles.get(b)!);
+		const stored = followStored(list.map((id) => ({ id })), order?.[parent]).map((n) => n.id);
+		list.splice(0, list.length, ...stored);
 	}
+	return kids;
+}
+
+/**
+ * Radial layout of a forest. `tree` must be a spanning forest of `nodes` (see spanningTree),
+ * `rootIds` its roots in order; trees are placed side by side. Children go clockwise from the
+ * top (counter-clockwise in right-to-left canvases) in the map's stored order (`order`); those
+ * it doesn't name keep the order of their current angle around their parent, so running it
+ * again is stable.
+ */
+export function radialLayout(nodes: TNode[], tree: TEdge[], rootIds: string[], opts: Options, order?: ChildOrder, rtl = false): Positions {
+	const byId = new Map(nodes.map((n) => [n.id, n]));
+	const kids = radialKids(nodes, tree, order, rtl);
 
 	const out: Positions = new Map();
 	let offsetX = 0;
 	for (const root of rootIds) {
+		// Right to left: counter-clockwise, the mirror image of the clockwise layout.
 		const pos = layoutTree(byId, kids, root, opts);
+		if (rtl) for (const [id, p] of pos) pos.set(id, { x: -p.x - byId.get(id)!.width, y: p.y });
 		const minX = Math.min(...[...pos].map(([, p]) => p.x));
 		const maxX = Math.max(...[...pos].map(([id, p]) => p.x + byId.get(id)!.width));
 		for (const [id, p] of pos) out.set(id, { x: p.x - minX + offsetX, y: p.y });

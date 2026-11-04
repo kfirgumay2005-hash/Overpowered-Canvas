@@ -288,6 +288,9 @@ export const pagesModule = defineModule<PagesSettings>({
 				const root0 = ctx.data.root(canvas);
 				if (pageId) root0.set({ pages: [...pagesOf(canvas), { id: pageId, anchor: anchor.id, root: rootId, ...(parentPage ? { parent: parentPage } : {}) }] });
 				if (layout) root0.set({ mapLayouts: { ...layouts, [rootId]: layout } });
+				// The branch's sibling order goes with it to the new root.
+				const { [anchor.id]: kept, ...order } = root0.get().childOrder ?? {};
+				if (kept) root0.set({ childOrder: { ...order, [rootId]: kept } });
 			});
 			ours.delete(rootId);
 			if (!ok || !root) return;
@@ -343,6 +346,9 @@ export const pagesModule = defineModule<PagesSettings>({
 				}
 				const nextLayouts = { ...layouts };
 				if (root) delete nextLayouts[root.id];
+				// Back under the anchor, in the order the page had.
+				const { [root?.id ?? ""]: back, ...order } = ctx.data.root(canvas).get().childOrder ?? {};
+				if (anchor && back) ctx.data.root(canvas).set({ childOrder: { ...order, [anchor.id]: back } });
 				ctx.data.root(canvas).set({ pages: withoutPage(pagesOf(canvas), pageId), mapLayouts: Object.keys(nextLayouts).length ? nextLayouts : undefined });
 				if (pagesOf(canvas).length === 0) ctx.data.root(canvas).set({ pages: undefined });
 			});

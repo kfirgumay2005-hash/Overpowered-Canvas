@@ -2,9 +2,10 @@
  * Auto layout with ELK (elkjs). No Obsidian imports, so it runs in unit tests with the
  * in-thread ELK build; the plugin passes a worker-backed instance.
  */
-import { orderChildren } from "../canvas-markdown/structure";
+import { orderChildren, type MapAxis } from "../canvas-markdown/structure";
 import { tidyTree } from "../canvas-markdown/tidy";
-import { balance, childrenOf, roots, type TEdge, type TNode } from "../mindmap/tree";
+import type { ChildOrder } from "../mindmap/order";
+import { childrenOf, roots, type TEdge, type TNode } from "../mindmap/tree";
 import { radialLayout } from "./radial";
 
 export interface ElkNode {
@@ -32,6 +33,15 @@ export interface LayoutOptions {
 	spacing: number;
 	/** Gap between levels / layers. */
 	levelSpacing: number;
+	/** The map's stored sibling order (root x-opc `childOrder`); children it doesn't name follow the board. */
+	order?: ChildOrder;
+	/**
+	 * Right-to-left canvas: siblings read right to left (up / down maps), counter-clockwise
+	 * (radial, balanced: the left side first), as everywhere else the order is read or recorded.
+	 */
+	rtl?: boolean;
+	/** How to read each parent's children off the board: the axis of its map's current layout. */
+	readAs?: (parent: string) => MapAxis | undefined;
 }
 
 export type Positions = Map<string, { x: number; y: number }>;
@@ -132,7 +142,7 @@ export async function computeLayout(elk: ElkLike, nodes: TNode[], edges: TEdge[]
 	const firstRoot = rootIds[0] ?? null;
 
 	// Radial: our own collision-free layout (ELK's radial ignores card sizes and overlaps them).
-	if (opts.direction === "radial") return anchor(radialLayout(nodes, tree, rootIds, opts), nodes, firstRoot);
+	if (opts.direction === "radial") return anchor(radialLayout(nodes, tree, rootIds, opts, opts.order, !!opts.rtl), nodes, firstRoot);
 
 	return anchor(orderedTrees(nodes, tree, rootIds, opts.direction, opts), nodes, firstRoot);
 }
@@ -144,7 +154,7 @@ export async function computeLayout(elk: ElkLike, nodes: TNode[], edges: TEdge[]
  */
 function orderedTrees(nodes: TNode[], tree: TEdge[], rootIds: string[], direction: "right" | "left" | "down" | "up" | "balanced", opts: LayoutOptions): Positions {
 	const byId = new Map(nodes.map((n) => [n.id, n]));
-	const kids = siblingOrder(nodes, tree);
+	const kids = siblingOrder(nodes, tree, opts.order, !!opts.rtl, opts.readAs);
 	const horizontal = direction !== "down" && direction !== "up";
 	const out: Positions = new Map();
 	// Several maps: each one keeps its root where it is, then they are stacked across the main
@@ -152,7 +162,7 @@ function orderedTrees(nodes: TNode[], tree: TEdge[], rootIds: string[], directio
 	const ordered = [...rootIds].sort((a, b) => (horizontal ? byId.get(a)!.y - byId.get(b)!.y : byId.get(a)!.x - byId.get(b)!.x));
 	let next = -Infinity;
 	for (const root of ordered) {
-		const pos = direction === "balanced" ? balancedTree(byId, kids, root, opts) : tidyTree(nodes, kids, root, { direction, spacing: opts.spacing, levelSpacing: opts.levelSpacing, rtl: false });
+		const pos = direction === "balanced" ? balancedTree(byId, kids, root, opts) : tidyTree(nodes, kids, root, { direction, spacing: opts.spacing, levelSpacing: opts.levelSpacing, rtl: !!opts.rtl });
 		const span = (id: string, p: { x: number; y: number }): [number, number] => (horizontal ? [p.y, p.y + byId.get(id)!.height] : [p.x, p.x + byId.get(id)!.width]);
 		const lo = Math.min(...[...pos].map(([id, p]) => span(id, p)[0]));
 		const hi = Math.max(...[...pos].map(([id, p]) => span(id, p)[1]));
@@ -165,42 +175,50 @@ function orderedTrees(nodes: TNode[], tree: TEdge[], rootIds: string[], directio
 	return out;
 }
 
-/** Children of every parent in the order they show on the board (see orderChildren). */
-export function siblingOrder(nodes: TNode[], tree: TEdge[]): Map<string, string[]> {
+/** Children of every parent in the map's order: stored, else as the board shows them (see orderChildren). */
+export function siblingOrder(nodes: TNode[], tree: TEdge[], order?: ChildOrder, rtl = false, axis?: (parent: string) => MapAxis | undefined): Map<string, string[]> {
 	const byId = new Map(nodes.map((n) => [n.id, n]));
 	const kids = new Map<string, string[]>();
 	for (const e of tree) if (byId.has(e.from) && byId.has(e.to)) (kids.get(e.from) ?? kids.set(e.from, []).get(e.from)!).push(e.to);
 	for (const [parent, list] of kids)
 		kids.set(
 			parent,
-			orderChildren(byId.get(parent)!, list.map((id) => byId.get(id)!), false).map((n) => n.id),
+			orderChildren(byId.get(parent)!, list.map((id) => byId.get(id)!), rtl, order?.[parent], axis?.(parent)).map((n) => n.id),
 		);
 	return kids;
 }
 
 /**
- * A balanced map: children that already sit on the left of the root stay on the left, the
- * others on the right, each side top to bottom as on the board. A map whose children are all on
- * one side (the first balanced run) is split by subtree size, keeping their order.
+ * A balanced map: each side keeps as many children as it has now. `kids` of the root read
+ * clockwise (the map's order): the right side takes the first ones, top to bottom, the left side
+ * the rest, bottom to top (mirrored in right-to-left canvases: the left side first). A map whose
+ * children are all on one side (the first balanced run) is split by subtree size, keeping that
+ * order.
  */
 function balancedTree(byId: Map<string, TNode>, kids: Map<string, string[]>, root: string, opts: LayoutOptions): Positions {
 	const r = byId.get(root)!;
 	const all = kids.get(root) ?? [];
 	const cx = (id: string) => byId.get(id)!.x + byId.get(id)!.width / 2;
-	const cy = (id: string) => byId.get(id)!.y + byId.get(id)!.height / 2;
-	let right = all.filter((id) => cx(id) >= r.x + r.width / 2);
-	let left = all.filter((id) => cx(id) < r.x + r.width / 2);
-	if (!right.length || !left.length) {
+	const rtl = !!opts.rtl;
+	const onRight = (id: string) => cx(id) >= r.x + r.width / 2;
+	// "first": the side the order starts on (top to bottom); "then": the other side, bottom to top.
+	const onFirst = all.filter((id) => onRight(id) !== rtl).length;
+	let first = all.slice(0, onFirst);
+	let then = all.slice(onFirst).reverse();
+	if (!first.length || !then.length) {
 		const size = (id: string): number => 1 + (kids.get(id) ?? []).reduce((s, k) => s + size(k), 0);
-		const byY = [...all].sort((a, b) => cy(a) - cy(b));
-		[right, left] = balance(byY, size);
+		// The first children (about half the cards) on the first side, the rest on the other.
+		const total = all.reduce((s, id) => s + size(id), 0);
+		let cut = 0;
+		for (let sum = 0; cut < all.length - 1 && sum + size(all[cut]!) / 2 <= total / 2; cut++) sum += size(all[cut]!);
+		cut = Math.max(1, cut);
+		first = all.slice(0, cut);
+		then = all.slice(cut).reverse();
 	}
-	right.sort((a, b) => cy(a) - cy(b));
-	left.sort((a, b) => cy(a) - cy(b));
 	const nodes = [...byId.values()];
 	const base = { spacing: opts.spacing, levelSpacing: opts.levelSpacing, rtl: false };
-	const forward = tidyTree(nodes, new Map([...kids, [root, right]]), root, { ...base, direction: "right" });
-	const back = tidyTree(nodes, new Map([...kids, [root, left]]), root, { ...base, direction: "left" });
+	const forward = tidyTree(nodes, new Map([...kids, [root, first]]), root, { ...base, direction: rtl ? "left" : "right" });
+	const back = tidyTree(nodes, new Map([...kids, [root, then]]), root, { ...base, direction: rtl ? "right" : "left" });
 	return new Map([...back, ...forward]);
 }
 

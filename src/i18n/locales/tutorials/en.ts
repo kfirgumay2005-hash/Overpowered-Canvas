@@ -262,7 +262,7 @@ export const tutorialsEn = {
 	"tut.mindmap.move.body": "Drag a card over another card: **Add as child** and **Add as sibling** appear. Drop on one and the card is linked there, its own children come along, and a map with an automatic layout is arranged again. Drop anywhere else for an ordinary move.\n\nA sibling lands right after the card you dropped it on, not at the end.",
 	"tut.mindmap.move.task": "Drag **Skytree** onto **Kyoto** and drop it on **Add as child**.",
 	"tut.mindmap.s5.title": "Auto layout",
-	"tut.mindmap.s5.body": "Messy map? **Auto layout** arranges it: balanced, in one direction or radial — or as a flowchart or a grid. It's animated and one undo step. It keeps the order the cards show on the board: drag a card above its siblings and it stays there after the next layout.",
+	"tut.mindmap.s5.body": "Messy map? **Auto layout** arranges it: balanced, in one direction or radial — or as a flowchart or a grid. It's animated and one undo step, and it keeps the order of each card's children.",
 	"tut.mindmap.s5.task": "Run `Ctrl/Cmd+P` → **Auto layout: balanced mind map**.",
 	"tut.mindmap.walk.title": "Walk through the map",
 	"tut.mindmap.walk.body": "To go through a map without making slides, use the **route button** in the bottom bar, `Ctrl/Cmd+P` → **Walk through the map**, or right-click a card → **Walk through the map from here**. The arrow keys follow the map's levels, wherever the cards sit: `→` goes into the children, `←` back to the parent, `↑` and `↓` to the previous and next sibling. On a touch screen use the arrows in the corner, or tap any card. `+` / `-` zoom, `Esc` ends.",
@@ -862,4 +862,9 @@ export const tutorialsEn = {
 	"tut.indent.card.body": "Tab writes the same indent in the text cards on a board. The card looks the same while you edit it and after you leave it: same margins, same line breaks, same text size.",
 	"tut.indent.card.task": "Double-click the card below the hint, click before its first word and press **Tab**. Then click the empty board to leave the card.",
 	"tut.indent.card.touch": "Double-tap the card, tap before its first word and run **Insert paragraph indent** from the command palette. Then tap the empty board.",
+	"tut.mindmap.s5.touch": "No keyboard? Long-press **Trip to Japan** → **Auto layout…** → pick **Mind map (tree)** and **Balanced (both sides)** → **Arrange**.",
+	"tut.mindmap.order.title": "Reorder siblings",
+	"tut.mindmap.order.body": "A map remembers the order of each card's children, like an outline, and saves it in the canvas file. Drop a card on **Add as sibling** and it takes its place right after that card. Adding cards (Tab, Enter, the + buttons) and moving a card by hand among its siblings update the order too.\n\nEvery auto layout, in any direction, the walk, the column view and the Markdown note follow this order, also after you reopen the canvas.",
+	"tut.mindmap.order.task": "Drag **Tokyo** onto **Kyoto** and drop it on **Add as sibling**. Then arrange the map again: `Ctrl/Cmd+P` → **Auto layout: balanced mind map**. Tokyo stays after Kyoto.",
+	"tut.mindmap.order.touch": "Drag **Tokyo** with your finger onto **Kyoto** and drop it on **Add as sibling**. Then long-press **Trip to Japan** → **Auto layout…** → **Arrange**.",
 } as const;

@@ -7,6 +7,7 @@
  * changed parent re-links the card. Cards the note never knew about (added on the canvas after
  * the export) and drawings are left alone.
  */
+import { pruneOrder } from "../mindmap/order";
 import type { CanvasEdgeData, CanvasFileData, CanvasNodeData, EdgeSide } from "../../data/json-canvas";
 import { SCHEMA_KEY, SCHEMA_VERSION } from "../../data/schema";
 import { computeLayout, type ElkLike, type LayoutDirection, type LayoutOptions } from "../auto-layout/layout";
@@ -17,7 +18,7 @@ import { normalizeText, type OutlineItem } from "./outline";
 import { inlinePageLinks, outlinePageLinks, pageLinkTargets } from "./page-links";
 import { estimateSize } from "./size";
 import { tidyTree } from "./tidy";
-import { isDrawing, nodeText, pageOfNode, pagesOfRoot } from "./structure";
+import { isDrawing, nodeText, orderChildren, pageOfNode, pagesOfRoot } from "./structure";
 
 export interface ApplyOptions {
 	/** Layout for maps that are entirely new (logical: "right" means forward). */
@@ -97,7 +98,8 @@ export async function layoutMap(elk: ElkLike, nodes: TNode[], edges: TEdge[], ro
 		const direction = layout === "right" || layout === "left" ? logical(layout, opts.rtl) : layout;
 		return tidyTree(nodes, kids, root, { direction, spacing: opts.spacing, levelSpacing: opts.levelSpacing, rtl: opts.rtl });
 	}
-	return computeLayout(elk, nodes, edges, layoutOptions(layout, opts.rtl, opts.spacing, opts.levelSpacing));
+	// Radial maps too go around in the given order (the outline's, or the map's stored one).
+	return computeLayout(elk, nodes, edges, { ...layoutOptions(layout, opts.rtl, opts.spacing, opts.levelSpacing), order: Object.fromEntries(kids), rtl: opts.rtl });
 }
 
 interface Placed {
@@ -337,14 +339,24 @@ export async function applyNote(items: OutlineItem[], note: NoteData | null, bas
 		return { ...e, fromSide: floating.from ? e.fromSide : fromSide, toSide: floating.to ? e.toSide : toSide };
 	});
 
-	// 8. Root data: map layouts follow the note; entries of deleted cards go.
+	// 8. Root data: map layouts and sibling order follow the note; entries of deleted cards go.
 	for (const id of Object.keys(layouts)) if (!outById.has(id)) delete layouts[id];
 	const extra = isPlainObject(rootData[SCHEMA_KEY]) ? { ...rootData[SCHEMA_KEY] } : null;
-	if (Object.keys(layouts).length) rootData[SCHEMA_KEY] = { ...(extra ?? { v: SCHEMA_VERSION }), mapLayouts: layouts };
-	else if (extra) {
-		delete extra.mapLayouts;
-		rootData[SCHEMA_KEY] = extra;
+	const order: Record<string, string[]> = { ...(isPlainObject(extra?.childOrder) ? (extra.childOrder as Record<string, string[]>) : {}) };
+	// Stored where the board alone would read another order (or where one was kept before).
+	for (const p of placed) {
+		const list = kids.get(p.id) ?? [];
+		const byBoard = orderChildren(box(p.id), list.map(box), opts.rtl).map((n) => n.id);
+		if (list.length > 1 && (order[p.id] || byBoard.join() !== list.join())) order[p.id] = list;
+		else delete order[p.id];
 	}
+	const childOrder = pruneOrder(order, (id) => outById.has(id));
+	const next: Record<string, unknown> = { ...(extra ?? { v: SCHEMA_VERSION }) };
+	if (Object.keys(layouts).length) next.mapLayouts = layouts;
+	else delete next.mapLayouts;
+	if (childOrder) next.childOrder = childOrder;
+	else delete next.childOrder;
+	if (extra || next.mapLayouts || next.childOrder) rootData[SCHEMA_KEY] = next;
 
 	const finalNodes = out.map((n) => outById.get(n.id)!);
 	return { data: { ...rootData, nodes: finalNodes, edges: edgesOut }, added, removed, updated, created };

@@ -596,3 +596,35 @@ describe("a note with pages", () => {
 		expect(result.removed).toBe(0);
 	});
 });
+
+describe("stored sibling order", () => {
+	const card = (id: string, x: number, y: number) => ({ id, type: "text" as const, text: id.toUpperCase(), x, y, width: 120, height: 50 });
+	const edge = (from: string, to: string) => ({ id: `${from}-${to}`, fromNode: from, toNode: to });
+	const data = (extra?: object) => ({
+		nodes: [card("r", 0, 100), card("a", 300, 0), card("b", 300, 100), card("c", 300, 200)],
+		edges: [edge("r", "a"), edge("r", "b"), edge("r", "c")],
+		...(extra ? { "x-opc": { v: 1, ...extra } } : {}),
+	});
+	const kids = (d: CanvasFileData) => buildStructure(d, { rtl: false, freeLabel: "Free cards" }).items[0]!.children.map((i) => i.text);
+	it("lists children in the map's stored order, not by position", () => {
+		expect(kids(data())).toEqual(["A", "B", "C"]);
+		expect(kids(data({ childOrder: { r: ["c", "a", "b"] } }))).toEqual(["C", "A", "B"]);
+	});
+	it("reads cards beside and above their parent by the map's recorded axis", () => {
+		// Both left of the root and above it: an "up" map reads them across, right to left in RTL.
+		const d = { nodes: [card("r", 1000, 500), card("a", 0, 300), card("b", 400, 250)], edges: [edge("r", "a"), edge("r", "b")], "x-opc": { v: 1, mapLayouts: { r: "up" } } };
+		expect(buildStructure(d, { rtl: true, freeLabel: "Free cards" }).items[0]!.children.map((i) => i.text)).toEqual(["B", "A"]);
+		const side = { ...d, "x-opc": { v: 1, mapLayouts: { r: "left" } } };
+		expect(buildStructure(side, { rtl: true, freeLabel: "Free cards" }).items[0]!.children.map((i) => i.text)).toEqual(["B", "A"]);
+	});
+	it("a note's outline order wins and is kept for the next layout", async () => {
+		const md = "# R\n- C\n- A\n- B\n";
+		const { items } = splitNote(md);
+		const out = await applyNote(items, null, null, elk, options());
+		const order = (out.data["x-opc"] as { childOrder?: Record<string, string[]> } | undefined)?.childOrder;
+		const rootId = out.data.nodes!.find((n) => n.text === "R")!.id;
+		// Laid out in outline order, which the board shows anyway: nothing needs storing.
+		expect(order?.[rootId]).toBeUndefined();
+		expect(kids(out.data)).toEqual(["C", "A", "B"]);
+	});
+});

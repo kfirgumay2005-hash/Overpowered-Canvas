@@ -112,6 +112,11 @@ function build(canvas: CanvasFileData, opts: ExportOptions): { items: OutlineIte
 	const maps: Record<string, { layout: MapLayout | "free" }> = {};
 	for (const r of s.roots) maps[s.alias.get(r)!] = { layout: layouts[r] ?? "free" };
 	const { nodes: _n, edges: _e, ...root } = canvas;
+	// The outline itself is the sibling order: the data block doesn't repeat it.
+	if (isPlainObject(root["x-opc"]) && "childOrder" in root["x-opc"]) {
+		const { childOrder: _order, ...extra } = root["x-opc"];
+		root["x-opc"] = extra;
+	}
 
 	const data: NoteData = {
 		version: DATA_VERSION,

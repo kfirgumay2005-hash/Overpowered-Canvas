@@ -1,14 +1,18 @@
 import { Modal, Notice, Setting, type App } from "obsidian";
 import { defineModule, type ModuleContext } from "../../core/module";
 import type { I18nKey, Translate } from "../../i18n";
-import type { CanvasLike, CanvasNodeLike } from "../../internals/types";
+import type { CanvasLike, CanvasNodeLike, SelectionDragLike } from "../../internals/types";
 import type { MapLayout } from "../../data/schema";
 import { descendants, logical, type TEdge } from "../mindmap/tree";
+import { boardOrder, placedSince, recordHandMove, storedOrder, writeOrder } from "../mindmap/order-store";
+import { parentOf } from "../mindmap/tree";
 import { canvasDirection, mutate, nodeType, selectedNodes } from "../shared";
 import { disposeElk, getElk } from "./engine";
 import { collapseGroups, expandPositions, fitGroups, groupsAround } from "./blocks";
 import { applyEdgeSides, arrangeState, isDrawingNode, isOutOfView, type SideMode } from "./arrange";
-import { computeLayout, interpolate, type Algorithm, type LayoutDirection, type Positions } from "./layout";
+import { computeLayout, interpolate, spanningTree, type Algorithm, type LayoutDirection, type Positions } from "./layout";
+import { radialKids } from "./radial";
+import { axisOf } from "../canvas-markdown/structure";
 import { logError } from "../../core/log";
 
 interface LayoutSettings {
@@ -112,8 +116,23 @@ async function runLayout(ctx: ModuleContext<LayoutSettings>, canvas: CanvasLike,
 	// "right" means "forward": mirrored in right-to-left canvases.
 	const direction: LayoutDirection = choice.direction === "right" || choice.direction === "left" ? logical(choice.direction, rtl) : choice.direction;
 	let laid: Positions;
+	const order = storedOrder(ctx, canvas);
+	// Children are read off the board the way their map grows now (its recorded layout).
+	const layouts = ctx.data.root(canvas).get().mapLayouts ?? {};
+	const upOf = new Map(spanningTree(blocks.nodes, blocks.edges).map((e) => [e.to, e.from]));
+	const rootOf = (id: string) => {
+		const seen = new Set<string>();
+		while (upOf.has(id) && !seen.has(id)) {
+			seen.add(id);
+			id = upOf.get(id)!;
+		}
+		return id;
+	};
+	const readAs = (id: string) => axisOf(layouts[rootOf(id)], rootOf(id) === id);
+	// A radial map goes around in an order the board alone can't tell apart from others: it is kept.
+	const settled = choice.algorithm === "mindmap" && direction === "radial" ? radialKids(blocks.nodes, spanningTree(blocks.nodes, blocks.edges), order, rtl) : null;
 	try {
-		laid = await computeLayout(getElk(), blocks.nodes, blocks.edges, { algorithm: choice.algorithm, direction, spacing: choice.spacing, levelSpacing: choice.levelSpacing });
+		laid = await computeLayout(getElk(), blocks.nodes, blocks.edges, { algorithm: choice.algorithm, direction, spacing: choice.spacing, levelSpacing: choice.levelSpacing, order, rtl, readAs });
 	} catch (error) {
 		logError("[overpowered-canvas] layout failed", error);
 		new Notice(ctx.t("autoLayout.failed"));
@@ -127,6 +146,7 @@ async function runLayout(ctx: ModuleContext<LayoutSettings>, canvas: CanvasLike,
 	const ok = mutate(ctx, canvas, () => {
 		for (const n of moved) n.moveTo(positions.get(n.id)!);
 		for (const [id, r] of grown) byId.get(id)?.moveAndResize(r);
+		if (settled) writeOrder(ctx, canvas, { ...order, ...Object.fromEntries([...settled].filter(([, list]) => list.length > 1)) });
 		// Edges that moved get the sides of a clear path (floating ends keep theirs).
 		applyEdgeSides(ctx, canvas, new Set(positions.keys()), (a, b) => blocks.blockOf.get(a) !== undefined && blocks.blockOf.get(a) === blocks.blockOf.get(b));
 		// Each map arranged here remembers its layout: cards dropped into it later re-arrange it.
@@ -193,6 +213,50 @@ export const autoLayoutModule = defineModule<LayoutSettings>({
 			arrangeState.sides = "clear";
 			arrangeState.bend = true;
 		});
+		// A card moved by hand among its siblings takes that place in the map's stored order.
+		const handMoves = (canvas: CanvasLike, drag: SelectionDragLike | undefined): SelectionDragLike | undefined => {
+			if (!drag || canvas.readonly) return drag;
+			const since = Date.now();
+			const edges = [...canvas.edges.values()].map((e) => ({ from: e.from.node.id, to: e.to.node.id }));
+			const moving = selectedNodes(canvas);
+			const ids = new Set(moving.map((n) => n.id));
+			// Top cards of what moves (their parent stays), with their siblings' board order now.
+			const before = new Map<CanvasNodeLike, { parent: CanvasNodeLike; order: string }>();
+			for (const n of moving) {
+				const p = parentOf(edges, n.id);
+				const parent = p && !ids.has(p) ? canvas.nodes.get(p) : undefined;
+				if (parent && storedOrder(ctx, canvas)[parent.id]?.length) before.set(n, { parent, order: boardOrder(ctx, canvas, parent).join() });
+			}
+			if (!before.size) return drag;
+			return {
+				...drag,
+				end: (e: PointerEvent) => {
+					drag.end?.(e);
+					try {
+						for (const [n, { parent, order }] of before) {
+							if (canvas.nodes.get(n.id) !== n || canvas.nodes.get(parent.id) !== parent || placedSince(n, since)) continue;
+							if (parentOf([...canvas.edges.values()].map((x) => ({ from: x.from.node.id, to: x.to.node.id })), n.id) !== parent.id) continue;
+							if (boardOrder(ctx, canvas, parent).join() !== order) recordHandMove(ctx, canvas, parent, n);
+						}
+					} catch (error) {
+						logError("[overpowered-canvas] auto-layout: sibling order", error);
+					}
+				},
+			};
+		};
+		const patchedDrag = new WeakSet<object>();
+		ctx.onCanvas((canvas) => {
+			const proto = Object.getPrototypeOf(canvas) as CanvasLike;
+			if (patchedDrag.has(proto) || typeof proto.handleSelectionDrag !== "function") return;
+			patchedDrag.add(proto);
+			ctx.patch("canvas.handleSelectionDrag (sibling order)", proto as CanvasLike & Required<Pick<CanvasLike, "handleSelectionDrag">>, {
+				handleSelectionDrag: (next) =>
+					function (this: CanvasLike, evt: PointerEvent, clickEl: HTMLElement, node?: CanvasNodeLike) {
+						return handMoves(this, next.call(this, evt, clickEl, node));
+					},
+			});
+		});
+
 		const run = (canvas: CanvasLike, patch: Partial<LayoutSettings> = {}) => void runLayout(ctx, canvas, { ...ctx.settings, ...patch });
 		const command = (id: string, name: string, icon: string, fn: (c: CanvasLike) => void) =>
 			ctx.addCommand({

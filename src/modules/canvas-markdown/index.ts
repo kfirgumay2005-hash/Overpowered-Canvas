@@ -16,7 +16,7 @@ import { DataStore } from "./store";
 import { PagedNotes } from "./paged-view";
 import { pagesHost } from "../pages/api";
 import { viewMemory } from "../../core/view-memory";
-import { buildStructure } from "./structure";
+import { buildStructure, childOrderOf } from "./structure";
 import { TUTORIAL_KEY } from "../../tutorials/runner";
 import { logError } from "../../core/log";
 
@@ -272,6 +272,8 @@ export const canvasMarkdownModule = defineModule<CanvasMarkdownSettings>({
 				added = canvas.importData({ nodes: moved, edges: result.data.edges ?? [] }, false);
 				const layouts = rootMapLayouts(result.data);
 				if (Object.keys(layouts).length) ctx.data.root(canvas).set({ mapLayouts: { ...(ctx.data.root(canvas).get().mapLayouts ?? {}), ...layouts } });
+				const order = childOrderOf(result.data);
+				if (Object.keys(order).length) ctx.data.root(canvas).set({ childOrder: { ...(ctx.data.root(canvas).get().childOrder ?? {}), ...(order as Record<string, string[]>) } });
 			});
 			if (!ok) return;
 			if (added?.size) {
@@ -375,7 +377,8 @@ export const canvasMarkdownModule = defineModule<CanvasMarkdownSettings>({
 					const layouts = rootMapLayouts(result.data);
 					const ok = mutate(ctx, live, () => {
 						keepPages(() => live.importData({ nodes: result.data.nodes ?? [], edges: result.data.edges ?? [] }, true));
-						ctx.data.root(live).set({ mapLayouts: Object.keys(layouts).length ? layouts : undefined });
+						const order = childOrderOf(result.data);
+						ctx.data.root(live).set({ mapLayouts: Object.keys(layouts).length ? layouts : undefined, childOrder: Object.keys(order).length ? (order as Record<string, string[]>) : undefined });
 					});
 					if (!ok) return null;
 				} else {
@@ -417,6 +420,8 @@ export const canvasMarkdownModule = defineModule<CanvasMarkdownSettings>({
 				mutate(ctx, live, () => {
 					keepPages(() => live.importData({ nodes: result.data.nodes ?? [], edges: result.data.edges ?? [] }, true));
 					if (Object.keys(layouts).length) ctx.data.root(live).set({ mapLayouts: layouts });
+					const order = childOrderOf(result.data);
+					if (Object.keys(order).length) ctx.data.root(live).set({ childOrder: order as Record<string, string[]> });
 				});
 				live.zoomToFit();
 			} else await app.vault.modify(file, JSON.stringify(result.data, null, "\t"));

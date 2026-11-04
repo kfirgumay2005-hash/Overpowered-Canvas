@@ -47,6 +47,12 @@ interface OpcRoot {                       // file root "x-opc"
   pages?: { id: string; anchor: string; root: string; parent?: string }[];
                                           // Pages: `anchor` = the card left in the parent page (absent parent =
                                           // main page), `root` = the page's first card (a copy of the anchor)
+  childOrder?: Record<string, string[]>;  // parent card id → its children in outline order (sibling order).
+                                          // Written by drops on "Add as child / sibling", Tab / Enter, the column
+                                          // view's + buttons, a hand move among siblings, a radial layout and a
+                                          // note's outline; read by every layout, the walk, the column view and
+                                          // the Markdown export. Children it doesn't name keep their board place.
+                                          // Not copied into a note's data block (the outline is the order).
 }
 
 // "right" | "left" | "down" | "up" | "balanced" | "radial" | "layered-right" | "layered-left" |
