@@ -124,6 +124,12 @@ export async function applyNote(items: OutlineItem[], note: NoteData | null, bas
 	const pageRoots = new Set(pageRefs.map((p) => p.root));
 	const linkTargets = pageLinkTargets(pageRefs);
 	const known = new Set(fromNote.keys());
+	// The outline parent each known card had when the note was written.
+	const oldParent = new Map<string, string>();
+	for (const [alias, e] of Object.entries(note?.edges ?? {})) {
+		const child = aliasToId.get(alias);
+		if (child) oldParent.set(child, e.fromNode === child ? e.toNode : e.fromNode);
+	}
 
 	// 1. Walk the outline: resolve ids, update text, create cards.
 	const nodes = new Map<string, CanvasNodeData>();
@@ -163,6 +169,23 @@ export async function applyNote(items: OutlineItem[], note: NoteData | null, bas
 		const { header: _old, ...rest } = extra ?? { v: SCHEMA_VERSION };
 		return { ...node, [SCHEMA_KEY]: want === undefined ? rest : { ...rest, header: want } };
 	};
+	/** Where each card was placed (its outline parent), and which cards are headings in the note. */
+	const placedParent = new Map<string, string | null>();
+	const headingCards = new Set<string>();
+	/** Header cards put back under the plain line they were lifted out from (see headers.ts). */
+	const lifted = new Set<string>();
+	/**
+	 * A header card the export lifted out of the outline sits under the nearest heading in the
+	 * note; on the board it stays under the card it had, when that card is still in this
+	 * heading's outline (only plain lines between them and the heading).
+	 */
+	const parentOf = (item: OutlineItem, id: string, parent: string | null): string | null => {
+		const old = oldParent.get(id);
+		if (!parent || item.heading === undefined || !old || old === parent || old === id || !placedParent.has(old)) return parent;
+		for (let cur: string | null | undefined = old; cur !== parent; cur = placedParent.get(cur)) if (!cur || headingCards.has(cur)) return parent;
+		lifted.add(id);
+		return old;
+	};
 	const walk = (list: OutlineItem[], parent: string | null, group: string | null, parentLevel?: number) => {
 		for (const item of list) {
 			if (item.kind === "free") {
@@ -188,7 +211,10 @@ export async function applyNote(items: OutlineItem[], note: NoteData | null, bas
 				const marked = markHeader(next ?? existing, header);
 				if (next || marked !== (next ?? existing)) updated++;
 				nodes.set(existing.id, marked);
-				placed.push({ id: existing.id, parent: pageRoots.has(existing.id) ? null : parent, group, isNew: false });
+				const at = pageRoots.has(existing.id) ? null : parentOf(item, existing.id, parent);
+				placed.push({ id: existing.id, parent: at, group, isNew: false });
+				placedParent.set(existing.id, at);
+				if (item.heading !== undefined) headingCards.add(existing.id);
 				walk(item.children, existing.id, group, item.heading);
 				continue;
 			}
@@ -205,6 +231,8 @@ export async function applyNote(items: OutlineItem[], note: NoteData | null, bas
 			unplaced.add(id);
 			created.push(id);
 			placed.push({ id, parent, group, isNew: true });
+			placedParent.set(id, parent);
+			if (item.heading !== undefined) headingCards.add(id);
 			walk(item.children, id, group, item.heading);
 		}
 	};
@@ -249,11 +277,6 @@ export async function applyNote(items: OutlineItem[], note: NoteData | null, bas
 	// 3. Edges: keep the edge behind every outline link, create missing ones, drop stale tree edges.
 	const edges: CanvasEdgeData[] = base ? [...(base.edges ?? [])] : [...Object.values(note?.edges ?? {}), ...(note?.crossEdges ?? [])];
 	const treeIds = new Set(Object.values(note?.edges ?? {}).map((e) => e.id));
-	const oldParent = new Map<string, string>();
-	for (const [alias, e] of Object.entries(note?.edges ?? {})) {
-		const child = aliasToId.get(alias);
-		if (child) oldParent.set(child, e.fromNode === child ? e.toNode : e.fromNode);
-	}
 	const used = new Set<string>();
 	const fresh: CanvasEdgeData[] = [];
 	const links = (e: CanvasEdgeData, a: string, b: string) => (e.fromNode === a && e.toNode === b) || (e.fromNode === b && e.toNode === a);
@@ -278,6 +301,16 @@ export async function applyNote(items: OutlineItem[], note: NoteData | null, bas
 		while (cur?.parent) cur = placedById.get(cur.parent);
 		return cur?.id ?? id;
 	};
+	/** A card's children as they were when the note was written, in the board's order. */
+	const originalOrder = (parent: string): string[] => {
+		const was = (id: string) => baseNodes.get(id) ?? fromNote.get(id);
+		const parentNode = was(parent);
+		const siblings = [...oldParent].filter(([child, p]) => p === parent && was(child)).map(([child]) => was(child)!);
+		if (!parentNode) return siblings.map((n) => n.id);
+		const before = base ?? (note?.root as CanvasFileData | undefined);
+		const stored = isPlainObject(before?.[SCHEMA_KEY]) && isPlainObject(before[SCHEMA_KEY].childOrder) ? (before[SCHEMA_KEY].childOrder as Record<string, string[]>)[parent] : undefined;
+		return orderChildren(parentNode, siblings, opts.rtl, stored).map((n) => n.id);
+	};
 	const dirty = new Set<string>();
 	for (const p of placed) if (p.isNew || (oldParent.get(p.id) ?? null) !== p.parent) dirty.add(rootOf(p.id));
 	for (const id of removedIds) {
@@ -294,6 +327,35 @@ export async function applyNote(items: OutlineItem[], note: NoteData | null, bas
 	}
 	const kids = new Map<string, string[]>();
 	for (const p of placed) if (p.parent) (kids.get(p.parent) ?? kids.set(p.parent, []).get(p.parent)!).push(p.id);
+	/**
+	 * Under a heading, the note lists the plain lines first and the sub-headings after them
+	 * (headers.ts): children read back in exactly that split of their old order are in their old
+	 * order, not moved by hand. New lines stay after the line they follow in the note.
+	 */
+	for (const [parent, list] of kids) {
+		if (!headingCards.has(parent)) continue;
+		const orig = originalOrder(parent).filter((id) => list.includes(id));
+		if (orig.length < 2) continue;
+		const split = [...orig.filter((id) => !headingCards.has(id)), ...orig.filter((id) => headingCards.has(id))];
+		const inNote = list.filter((id) => orig.includes(id));
+		if (split.join() !== inNote.join() || split.join() === orig.join()) continue;
+		const out = [...orig];
+		list.forEach((id, i) => {
+			if (orig.includes(id)) return;
+			const after = list.slice(0, i).reverse().find((k) => out.includes(k));
+			out.splice(after ? out.indexOf(after) + 1 : 0, 0, id);
+		});
+		list.splice(0, list.length, ...out);
+	}
+	// A lifted header goes back to its place among its siblings (the note lists it after them).
+	for (const id of lifted) {
+		const parent = placedById.get(id)!.parent!;
+		const list = kids.get(parent)!;
+		const before = originalOrder(parent).filter((k) => k === id || list.includes(k));
+		const next = before.slice(before.indexOf(id) + 1).find((k) => k !== id && !lifted.has(k));
+		list.splice(list.indexOf(id), 1);
+		list.splice(next ? list.indexOf(next) : list.length, 0, id);
+	}
 	const subtree = (root: string): string[] => {
 		const ids: string[] = [];
 		const stack = [root];

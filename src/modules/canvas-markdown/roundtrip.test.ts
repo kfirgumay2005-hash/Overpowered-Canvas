@@ -648,7 +648,44 @@ describe("header cards", () => {
 		edges: [edge("r", "a"), edge("r", "b"), edge("r", "c"), edge("a", "a1"), edge("a", "a2"), edge("a1", "x"), edge("b", "b1"), edge("c", "c1")],
 	};
 	it("become headings; plain lines first, deeper headers one level down", () => {
-		expect(md(board)).toBe("# Root\n- Beta\n\t- beta child\n\n## Alpha\n- a two\n\n### a one\n- under alpha one\n\n## Gamma\n- gamma child\n");
+		// "beta child" sits under the plain line Beta: it still starts a block, one below Root.
+		expect(md(board)).toBe("# Root\n- Beta\n\n## Alpha\n- a two\n\n### a one\n- under alpha one\n\n## beta child\n\n## Gamma\n- gamma child\n");
+	});
+	it("nest at any depth: one level below the nearest heading above them", () => {
+		// Root → Alpha (header) → a two → deep (header) → deep one → deeper (text "# deeper") → leaf.
+		const nodes = [
+			...board.nodes!,
+			{ ...card("d", "deep", 100, { header: 0 }), x: 900 },
+			{ ...card("d1", "deep one", 100), x: 1200 },
+			{ ...card("d2", "# deeper", 100), x: 1500 },
+			{ ...card("d3", "leaf", 100), x: 1800 },
+		];
+		const edges = [...board.edges!, edge("a2", "d"), edge("d", "d1"), edge("d1", "d2"), edge("d2", "d3")];
+		expect(md({ nodes, edges })).toContain("\n## Alpha\n- a two\n\n### a one\n- under alpha one\n\n### deep\n- deep one\n\n#### deeper\n- leaf\n");
+	});
+	it("treat heading marks in a card's text exactly like a header card", () => {
+		const marked = { ...board, nodes: board.nodes!.map((n) => (n.id === "b1" ? card("b1", "beta child", 100, { header: 0 }) : n)) };
+		const typed = { ...board, nodes: board.nodes!.map((n) => (n.id === "b1" ? card("b1", "## beta child", 100) : n)) };
+		expect(md(typed)).toBe(md(marked));
+	});
+	it("a lifted header goes back under its card, at its place among the siblings", async () => {
+		// Beta → [b zero, beta child (header), b two]: the note lists beta child after Beta's other lines.
+		const nodes = [...board.nodes!, { ...card("b0", "b zero", 50), x: 600 }, { ...card("b2", "b two", 150), x: 600 }];
+		const edges = [...board.edges!, edge("b", "b0"), edge("b", "b2")];
+		const canvas: CanvasFileData = { nodes, edges };
+		const opts = { canvasPath: "b.canvas", rtl: false, freeLabel: "Free cards", indent: "\t" } as never;
+		const note = exportNote(canvas, opts);
+		expect(note).toContain("- Beta %%n:b%%\n\t- b zero %%n:b0%%\n\t- b two %%n:b2%%\n");
+		const { items, data } = splitNote(note);
+		const back = await applyNote(items, data, canvas, elk, options());
+		expect(back.added + back.removed).toBe(0);
+		expect(back.data.edges!.find((e) => e.toNode === "b1")?.fromNode).toBe("b");
+		const s = buildStructure(back.data, { rtl: false, freeLabel: "Free cards" });
+		expect(s.treeEdges.get("b1")).toBe("b-b1");
+		const order = (back.data["x-opc"] as { childOrder?: Record<string, string[]> } | undefined)?.childOrder?.b;
+		if (order) expect(order).toEqual(["b0", "b1", "b2"]);
+		// The same note again.
+		expect(exportNote(back.data, opts)).toBe(note);
 	});
 	it("take a level of their own, only deeper", () => {
 		const own = { ...board, nodes: board.nodes!.map((n) => (n.id === "a" ? card("a", "Alpha", 0, { header: 4 }) : n.id === "c" ? card("c", "Gamma", 200, { header: 1 }) : n)) };
@@ -674,7 +711,8 @@ describe("header cards", () => {
 		expect(extra("Alpha")).toBe(0);
 		expect(extra("a one")).toBe(0);
 		expect(extra("Beta")).toBeUndefined();
-		expect(extra("beta child")).toBeUndefined();
+		// Under a plain line it was lifted out too: without the data block, it stays under Root.
+		expect(extra("beta child")).toBe(0);
 		// And the same note again.
 		expect(md(back.data)).toBe(text);
 	});
