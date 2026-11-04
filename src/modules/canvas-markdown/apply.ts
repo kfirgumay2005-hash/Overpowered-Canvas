@@ -156,7 +156,7 @@ export async function applyNote(items: OutlineItem[], note: NoteData | null, bas
 	};
 	const markHeader = (node: CanvasNodeData, header: number | null | undefined): CanvasNodeData => {
 		if (header === undefined || (node.type === "text" && typeof node.text === "string" && headingMarks(node.text))) return node;
-		const extra = isPlainObject(node[SCHEMA_KEY]) ? (node[SCHEMA_KEY] as Record<string, unknown>) : undefined;
+		const extra = isPlainObject(node[SCHEMA_KEY]) ? node[SCHEMA_KEY] : undefined;
 		const had = typeof extra?.header === "number" ? extra.header : undefined;
 		const want = header === null ? undefined : header;
 		if (had === want) return node;
