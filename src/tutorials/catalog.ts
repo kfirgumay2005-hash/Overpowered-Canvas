@@ -282,6 +282,19 @@ const notes: TutorialDefinition = {
 			},
 		},
 		{
+			title: "tut.notes.size.title",
+			body: "tut.notes.size.body",
+			task: "tut.notes.size.task",
+			target: ".canvas-menu .opc-menu-font-size",
+			focus: ["n-g", "n-long"],
+			enter: (rt) => rt.select(["n-long"]),
+			check: (rt) => changedAny(rt, (n) => extraOf(n).fontSize),
+			demo: (rt) => {
+				rt.select(["n-long"]);
+				setExtra(rt, "n-long", { fontSize: 24 });
+			},
+		},
+		{
 			title: "tut.notes.s6.title",
 			body: "tut.notes.s6.body",
 			task: "tut.notes.s6.task",
@@ -2773,9 +2786,10 @@ const settingsButton = (rt: TutorialRuntime) => rt.canvas.canvasControlsEl.query
 const BARS_DIALOG = ".opc-bars-modal";
 const barsVisit = visitedDialog(BARS_DIALOG);
 const hiddenButtons = (rt: TutorialRuntime) => (rt.setting("bar-buttons", "hidden") as string[] | undefined) ?? [];
-const customButtons = (rt: TutorialRuntime) => (rt.setting("bar-buttons", "custom") as unknown[] | undefined) ?? [];
+const customButtons = (rt: TutorialRuntime) => (rt.setting("bar-buttons", "custom") as { bar?: string }[] | undefined) ?? [];
 let hiddenAtStart = 0;
 let customAtStart = 0;
+let orderAtStart = "";
 
 const bars: TutorialDefinition = {
 	id: BARS_TUTORIAL,
@@ -2787,6 +2801,7 @@ const bars: TutorialDefinition = {
 	restoreSettings: [
 		{ module: "bar-buttons", key: "hidden" },
 		{ module: "bar-buttons", key: "custom" },
+		{ module: "bar-buttons", key: "order" },
 	],
 	board: (t) => ({
 		nodes: [title("br-title", t("tut.bars.board.title"), 0, -140, 700, 80), card("br-1", t("tut.bars.board.c1"), 0, 0, 280, 90, { color: "5" }), card("br-2", t("tut.bars.board.c2"), 340, 0, 280, 90, { color: "4" })],
@@ -2835,6 +2850,24 @@ const bars: TutorialDefinition = {
 			demo: (rt) => rt.setSetting("bar-buttons", "custom", [...customButtons(rt), { id: randomId().slice(0, 8), bar: "side", command: "app:toggle-left-sidebar", icon: "lucide-panel-left", name: rt.t("tut.bars.demoButton") }]),
 		},
 		{
+			title: "tut.bars.popup.title",
+			body: "tut.bars.popup.body",
+			task: "tut.bars.popup.task",
+			touch: "tut.bars.popup.touch",
+			target: settingsButton,
+			enter: (rt) => {
+				customAtStart = customButtons(rt).filter((b) => b.bar === "popup").length;
+				hiddenAtStart = hiddenButtons(rt).filter((k) => k.startsWith("popup:")).length;
+				rt.select(["br-1"]);
+			},
+			check: (rt) => (customButtons(rt).filter((b) => b.bar === "popup").length > customAtStart || hiddenButtons(rt).filter((k) => k.startsWith("popup:")).length > hiddenAtStart) && !dialogOpen(".modal"),
+			demo: async (rt) => {
+				rt.setSetting("bar-buttons", "custom", [...customButtons(rt), { id: randomId().slice(0, 8), bar: "popup", command: "app:toggle-left-sidebar", icon: "lucide-panel-left", name: rt.t("tut.bars.demoButton") }]);
+				await rt.wait(300);
+				rt.select(["br-1"]);
+			},
+		},
+		{
 			title: "tut.bars.s4.title",
 			body: "tut.bars.s4.body",
 			task: "tut.bars.s4.task",
@@ -2844,6 +2877,28 @@ const bars: TutorialDefinition = {
 			},
 			check: (rt) => hiddenButtons(rt).length < hiddenAtStart && !dialogOpen(BARS_DIALOG),
 			demo: (rt) => rt.setSetting("bar-buttons", "hidden", hiddenButtons(rt).slice(0, -1)),
+		},
+		{
+			title: "tut.bars.order.title",
+			body: "tut.bars.order.body",
+			task: "tut.bars.order.task",
+			touch: "tut.bars.order.touch",
+			target: settingsButton,
+			enter: (rt) => {
+				orderAtStart = JSON.stringify(rt.setting("bar-buttons", "order") ?? {});
+			},
+			check: (rt) => JSON.stringify(rt.setting("bar-buttons", "order") ?? {}) !== orderAtStart && !dialogOpen(BARS_DIALOG),
+			demo: async (rt) => {
+				rt.command("bar-buttons:customize");
+				await rt.wait(900);
+				// The first button of the bottom bar goes to the end of it, as a drag would put it.
+				const list = activeDocument.querySelector<HTMLElement>(`${BARS_DIALOG} .opc-bars-list`);
+				const keys = Array.from(list?.querySelectorAll<HTMLElement>(".opc-bars-row") ?? []).map((el) => el.dataset.key ?? "");
+				const order = (rt.setting("bar-buttons", "order") as Record<string, string[]> | undefined) ?? {};
+				if (keys.length > 1) rt.setSetting("bar-buttons", "order", { ...order, bottom: [...keys.slice(1), keys[0]!] });
+				await rt.wait(900);
+				closeDialog(BARS_DIALOG);
+			},
 		},
 		{ title: "tut.bars.s5.title", body: "tut.bars.s5.body" },
 	],

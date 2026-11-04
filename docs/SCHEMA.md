@@ -60,6 +60,7 @@ interface OpcNode {
   border?: "solid" | "dotted" | "dashed" | "none";
   align?: "start" | "center" | "end";
   valign?: "top" | "middle" | "bottom";   // absent = top (stickies: middle)
+  fontSize?: number;                      // text size in px (6–200); absent = the canvas's size
   dir?: "ltr" | "rtl" | "auto";
   autoResize?: boolean;                   // grow in height with the text
   autoWidth?: boolean;                    // grow in width (no wrapping) and height

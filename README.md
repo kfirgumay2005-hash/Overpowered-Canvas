@@ -53,7 +53,8 @@ done.
 ## Features
 
 **Cards and edges** — flowchart and basic shapes on cards, border styles, start/center/end and
-top/middle/bottom text alignment (new cards can be centered automatically), cards that fit
+top/middle/bottom text alignment (new cards can be centered automatically), a text size per card
+(also while editing and in the column view), cards that fit
 their text up to a maximum width (new cards do by default) or grow downwards or sideways as you
 type, layers like in image editors (a Layers panel to create,
 rename, reorder, hide, lock and delete them; new items go to the active layer; move the
@@ -200,8 +201,9 @@ still clickable ([docs/BENCHMARKS.md](docs/BENCHMARKS.md)).
 | → / Space / PageDown, ← / PageUp, Esc | Presentations                                             |
 | Arrows, + / −, Home, Esc              | Walking through a map: child, parent, siblings; zoom      |
 
-The bottom bar and the side bar are yours to arrange: take off any button, and add a button for
-any command, from this plugin, the app or other plugins (_Customize the bars_).
+The bottom bar, the side bar and the popup over a selection are yours to arrange: take off any
+button, drag buttons into the order you like, and add a button for any command, from this plugin, the app or other plugins (_Customize
+the bars_).
 
 Every toolbar action is also in the command palette ("Selection: …"), so you can assign your
 own hotkeys to any of them.

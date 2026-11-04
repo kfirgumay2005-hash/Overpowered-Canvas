@@ -157,7 +157,9 @@ export class ColumnView {
 		const room = this.el.clientWidth ? Math.max(160, Math.round(this.el.clientWidth * 0.72)) : asked.width;
 		const opts = { ...asked, width: Math.min(asked.width, room) };
 		this.el.toggleClass("is-actual-size", opts.actualSize);
-		this.el.setCssProps({ "--opc-columns-font-size": `${opts.fontSize > 0 ? opts.fontSize : this.canvasFontSize()}px`, "--opc-columns-width": `${opts.width}px` });
+		const canvasFont = this.canvasFontSize();
+		const columnFont = opts.fontSize > 0 ? opts.fontSize : canvasFont;
+		this.el.setCssProps({ "--opc-columns-font-size": `${columnFont}px`, "--opc-columns-width": `${opts.width}px` });
 		this.renderTools();
 		const editable = this.host.editable();
 		const onPath = new Set(path);
@@ -203,6 +205,9 @@ export class ColumnView {
 					card.setCssProps({ "--opc-card-width": `${node.width}px`, "--opc-card-height": `${node.height}px` });
 					this.drawInk(card, node);
 				}
+				// A card with its own text size keeps it, in proportion to the column's size.
+				const own = this.ctx.data.node(node).get().fontSize;
+				if (own && !actual) card.setCssStyles({ fontSize: `${Math.round((columnFont * own) / canvasFont)}px` });
 				if (id === current && editable) this.addButtons(card, path.length > 1);
 				widest = Math.max(widest, width);
 				if (id === column.active) activeWidth = width;
@@ -423,7 +428,7 @@ export class ColumnView {
 
 	/** Text size of the canvas's cards, so the columns read like the board (its CSS classes too). */
 	private canvasFontSize(): number {
-		const shown = [...this.canvas.nodes.values()].find((n) => n.nodeEl.isConnected && nodeType(n) === "text" && n.contentEl?.querySelector(".markdown-preview-view")?.isConnected);
+		const shown = [...this.canvas.nodes.values()].find((n) => n.nodeEl.isConnected && nodeType(n) === "text" && !n.nodeEl.hasAttribute("data-opc-font-size") && n.contentEl?.querySelector(".markdown-preview-view")?.isConnected);
 		const el = shown?.contentEl?.querySelector<HTMLElement>(".markdown-preview-view");
 		const read = (e: HTMLElement) => Number.parseFloat(getComputedStyle(e).fontSize);
 		if (el) {
