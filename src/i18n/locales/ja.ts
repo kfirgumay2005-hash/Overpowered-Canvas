@@ -1276,4 +1276,11 @@ export const ja: Record<I18nKey, string> = {
 	"canvasMarkdown.plainFirst.name": "第 1 レベルを箇条書きにしない",
 	"canvasMarkdown.plainFirst.desc": "キャンバスから作った Markdown ノート（ページ付きノートやコピーしたアウトラインも）で、各見出しの下の第 1 レベルを行頭から始まる普通のテキストとして書き、各行の前に空行を入れます。それより深いレベルは、その下にインデントされた箇条書きのままです。どちらの書き方のノートも正しく読み戻せます。",
 	"canvasMarkdown.plainFirst.simple": "ノートを文書のように読めるようにします。各要点は普通の行、詳細はその下の箇条書きになります。",
+	"autoLayout.direction.condensed": "コンパクト放射状",
+	"autoLayout.quick.condensed": "自動レイアウト：コンパクト放射状マインドマップ",
+	"autoLayout.radialEdges.name": "放射状マップのコネクタ",
+	"autoLayout.radialEdges.desc": "放射状とコンパクト放射状のレイアウトで、カードから子へのコネクタをどう描くか：なめらかな曲線か直線か。自分でルートを選んでいないコネクタだけが変わります。",
+	"autoLayout.radialEdges.simple": "円形のマインドマップの枝を曲線にするか直線にするか。",
+	"autoLayout.radialEdges.curved": "曲線",
+	"autoLayout.radialEdges.straight": "直線",
 };

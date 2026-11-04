@@ -873,4 +873,8 @@ export const tutorialsZh: Record<keyof typeof tutorialsEn, string> = {
 	"tut.markdown.plain.title": "第一级不带项目符号",
 	"tut.markdown.plain.body": "想让笔记读起来像文档？开启**第一级不带项目符号**后，每个标题下的第一级是从行首开始的普通文字，只有更深的级别才是它下面的项目符号。现在它已对这个练习画布开启；要用于你自己的笔记，请在 设置 → 白板 ⇄ Markdown → **第一级不带项目符号** 中开启。标题卡片和页面照常工作，两种写法的笔记都能正确回到画布。",
 	"tut.markdown.plain.task": "用顶部的双箭头按钮再次把画布切换到它的笔记，看看 **气态巨行星**。",
+	"tut.mindmap.condensed.title": "紧凑放射状",
+	"tut.mindmap.condensed.body": "**紧凑放射状** 是保持紧凑的圆形导图：各分支按大小分享根卡片周围的空间，每张卡片都靠近它的父卡片，沿着分支的方向展开。卡片从不重叠，连线从不交叉也不从卡片下面穿过，子卡片保持顺序。经典的 **放射状** 布局仍在它旁边。\n\n曲线或直线分支：设置 → 自动布局 → **放射状导图的连线**。",
+	"tut.mindmap.condensed.task": "运行 `Ctrl/Cmd+P` → **自动布局：紧凑放射状思维导图**。",
+	"tut.mindmap.condensed.touch": "长按 **日本之旅** → **自动布局……** → **方向**：**紧凑放射状** → **整理**。",
 };

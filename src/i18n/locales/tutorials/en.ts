@@ -874,4 +874,8 @@ export const tutorialsEn = {
 	"tut.markdown.plain.title": "First level without bullets",
 	"tut.markdown.plain.body": "Want the note to read like a document? With **First level without bullets**, the first level under each heading is plain text at the start of the line, and only the deeper levels are bullets under it. It is on for this practice board now; for your own notes, turn it on in Settings → Canvas ⇄ Markdown → **First level without bullets**. Header cards and pages work the same way, and the note goes back to the board correctly either way.",
 	"tut.markdown.plain.task": "Switch the board to its note again with the two-arrows button at the top, and look at **Gas giants**.",
+	"tut.mindmap.condensed.title": "Condensed radial",
+	"tut.mindmap.condensed.body": "**Condensed radial** is a round map that stays compact: the branches share the space around the root by their size, and each card sits close to its parent, fanning out in its branch's direction. Cards never overlap, connectors never cross or run under cards, and the children keep their order. The classic **Radial** layout is still there next to it.\n\nCurved or straight branches: Settings → Auto layout → **Connectors of radial maps**.",
+	"tut.mindmap.condensed.task": "Run `Ctrl/Cmd+P` → **Auto layout: condensed radial mind map**.",
+	"tut.mindmap.condensed.touch": "Long-press **Trip to Japan** → **Auto layout…** → **Direction**: **Condensed radial** → **Arrange**.",
 } as const;

@@ -1276,4 +1276,11 @@ export const hi: Record<I18nKey, string> = {
 	"canvasMarkdown.plainFirst.name": "पहला स्तर बिना बुलेट के",
 	"canvasMarkdown.plainFirst.desc": "कैनवास से बने Markdown नोटों में (पेजों वाले नोट और कॉपी की गई आउटलाइन भी), हर शीर्षक के नीचे का पहला स्तर पंक्ति की शुरुआत से सादे टेक्स्ट के रूप में लिखा जाता है, हर पंक्ति से पहले एक ख़ाली पंक्ति के साथ; गहरे स्तर उसके नीचे इंडेंट किए गए बुलेट ही रहते हैं। दोनों तरह से लिखे नोट सही तरह वापस पढ़े जाते हैं।",
 	"canvasMarkdown.plainFirst.simple": "नोट को दस्तावेज़ की तरह पढ़ने लायक बनाता है: हर मुख्य बात एक सादी पंक्ति है और उसका ब्योरा उसके नीचे बुलेट में।",
+	"autoLayout.direction.condensed": "सघन वृत्ताकार",
+	"autoLayout.quick.condensed": "अपने आप लेआउट: सघन वृत्ताकार माइंड मैप",
+	"autoLayout.radialEdges.name": "वृत्ताकार मैप की कनेक्टर रेखाएँ",
+	"autoLayout.radialEdges.desc": "वृत्ताकार और सघन वृत्ताकार लेआउट किसी कार्ड से उसके बच्चों तक कनेक्टर कैसे बनाते हैं: मुलायम वक्र या सीधी रेखाएँ। सिर्फ़ वे कनेक्टर बदलते हैं जिनका रास्ता आपने ख़ुद नहीं चुना।",
+	"autoLayout.radialEdges.simple": "गोल माइंड मैप में शाखाएँ वक्र हों या सीधी।",
+	"autoLayout.radialEdges.curved": "वक्र",
+	"autoLayout.radialEdges.straight": "सीधी",
 };

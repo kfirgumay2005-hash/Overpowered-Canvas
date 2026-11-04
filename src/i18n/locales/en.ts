@@ -1278,6 +1278,13 @@ export const en = {
 	"canvasMarkdown.plainFirst.name": "First level without bullets",
 	"canvasMarkdown.plainFirst.desc": "In Markdown notes made from a canvas (also notes with pages and copied outlines), the first level under each heading is written as plain text at the start of the line, each line after a blank line; deeper levels stay indented bullets below it. Notes written either way are read back correctly.",
 	"canvasMarkdown.plainFirst.simple": "Makes the note read like a document: each main point is a plain line and its details are bullets under it.",
+	"autoLayout.direction.condensed": "Condensed radial",
+	"autoLayout.quick.condensed": "Auto layout: condensed radial mind map",
+	"autoLayout.radialEdges.name": "Connectors of radial maps",
+	"autoLayout.radialEdges.desc": "How radial and condensed radial layouts draw the connectors from a card to its children: smooth curves, or straight lines. Only connectors whose route you didn't choose yourself change.",
+	"autoLayout.radialEdges.simple": "Curved or straight branches in round mind maps.",
+	"autoLayout.radialEdges.curved": "Curved",
+	"autoLayout.radialEdges.straight": "Straight",
 } as const;
 
 export type I18nKey = keyof typeof en;

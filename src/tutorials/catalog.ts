@@ -979,6 +979,18 @@ const mindmap: TutorialDefinition = {
 			},
 		},
 		{
+			title: "tut.mindmap.condensed.title",
+			body: "tut.mindmap.condensed.body",
+			task: "tut.mindmap.condensed.task",
+			touch: "tut.mindmap.condensed.touch",
+			enter: (rt) => rt.select(["m-root"]),
+			check: (rt) => rt.seen("layout-applied", (_c, _n, algorithm) => algorithm === "mindmap/condensed"),
+			demo: (rt) => {
+				rt.select(["m-root"]);
+				rt.command("auto-layout:layout-condensed");
+			},
+		},
+		{
 			title: "tut.mindmap.walk.title",
 			body: "tut.mindmap.walk.body",
 			task: "tut.mindmap.walk.task",

@@ -1276,4 +1276,11 @@ export const zh: Record<I18nKey, string> = {
 	"canvasMarkdown.plainFirst.name": "第一级不带项目符号",
 	"canvasMarkdown.plainFirst.desc": "在由画布生成的 Markdown 笔记中（包括分页笔记和复制的大纲），每个标题下的第一级写成从行首开始的普通文字，每行前空一行；更深的级别仍是缩进的项目符号，排在它下面。两种写法的笔记都能正确读回。",
 	"canvasMarkdown.plainFirst.simple": "让笔记读起来像文档：每个要点是一行普通文字，细节是它下面的项目符号。",
+	"autoLayout.direction.condensed": "紧凑放射状",
+	"autoLayout.quick.condensed": "自动布局：紧凑放射状思维导图",
+	"autoLayout.radialEdges.name": "放射状导图的连线",
+	"autoLayout.radialEdges.desc": "放射状和紧凑放射状布局如何绘制从卡片到其子卡片的连线：平滑曲线或直线。只会改变你没有自己选择路线的连线。",
+	"autoLayout.radialEdges.simple": "圆形思维导图中的分支是曲线还是直线。",
+	"autoLayout.radialEdges.curved": "曲线",
+	"autoLayout.radialEdges.straight": "直线",
 };

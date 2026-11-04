@@ -42,7 +42,7 @@ const PAGE_MODES: CanvasMarkdownSettings["pages"][] = ["paged", "flat"];
 export const SWITCH_BUTTON_CLASS = "opc-markdown-switch";
 
 /** Layouts offered for new maps (the auto layout's mind-map directions). */
-const NEW_MAP_LAYOUTS: MapLayout[] = ["right", "left", "down", "up", "balanced", "radial"];
+const NEW_MAP_LAYOUTS: MapLayout[] = ["right", "left", "down", "up", "balanced", "radial", "condensed"];
 const INDENTS: Record<CanvasMarkdownSettings["indent"], string> = { tab: "\t", "4": "    ", "2": "  " };
 
 class NotePicker extends FuzzySuggestModal<TFile> {

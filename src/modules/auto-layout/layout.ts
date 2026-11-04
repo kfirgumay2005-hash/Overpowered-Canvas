@@ -6,6 +6,7 @@ import { orderChildren, type MapAxis } from "../canvas-markdown/structure";
 import { tidyTree } from "../canvas-markdown/tidy";
 import type { ChildOrder } from "../mindmap/order";
 import { childrenOf, roots, type TEdge, type TNode } from "../mindmap/tree";
+import { condensedLayout } from "./condensed";
 import { radialLayout } from "./radial";
 
 export interface ElkNode {
@@ -24,7 +25,7 @@ export interface ElkLike {
 }
 
 export type Algorithm = "mindmap" | "layered" | "grid";
-export type LayoutDirection = "right" | "left" | "down" | "up" | "radial" | "balanced";
+export type LayoutDirection = "right" | "left" | "down" | "up" | "radial" | "condensed" | "balanced";
 
 export interface LayoutOptions {
 	algorithm: Algorithm;
@@ -123,7 +124,7 @@ export async function computeLayout(elk: ElkLike, nodes: TNode[], edges: TEdge[]
 	}
 
 	if (opts.algorithm === "layered") {
-		const dir = opts.direction === "radial" || opts.direction === "balanced" ? "right" : opts.direction;
+		const dir = opts.direction === "radial" || opts.direction === "condensed" || opts.direction === "balanced" ? "right" : opts.direction;
 		const result = await elk.layout(
 			graph(nodes, inner, {
 				"elk.algorithm": "layered",
@@ -143,6 +144,8 @@ export async function computeLayout(elk: ElkLike, nodes: TNode[], edges: TEdge[]
 
 	// Radial: our own collision-free layout (ELK's radial ignores card sizes and overlaps them).
 	if (opts.direction === "radial") return anchor(radialLayout(nodes, tree, rootIds, opts, opts.order, !!opts.rtl), nodes, firstRoot);
+	// Condensed radial: branches close to their parents, filling the space around the root.
+	if (opts.direction === "condensed") return anchor(condensedLayout(nodes, tree, rootIds, opts, opts.order, !!opts.rtl), nodes, firstRoot);
 
 	return anchor(orderedTrees(nodes, tree, rootIds, opts.direction, opts), nodes, firstRoot);
 }

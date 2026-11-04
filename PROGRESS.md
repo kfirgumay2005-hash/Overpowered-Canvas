@@ -10,8 +10,8 @@ When resuming: read this file and `git log`, then continue with the first item t
 | 3 | Markdown mode: Pages button (top left) | IMPROVEMENT (bug) | done |
 | 4 | Header cards → real Markdown headings | NEW | done |
 | 5 | First outline level without a bullet (setting) | NEW | done |
-| 6A | Radial layout: connector overlaps | IMPROVEMENT (bug) | not started |
-| 6B | Condensed radial layout | NEW | not started |
+| 6A | Radial layout: connector overlaps | IMPROVEMENT (bug) | done |
+| 6B | Condensed radial layout | NEW | done |
 
 ## 1. Sibling order (done)
 
@@ -77,3 +77,29 @@ paste outline follow the setting. Blank lines inside such text are written as `<
 roundtrip.test.ts (shape, ids, escapes, full note round trip); live export with header cards.
 Tutorial "Canvas ⇄ Markdown": step `plain` (setting on for the practice board only, restored),
 7/7 in all 5 languages.
+
+## 6A. Radial connectors (done)
+
+Not reproduced on any harness map (crossings / connectors under cards measured from the
+rendered SVG paths with overlap.js, old and new build, single runs, repeated runs, after drops).
+The likely old cause was fixed in item 1 (radial branches near 12 o'clock flipped their children on
+every run, so a map drifted between runs). Made into guarantees anyway: the classic radial layout
+grows its rings while any parent → child line crosses another or passes under a card
+(`radial.ts clashingPairs / connectorsClash`), and after the sides are chosen, a curved connector
+of a radial map whose drawn curve still crosses, grazes another (< 8 px) or touches a card is drawn
+straight (`sides.ts troubledEdges`, applied in `arrange.ts styleRadialEdges`, committed with 6B).
+
+## 6B. Condensed radial (done)
+
+NEW layout direction `condensed` ("Condensed radial", next to Radial in the Auto layout dialog;
+command *Auto layout: condensed radial mind map*; recorded in mapLayouts, so drops re-arrange it).
+`auto-layout/condensed.ts`: branches get sectors of the full turn by what their subtree needs;
+each branch's levels spaced by its own cards; a crowded branch moves out only the level that gains
+most; then a compaction pass pulls every card (with its branch) toward its parent as far as it
+stays clear (14 px clearance between connector lines and around cards). Sibling order from
+radialKids (item 1). Setting *Connectors of radial maps*: curved (default) / straight (applies to
+both radial layouts; only routes the layout set itself). Measured on the 159-card map: fill 0.066
+vs 0.027 for classic radial, 0 overlaps / crossings / connectors under cards (also 4 other maps, RTL
+canvas). Tests: condensed.test.ts (no overlaps or clashes at 12/60/150 cards, ≤ 80 % of radial's
+area, order, stable). scen.mjs condensed: 0 order failures. Tutorial "Mind maps": step `condensed`,
+11/11 in all 5 languages.

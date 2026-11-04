@@ -38,7 +38,7 @@ function onBoard(host: OrderHost, canvas: CanvasLike, parent: CanvasNodeLike, ki
 	}
 	const layout = host.data.root(canvas).get().mapLayouts?.[root];
 	const rtl = canvasDirection(canvas) === "rtl";
-	if (layout === "radial") {
+	if (layout === "radial" || layout === "condensed") {
 		const up = parentOf(edges, parent.id);
 		const above = up ? canvas.nodes.get(up) : undefined;
 		const nodes = [parent, ...kids, ...(above ? [above] : [])].map(box);
