@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyIndent, applyOutdent, BREAK_CHAR, fixLeadingRun, INDENT_CHAR, indentText, inInlineMath, tabKeepsDefault, type Lines } from "./logic";
+import { applyIndent, applyOutdent, BREAK_CHAR, fixLeadingRun, INDENT_CHAR, indentText, inInlineMath, startsWithIndent, tabKeepsDefault, type Lines } from "./logic";
 
 const doc = (text: string): Lines => {
 	const lines = text.split("\n");
@@ -98,5 +98,16 @@ describe("inline math and code", () => {
 		expect(inInlineMath("a `code", 7)).toBe(true);
 		expect(inInlineMath("a `$` b", 7)).toBe(false);
 		expect(inInlineMath("costs \\$5", 9)).toBe(false);
+	});
+});
+
+describe("lines that wrap flush (no hanging indent in the editor)", () => {
+	it("are the ones that start with a paragraph indent", () => {
+		expect(startsWithIndent(indentText(2) + "Once")).toBe(true);
+		expect(startsWithIndent(INDENT_CHAR + INDENT_CHAR + INDENT_CHAR + BREAK_CHAR + INDENT_CHAR + "x")).toBe(true);
+		expect(startsWithIndent("\tcode")).toBe(false);
+		expect(startsWithIndent("    code")).toBe(false);
+		expect(startsWithIndent("Once" + INDENT_CHAR)).toBe(false);
+		expect(startsWithIndent("")).toBe(false);
 	});
 });

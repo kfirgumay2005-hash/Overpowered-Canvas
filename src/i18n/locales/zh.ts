@@ -1227,7 +1227,7 @@ export const zh: Record<I18nKey, string> = {
 	"smartGroups.toolbar.desc": "在选区工具栏中显示“组合 / 取消组合”按钮，适合触屏和鼠标用户。右键（长按）菜单中也有组合和取消组合。",
 	"smartGroups.toolbar.simple": "在所选卡片上方显示组合和取消组合的按钮。",
 	"paragraphIndent.name": "用 Tab 缩进段落",
-	"paragraphIndent.desc": "在笔记中，Tab 会像文字处理软件一样在光标处插入段落缩进，而不是缩进整行。Shift+Tab 删除缩进。列表、表格、代码块和属性中的 Tab 保持原样。缩进由全身空格（em space）组成，因此在实时预览、源码模式和阅读模式中看起来完全相同，也绝不会把段落变成代码块。",
+	"paragraphIndent.desc": "在笔记和白板文字卡片中，Tab 会像文字处理软件一样在光标处插入段落缩进，而不是缩进整行。Shift+Tab 删除缩进。列表、表格、代码块和属性中的 Tab 保持原样。缩进由全身空格（em space）组成，只缩进第一行，因此在实时预览、源码模式和阅读模式中看起来和换行都完全相同，也绝不会变成代码块。",
 	"paragraphIndent.simple": "像在文本编辑器中一样，用 Tab 缩进段落的首行，适合长文和小说。",
 	"paragraphIndent.insert": "插入段落缩进",
 	"paragraphIndent.remove": "删除段落缩进",

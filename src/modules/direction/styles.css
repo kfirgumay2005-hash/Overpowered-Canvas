@@ -18,17 +18,31 @@ body.opc-mod-direction .canvas-wrapper[dir="rtl"] > .canvas-menu-container > .ca
 }
 body.opc-mod-direction .canvas-wrapper[dir="rtl"] .canvas-node:not([dir]) .canvas-node-content,
 body.opc-mod-direction .canvas-wrapper[dir="rtl"] .canvas-edges,
-body.opc-mod-direction .canvas-node[dir="rtl"] .canvas-node-content {
+body.opc-mod-direction .canvas-node[dir="rtl"] .canvas-node-content,
+body.opc-mod-direction .canvas-wrapper[dir="rtl"] .canvas-node:not([dir]) .canvas-node-content.markdown-embed .markdown-preview-sizer,
+body.opc-mod-direction .canvas-node[dir="rtl"] .canvas-node-content.markdown-embed .markdown-preview-sizer {
 	direction: rtl;
 }
-body.opc-mod-direction .canvas-node[dir="ltr"] .canvas-node-content {
+body.opc-mod-direction .canvas-node[dir="ltr"] .canvas-node-content,
+body.opc-mod-direction .canvas-node[dir="ltr"] .canvas-node-content.markdown-embed .markdown-preview-sizer {
 	direction: ltr;
 }
 /* "Text only" right-to-left: the canvas stays LTR, card text and labels turn RTL. */
 body.opc-mod-direction .canvas-wrapper.opc-rtl-text .canvas-node:not([dir]) .canvas-node-content,
+body.opc-mod-direction .canvas-wrapper.opc-rtl-text .canvas-node:not([dir]) .canvas-node-content.markdown-embed .markdown-preview-sizer,
 body.opc-mod-direction .canvas-wrapper.opc-rtl-text .canvas-node-label,
 body.opc-mod-direction .canvas-wrapper.opc-rtl-text .canvas-edges {
 	direction: rtl;
+}
+/*
+ * The card editor is a left-to-right iframe, so its scrollbar gutter is always on the right. A
+ * right-to-left reading view would reserve it on the left and push the text sideways whenever
+ * the card enters or leaves edit mode. The reading view's scroller stays LTR (gutter on the
+ * right, like the editor); its content (the sizer, above) keeps the card's direction.
+ */
+body.opc-mod-direction .canvas-node-content.markdown-embed > .markdown-embed-content > .markdown-preview-view,
+body.opc-mod-direction .markdown-source-view.mod-inside-iframe .cm-scroller {
+	direction: ltr;
 }
 
 /* Lists whose first item is right-to-left (marked by the module when they render). */

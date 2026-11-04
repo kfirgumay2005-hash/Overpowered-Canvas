@@ -1,0 +1,18 @@
+/*
+ * Lines that start with a paragraph indent wrap flush with the left edge, as in Reading mode.
+ * The editor writes its hanging indent (text-indent + padding) as an inline style on the line,
+ * so only an important declaration takes it back.
+ */
+body.opc-mod-paragraph-indent .markdown-source-view.mod-cm6 .cm-line.opc-indent-line {
+	text-indent: 0 !important;
+	padding-inline-start: 0 !important;
+}
+/*
+ * The editor wraps with `white-space: break-spaces`, where the space at the end of a row takes
+ * room: a word that just fits in Reading mode moved to the next row while editing, and the rest
+ * of the paragraph reflowed. pre-wrap lets that space hang past the edge, as Reading mode does.
+ * (Canvas card editors get this always, from src/ui/stable-text.css.)
+ */
+body.opc-mod-paragraph-indent .markdown-source-view.mod-cm6 .cm-content.cm-lineWrapping {
+	white-space: pre-wrap;
+}

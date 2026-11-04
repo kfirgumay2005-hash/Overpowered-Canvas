@@ -13,3 +13,11 @@ body .canvas-node-content.markdown-embed .markdown-preview-sizer > div:not(.mark
 body .canvas-node-content.markdown-embed .markdown-preview-sizer > div > :is(h1, h2, h3, h4, h5, h6) {
 	padding-top: var(--p-spacing);
 }
+/*
+ * The card editor wraps with `white-space: break-spaces`, where the space at the end of a row
+ * takes room, so a word that just fits in Reading mode moved to the next row while editing and
+ * the whole paragraph reflowed. pre-wrap lets that space hang past the edge, as Reading mode does.
+ */
+body .markdown-source-view.mod-inside-iframe .cm-content.cm-lineWrapping {
+	white-space: pre-wrap;
+}

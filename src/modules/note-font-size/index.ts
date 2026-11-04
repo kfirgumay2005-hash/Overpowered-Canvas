@@ -16,11 +16,23 @@ type Ctx = ModuleContext<NoteFontSizeSettings>;
 const DEFAULT_PROPERTY = "font-size";
 const CLASS = "opc-note-font-size";
 const VAR = "--opc-note-font-size";
+const SPACING = "--p-spacing";
 
 /** The vault's text size (Settings → Appearance → Font size), in pixels. */
 function baseSize(): number {
 	const px = Number.parseFloat(getComputedStyle(activeDocument.body).getPropertyValue("--font-text-size"));
 	return Number.isFinite(px) && px > 0 ? px : 16;
+}
+
+/**
+ * The vault's paragraph spacing scaled to the note's size. Reading mode separates paragraphs by
+ * --p-spacing (a fixed rem length) while the editor separates them by a blank line, which grows
+ * with the text: without this, a larger note size moved every paragraph further in the editor
+ * than in Reading mode.
+ */
+function spacingFor(size: number): string {
+	const base = getComputedStyle(activeDocument.body).getPropertyValue(SPACING).trim() || "1rem";
+	return `calc(${base} * ${Math.round((size / baseSize()) * 1000) / 1000})`;
 }
 
 /**
@@ -68,11 +80,12 @@ export const noteFontSizeModule = defineModule<NoteFontSizeSettings>({
 				if (!styled.has(el)) return;
 				el.removeClass(CLASS);
 				el.style.removeProperty(VAR);
+				el.style.removeProperty(SPACING);
 				styled.delete(el);
 				return;
 			}
 			el.addClass(CLASS);
-			el.setCssProps({ [VAR]: `${size}px` });
+			el.setCssProps({ [VAR]: `${size}px`, [SPACING]: spacingFor(size) });
 			styled.add(el);
 		};
 		const markdownViews = () =>
@@ -100,6 +113,7 @@ export const noteFontSizeModule = defineModule<NoteFontSizeSettings>({
 			for (const el of styled) {
 				el.removeClass(CLASS);
 				el.style.removeProperty(VAR);
+				el.style.removeProperty(SPACING);
 			}
 			styled.clear();
 		});

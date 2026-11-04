@@ -1229,7 +1229,7 @@ export const en = {
 	"smartGroups.toolbar.desc": "A Group / Ungroup button in the selection toolbar, for touch screens and mouse users. Group and Ungroup are also in the right-click (long-press) menu.",
 	"smartGroups.toolbar.simple": "Show a button to group and ungroup above the selected cards.",
 	"paragraphIndent.name": "Paragraph indent with Tab",
-	"paragraphIndent.desc": "In notes, Tab writes a paragraph indent at the cursor, as in a word processor, instead of indenting the whole line. Shift+Tab removes it. Lists, tables, code blocks and properties keep the usual Tab. The indent is made of em spaces, so it looks the same in Live Preview, Source mode and Reading mode and never turns a paragraph into a code block.",
+	"paragraphIndent.desc": "In notes and canvas text cards, Tab writes a paragraph indent at the cursor, as in a word processor, instead of indenting the whole line. Shift+Tab removes it. Lists, tables, code blocks and properties keep the usual Tab. The indent is made of em spaces and moves only the first line, so the text looks the same and wraps the same in Live Preview, Source mode and Reading mode, and never turns into a code block.",
 	"paragraphIndent.simple": "Indent the first line of a paragraph with Tab, like in a text editor, for long texts and stories.",
 	"paragraphIndent.insert": "Insert paragraph indent",
 	"paragraphIndent.remove": "Remove paragraph indent",
