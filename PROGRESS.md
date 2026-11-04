@@ -79,3 +79,12 @@ round trip unchanged). Live with the setting on: the header board (`# Root\nBeta
 Alpha\nalpha line…`) back to the canvas with the same parents, positions and texts; the Flu note
 with pages in reading and editing view, arrows by touch. Setting description and tutorial step
 `plain` updated in all 5 locales.
+
+## Regression pass (all items)
+
+- Full test suite, typecheck, store lint (changed files): clean.
+- Tutorials changed or touched (Canvas ⇄ Markdown, Big boards, Big maps in pages), by Show me in
+  en, zh, ja, hi, ru: 7/7, 2/2, 14/14 in every language. Only error logged: the Ink plugin's
+  "Field is not present in this state" (not ours, known since 0.8).
+- Desktop (no emulation), real mouse: ‹ › and the index button of a note with pages.
+- **Needs confirmation on the user's iPad** (the harness has no real iOS touch).

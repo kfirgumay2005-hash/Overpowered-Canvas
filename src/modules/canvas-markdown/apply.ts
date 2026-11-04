@@ -307,7 +307,7 @@ export async function applyNote(items: OutlineItem[], note: NoteData | null, bas
 		const parentNode = was(parent);
 		const siblings = [...oldParent].filter(([child, p]) => p === parent && was(child)).map(([child]) => was(child)!);
 		if (!parentNode) return siblings.map((n) => n.id);
-		const before = base ?? (note?.root as CanvasFileData | undefined);
+		const before: Record<string, unknown> | undefined = base ?? note?.root;
 		const stored = isPlainObject(before?.[SCHEMA_KEY]) && isPlainObject(before[SCHEMA_KEY].childOrder) ? (before[SCHEMA_KEY].childOrder as Record<string, string[]>)[parent] : undefined;
 		return orderChildren(parentNode, siblings, opts.rtl, stored).map((n) => n.id);
 	};
