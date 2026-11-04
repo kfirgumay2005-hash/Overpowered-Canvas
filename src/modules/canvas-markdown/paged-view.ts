@@ -12,10 +12,10 @@ import { logError } from "../../core/log";
 import type { ModuleContext } from "../../core/module";
 import { pagesHost, pageSources, type PagesSource } from "../pages/api";
 import { renderPagesBar } from "../pages/bar";
-import { indexOrder } from "../pages/logic";
 import { onPress } from "../../ui/press";
 import type { NoteData } from "./note";
 import { readPagedNote, sectionAt, type PagedNote, type PageSection } from "./paged";
+import { pageOrder } from "./structure";
 
 /** Lines shown in an editor, [from, to) as document positions; null = the whole note. */
 interface Shown {
@@ -332,9 +332,8 @@ export class PagedNotes {
 
 	/** The pages of the note in the index's order (only those the note has a section for). */
 	private order(open: Open): string[] {
-		const pages = open.note.pages.map((p) => ({ id: p.id, anchor: p.anchor, root: p.root, ...(p.parent ? { parent: p.parent } : {}) }));
 		const has = new Set(open.note.sections.map((s) => s.page));
-		const listed = indexOrder(pages).filter((id) => has.has(id));
+		const listed = pageOrder(open.note.pages).filter((id) => has.has(id));
 		// Sections the index can't place (a page whose parent is gone) come after, in reading order.
 		return [...listed, ...open.note.sections.map((s) => s.page).filter((id) => !listed.includes(id))];
 	}

@@ -50,7 +50,7 @@ or pen press runs on release over the button (pointerup), keeps the editor's foc
 keyboard doesn't close mid-tap), stops the pane's gestures from seeing it, and drops the
 follow-up click; mouse and keyboard keep the click. Used by the pages bar (canvas, notes, text
 pages: index button and crumbs), the note's prev / next / whole-note buttons and the text-pages
-nav. Prev / next now follow the index's order exactly (`pages/logic.ts indexOrder`).
+nav. Prev / next now follow the index's order exactly (`structure.ts pageOrder`, which the sections already used).
 Tested: mdbar.sh (mouse) and mdtouch.sh (touch, editor focused or not), editing and reading view.
 Tutorial "Big maps in pages" (noteLinks step mentions the index button and taps), run in all 5
 languages: 14/14; "Big boards" 2/2. **Needs confirmation on the user's iPad.**

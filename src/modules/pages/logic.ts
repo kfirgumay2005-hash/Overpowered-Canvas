@@ -146,19 +146,6 @@ export function pageChildren(pages: PageInfo[]): Map<string, PageInfo[]> {
 	return out;
 }
 
-/** Every page in the order the pages index lists them: the main page, then each page followed by its own pages. */
-export function indexOrder(pages: PageInfo[]): string[] {
-	const children = pageChildren(pages);
-	const out: string[] = [];
-	const visit = (id: string) => {
-		if (out.includes(id)) return;
-		out.push(id);
-		for (const p of children.get(id) ?? []) visit(p.id);
-	};
-	visit("");
-	return out;
-}
-
 /** How deep a page is: 1 for a page of the main page. */
 export function pageDepth(pages: PageInfo[], id: string): number {
 	return pagePath(pages, id).length;
