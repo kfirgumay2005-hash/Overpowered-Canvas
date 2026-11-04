@@ -7,6 +7,7 @@ import { mergeWithDefaults } from "../../settings/settings";
 import { relayoutMap } from "../auto-layout/arrange";
 import { estimateSize } from "../canvas-markdown/size";
 import { growthOf, makeSiblingRoom } from "../mindmap/room";
+import { recordChild } from "../mindmap/order-store";
 import { childPosition, childrenOf, descendants, directionBetween, parentOf, type Dir, type TEdge } from "../mindmap/tree";
 import { canvasDirection, centerOn, isHiddenNode, isTextBox, mutate, nodeType, randomId, selectedNodes } from "../shared";
 import { blockAt, type Block } from "./block";
@@ -186,6 +187,8 @@ export const noteBlocksModule = defineModule<NoteBlocksSettings>({
 				if (parent && created) {
 					const color = parent.color;
 					canvas.importData({ nodes: [], edges: [{ id: randomId(), fromNode: parent.id, fromSide: SIDE[dir], toNode: created.id, toSide: OPPOSITE[dir], ...(color ? { color } : {}) }] }, false);
+					// Its place among the siblings: after the target, or after all of them.
+					recordChild(ctx, canvas, parent, created, sibling?.id);
 				}
 			});
 			if (!ok || !created) return null;
@@ -372,7 +375,10 @@ export const noteBlocksModule = defineModule<NoteBlocksSettings>({
 			const cy = dir === "down" ? r.bottom + 8 : dir === "up" ? r.top - 8 : r.top + r.height / 2;
 			add("child", t("noteBlocks.zone.child"), cx, cy);
 			const horizontal = dir === "right" || dir === "left";
-			add("sibling", t("noteBlocks.zone.sibling"), horizontal ? r.left + r.width / 2 : r.right + 8, horizontal ? r.bottom + 8 : r.top + r.height / 2);
+			// Siblings of up / down maps follow the reading direction: right to left in right-to-left canvases.
+			const leading = !horizontal && canvasDirection(canvas) === "rtl";
+			if (leading) zones.addClass("is-rtl");
+			add("sibling", t("noteBlocks.zone.sibling"), horizontal ? r.left + r.width / 2 : leading ? r.left - 8 : r.right + 8, horizontal ? r.bottom + 8 : r.top + r.height / 2);
 			return zones;
 		};
 
@@ -478,6 +484,7 @@ export const noteBlocksModule = defineModule<NoteBlocksSettings>({
 				for (const n of branch) n.moveTo({ x: n.x + dx, y: n.y + dy });
 				const color = parent.color;
 				canvas.importData({ nodes: [], edges: [{ id: randomId(), fromNode: parent.id, fromSide: SIDE[dir], toNode: root.id, toSide: OPPOSITE[dir], ...(color ? { color } : {}) }] }, false);
+				recordChild(ctx, canvas, parent, root, zone.kind === "sibling" ? target.id : undefined);
 			});
 			if (!ok) return;
 			void relayout(canvas, root, zone.kind === "sibling" ? target.id : undefined).catch((e) => logError("[overpowered-canvas] note-blocks layout", e));

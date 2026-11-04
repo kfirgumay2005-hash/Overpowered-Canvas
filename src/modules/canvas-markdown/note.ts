@@ -43,6 +43,8 @@ export interface NoteData {
 	outline?: OutlineItem[];
 	/** The note keeps the canvas's pages as sections, shown one at a time (see paged.ts). */
 	paged?: boolean;
+	/** The first level under each heading is written as plain lines (see WriteOptions.plain). */
+	plain?: boolean;
 }
 
 export interface ExportOptions {
@@ -54,6 +56,8 @@ export interface ExportOptions {
 	frontmatter?: string;
 	/** Pages as sections of their own, shown one at a time (else one long note). */
 	paged?: boolean;
+	/** The first level under each heading as plain lines, not bullets. */
+	plain?: boolean;
 }
 
 function isPlainObject(v: unknown): v is Record<string, unknown> {
@@ -112,6 +116,11 @@ function build(canvas: CanvasFileData, opts: ExportOptions): { items: OutlineIte
 	const maps: Record<string, { layout: MapLayout | "free" }> = {};
 	for (const r of s.roots) maps[s.alias.get(r)!] = { layout: layouts[r] ?? "free" };
 	const { nodes: _n, edges: _e, ...root } = canvas;
+	// The outline itself is the sibling order: the data block doesn't repeat it.
+	if (isPlainObject(root["x-opc"]) && "childOrder" in root["x-opc"]) {
+		const { childOrder: _order, ...extra } = root["x-opc"];
+		root["x-opc"] = extra;
+	}
 
 	const data: NoteData = {
 		version: DATA_VERSION,
@@ -124,6 +133,7 @@ function build(canvas: CanvasFileData, opts: ExportOptions): { items: OutlineIte
 		drawings: s.drawings.map((id) => byId.get(id)!),
 		order: (canvas.nodes ?? []).map((n) => n.id),
 		...(paged ? { paged: true } : {}),
+		...(opts.plain ? { plain: true } : {}),
 	};
 	return { items: s.items, data };
 }
@@ -135,14 +145,14 @@ function frontmatterOf(opts: ExportOptions): string {
 /** Canvas → note text with hidden ids and the data section. */
 export function exportNote(canvas: CanvasFileData, opts: ExportOptions): string {
 	const { items, data } = build(canvas, opts);
-	const outline = items.length ? writeOutline(items, { indent: opts.indent, ids: true }) : "";
+	const outline = items.length ? writeOutline(items, { indent: opts.indent, ids: true, plain: !!opts.plain }) : "";
 	return `${frontmatterOf(opts)}${outline}${outline ? "\n" : ""}${dataBlock(data)}`;
 }
 
 /** Canvas → a clean note (outline only) and the data for its separate file. */
 export function exportClean(canvas: CanvasFileData, opts: ExportOptions & { notePath: string }): { md: string; data: NoteData } {
 	const { items, data } = build(canvas, opts);
-	const outline = items.length ? writeOutline(items, { indent: opts.indent, ids: false, clean: true }) : "";
+	const outline = items.length ? writeOutline(items, { indent: opts.indent, ids: false, clean: true, plain: !!opts.plain }) : "";
 	return { md: `${frontmatterOf(opts)}${outline}`, data: { ...data, note: opts.notePath, outline: items } };
 }
 
@@ -152,12 +162,17 @@ export interface SplitNote {
 	data: NoteData | null;
 	/** A data section exists but its JSON could not be read. */
 	dataError: boolean;
+	/** The outline text (without front matter and data section), to read again in another mode. */
+	outline: string;
 }
 
 const BLOCK = /(?:^|\n)%%[ \t]*\n## canvas-data[ \t]*\n```json[ \t]*\n([\s\S]*?)\n```[ \t]*\n%%[ \t]*(?=\n|$)/g;
 
-/** Note text → outline items and the data block (if any). */
-export function splitNote(md: string): SplitNote {
+/**
+ * Note text → outline items and the data block (if any). The outline is read the way the data
+ * says it was written; without data (a clean note, a pasted outline) as `plain` says.
+ */
+export function splitNote(md: string, plain = false): SplitNote {
 	const text = md.replace(/\r\n?/g, "\n");
 	const { frontmatter, body } = stripFrontmatter(text);
 	const matches = [...body.matchAll(BLOCK)];
@@ -179,7 +194,7 @@ export function splitNote(md: string): SplitNote {
 		dataError = true;
 		outline = body.replace(/^%%[ \t]*\n## canvas-data[\s\S]*$/m, "");
 	}
-	return { frontmatter, items: parseOutline(outline), data, dataError };
+	return { frontmatter, items: parseOutline(outline, { plain: data ? !!data.plain : plain }), data, dataError, outline };
 }
 
 /** Validates the shape of a data block, dropping entries that can't be used. */
@@ -211,6 +226,7 @@ export function readData(raw: unknown): NoteData | null {
 	if (Array.isArray(raw.order)) out.order = raw.order.filter((v): v is string => typeof v === "string");
 	if (typeof raw.note === "string") out.note = raw.note;
 	if (raw.paged === true) out.paged = true;
+	if (raw.plain === true) out.plain = true;
 	if (Array.isArray(raw.outline)) out.outline = readOutline(raw.outline);
 	return out;
 }

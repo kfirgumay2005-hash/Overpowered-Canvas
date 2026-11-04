@@ -159,3 +159,12 @@ Choices made where the spec left room. Newest section first.
     working and convert on their next write. Trade-off: a line that is both heavily rewritten
     and moved at the same time becomes a new card (the old one is deleted) — the in-note format
     stays available for anyone who needs exact identity.
+25. **Sibling order is stored, not read off the board** (root `x-opc.childOrder`, see
+    `src/modules/mindmap/order.ts`). Positions were a poor record of order: a card dropped as a
+    child landed between others, cards both beside and above their parent were read along the
+    wrong axis, a radial branch at 12 o'clock flipped on every run, and RTL canvases read up / down
+    maps one way when laid out and the other way when recorded. Every action that gives a card its
+    place writes the list; every layout and outline reads it. The board still decides for children
+    the list doesn't name (arrows drawn by hand, pastes), read along the axis of the map's recorded
+    layout. A note's outline wins on Markdown → canvas, and is stored only where the board alone
+    would read it differently, so untouched round trips stay byte for byte.

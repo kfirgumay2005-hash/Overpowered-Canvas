@@ -208,6 +208,7 @@ export const ROOT_SHAPE: Shape<OpcRoot> = {
 	activeLayer: nonEmptyStr,
 	mapLayouts: recordOf(oneOf(MAP_LAYOUTS)),
 	pages: arrayOf(objectOf<PageInfo>({ id: nonEmptyStr, anchor: nonEmptyStr, root: nonEmptyStr, parent: nonEmptyStr }, { required: ["id", "anchor", "root"] })),
+	childOrder: recordOf(arrayOf(nonEmptyStr)),
 };
 
 export const NODE_SHAPE: Shape<OpcNode> = {
@@ -219,6 +220,10 @@ export const NODE_SHAPE: Shape<OpcNode> = {
 	fontSize: (raw) => {
 		const n = finite(raw);
 		return n !== undefined && n >= CARD_FONT_MIN && n <= CARD_FONT_MAX ? n : undefined;
+	},
+	header: (raw) => {
+		const n = finite(raw);
+		return n !== undefined && Number.isInteger(n) && n >= 0 && n <= 6 ? n : undefined;
 	},
 	dir: oneOf(DIRECTIONS),
 	autoResize: bool,

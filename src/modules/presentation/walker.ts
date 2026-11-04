@@ -6,6 +6,7 @@ import type { CanvasLike, CanvasNodeLike } from "../../internals/types";
 import { relayoutMap } from "../auto-layout/arrange";
 import { inkHost } from "../drawing/api";
 import { growthOf, makeSiblingRoom } from "../mindmap/room";
+import { recordChild, storedOrder } from "../mindmap/order-store";
 import { childPosition, childrenOf, directionBetween, type Dir, type TNode } from "../mindmap/tree";
 import { pagesHost } from "../pages/api";
 import { canvasDirection, centerOn, mutate, nodeType, randomId, selectedNodes } from "../shared";
@@ -103,16 +104,16 @@ export function enableWalk(ctx: ModuleContext<object>, presenting: (canvas: Canv
 		const pageLinks: WalkEdge[] = [];
 		if (page === undefined) for (const link of api?.links(canvas) ?? []) if (nodes.has(link.anchor) && nodes.has(link.root)) pageLinks.push({ from: link.anchor, to: link.root });
 		// A page lies in a region of its own: where it is says nothing about the card it hangs from.
-		return { nodes, edges: [...groupEdges(boxes, edges), ...pageLinks] };
+		return { nodes, edges: [...groupEdges(boxes, edges), ...pageLinks], order: storedOrder(ctx, canvas) };
 	};
 	const modelFor = (canvas: CanvasLike, walk: Walk) => model(canvas, walk.columns ? columnPage(canvas, walk) : undefined);
 
 	const nextFrom = (canvas: CanvasLike, walk: Walk, dir: Dir) => {
-		const { nodes, edges } = modelFor(canvas, walk);
+		const { nodes, edges, order } = modelFor(canvas, walk);
 		const rtl = canvasDirection(canvas) === "rtl";
 		// The column view shows the hierarchy, so its arrows always follow it.
 		const byTree = options().keys === "tree" || !!walk.columns;
-		return { edges, next: byTree ? treeStep(nodes, edges, walk.current, dir, walk.visited, rtl) : walkStep(nodes, edges, walk.current, dir, walk.visited) };
+		return { edges, next: byTree ? treeStep(nodes, edges, walk.current, dir, walk.visited, rtl, order) : walkStep(nodes, edges, walk.current, dir, walk.visited) };
 	};
 
 	const labelOf = (move: Dir) => (options().keys === "tree" && move === "left" ? "presentation.walk.parent" : options().keys === "tree" && move === "right" ? "presentation.walk.child" : LABELS[move]);
@@ -147,13 +148,13 @@ export function enableWalk(ctx: ModuleContext<object>, presenting: (canvas: Canv
 	/** What the column view shows for the current card. `keep`: same zoom and scroll (a refresh). */
 	const drawColumns = (canvas: CanvasLike, walk: Walk, keep = false) => {
 		if (!walk.columns) return;
-		const { nodes, edges } = modelFor(canvas, walk);
+		const { nodes, edges, order } = modelFor(canvas, walk);
 		const rtl = canvasDirection(canvas) === "rtl";
 		const path = pathTo(nodes, edges, walk.current, walk.visited);
 		walk.path = path;
 		const ids = (list: { id: string }[]) => list.map((n) => n.id);
-		const columns = path.map((id, i) => ({ ids: i === 0 ? [id] : ids(orderedChildren(nodes, edges, path[i - 1]!, rtl)), active: id }));
-		const children = ids(orderedChildren(nodes, edges, walk.current, rtl));
+		const columns = path.map((id, i) => ({ ids: i === 0 ? [id] : ids(orderedChildren(nodes, edges, path[i - 1]!, rtl, order)), active: id }));
+		const children = ids(orderedChildren(nodes, edges, walk.current, rtl, order));
 		if (children.length) columns.push({ ids: children, active: "" });
 		walk.columns.show(columns, walk.current, path, keep);
 	};
@@ -289,6 +290,7 @@ export function enableWalk(ctx: ModuleContext<object>, presenting: (canvas: Canv
 			created = canvas.createTextNode({ pos, size, save: false, focus: false });
 			const color = parent.color;
 			canvas.importData({ nodes: [], edges: [{ id: randomId(), fromNode: parent.id, fromSide: SIDE[dir], toNode: created.id, toSide: OPPOSITE[dir], ...(color ? { color } : {}) }] }, false);
+			recordChild(ctx, canvas, parent, created, after && linked ? after.id : undefined);
 		});
 		if (!ok || !created) return null;
 		const card: CanvasNodeLike = created;

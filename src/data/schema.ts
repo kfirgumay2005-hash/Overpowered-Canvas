@@ -92,7 +92,7 @@ export type EdgeRoute = (typeof EDGE_ROUTES)[number];
 export const EDGE_SIDES = ["top", "right", "bottom", "left"] as const satisfies readonly EdgeSide[];
 
 /** How a mind map is arranged (auto layout); "right"/"left" are logical (mirrored in RTL). */
-export const MAP_LAYOUTS = ["right", "left", "down", "up", "balanced", "radial", "layered-right", "layered-left", "layered-down", "layered-up", "grid"] as const;
+export const MAP_LAYOUTS = ["right", "left", "down", "up", "balanced", "radial", "condensed", "layered-right", "layered-left", "layered-down", "layered-up", "grid"] as const;
 export type MapLayout = (typeof MAP_LAYOUTS)[number];
 
 export const STROKE_TOOLS = ["pen", "pencil", "marker", "highlighter"] as const;
@@ -184,6 +184,8 @@ export interface OpcRoot {
 	mapLayouts?: Record<string, MapLayout>;
 	/** Pages: parts of the board shown one at a time (nodes carry `page`). */
 	pages?: PageInfo[];
+	/** Parent card id → its children's ids in outline order (sibling order kept by every layout). */
+	childOrder?: Record<string, string[]>;
 }
 
 /** A page made from a branch: `anchor` stays in the parent page and leads to `root`. */
@@ -213,6 +215,8 @@ export interface OpcNode {
 	valign?: VerticalAlign;
 	/** Text size of the card in pixels; without it the canvas's own size. */
 	fontSize?: number;
+	/** A header card: a heading in the Markdown note. 0 = automatic level, 1–6 = its own level. */
+	header?: number;
 	dir?: Direction;
 	/** Grow and shrink in height to fit the text. */
 	autoResize?: boolean;

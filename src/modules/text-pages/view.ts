@@ -1,3 +1,4 @@
+import { onPress } from "../../ui/press";
 import { Component, FileView, Keymap, MarkdownRenderer, Notice, Platform, TFile, debounce, normalizePath, parseLinktext, setIcon, type ViewStateResult, type WorkspaceLeaf } from "obsidian";
 import type { ModuleContext } from "../../core/module";
 import { logError } from "../../core/log";
@@ -296,7 +297,7 @@ export class TextPagesView extends FileView {
 			button.disabled = !target;
 			setIcon(button.createSpan({ cls: "opc-text-pagelink-icon" }), icon);
 			button.createSpan({ text: target?.title ?? label });
-			if (target) button.addEventListener("click", () => void this.navigate(target.id));
+			if (target) onPress(button, () => void this.navigate(target.id));
 		};
 		step(book.pages[at - 1], this.rtl ? "chevron-right" : "chevron-left", this.ctx.t("textPages.previous"));
 		nav.createSpan({ cls: "opc-text-count", text: `${at + 1} / ${book.pages.length}` });

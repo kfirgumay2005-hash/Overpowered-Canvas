@@ -50,3 +50,19 @@ body.opc-mod-canvas-markdown .opc-md-pages-count {
 body.opc-mod-canvas-markdown .markdown-reading-view .opc-md-page-off {
 	display: none;
 }
+
+/* Header cards: a heading in the Markdown note. */
+body.opc-mod-canvas-markdown .canvas-node[data-opc-header]::after {
+	content: attr(data-opc-header);
+	position: absolute;
+	top: -0.9em;
+	inset-inline-start: 6px;
+	padding: 0 4px;
+	border-radius: var(--radius-s);
+	background-color: var(--background-secondary);
+	border: 1px solid var(--background-modifier-border);
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
+	line-height: 1.5;
+	pointer-events: none;
+}

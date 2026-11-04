@@ -7,8 +7,10 @@
  * below the map holding that card, or, past the sixth level, nested bullets under the card.
  */
 import type { CanvasFileData, CanvasNodeData } from "../../data/json-canvas";
+import { followStored, type ChildOrder } from "../mindmap/order";
 import type { TNode } from "../mindmap/tree";
 import type { OutlineItem } from "./outline";
+import { extractHeaders, headerOf } from "./headers";
 import { inlinePageLinks, pageLinkTargets } from "./page-links";
 
 /** Node kinds that are drawings, not text: kept only in the data block. */
@@ -49,6 +51,13 @@ function isPlainObject(v: unknown): v is Record<string, unknown> {
 export function kindOf(node: CanvasNodeData): string | undefined {
 	const extra = node["x-opc"];
 	return isPlainObject(extra) && typeof extra.kind === "string" ? extra.kind : undefined;
+}
+
+/** The map's stored child order (root x-opc `childOrder`); empty when there is none. */
+export function childOrderOf(data: CanvasFileData): ChildOrder {
+	const extra = data["x-opc"];
+	const raw = isPlainObject(extra) ? extra.childOrder : undefined;
+	return isPlainObject(raw) ? (raw as ChildOrder) : {};
 }
 
 /** The page a node is on ("" = the main page). */
@@ -110,6 +119,16 @@ export function makeAliases(ids: string[]): Map<string, string> {
 
 type Box = Pick<TNode, "x" | "y" | "width" | "height">;
 
+/** The way a map's children follow each other: down the side (left / right maps) or across (up / down maps). */
+export type MapAxis = "sideways" | "vertical";
+
+/** The axis of a recorded map layout (none for radial, layered, grid and free maps, or the root of a balanced one). */
+export function axisOf(layout: string | undefined, isRoot = false): MapAxis | undefined {
+	if (layout === "right" || layout === "left" || (layout === "balanced" && !isRoot)) return "sideways";
+	if (layout === "up" || layout === "down") return "vertical";
+	return undefined;
+}
+
 const center = (b: Box) => ({ x: b.x + b.width / 2, y: b.y + b.height / 2 });
 
 /** Top-to-bottom, then by reading direction. */
@@ -120,13 +139,17 @@ export function readingOrder(rtl: boolean) {
 /**
  * Orders children so the outline reads like the map: top to bottom when they sit beside the
  * parent, along the reading direction when above or below it, clockwise from 12 o'clock
- * (counter-clockwise in right-to-left canvases) when they surround it.
+ * (counter-clockwise in right-to-left canvases) when they surround it. With `stored` (the
+ * parent's list in the map's child order), that order wins; children it doesn't name keep their
+ * board place (see followStored). `axis`: the way the map grows (from its recorded layout),
+ * which settles cards that sit both beside and above / below their parent.
  */
-export function orderChildren<T extends Box>(parent: Box, kids: T[], rtl: boolean): T[] {
+export function orderChildren<T extends Box & { id?: string }>(parent: Box, kids: T[], rtl: boolean, stored?: readonly string[], axis?: MapAxis): T[] {
 	if (kids.length < 2) return [...kids];
+	if (stored?.length) return followStored(orderChildren(parent, kids, rtl, undefined, axis) as (T & { id: string })[], stored);
 	// A whole side of the parent, judged by edges (wide trees reach far across).
-	const sideways = kids.every((k) => k.x >= parent.x + parent.width) || kids.every((k) => k.x + k.width <= parent.x);
-	const vertical = kids.every((k) => k.y >= parent.y + parent.height) || kids.every((k) => k.y + k.height <= parent.y);
+	const sideways = axis === "sideways" || (axis !== "vertical" && (kids.every((k) => k.x >= parent.x + parent.width) || kids.every((k) => k.x + k.width <= parent.x)));
+	const vertical = axis === "vertical" || kids.every((k) => k.y >= parent.y + parent.height) || kids.every((k) => k.y + k.height <= parent.y);
 	if (sideways) return [...kids].sort((a, b) => center(a).y - center(b).y || center(a).x - center(b).x);
 	if (vertical) return [...kids].sort((a, b) => (rtl ? center(b).x - center(a).x : center(a).x - center(b).x) || center(a).y - center(b).y);
 	const pc = center(parent);
@@ -248,10 +271,15 @@ export function buildStructure(data: CanvasFileData, opts: StructureOptions): St
 
 	// A link between a break-point card and its page goes at the end of the card's line.
 	const linkTargets = pageLinkTargets(pagesOfRoot(data));
-	const bullet = (id: string): OutlineItem => {
+	const stored = childOrderOf(data);
+	const rootExtra = data["x-opc"];
+	const layouts = isPlainObject(rootExtra) && isPlainObject(rootExtra.mapLayouts) ? (rootExtra.mapLayouts as Record<string, string>) : {};
+	// `layout`: the map's recorded layout, read from its root down.
+	const bullet = (id: string, layout = layouts[id], isRoot = true): OutlineItem => {
 		const node = byId.get(id)!;
-		const kids = orderChildren(node, (children.get(id) ?? []).map((c) => byId.get(c)!), opts.rtl);
-		return { kind: "node", text: inlinePageLinks(nodeText(node), linkTargets), id: alias.get(id), children: kids.map((k) => bullet(k.id)) };
+		const kids = orderChildren(node, (children.get(id) ?? []).map((c) => byId.get(c)!), opts.rtl, stored[id], axisOf(layout, isRoot));
+		const header = headerOf(node);
+		return { kind: "node", text: inlinePageLinks(nodeText(node), linkTargets), id: alias.get(id), ...(header !== undefined ? { header } : {}), children: kids.map((k) => bullet(k.id, layout, false)) };
 	};
 
 	const container = containers(all.filter((n) => n.type === "group" || contentIds.has(n.id)));
@@ -280,6 +308,8 @@ export function buildStructure(data: CanvasFileData, opts: StructureOptions): St
 
 	if (opts.paged) items = pageSections(items, data, byId, alias);
 	else nestPages(items, data, roots, children, alias);
+	// Header cards become headings, below the headings their maps and pages already have.
+	extractHeaders(items);
 
 	const rootOrder: string[] = [];
 	const byAlias = new Map([...alias].map(([id, a]) => [a, id]));

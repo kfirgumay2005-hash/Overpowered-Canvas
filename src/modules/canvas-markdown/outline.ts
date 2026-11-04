@@ -22,6 +22,8 @@ export interface OutlineItem {
 	heading?: number;
 	/** The root of a page (exports only; not read back from the text). */
 	page?: boolean;
+	/** A header card (exports only): 0 = automatic level, 1–6 = its own. See headers.ts. */
+	header?: number;
 	/** Line of the item's first line in the parsed text (0-based), when asked for. */
 	line?: number;
 	children: OutlineItem[];
@@ -34,12 +36,27 @@ export interface WriteOptions {
 	ids: boolean;
 	/** Write no hidden comment at all, not even the free-cards mark. */
 	clean?: boolean;
+	/**
+	 * The first level under each heading as plain lines, not bullets: each one after a blank line,
+	 * its children as bullets right below it (an indented list after a paragraph would read as
+	 * part of the paragraph). Read back with `parseOutline(md, { plain: true })`.
+	 */
+	plain?: boolean;
+}
+
+export interface ParseOptions {
+	/** Record each item's line. */
+	lines?: boolean;
+	/** The note was written with `plain` (see WriteOptions): a plain line is a first-level item and the bullets below it are its children. */
+	plain?: boolean;
 }
 
 const BULLET = /^([ \t]*)([-+*]|\d{1,9}[.)])(?:[ \t](.*))?$/;
 const HEADING = /^ {0,3}(#{1,6})(?:[ \t]+(.*?))?[ \t]*$/;
 const MARKER = /[ \t]*%%(?:(n|g):([A-Za-z0-9_-]+)|(free))%%[ \t]*/g;
 const FENCE = /^[ \t]*(`{3,}|~{3,})/;
+/** A blank line inside the text of a plain line or a heading, in plain mode (a real one would end it). */
+const BREAK = "<br>";
 /** Text that would be read as structure at the start of a continuation line. */
 const NEEDS_ESCAPE = /^[ \t]*(?:[-+*](?:[ \t]|$)|\d{1,9}[.)](?:[ \t]|$)|#{1,6}(?:[ \t]|$)|\\|`{3,}|~{3,})/;
 
@@ -119,13 +136,17 @@ interface Open {
 
 /**
  * Parses an outline into items. Plain paragraphs become items too: lines right after a card
- * heading continue its text; elsewhere each paragraph is an item of the enclosing heading.
+ * heading continue its text; elsewhere each paragraph is an item of the enclosing heading. With
+ * `plain`, only lines right after the heading continue it (no blank line between), and bullets
+ * below a paragraph are its children.
  */
-export function parseOutline(md: string, opts: { lines?: boolean } = {}): OutlineItem[] {
+export function parseOutline(md: string, opts: ParseOptions = {}): OutlineItem[] {
 	const top: OutlineItem[] = [];
 	const headings: { level: number; item: OutlineItem }[] = [];
 	let list: { indent: number; item: OutlineItem }[] = [];
 	let open: Open | null = null;
+	/** Plain mode: the paragraph the next top bullets hang from. */
+	let para: OutlineItem | null = null;
 
 	const scope = (): OutlineItem | null => headings[headings.length - 1]?.item ?? null;
 	const add = (parent: OutlineItem | null, item: OutlineItem) => (parent ? parent.children : top).push(item);
@@ -172,6 +193,7 @@ export function parseOutline(md: string, opts: { lines?: boolean } = {}): Outlin
 			add(scope(), item);
 			headings.push({ level, item });
 			list = [];
+			para = null;
 			open = { item, indent: -1, content: 0, lines: [item.text], blank: 0, fence: fenceStep(item.text, null), type: "heading" };
 			continue;
 		}
@@ -184,7 +206,7 @@ export function parseOutline(md: string, opts: { lines?: boolean } = {}): Outlin
 			const { text, kind, id } = splitMarker(b[3] ?? "");
 			const item = at({ kind: "node", text, children: [], ...(id && kind === "node" ? { id } : {}) }, index);
 			while (list.length && list[list.length - 1]!.indent >= indent) list.pop();
-			add(list[list.length - 1]?.item ?? scope(), item);
+			add(list[list.length - 1]?.item ?? para ?? scope(), item);
 			list.push({ indent, item });
 			const markerWidth = b[2]!.length + 1;
 			open = { item, indent, content: indent + markerWidth, lines: [text], blank: 0, fence: fenceStep(text, null), type: "bullet" };
@@ -196,12 +218,13 @@ export function parseOutline(md: string, opts: { lines?: boolean } = {}): Outlin
 		const col = columns(leading(line));
 		const continues =
 			o !== null &&
-			((o.type === "heading" && o.item.kind === "node") ||
+			((o.type === "heading" && o.item.kind === "node" && (!opts.plain || o.blank === 0)) ||
 				(o.type === "bullet" && (col >= o.content || o.blank === 0)) ||
 				(o.type === "paragraph" && o.blank === 0));
 		if (o && continues) {
 			const stripped = o.type === "bullet" ? stripColumns(line, o.content) : line;
-			const text = o.type === "paragraph" ? line.trim() : unescapeLine(stripped);
+			const text =
+				opts.plain && o.type !== "bullet" && line.trim() === BREAK ? "" : o.type === "paragraph" ? (opts.plain ? unescapeLine(line.trim()) : line.trim()) : unescapeLine(stripped);
 			o.lines.push(...Array<string>(o.blank).fill(""), text);
 			o.blank = 0;
 			// An escaped fence line is text, not a fence.
@@ -212,9 +235,12 @@ export function parseOutline(md: string, opts: { lines?: boolean } = {}): Outlin
 		// A new paragraph: an item of the enclosing heading (or top level).
 		close();
 		list = [];
-		const item = at({ kind: "node", text: line.trim(), children: [] }, index);
+		// Plain mode: the line is a first-level item as written (with its id, escapes undone).
+		const first = opts.plain ? splitMarker(unescapeLine(line.trim())) : { text: line.trim() };
+		const item = at({ kind: "node", text: first.text, children: [], ...(first.id && first.kind === "node" ? { id: first.id } : {}) }, index);
 		add(scope(), item);
-		open = { item, indent: -1, content: 0, lines: [line.trim()], blank: 0, fence: null, type: "paragraph" };
+		if (opts.plain) para = item;
+		open = { item, indent: -1, content: 0, lines: [first.text], blank: 0, fence: null, type: "paragraph" };
 	}
 	close();
 	return top;
@@ -234,12 +260,13 @@ export function writeOutline(items: OutlineItem[], opts: WriteOptions): string {
 	 * Lines after the first. Code fences are written as they are when every fence in the text
 	 * closes; otherwise fence lines are escaped too, so an open fence can't swallow the outline.
 	 */
-	const continuation = (first: string, rest: string[], prefix: string) => {
+	/** `unbroken`: the text may hold no blank line (it would end the item): those are written as BREAK. */
+	const continuation = (first: string, rest: string[], prefix: string, unbroken = false) => {
 		const balanced = [first, ...rest].reduce<string | null>((open, l) => fenceStep(l, open), null) === null;
 		let fence = balanced ? fenceStep(first, null) : null;
 		for (const line of rest) {
 			if (line.trim() === "") {
-				out.push("");
+				out.push(unbroken ? BREAK : "");
 				continue;
 			}
 			if (fence || (balanced && FENCE.test(line))) {
@@ -259,21 +286,31 @@ export function writeOutline(items: OutlineItem[], opts: WriteOptions): string {
 		for (const child of item.children) bullet(child, depth + 1);
 	};
 
+	/** A first-level item as a plain line (see WriteOptions.plain). */
+	const plainLine = (item: OutlineItem) => {
+		if (out.length > 0) out.push("");
+		const [first = "", ...rest] = item.text.split("\n");
+		out.push(`${escapeLine(first)}${marker(item)}`);
+		continuation(first, rest, "", true);
+		for (const child of item.children) bullet(child, 0);
+	};
+	const firstLevel = (item: OutlineItem) => (opts.plain && item.kind === "node" ? plainLine(item) : bullet(item, 0));
+
 	const heading = (item: OutlineItem) => {
 		if (out.length > 0) out.push("");
 		const [first = "", ...rest] = item.text.split("\n");
 		const level = Math.min(6, Math.max(1, item.heading ?? 1));
 		out.push(`${"#".repeat(level)} ${first}${marker(item)}`.trimEnd());
 		// Heading text: continuation lines follow without indentation.
-		continuation(first.trim(), rest, "");
+		continuation(first.trim(), rest, "", !!opts.plain);
 		const bullets = item.children.filter((c) => c.heading === undefined);
 		const headings = item.children.filter((c) => c.heading !== undefined);
-		for (const child of bullets) bullet(child, 0);
+		for (const child of bullets) firstLevel(child);
 		for (const child of headings) heading(child);
 	};
 
 	const bullets = items.filter((c) => c.heading === undefined);
-	for (const item of bullets) bullet(item, 0);
+	for (const item of bullets) firstLevel(item);
 	for (const item of items) if (item.heading !== undefined) heading(item);
 	return out.join("\n") + "\n";
 }

@@ -6,14 +6,16 @@
 import type { ModuleContext } from "../../core/module";
 import type { EdgeSide } from "../../data/json-canvas";
 import { SCHEMA_KEY } from "../../data/schema";
-import type { CanvasLike, CanvasNodeLike } from "../../internals/types";
+import type { CanvasEdgeLike, CanvasLike, CanvasNodeLike } from "../../internals/types";
 import { layoutMap } from "../canvas-markdown/apply";
-import { orderChildren } from "../canvas-markdown/structure";
+import { axisOf, orderChildren } from "../canvas-markdown/structure";
 import { childrenOf, directionBetween, parentOf, type Dir, type TEdge, type TNode } from "../mindmap/tree";
+import { storedOrder } from "../mindmap/order-store";
 import { canvasDirection, nodeType, isHiddenNode } from "../shared";
 import { collapseGroups, expandPositions, fitGroups, groupsAround, type BoxNode } from "./blocks";
 import { getElk } from "./engine";
-import { chooseSides, type SideBox, type SideEdge } from "./sides";
+import { radialKids } from "./radial";
+import { chooseSides, troubledEdges, type SideBox, type SideEdge } from "./sides";
 
 export type SideMode = "clear" | "facing";
 
@@ -21,7 +23,47 @@ export type SideMode = "clear" | "facing";
 export type DataHost = Pick<ModuleContext<object>, "data">;
 
 /** The auto layout settings that other modules' re-arrangements follow too. */
-export const arrangeState: { sides: SideMode; bend: boolean } = { sides: "clear", bend: true };
+export const arrangeState: { sides: SideMode; bend: boolean; radialEdges: RadialEdges } = { sides: "clear", bend: true, radialEdges: "curved" };
+
+/** How the connectors of radial maps are drawn. */
+export type RadialEdges = "curved" | "straight";
+
+/**
+ * Connectors of a map laid out radially (classic or condensed) are straight lines when the setting
+ * says so; other maps, or the setting back on curved, get the core's curves again. Only routes the
+ * layout set itself are touched (`bent`), never one the user chose. Call inside a transaction.
+ */
+export function styleRadialEdges(ctx: DataHost, canvas: CanvasLike, ids: ReadonlySet<string>, radial: boolean): void {
+	const straight = radial && arrangeState.radialEdges === "straight";
+	const inMap = [...canvas.edges.values()].filter((e) => ids.has(e.from.node.id) && ids.has(e.to.node.id));
+	const ours = (e: CanvasEdgeLike) => {
+		const extra = ctx.data.edge(e).get();
+		return (!extra.route || extra.bent) && !extra.waypoints;
+	};
+	for (const e of inMap) {
+		const extra = ctx.data.edge(e).get();
+		if (straight && ours(e)) {
+			if (extra.route !== "straight") ctx.data.edge(e).set({ route: "straight", bent: true });
+		} else if (!straight && extra.bent && extra.route === "straight") ctx.data.edge(e).set({ route: undefined, bent: undefined });
+		else continue;
+		canvas.markDirty(e);
+	}
+	if (!radial || straight) return;
+	// Curved: a curve that still crosses another connector or passes under a card is drawn
+	// straight (the layout keeps the line between the two cards clear).
+	const nodes = layoutNodes(canvas);
+	const shown = new Set(nodes.map((n) => n.id));
+	const cards: SideBox[] = nodes.filter((n) => nodeType(n) !== "group" && !isDrawingNode(n)).map(boxOf);
+	const edges: SideEdge[] = [...canvas.edges.values()]
+		.filter((e) => shown.has(e.from.node.id) && shown.has(e.to.node.id) && !ctx.data.edge(e).get().route)
+		.map((e) => ({ id: e.id, from: e.from.node.id, to: e.to.node.id, fromSide: e.from.side, toSide: e.to.side, change: false }));
+	const troubled = troubledEdges(cards, edges, new Set(inMap.filter(ours).map((e) => e.id)));
+	for (const e of inMap) {
+		if (!troubled.has(e.id)) continue;
+		ctx.data.edge(e).set({ route: "straight", bent: true });
+		canvas.markDirty(e);
+	}
+}
 
 const SIDE: Record<Dir, EdgeSide> = { right: "right", left: "left", down: "bottom", up: "top" };
 const OPPOSITE: Record<Dir, EdgeSide> = { right: "left", left: "right", down: "top", up: "bottom" };
@@ -113,8 +155,8 @@ export function mapRootOf(edges: TEdge[], id: string): string {
 
 /**
  * Re-arranges a map that has a recorded layout (auto layout, or built from a note) after a card
- * was added to it. Children keep the order they show on the canvas; `after` puts `start` right
- * after that sibling. Groups inside the map move as blocks with everything in them; a group
+ * was added to it. Children keep the map's order (stored, see mindmap/order.ts; else as the
+ * canvas shows them); `after` puts `start` right after that sibling. Groups inside the map move as blocks with everything in them; a group
  * around the whole map stays put and grows to hold it. The root stays where it is.
  * Joins the current undo step (call right after the change that added the card).
  */
@@ -126,6 +168,9 @@ export async function relayoutMap(ctx: DataHost, canvas: CanvasLike, start: Canv
 	const layout = ctx.data.root(canvas).get().mapLayouts?.[root];
 	if (!layout || layout === "grid" || layout.startsWith("layered")) return;
 	const rtl = canvasDirection(canvas) === "rtl";
+	const stored = storedOrder(ctx, canvas);
+	// Radial maps go around their cards (see radialKids); the others read as the board shows them.
+	const around = layout === "radial" || layout === "condensed" ? radialKids(all.map(boxOf), edges, stored, rtl) : null;
 	const kids = new Map<string, string[]>();
 	const ids: string[] = [];
 	const stack = [root];
@@ -136,7 +181,8 @@ export async function relayoutMap(ctx: DataHost, canvas: CanvasLike, start: Canv
 		visited.add(id);
 		ids.push(id);
 		const parentNode = shown.get(id)!;
-		let children = orderChildren(parentNode, childrenOf(edges, id).filter((c) => !visited.has(c) && shown.has(c)).map((c) => shown.get(c)!), rtl).map((n) => n.id);
+		const linked = childrenOf(edges, id).filter((c) => !visited.has(c) && shown.has(c));
+		let children = around ? (around.get(id) ?? []).filter((c) => linked.includes(c)) : orderChildren(parentNode, linked.map((c) => shown.get(c)!), rtl, stored[id], axisOf(layout, id === root)).map((n) => n.id);
 		if (after && children.includes(after) && children.includes(start.id)) {
 			children = children.filter((c) => c !== start.id);
 			children.splice(children.indexOf(after) + 1, 0, start.id);
@@ -194,6 +240,7 @@ export async function relayoutMap(ctx: DataHost, canvas: CanvasLike, start: Canv
 			return d;
 		};
 		applyEdgeSides(ctx, canvas, new Set(positions.keys()), (a, b) => blocks.blockOf.get(a) !== undefined && blocks.blockOf.get(a) === blocks.blockOf.get(b), growth);
+		styleRadialEdges(ctx, canvas, new Set(positions.keys()), layout === "radial" || layout === "condensed");
 	} finally {
 		// Part of the step that added or linked the card: one undo takes both back.
 		canvas.requestPushHistory.cancel();

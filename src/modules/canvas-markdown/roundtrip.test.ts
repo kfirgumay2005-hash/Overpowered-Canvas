@@ -596,3 +596,156 @@ describe("a note with pages", () => {
 		expect(result.removed).toBe(0);
 	});
 });
+
+describe("stored sibling order", () => {
+	const card = (id: string, x: number, y: number) => ({ id, type: "text" as const, text: id.toUpperCase(), x, y, width: 120, height: 50 });
+	const edge = (from: string, to: string) => ({ id: `${from}-${to}`, fromNode: from, toNode: to });
+	const data = (extra?: object) => ({
+		nodes: [card("r", 0, 100), card("a", 300, 0), card("b", 300, 100), card("c", 300, 200)],
+		edges: [edge("r", "a"), edge("r", "b"), edge("r", "c")],
+		...(extra ? { "x-opc": { v: 1, ...extra } } : {}),
+	});
+	const kids = (d: CanvasFileData) => buildStructure(d, { rtl: false, freeLabel: "Free cards" }).items[0]!.children.map((i) => i.text);
+	it("lists children in the map's stored order, not by position", () => {
+		expect(kids(data())).toEqual(["A", "B", "C"]);
+		expect(kids(data({ childOrder: { r: ["c", "a", "b"] } }))).toEqual(["C", "A", "B"]);
+	});
+	it("reads cards beside and above their parent by the map's recorded axis", () => {
+		// Both left of the root and above it: an "up" map reads them across, right to left in RTL.
+		const d = { nodes: [card("r", 1000, 500), card("a", 0, 300), card("b", 400, 250)], edges: [edge("r", "a"), edge("r", "b")], "x-opc": { v: 1, mapLayouts: { r: "up" } } };
+		expect(buildStructure(d, { rtl: true, freeLabel: "Free cards" }).items[0]!.children.map((i) => i.text)).toEqual(["B", "A"]);
+		const side = { ...d, "x-opc": { v: 1, mapLayouts: { r: "left" } } };
+		expect(buildStructure(side, { rtl: true, freeLabel: "Free cards" }).items[0]!.children.map((i) => i.text)).toEqual(["B", "A"]);
+	});
+	it("a note's outline order wins and is kept for the next layout", async () => {
+		const md = "# R\n- C\n- A\n- B\n";
+		const { items } = splitNote(md);
+		const out = await applyNote(items, null, null, elk, options());
+		const order = (out.data["x-opc"] as { childOrder?: Record<string, string[]> } | undefined)?.childOrder;
+		const rootId = out.data.nodes!.find((n) => n.text === "R")!.id;
+		// Laid out in outline order, which the board shows anyway: nothing needs storing.
+		expect(order?.[rootId]).toBeUndefined();
+		expect(kids(out.data)).toEqual(["C", "A", "B"]);
+	});
+});
+
+describe("header cards", () => {
+	const card = (id: string, text: string, y: number, extra?: object) => ({ id, type: "text" as const, text, x: 300, y, width: 120, height: 50, ...(extra ? { "x-opc": { v: 1, ...extra } } : {}) });
+	const edge = (from: string, to: string) => ({ id: `${from}-${to}`, fromNode: from, toNode: to });
+	const md = (data: CanvasFileData) => writeOutline(buildStructure(data, { rtl: false, freeLabel: "Free cards" }).items, { indent: "\t", ids: false });
+	const board: CanvasFileData = {
+		nodes: [
+			{ ...card("r", "Root", 200), x: 0 },
+			card("a", "Alpha", 0, { header: 0 }),
+			card("b", "Beta", 100),
+			card("c", "## Gamma", 200),
+			{ ...card("a1", "a one", 0, { header: 0 }), x: 600 },
+			{ ...card("a2", "a two", 100), x: 600 },
+			{ ...card("x", "under alpha one", 0), x: 900 },
+			{ ...card("b1", "beta child", 100, { header: 0 }), x: 600 },
+			{ ...card("c1", "gamma child", 200), x: 600 },
+		],
+		edges: [edge("r", "a"), edge("r", "b"), edge("r", "c"), edge("a", "a1"), edge("a", "a2"), edge("a1", "x"), edge("b", "b1"), edge("c", "c1")],
+	};
+	it("become headings; plain lines first, deeper headers one level down", () => {
+		expect(md(board)).toBe("# Root\n- Beta\n\t- beta child\n\n## Alpha\n- a two\n\n### a one\n- under alpha one\n\n## Gamma\n- gamma child\n");
+	});
+	it("take a level of their own, only deeper", () => {
+		const own = { ...board, nodes: board.nodes!.map((n) => (n.id === "a" ? card("a", "Alpha", 0, { header: 4 }) : n.id === "c" ? card("c", "Gamma", 200, { header: 1 }) : n)) };
+		expect(md(own)).toContain("\n#### Alpha\n- a two\n\n##### a one\n");
+		expect(md(own)).toContain("\n## Gamma\n");
+	});
+	it("stay in the outline past H6", () => {
+		const nodes = [{ ...card("r", "Root", 0), x: 0 }];
+		const edges = [];
+		for (let i = 1; i <= 7; i++) {
+			nodes.push({ ...card(`h${i}`, `H${i}`, 0, { header: 0 }), x: i * 200 });
+			edges.push(edge(i === 1 ? "r" : `h${i - 1}`, `h${i}`));
+		}
+		const out = md({ nodes, edges });
+		expect(out).toContain("###### H5\n- H6\n\t- H7\n");
+	});
+	it("come back as header cards, with their marks and levels", async () => {
+		const text = md(board);
+		const { items } = splitNote(text);
+		const back = await applyNote(items, null, null, elk, options());
+		const byText = (t: string) => back.data.nodes!.find((n) => n.text === t)!;
+		const extra = (t: string) => (byText(t)["x-opc"] as { header?: number } | undefined)?.header;
+		expect(extra("Alpha")).toBe(0);
+		expect(extra("a one")).toBe(0);
+		expect(extra("Beta")).toBeUndefined();
+		expect(extra("beta child")).toBeUndefined();
+		// And the same note again.
+		expect(md(back.data)).toBe(text);
+	});
+	it("keep their marks in the text when updated from the note", async () => {
+		const note = exportNote(board, { canvasPath: "b.canvas", rtl: false, freeLabel: "Free cards", indent: "\t" } as never);
+		const { items, data } = splitNote(note);
+		const back = await applyNote(items, data, board, elk, options());
+		expect(back.data.nodes!.find((n) => n.id === "c")!.text).toBe("## Gamma");
+		expect(back.updated).toBe(0);
+	});
+	it("turning a heading line into a plain line unmarks the card", async () => {
+		const note = exportNote(board, { canvasPath: "b.canvas", rtl: false, freeLabel: "Free cards", indent: "\t" } as never);
+		const { items, data } = splitNote(note.replace("\n## Alpha", "\n- Alpha"));
+		const back = await applyNote(items, data, board, elk, options());
+		expect((back.data.nodes!.find((n) => n.id === "a")!["x-opc"] as { header?: number } | undefined)?.header).toBeUndefined();
+	});
+});
+
+describe("header cards on pages", () => {
+	const card = (id: string, text: string, x: number, y: number, extra?: object) => ({ id, type: "text" as const, text, x, y, width: 120, height: 50, ...(extra ? { "x-opc": { v: 1, ...extra } } : {}) });
+	const edge = (from: string, to: string) => ({ id: `${from}-${to}`, fromNode: from, toNode: to });
+	// Main map R → A (the break point); page P: its root A' → H (header) → h1.
+	const data: CanvasFileData = {
+		nodes: [card("r", "Root", 0, 0), card("a", "Dose", 300, 0), card("ar", "Dose", 0, 1000, { page: "p" }), card("h", "Adults", 300, 1000, { page: "p", header: 0 }), card("h1", "500 mg", 600, 1000, { page: "p" })],
+		edges: [edge("r", "a"), edge("ar", "h"), edge("h", "h1")],
+		"x-opc": { v: 1, pages: [{ id: "p", anchor: "a", root: "ar" }] },
+	};
+	const md = (paged: boolean) => writeOutline(buildStructure(data, { rtl: false, freeLabel: "Free cards", paged }).items, { indent: "\t", ids: false, clean: true });
+	it("start their block one level below the page's heading", () => {
+		expect(md(true)).toContain("# Dose\n\n## Adults\n- 500 mg\n");
+		// One long note: the page nests one level below its map.
+		expect(md(false)).toContain("## Dose\n\n### Adults\n- 500 mg\n");
+	});
+});
+
+describe("first level without bullets", () => {
+	const shapeOf = (items: OutlineItem[]): unknown[] => items.map((i) => [i.text, i.heading ?? null, shapeOf(i.children)]);
+	const items: OutlineItem[] = [
+		{
+			kind: "node",
+			text: "Root",
+			heading: 1,
+			children: [
+				{ kind: "node", text: "Beta", children: [{ kind: "node", text: "b1", children: [{ kind: "node", text: "b11", children: [] }] }, { kind: "node", text: "b2", children: [] }] },
+				{ kind: "node", text: "- looks like a bullet\nsecond line", children: [] },
+				{ kind: "node", text: "Gamma", children: [] },
+				{ kind: "node", text: "Alpha", heading: 2, children: [{ kind: "node", text: "a1", children: [] }] },
+			],
+		},
+	];
+	it("writes each first-level line plain, its children as bullets right below", () => {
+		expect(writeOutline(items, { indent: "\t", ids: false, plain: true })).toBe(
+			"# Root\n\nBeta\n- b1\n\t- b11\n- b2\n\n\\- looks like a bullet\nsecond line\n\nGamma\n\n## Alpha\n\na1\n",
+		);
+	});
+	it("reads back the same tree", () => {
+		const md = writeOutline(items, { indent: "\t", ids: false, plain: true });
+		expect(shapeOf(parseOutline(md, { plain: true }))).toEqual(shapeOf(items));
+	});
+	it("keeps ids on plain lines", () => {
+		const withIds: OutlineItem[] = [{ kind: "node", text: "R", id: "r", heading: 1, children: [{ kind: "node", text: "B", id: "b", children: [{ kind: "node", text: "c", id: "c", children: [] }] }] }];
+		const md = writeOutline(withIds, { indent: "\t", ids: true, plain: true });
+		expect(md).toBe("# R %%n:r%%\n\nB %%n:b%%\n- c %%n:c%%\n");
+		expect(parseOutline(md, { plain: true })[0]!.children[0]).toMatchObject({ text: "B", id: "b", children: [{ text: "c", id: "c" }] });
+	});
+	it("a note and its canvas go back and forth unchanged", async () => {
+		const plainOpts = { ...exportOpts, plain: true };
+		const md = exportNote(sampleCanvas(), plainOpts);
+		const { items: back, data } = splitNote(md);
+		expect(data?.plain).toBe(true);
+		const again = await applyNote(back, data, null, elk, options());
+		expect(exportNote(again.data, plainOpts)).toBe(md);
+	});
+});

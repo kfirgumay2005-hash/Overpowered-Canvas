@@ -4,6 +4,7 @@ import type { EdgeSide } from "../../data/json-canvas";
 import type { CanvasItemLike, CanvasLike, CanvasNodeLike } from "../../internals/types";
 import { canvasDirection, mutate, nodeType, randomId, selectedNodes } from "../shared";
 import { makeSiblingRoom } from "./room";
+import { recordChild } from "./order-store";
 import { childPosition, childrenOf, descendants, directionBetween, logical, neighbor, parentOf, type Dir, type TEdge } from "./tree";
 
 interface MindmapSettings {
@@ -54,7 +55,8 @@ export const mindmapModule = defineModule<MindmapSettings>({
 		};
 
 		/** `pos` may be computed inside the change (when making room moves other cards). */
-		const create = (canvas: CanvasLike, pos: { x: number; y: number } | (() => { x: number; y: number }), link: { from: CanvasNodeLike; dir: Dir } | null): CanvasNodeLike | null => {
+		/** `link.after`: the sibling the new card comes right after (absent: after all of them). */
+		const create = (canvas: CanvasLike, pos: { x: number; y: number } | (() => { x: number; y: number }), link: { from: CanvasNodeLike; dir: Dir; after?: string } | null): CanvasNodeLike | null => {
 			let created: CanvasNodeLike | null = null;
 			mutate(ctx, canvas, () => {
 				const size = canvas.config.defaultTextNodeDimensions;
@@ -62,6 +64,7 @@ export const mindmapModule = defineModule<MindmapSettings>({
 				if (link) {
 					const color = link.from.color;
 					canvas.importData({ nodes: [], edges: [{ id: randomId(), fromNode: link.from.id, fromSide: SIDE[link.dir], toNode: created.id, toSide: OPPOSITE[link.dir], ...(color ? { color } : {}) }] }, false);
+					recordChild(ctx, canvas, link.from, created, link.after);
 				}
 			});
 			if (created) startEditing(canvas, created);
@@ -78,7 +81,7 @@ export const mindmapModule = defineModule<MindmapSettings>({
 			const parentId = parentOf(edgesOf(canvas), node.id);
 			const parent = parentId ? canvas.nodes.get(parentId) : null;
 			// Right after this card among its siblings, not after the last one.
-			if (parent) return create(canvas, () => makeSiblingRoom(canvas, parent, node, canvas.config.defaultTextNodeDimensions), { from: parent, dir: directionBetween(parent, node) });
+			if (parent) return create(canvas, () => makeSiblingRoom(canvas, parent, node, canvas.config.defaultTextNodeDimensions), { from: parent, dir: directionBetween(parent, node), after: node.id });
 			const gap = 30;
 			return create(canvas, { x: node.x, y: node.y + node.height + gap }, null);
 		};

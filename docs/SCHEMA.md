@@ -47,6 +47,12 @@ interface OpcRoot {                       // file root "x-opc"
   pages?: { id: string; anchor: string; root: string; parent?: string }[];
                                           // Pages: `anchor` = the card left in the parent page (absent parent =
                                           // main page), `root` = the page's first card (a copy of the anchor)
+  childOrder?: Record<string, string[]>;  // parent card id → its children in outline order (sibling order).
+                                          // Written by drops on "Add as child / sibling", Tab / Enter, the column
+                                          // view's + buttons, a hand move among siblings, a radial layout and a
+                                          // note's outline; read by every layout, the walk, the column view and
+                                          // the Markdown export. Children it doesn't name keep their board place.
+                                          // Not copied into a note's data block (the outline is the order).
 }
 
 // "right" | "left" | "down" | "up" | "balanced" | "radial" | "layered-right" | "layered-left" |
@@ -61,6 +67,9 @@ interface OpcNode {
   align?: "start" | "center" | "end";
   valign?: "top" | "middle" | "bottom";   // absent = top (stickies: middle)
   fontSize?: number;                      // text size in px (6–200); absent = the canvas's size
+  header?: number;                        // header card: a heading in the Markdown note; 0 = automatic level,
+                                          // 1–6 = its own (only deeper than automatic). Text starting with
+                                          // "## " counts as a header too, at that level.
   dir?: "ltr" | "rtl" | "auto";
   autoResize?: boolean;                   // grow in height with the text
   autoWidth?: boolean;                    // grow in width (no wrapping) and height

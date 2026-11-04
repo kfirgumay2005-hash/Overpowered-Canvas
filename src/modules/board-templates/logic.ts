@@ -61,7 +61,7 @@ export function reid(data: CanvasFileData, newId: () => string): Data {
 	const map = new Map<string, string>();
 	for (const n of d.nodes) map.set(n.id, newId());
 	const mapped = (id: string | undefined) => (id !== undefined ? (map.get(id) ?? id) : id);
-	const root = d[SCHEMA_KEY] as { presentation?: { start?: string; last?: string }; frameOrder?: string[]; pages?: PageInfo[]; mapLayouts?: Record<string, unknown> } | undefined;
+	const root = d[SCHEMA_KEY] as { presentation?: { start?: string; last?: string }; frameOrder?: string[]; pages?: PageInfo[]; mapLayouts?: Record<string, unknown>; childOrder?: Record<string, string[]> } | undefined;
 	const pageMap = new Map<string, string>();
 	for (const p of root?.pages ?? []) pageMap.set(p.id, newId());
 	const nodes = d.nodes.map((n) => {
@@ -95,6 +95,7 @@ export function reid(data: CanvasFileData, newId: () => string): Data {
 				...(p.parent ? { parent: pageMap.get(p.parent) ?? p.parent } : {}),
 			}));
 		if (r.mapLayouts) r.mapLayouts = Object.fromEntries(Object.entries(r.mapLayouts).map(([id, layout]) => [mapped(id)!, layout]));
+		if (r.childOrder) r.childOrder = Object.fromEntries(Object.entries(r.childOrder).map(([id, list]) => [mapped(id)!, list.map((k) => mapped(k)!)]));
 		out[SCHEMA_KEY] = r;
 	}
 	return out;
