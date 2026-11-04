@@ -298,8 +298,8 @@ export class PagedNotes {
 			const keepFocus = (evt: Event) => {
 				if ((evt.target as HTMLElement | null)?.closest?.("button")) evt.preventDefault();
 			};
+			// Mouse: the editor keeps its focus. Touch: onPress cancels the tap's mouse events.
 			bar.addEventListener("mousedown", keepFocus);
-			bar.addEventListener("pointerdown", keepFocus);
 			bar.createDiv({ cls: "opc-md-pages-where" });
 			this.makeTools(view, bar.createDiv({ cls: "opc-md-pages-tools" }));
 		}

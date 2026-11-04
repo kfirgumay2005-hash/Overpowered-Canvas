@@ -37,9 +37,11 @@ export interface WriteOptions {
 	/** Write no hidden comment at all, not even the free-cards mark. */
 	clean?: boolean;
 	/**
-	 * The first level under each heading as plain lines, not bullets: each one after a blank line,
-	 * its children as bullets right below it (an indented list after a paragraph would read as
-	 * part of the paragraph). Read back with `parseOutline(md, { plain: true })`.
+	 * The first level under each heading as plain lines, not bullets: the first one right below
+	 * its heading (a heading is the title of its block), each further one after a blank line, its
+	 * children as bullets right below it (an indented list after a paragraph would read as part
+	 * of the paragraph). A heading's own further lines go on its line, joined by `<br>`. Read back
+	 * with `parseOutline(md, { plain: true, tight: true })`.
 	 */
 	plain?: boolean;
 }
@@ -49,6 +51,12 @@ export interface ParseOptions {
 	lines?: boolean;
 	/** The note was written with `plain` (see WriteOptions): a plain line is a first-level item and the bullets below it are its children. */
 	plain?: boolean;
+	/**
+	 * With `plain`: written by this version (a line right below a heading is the heading's first
+	 * plain line, a heading's further lines are on its line after `<br>`). Without it, a plain
+	 * note from before: lines right below a heading continue its text.
+	 */
+	tight?: boolean;
 }
 
 const BULLET = /^([ \t]*)([-+*]|\d{1,9}[.)])(?:[ \t](.*))?$/;
@@ -114,6 +122,15 @@ function splitMarker(raw: string): { text: string; kind?: ItemKind; id?: string 
 	const text = after ? `${before}${before ? " " : ""}${after}` : before;
 	if (m[3]) return { text, kind: "free" };
 	return { text, kind: m[1] === "g" ? "group" : "node", id: m[2] };
+}
+
+/** A heading's text with its further lines on the same line, after `<br>` (plain notes). */
+function joinLines(text: string): string {
+	return text.split("\n").join(BREAK);
+}
+
+function joinedLines(line: string): string {
+	return line.split(BREAK).join("\n");
 }
 
 /** Removes a leading YAML front matter block. */
@@ -188,7 +205,8 @@ export function parseOutline(md: string, opts: ParseOptions = {}): OutlineItem[]
 			close();
 			const level = h[1]!.length;
 			const { text, kind, id } = splitMarker(h[2] ?? "");
-			const item = at({ kind: kind ?? "node", text: text.trim(), heading: level, children: [], ...(id ? { id } : {}) }, index);
+			const own = opts.plain && opts.tight ? joinedLines(text.trim()) : text.trim();
+			const item = at({ kind: kind ?? "node", text: own, heading: level, children: [], ...(id ? { id } : {}) }, index);
 			while (headings.length && headings[headings.length - 1]!.level >= level) headings.pop();
 			add(scope(), item);
 			headings.push({ level, item });
@@ -218,7 +236,7 @@ export function parseOutline(md: string, opts: ParseOptions = {}): OutlineItem[]
 		const col = columns(leading(line));
 		const continues =
 			o !== null &&
-			((o.type === "heading" && o.item.kind === "node" && (!opts.plain || o.blank === 0)) ||
+			((o.type === "heading" && o.item.kind === "node" && (!opts.plain || (!opts.tight && o.blank === 0))) ||
 				(o.type === "bullet" && (col >= o.content || o.blank === 0)) ||
 				(o.type === "paragraph" && o.blank === 0));
 		if (o && continues) {
@@ -286,9 +304,12 @@ export function writeOutline(items: OutlineItem[], opts: WriteOptions): string {
 		for (const child of item.children) bullet(child, depth + 1);
 	};
 
+	/** Set right after a heading's line: its first plain line follows without a blank line. */
+	let underHeading = false;
 	/** A first-level item as a plain line (see WriteOptions.plain). */
 	const plainLine = (item: OutlineItem) => {
-		if (out.length > 0) out.push("");
+		if (out.length > 0 && !underHeading) out.push("");
+		underHeading = false;
 		const [first = "", ...rest] = item.text.split("\n");
 		out.push(`${escapeLine(first)}${marker(item)}`);
 		continuation(first, rest, "", true);
@@ -298,14 +319,21 @@ export function writeOutline(items: OutlineItem[], opts: WriteOptions): string {
 
 	const heading = (item: OutlineItem) => {
 		if (out.length > 0) out.push("");
-		const [first = "", ...rest] = item.text.split("\n");
 		const level = Math.min(6, Math.max(1, item.heading ?? 1));
-		out.push(`${"#".repeat(level)} ${first}${marker(item)}`.trimEnd());
-		// Heading text: continuation lines follow without indentation.
-		continuation(first.trim(), rest, "", !!opts.plain);
+		if (opts.plain) {
+			// The heading is the title of its block: all of it on its line, its content right below.
+			out.push(`${"#".repeat(level)} ${joinLines(item.text)}${marker(item)}`.trimEnd());
+			underHeading = true;
+		} else {
+			const [first = "", ...rest] = item.text.split("\n");
+			out.push(`${"#".repeat(level)} ${first}${marker(item)}`.trimEnd());
+			// Heading text: continuation lines follow without indentation.
+			continuation(first.trim(), rest, "");
+		}
 		const bullets = item.children.filter((c) => c.heading === undefined);
 		const headings = item.children.filter((c) => c.heading !== undefined);
 		for (const child of bullets) firstLevel(child);
+		underHeading = false;
 		for (const child of headings) heading(child);
 	};
 

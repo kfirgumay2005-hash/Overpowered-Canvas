@@ -2,15 +2,14 @@
  * Header cards (pure). A card marked as a header (x-opc `header`: 0 = automatic level, 1–6 = a
  * level of its own), or whose text starts with Markdown heading marks (`## …`), leaves the outline
  * in the Markdown note and becomes a real heading that starts its own block; its children go on
- * as the outline below it.
+ * as the outline below it. Both kinds go through the same code (headerOf → extractHeaders).
  *
- * - Automatic level: one below the heading it sits under, so headers at the same depth share a
- *   level and deeper ones take the next levels. A level of its own can only go deeper.
- * - A header becomes a heading only under a heading (its map's root or another header card): a
- *   heading under a plain outline line would lose its parent in Markdown. Past H6 it stays in the
- *   outline, as pages do.
- * - Within a heading, the plain lines come first, then the sub-headings (a heading's block ends
- *   where the next heading starts).
+ * - Automatic level: one below the nearest heading above it (its map's root or a header card),
+ *   at any depth: a header under plain lines of an H2 is an H3. A level of its own can only go
+ *   deeper. Past H6 it stays in the outline, as pages do.
+ * - Within a heading, the plain lines come first, then the sub-headings in outline order (a
+ *   heading's block ends where the next heading starts). A header lifted out from under a plain
+ *   line goes back under that line when the note is applied to the canvas (see apply.ts).
  */
 import type { CanvasNodeData } from "../../data/json-canvas";
 import type { OutlineItem } from "./outline";
@@ -47,20 +46,49 @@ export function headerLevel(parentLevel: number, own: number): number | null {
 	return level <= 6 ? level : null;
 }
 
-/** Turns the header cards of an outline into headings (see the rules above). In place. */
+/** A card that becomes a heading under a heading of `level` (null: it stays in the outline). */
+function liftLevel(item: OutlineItem, level: number): number | null {
+	if (item.kind !== "node" || item.header === undefined || item.heading !== undefined || item.page) return null;
+	return headerLevel(level, item.header);
+}
+
+/**
+ * Turns the header cards of an outline into headings (see the rules above). In place. Only a
+ * card's heading (a map's root, a page's root, a header) takes header cards under it; groups and
+ * the free-cards list pass through.
+ */
 export function extractHeaders(items: OutlineItem[]): void {
-	const visit = (item: OutlineItem) => {
-		const level = item.kind === "node" ? item.heading : undefined;
-		for (const child of item.children) {
-			if (level !== undefined && child.kind === "node" && child.header !== undefined && child.heading === undefined && !child.page) {
-				const to = headerLevel(level, child.header);
+	/** A heading: its outline keeps the plain lines, the headers found in it become its sub-headings. */
+	const heading = (item: OutlineItem) => {
+		const level = item.heading!;
+		const plain: OutlineItem[] = [];
+		const subs: OutlineItem[] = [];
+		/** Plain lines at any depth: the headers among their children are lifted out (outline order). */
+		const scan = (list: OutlineItem[], keep: OutlineItem[]) => {
+			for (const child of list) {
+				const to = liftLevel(child, level);
 				if (to !== null) {
 					child.heading = to;
 					child.text = withoutMarks(child.text);
+					subs.push(child);
+					heading(child);
+				} else if (child.heading !== undefined) {
+					subs.push(child);
+					visit(child);
+				} else {
+					keep.push(child);
+					const kept: OutlineItem[] = [];
+					scan(child.children, kept);
+					child.children = kept;
 				}
 			}
-			visit(child);
-		}
+		};
+		scan(item.children, plain);
+		item.children = [...plain, ...subs];
+	};
+	const visit = (item: OutlineItem) => {
+		if (item.kind === "node" && item.heading !== undefined) heading(item);
+		else for (const child of item.children) visit(child);
 	};
 	for (const item of items) {
 		// A map's root written as a heading shows no marks of its own either.

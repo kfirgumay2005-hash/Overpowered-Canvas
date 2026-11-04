@@ -7,7 +7,7 @@
  */
 import { matchOutline } from "./match";
 import type { NoteData } from "./note";
-import { DATA_HEADING } from "./note";
+import { DATA_HEADING, readOptions } from "./note";
 import { parseOutline, stripFrontmatter, type OutlineItem } from "./outline";
 import { withoutTrailingLinks } from "./page-links";
 import { pageOfNode, pageOrder, pagesOfRoot, type PageRef } from "./structure";
@@ -52,7 +52,7 @@ export function readPagedNote(md: string, data: NoteData | null): PagedNote | nu
 	const dataLine = text.split("\n").findIndex((l, i, all) => l.trim() === DATA_HEADING && all[i - 1]?.trim() === "%%");
 	const end = dataLine > 0 ? dataLine - 1 : total;
 
-	const items = parseOutline(body, { lines: true, plain: !!data.plain });
+	const items = parseOutline(body, { lines: true, ...readOptions(data) });
 	if (data.outline && !hasIds(items)) matchOutline(items, data.outline);
 	const idOf = new Map(Object.entries(data.nodes ?? {}).map(([alias, n]) => [alias, n.id]));
 	const pageOfCard = new Map(Object.values(data.nodes ?? {}).map((n) => [n.id, pageOfNode(n)]));

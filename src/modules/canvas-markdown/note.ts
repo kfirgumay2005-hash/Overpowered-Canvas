@@ -9,7 +9,7 @@
  */
 import type { CanvasEdgeData, CanvasFileData, CanvasNodeData } from "../../data/json-canvas";
 import { MAP_LAYOUTS, type MapLayout } from "../../data/schema";
-import { parseOutline, stripFrontmatter, writeOutline, type OutlineItem } from "./outline";
+import { parseOutline, stripFrontmatter, writeOutline, type OutlineItem, type ParseOptions } from "./outline";
 import { buildStructure, pagesOfRoot } from "./structure";
 
 export const DATA_VERSION = 1;
@@ -45,6 +45,8 @@ export interface NoteData {
 	paged?: boolean;
 	/** The first level under each heading is written as plain lines (see WriteOptions.plain). */
 	plain?: boolean;
+	/** Plain notes: a heading's content starts right below it (see ParseOptions.tight). */
+	tight?: boolean;
 }
 
 export interface ExportOptions {
@@ -133,7 +135,7 @@ function build(canvas: CanvasFileData, opts: ExportOptions): { items: OutlineIte
 		drawings: s.drawings.map((id) => byId.get(id)!),
 		order: (canvas.nodes ?? []).map((n) => n.id),
 		...(paged ? { paged: true } : {}),
-		...(opts.plain ? { plain: true } : {}),
+		...(opts.plain ? { plain: true, tight: true } : {}),
 	};
 	return { items: s.items, data };
 }
@@ -172,6 +174,11 @@ const BLOCK = /(?:^|\n)%%[ \t]*\n## canvas-data[ \t]*\n```json[ \t]*\n([\s\S]*?)
  * Note text → outline items and the data block (if any). The outline is read the way the data
  * says it was written; without data (a clean note, a pasted outline) as `plain` says.
  */
+/** How to read a note's outline: the way its data says it was written, else the way this version writes (`plain` from the setting). */
+export function readOptions(data: NoteData | null, plain = false): ParseOptions {
+	return data ? { plain: !!data.plain, tight: !!data.tight } : { plain, tight: true };
+}
+
 export function splitNote(md: string, plain = false): SplitNote {
 	const text = md.replace(/\r\n?/g, "\n");
 	const { frontmatter, body } = stripFrontmatter(text);
@@ -194,7 +201,7 @@ export function splitNote(md: string, plain = false): SplitNote {
 		dataError = true;
 		outline = body.replace(/^%%[ \t]*\n## canvas-data[\s\S]*$/m, "");
 	}
-	return { frontmatter, items: parseOutline(outline, { plain: data ? !!data.plain : plain }), data, dataError, outline };
+	return { frontmatter, items: parseOutline(outline, readOptions(data, plain)), data, dataError, outline };
 }
 
 /** Validates the shape of a data block, dropping entries that can't be used. */
@@ -227,6 +234,7 @@ export function readData(raw: unknown): NoteData | null {
 	if (typeof raw.note === "string") out.note = raw.note;
 	if (raw.paged === true) out.paged = true;
 	if (raw.plain === true) out.plain = true;
+	if (raw.tight === true) out.tight = true;
 	if (Array.isArray(raw.outline)) out.outline = readOutline(raw.outline);
 	return out;
 }
