@@ -9,7 +9,7 @@ When resuming: read this file and `git log`, then continue with the first item t
 | 2 | Markdown mode: page indicator arrows (top right) | IMPROVEMENT (bug) | done |
 | 3 | Markdown mode: Pages button (top left) | IMPROVEMENT (bug) | done |
 | 4 | Header cards → real Markdown headings | NEW | done |
-| 5 | First outline level without a bullet (setting) | NEW | not started |
+| 5 | First outline level without a bullet (setting) | NEW | done |
 | 6A | Radial layout: connector overlaps | IMPROVEMENT (bug) | not started |
 | 6B | Condensed radial layout | NEW | not started |
 
@@ -67,3 +67,13 @@ Rules: heading only under a heading (map root or header), up to H6, else stays i
 plain lines before sub-headings. Works in one long note and in notes with pages (one level below
 the page heading). Tests in roundtrip.test.ts; live test hdr.sh (real clicks). Tutorial
 "Canvas ⇄ Markdown": new step `header` (+ touch text), 6/6 in all 5 languages.
+
+## 5. First level without bullets (done)
+
+NEW. Setting `canvas-markdown.plainFirst` (Settings → Canvas ⇄ Markdown → First level without
+bullets, off by default). writeOutline/parseOutline `plain` option; NoteData `plain` so each note
+is read the way it was written (clean notes re-parse after loading their data file); copy /
+paste outline follow the setting. Blank lines inside such text are written as `<br>`. Tests in
+roundtrip.test.ts (shape, ids, escapes, full note round trip); live export with header cards.
+Tutorial "Canvas ⇄ Markdown": step `plain` (setting on for the practice board only, restored),
+7/7 in all 5 languages.

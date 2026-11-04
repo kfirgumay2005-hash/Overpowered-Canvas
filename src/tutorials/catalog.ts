@@ -1576,6 +1576,7 @@ const markdown: TutorialDefinition = {
 	title: "tut.markdown.title",
 	summary: "tut.markdown.summary",
 	modules: ["canvas-markdown"],
+	restoreSettings: [{ module: "canvas-markdown", key: "plainFirst" }],
 	board: (t) => ({
 		nodes: [
 			card("md-root", t("tut.markdown.board.root"), 0, 0, 240, 80, { color: "5" }),
@@ -1694,6 +1695,20 @@ const markdown: TutorialDefinition = {
 				await pressSwitch(rt, noteSwitch(rt), true);
 				frameClearOfPanel(rt);
 			},
+		},
+		{
+			title: "tut.markdown.plain.title",
+			body: "tut.markdown.plain.body",
+			task: "tut.markdown.plain.task",
+			target: canvasSwitch,
+			// On for this practice board only: your own setting comes back when the tutorial ends.
+			enter: (rt) => rt.setSetting("canvas-markdown", "plainFirst", true),
+			check: (rt) => {
+				const text = noteTab(rt)?.view.editor?.getValue();
+				const giants = rt.t("tut.markdown.board.giants");
+				return !!text && text.split("\n").some((l) => l.startsWith(giants));
+			},
+			demo: (rt) => pressSwitch(rt, canvasSwitch(rt), false),
 		},
 		{ title: "tut.markdown.s7.title", body: "tut.markdown.s7.body" },
 	],

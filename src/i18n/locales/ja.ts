@@ -1273,4 +1273,7 @@ export const ja: Record<I18nKey, string> = {
 	"canvasMarkdown.header.none": "見出しにしない",
 	"canvasMarkdown.header.toggle": "見出しカード：オン / オフ",
 	"canvasMarkdown.header.choose": "見出しカード…",
+	"canvasMarkdown.plainFirst.name": "第 1 レベルを箇条書きにしない",
+	"canvasMarkdown.plainFirst.desc": "キャンバスから作った Markdown ノート（ページ付きノートやコピーしたアウトラインも）で、各見出しの下の第 1 レベルを行頭から始まる普通のテキストとして書き、各行の前に空行を入れます。それより深いレベルは、その下にインデントされた箇条書きのままです。どちらの書き方のノートも正しく読み戻せます。",
+	"canvasMarkdown.plainFirst.simple": "ノートを文書のように読めるようにします。各要点は普通の行、詳細はその下の箇条書きになります。",
 };

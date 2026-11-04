@@ -709,3 +709,43 @@ describe("header cards on pages", () => {
 		expect(md(false)).toContain("## Dose\n\n### Adults\n- 500 mg\n");
 	});
 });
+
+describe("first level without bullets", () => {
+	const shapeOf = (items: OutlineItem[]): unknown[] => items.map((i) => [i.text, i.heading ?? null, shapeOf(i.children)]);
+	const items: OutlineItem[] = [
+		{
+			kind: "node",
+			text: "Root",
+			heading: 1,
+			children: [
+				{ kind: "node", text: "Beta", children: [{ kind: "node", text: "b1", children: [{ kind: "node", text: "b11", children: [] }] }, { kind: "node", text: "b2", children: [] }] },
+				{ kind: "node", text: "- looks like a bullet\nsecond line", children: [] },
+				{ kind: "node", text: "Gamma", children: [] },
+				{ kind: "node", text: "Alpha", heading: 2, children: [{ kind: "node", text: "a1", children: [] }] },
+			],
+		},
+	];
+	it("writes each first-level line plain, its children as bullets right below", () => {
+		expect(writeOutline(items, { indent: "\t", ids: false, plain: true })).toBe(
+			"# Root\n\nBeta\n- b1\n\t- b11\n- b2\n\n\\- looks like a bullet\nsecond line\n\nGamma\n\n## Alpha\n\na1\n",
+		);
+	});
+	it("reads back the same tree", () => {
+		const md = writeOutline(items, { indent: "\t", ids: false, plain: true });
+		expect(shapeOf(parseOutline(md, { plain: true }))).toEqual(shapeOf(items));
+	});
+	it("keeps ids on plain lines", () => {
+		const withIds: OutlineItem[] = [{ kind: "node", text: "R", id: "r", heading: 1, children: [{ kind: "node", text: "B", id: "b", children: [{ kind: "node", text: "c", id: "c", children: [] }] }] }];
+		const md = writeOutline(withIds, { indent: "\t", ids: true, plain: true });
+		expect(md).toBe("# R %%n:r%%\n\nB %%n:b%%\n- c %%n:c%%\n");
+		expect(parseOutline(md, { plain: true })[0]!.children[0]).toMatchObject({ text: "B", id: "b", children: [{ text: "c", id: "c" }] });
+	});
+	it("a note and its canvas go back and forth unchanged", async () => {
+		const plainOpts = { ...exportOpts, plain: true };
+		const md = exportNote(sampleCanvas(), plainOpts);
+		const { items: back, data } = splitNote(md);
+		expect(data?.plain).toBe(true);
+		const again = await applyNote(back, data, null, elk, options());
+		expect(exportNote(again.data, plainOpts)).toBe(md);
+	});
+});

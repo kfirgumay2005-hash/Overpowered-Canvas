@@ -11,7 +11,7 @@ import { canvasDirection, mutate, nodeType, randomId, selectedNodes } from "../s
 import { applyNote, type ApplyOptions, type ApplyResult } from "./apply";
 import { matchOutline } from "./match";
 import { exportClean, exportNote, rootMapLayouts, splitNote, type SplitNote } from "./note";
-import { countItems, isOutline, stripFrontmatter, writeOutline } from "./outline";
+import { countItems, isOutline, parseOutline, stripFrontmatter, writeOutline } from "./outline";
 import { DataStore } from "./store";
 import { PagedNotes } from "./paged-view";
 import { enableHeaderCards } from "./header-ui";
@@ -31,6 +31,8 @@ interface CanvasMarkdownSettings {
 	storage: "file" | "note";
 	/** A canvas with pages becomes a note with pages (one at a time), or one long note. */
 	pages: "paged" | "flat";
+	/** The first level under each heading as plain lines (no bullet), deeper levels as bullets. */
+	plainFirst: boolean;
 }
 
 const BUTTONS: CanvasMarkdownSettings["button"][] = ["all", "canvas", "off"];
@@ -146,7 +148,7 @@ export const canvasMarkdownModule = defineModule<CanvasMarkdownSettings>({
 	description: "canvasMarkdown.desc",
 	group: "data",
 	defaultEnabled: true,
-	defaultSettings: { indent: "tab", layout: "right", pasteOutlines: true, button: "all", storage: "file", pages: "paged" },
+	defaultSettings: { indent: "tab", layout: "right", pasteOutlines: true, button: "all", storage: "file", pages: "paged", plainFirst: false },
 	sanitizeSettings: (raw, defaults) => {
 		const s = mergeWithDefaults(raw, defaults);
 		return {
@@ -156,6 +158,7 @@ export const canvasMarkdownModule = defineModule<CanvasMarkdownSettings>({
 			button: BUTTONS.includes(s.button) ? s.button : defaults.button,
 			storage: STORAGES.includes(s.storage) ? s.storage : defaults.storage,
 			pages: PAGE_MODES.includes(s.pages) ? s.pages : defaults.pages,
+			plainFirst: typeof s.plainFirst === "boolean" ? s.plainFirst : defaults.plainFirst,
 		};
 	},
 
@@ -220,7 +223,7 @@ export const canvasMarkdownModule = defineModule<CanvasMarkdownSettings>({
 				scope = new Set([selected[0]!.id, ...descendants(edges, selected[0]!.id)]);
 			} else if (selected.length > 1) scope = new Set(selected.map((n) => n.id));
 			const s = buildStructure(data, { rtl: rtlOf(canvas), freeLabel: t("canvasMarkdown.freeNodes"), scope });
-			return { md: s.items.length ? writeOutline(s.items, { indent: indent(), ids: false }) : "", count: countItems(s.items, "node") };
+			return { md: s.items.length ? writeOutline(s.items, { indent: indent(), ids: false, plain: ctx.settings.plainFirst }) : "", count: countItems(s.items, "node") };
 		};
 
 		const copyOutline = (canvas: CanvasLike) => {
@@ -244,7 +247,7 @@ export const canvasMarkdownModule = defineModule<CanvasMarkdownSettings>({
 		 */
 		const insertOutline = async (canvas: CanvasLike, md: string, sourcePath: string, at?: Point & { end?: boolean }, opts: { layout?: MapLayout; title?: string } = {}) => {
 			if (canvas.readonly) return;
-			let { items } = splitNote(md);
+			let { items } = splitNote(md, ctx.settings.plainFirst);
 			if (!countItems(items, "node")) {
 				new Notice(t("canvasMarkdown.noItems"));
 				return;
@@ -438,7 +441,7 @@ export const canvasMarkdownModule = defineModule<CanvasMarkdownSettings>({
 		 * keeps its data inside loses any separate file it had.
 		 */
 		const noteText = async (data: CanvasFileData, canvasFile: TFile, notePath: string, frontmatter: string, paged: boolean): Promise<string> => {
-			const opts = { canvasPath: canvasFile.path, rtl: rtlOf(openCanvasFor(canvasFile)), freeLabel: t("canvasMarkdown.freeNodes"), indent: indent(), frontmatter, paged };
+			const opts = { canvasPath: canvasFile.path, rtl: rtlOf(openCanvasFor(canvasFile)), freeLabel: t("canvasMarkdown.freeNodes"), indent: indent(), frontmatter, paged, plain: ctx.settings.plainFirst };
 			if (ctx.settings.storage === "file") {
 				const clean = exportClean(data, { ...opts, notePath });
 				await store.save(notePath, clean.data);
@@ -450,13 +453,15 @@ export const canvasMarkdownModule = defineModule<CanvasMarkdownSettings>({
 
 		/** A note's outline and canvas data: from the note itself, else from its separate file. */
 		const loadNote = async (note: TFile): Promise<SplitNote> => {
-			const split = splitNote(await readNote(note));
+			const split = splitNote(await readNote(note), ctx.settings.plainFirst);
 			if (split.data || split.dataError) return split;
 			const data = await store.load(note.path);
 			if (!data) return split;
-			// A clean note has no ids: find each line's card from the outline last written.
-			matchOutline(split.items, data.outline ?? []);
-			return { ...split, data };
+			// Read the way it was written (its data says), then, as a clean note has no ids, find
+			// each line's card from the outline last written.
+			const items = !!data.plain === ctx.settings.plainFirst ? split.items : parseOutline(split.outline, { plain: !!data.plain });
+			matchOutline(items, data.outline ?? []);
+			return { ...split, items, data };
 		};
 
 		/** Rewrites a linked note from its canvas (new cards known, fresh layout data); front matter stays. */
@@ -753,6 +758,10 @@ export const canvasMarkdownModule = defineModule<CanvasMarkdownSettings>({
 					.setValue(ctx.settings.pages)
 					.onChange((v) => ctx.updateSettings({ pages: v as CanvasMarkdownSettings["pages"] })),
 			);
+		new Setting(el)
+			.setName(ctx.t("canvasMarkdown.plainFirst.name"))
+			.setDesc(ctx.t("canvasMarkdown.plainFirst.desc"))
+			.addToggle((tg) => tg.setValue(ctx.settings.plainFirst).onChange((v) => ctx.updateSettings({ plainFirst: v })));
 		new Setting(el)
 			.setName(ctx.t("canvasMarkdown.storage.name"))
 			.setDesc(ctx.t("canvasMarkdown.storage.desc"))

@@ -52,7 +52,7 @@ export function readPagedNote(md: string, data: NoteData | null): PagedNote | nu
 	const dataLine = text.split("\n").findIndex((l, i, all) => l.trim() === DATA_HEADING && all[i - 1]?.trim() === "%%");
 	const end = dataLine > 0 ? dataLine - 1 : total;
 
-	const items = parseOutline(body, { lines: true });
+	const items = parseOutline(body, { lines: true, plain: !!data.plain });
 	if (data.outline && !hasIds(items)) matchOutline(items, data.outline);
 	const idOf = new Map(Object.entries(data.nodes ?? {}).map(([alias, n]) => [alias, n.id]));
 	const pageOfCard = new Map(Object.values(data.nodes ?? {}).map((n) => [n.id, pageOfNode(n)]));
