@@ -12,6 +12,8 @@ import { logError } from "../../core/log";
 import type { ModuleContext } from "../../core/module";
 import { pagesHost, pageSources, type PagesSource } from "../pages/api";
 import { renderPagesBar } from "../pages/bar";
+import { indexOrder } from "../pages/logic";
+import { onPress } from "../../ui/press";
 import type { NoteData } from "./note";
 import { readPagedNote, sectionAt, type PagedNote, type PageSection } from "./paged";
 
@@ -313,7 +315,7 @@ export class PagedNotes {
 			const b = tools.createEl("button", { cls: `clickable-icon ${cls}`, attr: { "aria-label": label } });
 			setIcon(b, icon);
 			setTooltip(b, label);
-			b.addEventListener("click", (evt) => {
+			onPress(b, (evt) => {
 				evt.preventDefault();
 				run();
 			});
@@ -328,9 +330,18 @@ export class PagedNotes {
 		});
 	}
 
+	/** The pages of the note in the index's order (only those the note has a section for). */
+	private order(open: Open): string[] {
+		const pages = open.note.pages.map((p) => ({ id: p.id, anchor: p.anchor, root: p.root, ...(p.parent ? { parent: p.parent } : {}) }));
+		const has = new Set(open.note.sections.map((s) => s.page));
+		const listed = indexOrder(pages).filter((id) => has.has(id));
+		// Sections the index can't place (a page whose parent is gone) come after, in reading order.
+		return [...listed, ...open.note.sections.map((s) => s.page).filter((id) => !listed.includes(id))];
+	}
+
 	private updateTools(bar: HTMLElement, open: Open): void {
-		const order = open.note.sections;
-		const at = order.findIndex((s) => s.page === open.page);
+		const order = this.order(open);
+		const at = open.page === null ? -1 : order.indexOf(open.page);
 		const paged = open.page !== null && at >= 0;
 		const prev = bar.querySelector<HTMLButtonElement>(".opc-md-pages-prev");
 		const next = bar.querySelector<HTMLButtonElement>(".opc-md-pages-next");
@@ -344,14 +355,14 @@ export class PagedNotes {
 		bar.querySelector(".opc-md-pages-all")?.toggleClass("is-active", open.page === null);
 	}
 
-	/** The page before or after the one shown, in reading order (main page, then each page with its pages). */
+	/** The page before or after the one shown, in the index's order (main page, then each page with its pages). */
 	private step(view: MarkdownView, delta: number): void {
 		const path = view.file?.path;
 		const open = path ? this.open.get(path) : undefined;
 		if (!path || !open || open.page === null) return;
-		const order = open.note.sections;
-		const target = order[order.findIndex((s) => s.page === open.page) + delta];
-		if (target) this.show(path, target.page);
+		const order = this.order(open);
+		const target = order[order.indexOf(open.page) + delta];
+		if (target !== undefined) this.show(path, target);
 	}
 
 	// ---------- links and jumps ----------

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { branchOf, cardLink, freeRegion, pageChildren, pageDepth, pagePath, pointLinksAt, rewriteCardLinks, titleOf, withLink, withoutLink, withoutPage, type PlanNode } from "./logic";
+import { branchOf, indexOrder, cardLink, freeRegion, pageChildren, pageDepth, pagePath, pointLinksAt, rewriteCardLinks, titleOf, withLink, withoutLink, withoutPage, type PlanNode } from "./logic";
 
 const n = (id: string, x: number, y: number, extra: Partial<PlanNode> = {}): PlanNode => ({ id, x, y, width: 100, height: 40, group: false, page: "", ...extra });
 
@@ -97,5 +97,17 @@ describe("links in copies", () => {
 	it("leaves links to cards of other canvases and already right links alone", () => {
 		const nodes = [{ id: "a", type: "text", text: "[[Other.canvas#q]] [[Flu.canvas#a]]" }];
 		expect(pointLinksAt(nodes, "Flu.canvas", () => true)).toBeNull();
+	});
+});
+
+describe("indexOrder", () => {
+	it("lists the main page, then each page followed by its own pages", () => {
+		const pages = [
+			{ id: "a", anchor: "x", root: "y" },
+			{ id: "b", anchor: "x", root: "y" },
+			{ id: "a1", anchor: "x", root: "y", parent: "a" },
+			{ id: "lost", anchor: "x", root: "y", parent: "gone" },
+		];
+		expect(indexOrder(pages)).toEqual(["", "a", "a1", "b", "lost"]);
 	});
 });

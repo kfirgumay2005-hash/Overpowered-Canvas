@@ -6,8 +6,8 @@ When resuming: read this file and `git log`, then continue with the first item t
 | # | Item | Class | Status |
 |---|------|-------|--------|
 | 1 | Auto layout keeps sibling order | IMPROVEMENT (bug) | done |
-| 2 | Markdown mode: page indicator arrows (top right) | IMPROVEMENT (bug) | not started |
-| 3 | Markdown mode: Pages button (top left) | IMPROVEMENT (bug) | not started |
+| 2 | Markdown mode: page indicator arrows (top right) | IMPROVEMENT (bug) | done |
+| 3 | Markdown mode: Pages button (top left) | IMPROVEMENT (bug) | done |
 | 4 | Header cards → real Markdown headings | NEW | not started |
 | 5 | First outline level without a bullet (setting) | NEW | not started |
 | 6A | Radial layout: connector overlaps | IMPROVEMENT (bug) | not started |
@@ -38,3 +38,19 @@ harness canvas: 0 failures. `t_order.sh`: reorder, all six directions in a row, 
 the .canvas file), Enter, Tab, hand drag, undo. Unit tests in `order.test.ts`, `layout.test.ts`
 (stored order wins, RTL, radial stability), `roundtrip.test.ts`. Tutorial "Mind maps" got step
 `order` (+ touch text for the layout step); ran by Show me in en, zh, ja, hi, ru: 10/10 each.
+
+## 2–3. Notes with pages: bar arrows and Pages button (done, one commit)
+
+Not reproducible in the harness: mouse, CDP touch and Obsidian's mobile emulation all worked
+with the old build, in editing and reading view (the harness even has the user's editing
+toolbar). The canvas bar works for the user and the note bar doesn't, and the difference is where
+the press lands: inside a note, the pane's own touch gestures and the editor can take a tap's
+synthesized `click`, which is how the buttons were wired. Fix: `src/ui/press.ts` `onPress`: a touch
+or pen press runs on release over the button (pointerup), keeps the editor's focus (so a tablet's
+keyboard doesn't close mid-tap), stops the pane's gestures from seeing it, and drops the
+follow-up click; mouse and keyboard keep the click. Used by the pages bar (canvas, notes, text
+pages: index button and crumbs), the note's prev / next / whole-note buttons and the text-pages
+nav. Prev / next now follow the index's order exactly (`pages/logic.ts indexOrder`).
+Tested: mdbar.sh (mouse) and mdtouch.sh (touch, editor focused or not), editing and reading view.
+Tutorial "Big maps in pages" (noteLinks step mentions the index button and taps), run in all 5
+languages: 14/14; "Big boards" 2/2. **Needs confirmation on the user's iPad.**
