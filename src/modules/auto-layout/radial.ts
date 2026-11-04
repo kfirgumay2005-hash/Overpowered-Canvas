@@ -30,6 +30,94 @@ function anyOverlap(pos: Positions, nodes: Map<string, TNode>, gap: number): boo
 	return false;
 }
 
+/**
+ * What still touches in a laid-out tree, as pairs of card ids: two cards overlapping, two
+ * connectors crossing (each named by its child card), a connector passing under a card that is
+ * neither of its ends. Connectors are taken as the line between the centers of parent and child,
+ * which the drawn curve follows; connectors of the same card meet there and don't count.
+ */
+export function clashingPairs(pos: Positions, nodes: Map<string, TNode>, kids: Map<string, string[]>, root: string, withCards = true): [string, string][] {
+	const center = (id: string) => {
+		const p = pos.get(id)!;
+		const n = nodes.get(id)!;
+		return { x: p.x + n.width / 2, y: p.y + n.height / 2 };
+	};
+	const segs: { a: { x: number; y: number }; b: { x: number; y: number }; from: string; to: string }[] = [];
+	const stack = [root];
+	const seen = new Set<string>();
+	while (stack.length) {
+		const id = stack.pop()!;
+		if (seen.has(id) || !pos.has(id)) continue;
+		seen.add(id);
+		for (const k of kids.get(id) ?? []) {
+			if (!pos.has(k)) continue;
+			segs.push({ a: center(id), b: center(k), from: id, to: k });
+			stack.push(k);
+		}
+	}
+	const out: [string, string][] = [];
+	const ids = [...seen];
+	const box = (id: string, inset = 0) => {
+		const p = pos.get(id)!;
+		const n = nodes.get(id)!;
+		return { minX: p.x + inset, minY: p.y + inset, maxX: p.x + n.width - inset, maxY: p.y + n.height - inset };
+	};
+	if (withCards)
+		for (let i = 0; i < ids.length; i++)
+			for (let j = i + 1; j < ids.length; j++) {
+				const a = box(ids[i]!);
+				const b = box(ids[j]!);
+				if (a.minX < b.maxX && b.minX < a.maxX && a.minY < b.maxY && b.minY < a.maxY) out.push([ids[i]!, ids[j]!]);
+			}
+	const o = (p: { x: number; y: number }, q: { x: number; y: number }, r: { x: number; y: number }) => (q.x - p.x) * (r.y - p.y) - (q.y - p.y) * (r.x - p.x);
+	const cross = (s: (typeof segs)[number], t: (typeof segs)[number]) => {
+		const d1 = o(t.a, t.b, s.a);
+		const d2 = o(t.a, t.b, s.b);
+		const d3 = o(s.a, s.b, t.a);
+		const d4 = o(s.a, s.b, t.b);
+		return ((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) && ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0));
+	};
+	for (let i = 0; i < segs.length; i++)
+		for (let j = i + 1; j < segs.length; j++) {
+			const s = segs[i]!;
+			const t = segs[j]!;
+			if (s.from === t.from || s.from === t.to || s.to === t.from || s.to === t.to) continue;
+			if (cross(s, t)) out.push([s.to, t.to]);
+		}
+	for (const s of segs)
+		for (const id of ids) {
+			if (id === s.from || id === s.to) continue;
+			if (segmentHitsBox(s.a, s.b, box(id, 4))) out.push([s.to, id]);
+		}
+	return out;
+}
+
+/** Whether a connector of the tree crosses another or passes under a card (see clashingPairs). */
+export function connectorsClash(pos: Positions, nodes: Map<string, TNode>, kids: Map<string, string[]>, root: string): boolean {
+	return clashingPairs(pos, nodes, kids, root, false).length > 0;
+}
+
+function segmentHitsBox(p: { x: number; y: number }, q: { x: number; y: number }, b: { minX: number; minY: number; maxX: number; maxY: number }): boolean {
+	if (Math.max(p.x, q.x) < b.minX || Math.min(p.x, q.x) > b.maxX || Math.max(p.y, q.y) < b.minY || Math.min(p.y, q.y) > b.maxY) return false;
+	let t0 = 0;
+	let t1 = 1;
+	const dx = q.x - p.x;
+	const dy = q.y - p.y;
+	const clip = (den: number, num: number) => {
+		if (den === 0) return num >= 0;
+		const t = num / den;
+		if (den < 0) {
+			if (t > t1) return false;
+			if (t > t0) t0 = t;
+		} else {
+			if (t < t0) return false;
+			if (t < t1) t1 = t;
+		}
+		return true;
+	};
+	return clip(-dx, p.x - b.minX) && clip(dx, b.maxX - p.x) && clip(-dy, p.y - b.minY) && clip(dy, b.maxY - p.y) && t0 <= t1;
+}
+
 /** Lays out one tree rooted at `root`; positions are top-left corners around (0, 0). */
 function layoutTree(nodes: Map<string, TNode>, kids: Map<string, string[]>, root: string, opts: Options): Positions {
 	const half = (id: string) => {
@@ -86,7 +174,7 @@ function layoutTree(nodes: Map<string, TNode>, kids: Map<string, string[]>, root
 
 	let scale = 1;
 	let result = place(scale);
-	for (let i = 0; i < 60 && (result.total > 2 * Math.PI || anyOverlap(result.pos, nodes, 0)); i++) {
+	for (let i = 0; i < 60 && (result.total > 2 * Math.PI || anyOverlap(result.pos, nodes, 0) || connectorsClash(result.pos, nodes, kids, root)); i++) {
 		scale *= 1.1;
 		result = place(scale);
 	}

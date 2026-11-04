@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { chooseSides, type SideBox, type SideEdge } from "./sides";
+import { troubledEdges, chooseSides, type SideBox, type SideEdge } from "./sides";
 
 const card = (id: string, x: number, y: number, width = 200, height = 60): SideBox => ({ id, x, y, width, height });
 const edge = (id: string, from: string, to: string, extra: Partial<SideEdge> = {}): SideEdge => ({ id, from, to, fromSide: "bottom", toSide: "top", change: true, ...extra });
@@ -45,5 +45,25 @@ describe("choosing edge sides", () => {
 		const cards = [card("a", 0, 0, 100, 100), card("b", 300, 300, 100, 100)];
 		const right = chooseSides(cards, [edge("e", "a", "b", { preferFrom: "right", preferTo: "left" })]).get("e")!;
 		expect(right.blocked).toBe(false);
+	});
+});
+
+describe("troubledEdges", () => {
+	it("finds curves that cross or only graze each other", () => {
+		// From a radial map: the two curves touch twice, nearly tangent.
+		const cards = [
+			{ id: "a", x: 3196, y: 4878, width: 120, height: 60 },
+			{ id: "b", x: 3464, y: 3816, width: 320, height: 164 },
+			{ id: "c", x: 3283, y: 4983, width: 120, height: 60 },
+			{ id: "d", x: 3414, y: 4512, width: 320, height: 190 },
+		];
+		const edges = [
+			{ id: "ab", from: "a", to: "b", fromSide: "top" as const, toSide: "bottom" as const, change: false },
+			{ id: "cd", from: "c", to: "d", fromSide: "top" as const, toSide: "left" as const, change: false },
+		];
+		expect([...troubledEdges(cards, edges, new Set(["ab", "cd"]))].sort()).toEqual(["ab", "cd"]);
+		// Far apart: nothing.
+		const apart = cards.map((c) => (c.id === "c" || c.id === "d" ? { ...c, x: c.x + 3000 } : c));
+		expect(troubledEdges(apart, edges, new Set(["ab", "cd"])).size).toBe(0);
 	});
 });

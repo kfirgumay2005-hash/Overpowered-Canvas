@@ -206,3 +206,46 @@ export function chooseSides(cards: SideBox[], edges: SideEdge[]): Map<string, Si
 	for (const e of order) pick(e);
 	return result;
 }
+
+/**
+ * Edges whose drawn curve (with the sides they have) crosses another edge or passes under a
+ * card that is neither of its ends. `only`: the edges to report (all are obstacles).
+ */
+export function troubledEdges(cards: SideBox[], edges: SideEdge[], only: ReadonlySet<string>): Set<string> {
+	const boxes = new Map(cards.map((c) => [c.id, toBox(c)]));
+	// Grown a little: a curve that only grazes a card's corner touches it too.
+	const grown = cards.map((c) => ({ id: c.id, box: { minX: c.x - TOUCH / 2, minY: c.y - TOUCH / 2, maxX: c.x + c.width + TOUCH / 2, maxY: c.y + c.height + TOUCH / 2 } }));
+	const lines = new Map<string, Line>();
+	for (const e of edges) {
+		const a = boxes.get(e.from);
+		const b = boxes.get(e.to);
+		if (!a || !b || e.from === e.to) continue;
+		// Finer than when choosing sides: curves that only graze each other count too.
+		const pts = edgeCurve(a, e.fromSide, b, e.toSide, 96);
+		lines.set(e.id, { pts, box: boundsOf(pts), from: e.from, to: e.to });
+	}
+	const out = new Set<string>();
+	for (const [id, line] of lines) {
+		if (!only.has(id)) continue;
+		const others = [...lines.entries()].filter(([o]) => o !== id).map(([, l]) => l);
+		const under = hits(
+			line.pts,
+			line.box,
+			grown.filter((c) => c.id !== line.from && c.id !== line.to).map((c) => c.box),
+		);
+		if (under > 0 || crossings(line, others) > 0 || others.some((o) => touching(line, o))) out.add(id);
+	}
+	return out;
+}
+
+/** Room under which two curves count as touching (the core draws them a few px off our anchors). */
+const TOUCH = 8;
+
+/** Two edges of different cards whose curves come within TOUCH of each other. */
+function touching(a: Line, b: Line): boolean {
+	if (b.from === a.from || b.from === a.to || b.to === a.from || b.to === a.to) return false;
+	const near = (x: Box, y: Box) => x.minX - TOUCH <= y.maxX && y.minX - TOUCH <= x.maxX && x.minY - TOUCH <= y.maxY && y.minY - TOUCH <= x.maxY;
+	if (!near(a.box, b.box)) return false;
+	for (const p of a.pts) for (const q of b.pts) if (Math.abs(p.x - q.x) < TOUCH && Math.abs(p.y - q.y) < TOUCH && Math.hypot(p.x - q.x, p.y - q.y) < TOUCH) return true;
+	return false;
+}
