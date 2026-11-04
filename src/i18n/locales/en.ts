@@ -1276,7 +1276,7 @@ export const en = {
 	"canvasMarkdown.header.toggle": "Header card: on / off",
 	"canvasMarkdown.header.choose": "Header card…",
 	"canvasMarkdown.plainFirst.name": "First level without bullets",
-	"canvasMarkdown.plainFirst.desc": "In Markdown notes made from a canvas (also notes with pages and copied outlines), the first level under each heading is written as plain text at the start of the line, each line after a blank line; deeper levels stay indented bullets below it. Notes written either way are read back correctly.",
+	"canvasMarkdown.plainFirst.desc": "In Markdown notes made from a canvas (also notes with pages and copied outlines), the first level under each heading is written as plain text at the start of the line: the first line right below its heading, each further one after a blank line; deeper levels stay indented bullets below it. Notes written either way are read back correctly.",
 	"canvasMarkdown.plainFirst.simple": "Makes the note read like a document: each main point is a plain line and its details are bullets under it.",
 	"autoLayout.direction.condensed": "Condensed radial",
 	"autoLayout.quick.condensed": "Auto layout: condensed radial mind map",

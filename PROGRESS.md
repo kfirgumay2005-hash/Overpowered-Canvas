@@ -9,7 +9,7 @@ When resuming: read this file and `git log`, then continue with the first item t
 | 1 | Notes with pages: bar buttons on iPad (3rd report) | IMPROVEMENT (bug) | done |
 | 2 | Nested header cards get the right level at any depth | IMPROVEMENT (bug) | done |
 | 3 | Headers from card text leave the outline like header cards | IMPROVEMENT (bug) | done |
-| 4 | No blank line between a heading and its content | IMPROVEMENT | |
+| 4 | No blank line between a heading and its content | IMPROVEMENT | done |
 
 ## 1. Bar buttons of notes with pages (done)
 
@@ -44,7 +44,7 @@ child of a heading (round 9's rule "a heading only under a heading"). A header c
 into an H2's branch (under a plain line) was skipped: item 2. A card whose text is `## …` already
 went through the same code (`headerOf` reads x-opc `header` or the text's marks), so a typed
 heading under a plain line stayed a bullet with heading formatting, `- ## …`: item 3. The
-reported repro for item 3 was such a card below a plain line.
+reported repro for item 3 is most likely such a card below a plain line (a typed heading directly under the root or a header was already extracted).
 
 Fix (`headers.ts`): each heading scans its whole outline; a header found under plain lines at
 any depth is lifted out as a heading one below the nearest heading above it (own level only
@@ -61,3 +61,21 @@ card and order, note → canvas → note identical). Live (`mkhdr.js`, test vaul
 back to the canvas: same parents, positions and texts; new lines typed under `### Deep` and
 under the typed heading's child became children of the right cards. Tutorial "Canvas ⇄
 Markdown", step `header`, text updated in all 5 locales.
+
+## 4. No blank line between a heading and its content (done)
+
+Only the "first level without bullets" layout wrote a blank line after each heading (plain
+lines are paragraphs, each written after a blank line, including the first). In the bullet
+layout the bullets already followed the heading directly. Now the first plain line follows its
+heading directly; blank lines only separate blocks and go before a heading. Since a line right
+below a heading used to be read as the heading's own further text, a multi-line header card's
+further lines now go onto the heading line joined with `<br>`. The note's data records the
+layout (`tight: true`); plain notes from before (no `tight`) are read the old way, so they keep
+going back to the board unchanged (`readOptions` in note.ts, used by notes, notes with pages and
+clean notes). Same writer for one long note and notes with pages.
+
+Tested: unit tests (layout, ids, multi-line headings, old notes read the old way, note ⇄ canvas
+round trip unchanged). Live with the setting on: the header board (`# Root\nBeta\n- beta line\n\n##
+Alpha\nalpha line…`) back to the canvas with the same parents, positions and texts; the Flu note
+with pages in reading and editing view, arrows by touch. Setting description and tutorial step
+`plain` updated in all 5 locales.

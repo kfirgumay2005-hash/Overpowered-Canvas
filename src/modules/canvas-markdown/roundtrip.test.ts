@@ -763,26 +763,39 @@ describe("first level without bullets", () => {
 			],
 		},
 	];
-	it("writes each first-level line plain, its children as bullets right below", () => {
+	it("writes each first-level line plain, its children as bullets right below; a heading's content starts right below it", () => {
 		expect(writeOutline(items, { indent: "\t", ids: false, plain: true })).toBe(
-			"# Root\n\nBeta\n- b1\n\t- b11\n- b2\n\n\\- looks like a bullet\nsecond line\n\nGamma\n\n## Alpha\n\na1\n",
+			"# Root\nBeta\n- b1\n\t- b11\n- b2\n\n\\- looks like a bullet\nsecond line\n\nGamma\n\n## Alpha\na1\n",
 		);
 	});
 	it("reads back the same tree", () => {
 		const md = writeOutline(items, { indent: "\t", ids: false, plain: true });
-		expect(shapeOf(parseOutline(md, { plain: true }))).toEqual(shapeOf(items));
+		expect(shapeOf(parseOutline(md, { plain: true, tight: true }))).toEqual(shapeOf(items));
+	});
+	it("writes a heading's further lines on its own line", () => {
+		const multi: OutlineItem[] = [{ kind: "node", text: "Title\nsubtitle\n\nmore", heading: 1, children: [{ kind: "node", text: "first", children: [] }] }];
+		const md = writeOutline(multi, { indent: "\t", ids: false, plain: true });
+		expect(md).toBe("# Title<br>subtitle<br><br>more\nfirst\n");
+		expect(shapeOf(parseOutline(md, { plain: true, tight: true }))).toEqual(shapeOf(multi));
+	});
+	it("reads plain notes from before the same way as then", () => {
+		// Written by 0.17: a blank line after each heading, heading lines continued below it.
+		const old = "# Root\nsecond line\n\nBeta\n- b1\n\n## Alpha\n\na1\n";
+		const { items: back } = splitNote(`${old}\n%%\n## canvas-data\n\`\`\`json\n{"version":1,"plain":true}\n\`\`\`\n%%\n`);
+		expect(shapeOf(back)).toEqual([["Root\nsecond line", 1, [["Beta", null, [["b1", null, []]]], ["Alpha", 2, [["a1", null, []]]]]]]);
 	});
 	it("keeps ids on plain lines", () => {
 		const withIds: OutlineItem[] = [{ kind: "node", text: "R", id: "r", heading: 1, children: [{ kind: "node", text: "B", id: "b", children: [{ kind: "node", text: "c", id: "c", children: [] }] }] }];
 		const md = writeOutline(withIds, { indent: "\t", ids: true, plain: true });
-		expect(md).toBe("# R %%n:r%%\n\nB %%n:b%%\n- c %%n:c%%\n");
-		expect(parseOutline(md, { plain: true })[0]!.children[0]).toMatchObject({ text: "B", id: "b", children: [{ text: "c", id: "c" }] });
+		expect(md).toBe("# R %%n:r%%\nB %%n:b%%\n- c %%n:c%%\n");
+		expect(parseOutline(md, { plain: true, tight: true })[0]!.children[0]).toMatchObject({ text: "B", id: "b", children: [{ text: "c", id: "c" }] });
 	});
 	it("a note and its canvas go back and forth unchanged", async () => {
 		const plainOpts = { ...exportOpts, plain: true };
 		const md = exportNote(sampleCanvas(), plainOpts);
 		const { items: back, data } = splitNote(md);
 		expect(data?.plain).toBe(true);
+		expect(data?.tight).toBe(true);
 		const again = await applyNote(back, data, null, elk, options());
 		expect(exportNote(again.data, plainOpts)).toBe(md);
 	});

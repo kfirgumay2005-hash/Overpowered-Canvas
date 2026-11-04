@@ -10,7 +10,7 @@ import { descendants } from "../mindmap/tree";
 import { canvasDirection, mutate, nodeType, randomId, selectedNodes } from "../shared";
 import { applyNote, type ApplyOptions, type ApplyResult } from "./apply";
 import { matchOutline } from "./match";
-import { exportClean, exportNote, rootMapLayouts, splitNote, type SplitNote } from "./note";
+import { exportClean, exportNote, readOptions, rootMapLayouts, splitNote, type SplitNote } from "./note";
 import { countItems, isOutline, parseOutline, stripFrontmatter, writeOutline } from "./outline";
 import { DataStore } from "./store";
 import { PagedNotes } from "./paged-view";
@@ -459,7 +459,7 @@ export const canvasMarkdownModule = defineModule<CanvasMarkdownSettings>({
 			if (!data) return split;
 			// Read the way it was written (its data says), then, as a clean note has no ids, find
 			// each line's card from the outline last written.
-			const items = !!data.plain === ctx.settings.plainFirst ? split.items : parseOutline(split.outline, { plain: !!data.plain });
+			const items = parseOutline(split.outline, readOptions(data));
 			matchOutline(items, data.outline ?? []);
 			return { ...split, items, data };
 		};

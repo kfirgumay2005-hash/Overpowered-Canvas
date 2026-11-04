@@ -1274,7 +1274,7 @@ export const zh: Record<I18nKey, string> = {
 	"canvasMarkdown.header.toggle": "标题卡片：开 / 关",
 	"canvasMarkdown.header.choose": "标题卡片……",
 	"canvasMarkdown.plainFirst.name": "第一级不带项目符号",
-	"canvasMarkdown.plainFirst.desc": "在由画布生成的 Markdown 笔记中（包括分页笔记和复制的大纲），每个标题下的第一级写成从行首开始的普通文字，每行前空一行；更深的级别仍是缩进的项目符号，排在它下面。两种写法的笔记都能正确读回。",
+	"canvasMarkdown.plainFirst.desc": "在由画布生成的 Markdown 笔记中（包括分页笔记和复制的大纲），每个标题下的第一级写成从行首开始的普通文字：第一行紧接在标题下面，之后每行前空一行；更深的级别仍是缩进的项目符号，排在它下面。两种写法的笔记都能正确读回。",
 	"canvasMarkdown.plainFirst.simple": "让笔记读起来像文档：每个要点是一行普通文字，细节是它下面的项目符号。",
 	"autoLayout.direction.condensed": "紧凑放射状",
 	"autoLayout.quick.condensed": "自动布局：紧凑放射状思维导图",

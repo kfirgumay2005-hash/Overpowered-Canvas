@@ -149,11 +149,15 @@ their old order. Pages: headers start one level below the page's heading
 ## First level without bullets (setting, off by default)
 
 Settings → Canvas ⇄ Markdown → *First level without bullets*. Each first-level item under a
-heading is written as a plain line after a blank line, its children as bullets right below it
-(an indented list after a paragraph would render as part of the paragraph). Blank lines inside
-such a line's text, or a heading's, are written as `<br>` (a real blank line would end it). The
-note's data records the mode (`plain: true`), so notes written either way read back correctly;
-notes without data (pasted outlines) are read the way the setting says.
+heading is written as a plain line, its children as bullets right below it (an indented list
+after a paragraph would render as part of the paragraph). A heading is the title of its block:
+its first plain line follows right below it, each further one after a blank line, and blank
+lines go only before a heading. A heading's own further lines are joined onto its line with
+`<br>` (a line right below a heading is its first plain line); blank lines inside a plain line's
+text are written as `<br>` lines. The note's data records the mode (`plain: true`, and
+`tight: true` for this layout; plain notes written before 0.18 have no `tight` and are read the
+old way, with a blank line after each heading and heading lines continued below it); notes
+without data (pasted outlines) are read the way the setting says.
 
 ## Pages
 
