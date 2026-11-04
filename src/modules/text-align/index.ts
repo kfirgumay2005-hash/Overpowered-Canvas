@@ -1,11 +1,12 @@
 import { Setting } from "obsidian";
 import { defineModule, type ModuleContext } from "../../core/module";
-import { TEXT_ALIGNS, VERTICAL_ALIGNS, type OpcNode, type TextAlign, type VerticalAlign } from "../../data/schema";
+import { CARD_FONT_MAX, CARD_FONT_MIN, TEXT_ALIGNS, VERTICAL_ALIGNS, type OpcNode, type TextAlign, type VerticalAlign } from "../../data/schema";
 import type { I18nKey } from "../../i18n";
 import type { CanvasLike, CanvasNodeLike } from "../../internals/types";
 import { mergeWithDefaults } from "../../settings/settings";
+import { NumberPromptModal } from "../../ui/number-prompt";
 import { showPicker } from "../../ui/picker";
-import { canvasDirection, common, mutate, nodeType, onlyNodes, onlyTextBoxes } from "../shared";
+import { canvasDirection, common, mutate, nodeType, onlyNodes, onlyTextBoxes, selectedNodes } from "../shared";
 import { logError } from "../../core/log";
 
 interface TextAlignSettings {
@@ -22,6 +23,25 @@ function alignIcon(align: TextAlign, dir: "ltr" | "rtl"): string {
 	if (align === "center") return "align-center";
 	const left = (align === "start") === (dir === "ltr");
 	return left ? "align-left" : "align-right";
+}
+
+/** Text sizes offered in the picker (pixels). */
+export const CARD_FONT_SIZES = [12, 14, 16, 18, 20, 24, 28, 32, 40, 48];
+/** Pixels added or taken away by "bigger" and "smaller". */
+const FONT_STEP = 2;
+
+/** The next size up or down from `now`: the preset after it, or a step beyond the last one. */
+export function stepCardFont(now: number, direction: 1 | -1): number {
+	const next = direction > 0 ? CARD_FONT_SIZES.find((s) => s > now + 0.5) : [...CARD_FONT_SIZES].reverse().find((s) => s < now - 0.5);
+	return Math.min(CARD_FONT_MAX, Math.max(CARD_FONT_MIN, next ?? Math.round(now + direction * FONT_STEP)));
+}
+
+/** A picker preview: the size written as a number. */
+function sizeSvg(size: number): SVGElement {
+	const svg = createSvg("svg", { attr: { viewBox: "0 0 28 20", width: "28", height: "20" } });
+	const text = svg.createSvg("text", { attr: { x: "14", y: "15", "text-anchor": "middle", "font-size": "13", fill: "currentColor" } });
+	text.textContent = String(size);
+	return svg;
 }
 
 /** Vertical position when none is stored: stickies are centered, other cards start at the top. */
@@ -51,6 +71,14 @@ export const textAlignModule = defineModule<TextAlignSettings>({
 			apply: (node, extra) => {
 				if (extra.align) node.nodeEl.setAttribute("data-opc-align", extra.align);
 				else node.nodeEl.removeAttribute("data-opc-align");
+				// Its own text size: on the card, in its editor and wherever it is shown like the board.
+				if (extra.fontSize && nodeType(node) !== "group") {
+					node.nodeEl.setAttribute("data-opc-font-size", String(extra.fontSize));
+					node.nodeEl.setCssProps({ "--opc-card-font-size": `${extra.fontSize}px` });
+				} else {
+					node.nodeEl.removeAttribute("data-opc-font-size");
+					node.nodeEl.setCssProps({ "--opc-card-font-size": "" });
+				}
 				const valign = effectiveVAlign(extra);
 				// Stickies always carry it: their own CSS centers them when it is absent.
 				if ((valign !== "top" || extra.kind === "sticky") && nodeType(node) !== "group") node.nodeEl.setAttribute("data-opc-valign", valign);
@@ -59,6 +87,8 @@ export const textAlignModule = defineModule<TextAlignSettings>({
 			clear: (node) => {
 				node.nodeEl.removeAttribute("data-opc-align");
 				node.nodeEl.removeAttribute("data-opc-valign");
+				node.nodeEl.removeAttribute("data-opc-font-size");
+				node.nodeEl.setCssProps({ "--opc-card-font-size": "" });
 			},
 		});
 
@@ -94,6 +124,82 @@ export const textAlignModule = defineModule<TextAlignSettings>({
 				);
 			},
 		});
+
+		// ---- Text size of cards ----------------------------------------------------------------
+
+		/** The size a card's text shows at: its own, else the canvas's. */
+		const sizeOf = (node: CanvasNodeLike): number => {
+			const own = ctx.data.node(node).get().fontSize;
+			if (own) return own;
+			const view = node.contentEl?.querySelector<HTMLElement>(".markdown-preview-view");
+			const shown = view?.isConnected ? Number.parseFloat(getComputedStyle(view).fontSize) : Number.NaN;
+			if (shown > 0) return Math.round(shown);
+			const base = Number.parseFloat(getComputedStyle(node.canvas.wrapperEl).getPropertyValue("--font-text-size"));
+			return base > 0 ? Math.round(base) : 16;
+		};
+		const setSize = (canvas: CanvasLike, nodes: CanvasNodeLike[], size: (node: CanvasNodeLike) => number | undefined) =>
+			mutate(ctx, canvas, () => {
+				for (const node of nodes) ctx.data.node(node).set({ fontSize: size(node) });
+			});
+		const askSize = (canvas: CanvasLike, nodes: CanvasNodeLike[]) =>
+			new NumberPromptModal(
+				ctx.app,
+				ctx.t,
+				{ title: ctx.t("textAlign.size.set"), help: ctx.t("textAlign.size.prompt"), value: common(nodes, (n) => ctx.data.node(n).get().fontSize) ?? undefined, min: CARD_FONT_MIN, max: CARD_FONT_MAX, step: 1 },
+				(v) => setSize(canvas, nodes, () => v),
+			).open();
+
+		ctx.addMenuButton({
+			id: "font-size",
+			icon: "a-large-small",
+			tooltip: () => ctx.t("textAlign.size.button"),
+			order: 13,
+			command: false,
+			isVisible: (selection) => !!eligible(selection),
+			isActive: (selection) => (eligible(selection) ?? []).some((n) => !!ctx.data.node(n).get().fontSize),
+			onClick: ({ canvas, selection, buttonEl }) => {
+				const nodes = eligible(selection) ?? [];
+				const current = common(nodes, (n) => ctx.data.node(n).get().fontSize);
+				showPicker(
+					buttonEl,
+					[
+						{ title: ctx.t("textAlign.size.title"), items: CARD_FONT_SIZES.map((size) => ({ id: String(size), label: `${size} px`, svg: sizeSvg(size), active: current === size })), columns: 5 },
+						{
+							items: [
+								{ id: "smaller", label: ctx.t("textAlign.size.smaller"), icon: "a-arrow-down" },
+								{ id: "bigger", label: ctx.t("textAlign.size.bigger"), icon: "a-arrow-up" },
+								{ id: "custom", label: ctx.t("textAlign.size.set"), icon: "pencil" },
+								{ id: "reset", label: ctx.t("textAlign.size.reset"), icon: "rotate-ccw", active: current === undefined },
+							],
+							columns: 4,
+						},
+					],
+					(id) => {
+						if (id === "custom") return askSize(canvas, nodes);
+						if (id === "reset") return setSize(canvas, nodes, () => undefined);
+						if (id === "smaller" || id === "bigger") return setSize(canvas, nodes, (n) => stepCardFont(sizeOf(n), id === "bigger" ? 1 : -1));
+						setSize(canvas, nodes, () => Number(id));
+					},
+				);
+			},
+		});
+		const sizeCommand = (id: string, name: string, icon: string, run: (canvas: CanvasLike, nodes: CanvasNodeLike[]) => void) =>
+			ctx.addCommand({
+				id,
+				name,
+				icon,
+				checkCallback: (checking) => {
+					const canvas = ctx.activeCanvas();
+					const nodes = canvas ? (eligible(selectedNodes(canvas)) ?? []) : [];
+					if (!canvas || canvas.readonly || !nodes.length) return false;
+					if (!checking) run(canvas, nodes);
+					return true;
+				},
+			});
+		sizeCommand("font-size-set", ctx.t("textAlign.size.set"), "a-large-small", askSize);
+		sizeCommand("font-size-bigger", ctx.t("textAlign.size.bigger"), "a-arrow-up", (c, nodes) => setSize(c, nodes, (n) => stepCardFont(sizeOf(n), 1)));
+		sizeCommand("font-size-smaller", ctx.t("textAlign.size.smaller"), "a-arrow-down", (c, nodes) => setSize(c, nodes, (n) => stepCardFont(sizeOf(n), -1)));
+		sizeCommand("font-size-reset", ctx.t("textAlign.size.reset"), "rotate-ccw", (c, nodes) => setSize(c, nodes, () => undefined));
 
 		// New cards: center their text when the setting asks for it.
 		const centerNew = (node: CanvasNodeLike) => {

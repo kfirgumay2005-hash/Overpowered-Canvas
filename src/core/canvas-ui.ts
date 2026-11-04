@@ -85,8 +85,8 @@ export const isEdge = (item: CanvasItemLike): item is CanvasEdgeLike => "lineGro
 
 /**
  * Text cards edit inside an iframe. The node's data-* attributes (ours and custom style
- * attributes) and dir are mirrored onto that iframe's <body>, so CSS keyed on them also
- * styles the editor.
+ * attributes), dir and our CSS variables (--opc-*) are mirrored onto that iframe's <body>, so
+ * CSS keyed on them also styles the editor.
  */
 export function mirrorToFrame(node: CanvasNodeLike): void {
 	const frame = node.contentEl?.querySelector<HTMLIFrameElement>("iframe.embed-iframe");
@@ -102,6 +102,15 @@ export function mirrorToFrame(node: CanvasNodeLike): void {
 		next.push(attr.name);
 	}
 	body.setAttribute("data-opc-mirrored", next.join(" "));
+	const vars: Record<string, string> = {};
+	for (const name of (body.getAttribute("data-opc-mirrored-vars") ?? "").split(" ").filter(Boolean)) vars[name] = "";
+	const style = node.nodeEl.style;
+	for (let i = 0; i < style.length; i++) {
+		const name = style.item(i);
+		if (name.startsWith("--opc-")) vars[name] = style.getPropertyValue(name);
+	}
+	body.setCssProps(vars);
+	body.setAttribute("data-opc-mirrored-vars", Object.keys(vars).filter((k) => vars[k]).join(" "));
 }
 
 export class CanvasUi {

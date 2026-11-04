@@ -700,3 +700,15 @@ Automated runtime checks of every item below were run in an isolated Obsidian 1.
   commands; the note's ⋮ menu and a long press in the text have "Font size of this note".
 - [ ] Tutorials Drawing, Mind maps, Big maps in pages, Column view, Smart groups and Font size
   per note run to the end with "Show me", in every language.
+
+## Card text size and the popup in "Customize the bars"
+
+- [ ] Select a text card → **Text size** in the popup: a preset, Bigger / Smaller, Set… (6–200),
+  Reset. The size shows on the board, while editing the card, in the column view (fit width and
+  actual size), and stays after reload. Several cards at once; one undo step. The commands
+  Set / Increase / Decrease / Reset text size of selected cards do the same.
+- [ ] Customize the bars → **Popup over the selection** lists the popup's buttons once it has shown
+  them (select a card, a group, an arrow). Switching one off hides it on every canvas; Restore
+  the bars brings it back. Add a command to the popup → its button comes last, runs on the
+  selection (e.g. Increase text size), and the popup stays centered. Tutorial boards keep every
+  button (except the bars tutorial).

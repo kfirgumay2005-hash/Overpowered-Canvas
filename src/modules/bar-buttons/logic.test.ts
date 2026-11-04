@@ -55,3 +55,18 @@ describe("sanitizeBarSettings", () => {
 		]);
 	});
 });
+
+describe("the popup over a selection", () => {
+	it("knows a module's button by its class and a core button by its icon, whatever the language", () => {
+		const keys = buttonKeys([
+			{ classes: ["clickable-icon", "opc-menu-button", "opc-menu-align"], groupClasses: [], iconClasses: ["svg-icon", "lucide-align-right"], label: "Text alignment" },
+			{ classes: ["clickable-icon"], groupClasses: [], iconClasses: ["svg-icon", "zoom-to-selection"], label: "Zoom to selection\n(Shift + 2)", iconName: "zoom-to-selection" },
+			{ classes: ["clickable-icon"], groupClasses: [], iconClasses: ["svg-icon", "lucide-trash-2"], label: "Remove" },
+		]);
+		expect(keys).toEqual(["opc-menu-align", "zoom-to-selection", "lucide-trash-2"]);
+	});
+	it("keeps commands added to the popup", () => {
+		const s = sanitizeBarSettings({ custom: [{ id: "p", bar: "popup", command: "app:reload" }, { id: "q", bar: "nowhere", command: "app:reload" }] });
+		expect(s.custom.map((c) => c.bar)).toEqual(["popup", "bottom"]);
+	});
+});

@@ -65,6 +65,9 @@ export type TextAlign = (typeof TEXT_ALIGNS)[number];
 
 export const VERTICAL_ALIGNS = ["top", "middle", "bottom"] as const;
 export type VerticalAlign = (typeof VERTICAL_ALIGNS)[number];
+/** Smallest and largest text size of a card, in pixels. */
+export const CARD_FONT_MIN = 6;
+export const CARD_FONT_MAX = 200;
 
 export const ARROW_STYLES = [
 	"triangle",
@@ -208,6 +211,8 @@ export interface OpcNode {
 	align?: TextAlign;
 	/** Vertical text position; without it text sits at the top (stickies: middle). */
 	valign?: VerticalAlign;
+	/** Text size of the card in pixels; without it the canvas's own size. */
+	fontSize?: number;
 	dir?: Direction;
 	/** Grow and shrink in height to fit the text. */
 	autoResize?: boolean;

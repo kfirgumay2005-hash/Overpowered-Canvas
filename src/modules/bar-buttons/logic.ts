@@ -1,13 +1,14 @@
 /**
- * Which buttons the bottom bar and the side bar show (pure, unit-tested).
+ * Which buttons the bottom bar, the side bar and the popup over a selection show (pure,
+ * unit-tested).
  *
  * The app gives its bar buttons no ids and translates their labels, so a button is known by what
  * stays the same across languages and devices: our own class, else its icon.
  */
 
-export type Bar = "bottom" | "side";
+export type Bar = "bottom" | "side" | "popup";
 
-export const BARS: readonly Bar[] = ["bottom", "side"];
+export const BARS: readonly Bar[] = ["bottom", "side", "popup"];
 
 /** A button added by hand: it runs a command from the command palette. */
 export interface CustomButton {
@@ -33,10 +34,18 @@ export interface ButtonFacts {
 	/** Classes of its icon. */
 	iconClasses: string[];
 	label: string;
+	/** Popup buttons: the name of an icon that isn't a lucide one (the label is translated). */
+	iconName?: string;
 }
 
 function baseKey(b: ButtonFacts): string {
-	return b.classes.find((c) => c.startsWith("opc-card-") && c !== "opc-card-button") ?? b.groupClasses.find((c) => /^opc-.*-control$/.test(c)) ?? b.iconClasses.find((c) => c.startsWith("lucide-")) ?? b.label;
+	return (
+		b.classes.find((c) => (c.startsWith("opc-card-") && c !== "opc-card-button") || (c.startsWith("opc-menu-") && c !== "opc-menu-button")) ??
+		b.groupClasses.find((c) => /^opc-.*-control$/.test(c)) ??
+		b.iconClasses.find((c) => c.startsWith("lucide-")) ??
+		b.iconName ??
+		b.label
+	);
 }
 
 /** A stable key for each button of a bar; buttons that look the same are told apart by their order. */
@@ -72,7 +81,7 @@ export function sanitizeBarSettings(raw: unknown): BarButtonsSettings {
 		const command = text(item?.command);
 		if (!id || !command || ids.has(id)) continue;
 		ids.add(id);
-		custom.push({ id, bar: item.bar === "side" ? "side" : "bottom", command, icon: text(item.icon) || "lucide-terminal", name: text(item.name) || command });
+		custom.push({ id, bar: BARS.includes(item.bar as Bar) ? (item.bar as Bar) : "bottom", command, icon: text(item.icon) || "lucide-terminal", name: text(item.name) || command });
 	}
 	return { hidden, custom };
 }

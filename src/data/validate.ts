@@ -5,6 +5,8 @@
  */
 import {
 	ARROW_STYLES,
+	CARD_FONT_MAX,
+	CARD_FONT_MIN,
 	BORDER_STYLES,
 	DIRECTIONS,
 	MAP_LAYOUTS,
@@ -214,6 +216,10 @@ export const NODE_SHAPE: Shape<OpcNode> = {
 	border: oneOf(BORDER_STYLES),
 	align: oneOf(TEXT_ALIGNS),
 	valign: oneOf(VERTICAL_ALIGNS),
+	fontSize: (raw) => {
+		const n = finite(raw);
+		return n !== undefined && n >= CARD_FONT_MIN && n <= CARD_FONT_MAX ? n : undefined;
+	},
 	dir: oneOf(DIRECTIONS),
 	autoResize: bool,
 	autoWidth: bool,

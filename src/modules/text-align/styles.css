@@ -38,3 +38,18 @@ body.opc-mod-text-align[data-opc-valign="middle"] .markdown-source-view.mod-cm6 
 body.opc-mod-text-align[data-opc-valign="bottom"] .markdown-source-view.mod-cm6 .cm-sizer {
 	justify-content: safe flex-end;
 }
+
+/* A card's own text size: on the board (and wherever a card is built like the board's)… */
+body.opc-mod-text-align .canvas-node[data-opc-font-size] .canvas-node-content {
+	--font-text-size: var(--opc-card-font-size);
+}
+body.opc-mod-text-align .canvas-node[data-opc-font-size] .markdown-preview-view {
+	font-size: var(--opc-card-font-size);
+}
+/* …and in its editor (the iframe's body mirrors the card's attributes and variables). */
+body.opc-mod-text-align[data-opc-font-size] {
+	--font-text-size: var(--opc-card-font-size);
+}
+body.opc-mod-text-align[data-opc-font-size] .markdown-source-view.mod-cm6 .cm-scroller {
+	font-size: var(--opc-card-font-size);
+}

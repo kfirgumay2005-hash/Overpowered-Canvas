@@ -2,7 +2,8 @@
 body.opc-mod-bar-buttons .canvas-wrapper .canvas-card-menu.opc-bar-hidden,
 body.opc-mod-bar-buttons .canvas-wrapper .canvas-card-menu > .opc-bar-hidden,
 body.opc-mod-bar-buttons .canvas-wrapper .canvas-controls > .opc-bar-hidden,
-body.opc-mod-bar-buttons .canvas-wrapper .canvas-control-group > .opc-bar-hidden {
+body.opc-mod-bar-buttons .canvas-wrapper .canvas-control-group > .opc-bar-hidden,
+body.opc-mod-bar-buttons .canvas-wrapper .canvas-menu > .opc-bar-hidden {
 	display: none;
 }
 

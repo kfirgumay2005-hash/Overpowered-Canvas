@@ -1,7 +1,7 @@
-import { FuzzySuggestModal, Modal, Notice, Setting, setIcon, setTooltip, type App, type Command, type Menu } from "obsidian";
+import { FuzzySuggestModal, Modal, Notice, Setting, sanitizeHTMLToDom, setIcon, setTooltip, type App, type Command, type Menu } from "obsidian";
 import { defineModule, type ModuleContext } from "../../core/module";
 import { commandRunner } from "../../internals/app";
-import type { CanvasLike } from "../../internals/types";
+import type { CanvasLike, CanvasMenuLike } from "../../internals/types";
 import { BARS_TUTORIAL, TUTORIAL_KEY } from "../../tutorials/runner";
 import { IconPickerModal } from "../../ui/icon-picker";
 import { randomId } from "../shared";
@@ -21,6 +21,12 @@ interface BarButton {
 	label: string;
 }
 
+/**
+ * The popup over a selection is built again for every selection, with the buttons that fit it:
+ * the buttons it has shown are remembered (for this session) so the list can name them all.
+ */
+const popupSeen = new Map<string, { label: string; svg: string }>();
+
 const classes = (el: Element | null | undefined) => (el ? [...el.classList] : []);
 
 /** The buttons of a bar as they stand, without the added ones. */
@@ -28,9 +34,16 @@ function buttonsOf(canvas: CanvasLike, bar: Bar): BarButton[] {
 	const els =
 		bar === "bottom"
 			? [...canvas.cardMenuEl.querySelectorAll<HTMLElement>(`:scope > .canvas-card-menu-button:not(.${CUSTOM})`)]
-			: [...canvas.canvasControlsEl.querySelectorAll<HTMLElement>(`:scope > .canvas-control-group:not(.${CUSTOM_GROUP}) > .canvas-control-item`)];
+			: bar === "side"
+				? [...canvas.canvasControlsEl.querySelectorAll<HTMLElement>(`:scope > .canvas-control-group:not(.${CUSTOM_GROUP}) > .canvas-control-item`)]
+				: [...(canvas.menu?.menuEl.querySelectorAll<HTMLElement>(`:scope > .clickable-icon:not(.${CUSTOM})`) ?? [])];
 	const labels = els.map((el) => el.getAttribute("aria-label") ?? "");
-	const keys = buttonKeys(els.map((el, i) => ({ classes: classes(el), groupClasses: bar === "side" ? classes(el.parentElement) : [], iconClasses: classes(el.querySelector("svg")), label: labels[i]! })));
+	const keys = buttonKeys(
+		els.map((el, i) => {
+			const icon = classes(el.querySelector("svg"));
+			return { classes: classes(el), groupClasses: bar === "side" ? classes(el.parentElement) : [], iconClasses: icon, label: labels[i]!, ...(bar === "popup" ? { iconName: icon.find((c) => c !== "svg-icon") } : {}) };
+		}),
+	);
 	return els.map((el, i) => ({ el, key: keys[i]!, label: buttonLabel(labels[i]!) || keys[i]! }));
 }
 
@@ -40,11 +53,43 @@ function run(ctx: Ctx, canvas: CanvasLike, button: CustomButton): void {
 	if (!commandRunner(ctx.app)?.executeCommandById(button.command)) new Notice(ctx.t("barButtons.unavailable", { name: button.name }));
 }
 
+/** Hidden keys that apply on this canvas: tutorials point at the buttons, so their boards keep all of them (but the one about this module). */
+function hiddenOn(ctx: Ctx, canvas: CanvasLike): Set<string> {
+	const tutorial = canvas.view.file ? (canvas.getData() as unknown as Record<string, unknown>)[TUTORIAL_KEY] : undefined;
+	return new Set(tutorial !== undefined && tutorial !== BARS_TUTORIAL ? [] : ctx.settings.hidden);
+}
+
+/**
+ * The popup over a selection, as set: buttons taken off are hidden, added commands come last.
+ * Runs after every rebuild of the popup (each selection).
+ */
+function applyToPopup(ctx: Ctx, menu: CanvasMenuLike): void {
+	const canvas = menu.canvas;
+	const el = menu.menuEl;
+	if (!el.isConnected || canvas.selection.size === 0) return;
+	el.querySelectorAll(`:scope > .${CUSTOM}`).forEach((b) => b.remove());
+	const hidden = hiddenOn(ctx, canvas);
+	for (const b of buttonsOf(canvas, "popup")) {
+		popupSeen.set(b.key, { label: b.label, svg: b.el.querySelector("svg")?.outerHTML ?? "" });
+		b.el.toggleClass(HIDDEN, hidden.has(hiddenKey("popup", b.key)));
+	}
+	for (const button of ctx.settings.custom) {
+		if (button.bar !== "popup") continue;
+		const b = el.createEl("button", { cls: `clickable-icon ${CUSTOM}`, attr: { "aria-label": button.name } });
+		setIcon(b, button.icon);
+		setTooltip(b, button.name, { placement: "top" });
+		b.addEventListener("click", () => run(ctx, canvas, button));
+	}
+	// Centered again over the selection, with its new width.
+	menu.render(false);
+}
+
 function mountCustom(ctx: Ctx, canvas: CanvasLike): void {
-	canvas.wrapperEl.querySelectorAll(`.${CUSTOM}, .${CUSTOM_GROUP}`).forEach((el) => el.remove());
+	canvas.wrapperEl.querySelectorAll(`.canvas-card-menu .${CUSTOM}, .canvas-controls .${CUSTOM}, .${CUSTOM_GROUP}`).forEach((el) => el.remove());
 	const side = ctx.settings.custom.filter((b) => b.bar === "side");
 	const group = side.length ? canvas.canvasControlsEl.createDiv({ cls: `canvas-control-group mod-raised ${CUSTOM_GROUP}` }) : null;
 	for (const button of ctx.settings.custom) {
+		if (button.bar === "popup") continue;
 		const el = button.bar === "side" ? group!.createDiv({ cls: `canvas-control-item ${CUSTOM}` }) : canvas.cardMenuEl.createDiv({ cls: `canvas-card-menu-button opc-card-button ${CUSTOM}` });
 		if (button.bar === "bottom") el.dataset.opcOrder = LAST_ORDER;
 		setIcon(el, button.icon);
@@ -61,10 +106,8 @@ function applyTo(ctx: Ctx, canvas: CanvasLike, mounted: WeakMap<CanvasLike, stri
 		mounted.set(canvas, shape);
 		mountCustom(ctx, canvas);
 	}
-	// Tutorials point at the buttons, so their boards keep all of them (but the one about this module).
-	const tutorial = canvas.view.file ? (canvas.getData() as unknown as Record<string, unknown>)[TUTORIAL_KEY] : undefined;
-	const hidden = new Set(tutorial !== undefined && tutorial !== BARS_TUTORIAL ? [] : ctx.settings.hidden);
-	for (const bar of BARS) for (const b of buttonsOf(canvas, bar)) b.el.toggleClass(HIDDEN, hidden.has(hiddenKey(bar, b.key)));
+	const hidden = hiddenOn(ctx, canvas);
+	for (const bar of BARS) if (bar !== "popup") for (const b of buttonsOf(canvas, bar)) b.el.toggleClass(HIDDEN, hidden.has(hiddenKey(bar, b.key)));
 	// A group or a bar with nothing left in it goes too.
 	for (const group of canvas.canvasControlsEl.querySelectorAll<HTMLElement>(":scope > .canvas-control-group")) group.toggleClass(HIDDEN, group.childElementCount > 0 && [...group.children].every((c) => c.hasClass(HIDDEN)));
 	canvas.cardMenuEl.toggleClass(HIDDEN, [...canvas.cardMenuEl.children].every((c) => c.hasClass(HIDDEN)));
@@ -98,7 +141,7 @@ class CommandSuggest extends FuzzySuggestModal<Command> {
 	}
 }
 
-/** Both bars as lists: a switch for each button, added commands with their name and icon. */
+/** The bars as lists: a switch for each button, added commands with their name and icon. */
 class BarsModal extends Modal {
 	constructor(
 		private readonly ctx: Ctx,
@@ -122,8 +165,9 @@ class BarsModal extends Modal {
 		const top = contentEl.scrollTop;
 		contentEl.empty();
 		for (const bar of BARS) {
-			new Setting(contentEl).setName(ctx.t(bar === "bottom" ? "barButtons.bottom" : "barButtons.side")).setHeading();
-			for (const b of buttonsOf(this.canvas, bar)) this.buttonRow(bar, b);
+			new Setting(contentEl).setName(ctx.t(bar === "bottom" ? "barButtons.bottom" : bar === "side" ? "barButtons.side" : "barButtons.popup")).setHeading();
+			if (bar === "popup") this.popupRows();
+			else for (const b of buttonsOf(this.canvas, bar)) this.buttonRow(bar, b);
 			for (const b of ctx.settings.custom) if (b.bar === bar) this.customRow(b);
 			new Setting(contentEl).addButton((button) => button.setButtonText(ctx.t("barButtons.add")).onClick(() => this.addTo(bar)));
 		}
@@ -147,14 +191,41 @@ class BarsModal extends Modal {
 		row.nameEl.prepend(icon);
 	}
 
-	private buttonRow(bar: Bar, b: BarButton): void {
+	/**
+	 * The popup's buttons: those it has shown since Obsidian started, and those taken off. The
+	 * popup shows only the buttons that fit what is selected, so the list grows as you use it.
+	 */
+	private popupRows(): void {
 		const { ctx } = this;
-		const key = hiddenKey(bar, b.key);
-		const row = new Setting(this.contentEl).setName(b.label);
+		// What the popup shows right now, if something is selected.
+		for (const b of buttonsOf(this.canvas, "popup")) popupSeen.set(b.key, { label: b.label, svg: b.el.querySelector("svg")?.outerHTML ?? "" });
+		const keys = new Set(popupSeen.keys());
+		for (const k of ctx.settings.hidden) if (k.startsWith("popup:")) keys.add(k.slice("popup:".length));
+		if (!keys.size) {
+			new Setting(this.contentEl).setDesc(ctx.t("barButtons.popupHint"));
+			return;
+		}
+		for (const key of keys) {
+			const seen = popupSeen.get(key);
+			this.toggleRow("popup", key, seen?.label ?? key, (el) => {
+				if (seen?.svg) el.appendChild(sanitizeHTMLToDom(seen.svg));
+			});
+		}
+		new Setting(this.contentEl).setDesc(ctx.t("barButtons.popupHint"));
+	}
+
+	private buttonRow(bar: Bar, b: BarButton): void {
 		const svg = b.el.querySelector("svg");
-		this.rowIcon(row, (el) => {
+		this.toggleRow(bar, b.key, b.label, (el) => {
 			if (svg) el.appendChild(svg.cloneNode(true));
 		});
+	}
+
+	private toggleRow(bar: Bar, buttonKey: string, label: string, drawIcon: (el: HTMLElement) => void): void {
+		const { ctx } = this;
+		const key = hiddenKey(bar, buttonKey);
+		const row = new Setting(this.contentEl).setName(label);
+		this.rowIcon(row, drawIcon);
 		row.addToggle((toggle) =>
 			toggle
 				.setTooltip(ctx.t("barButtons.show"))
@@ -195,8 +266,9 @@ class BarsModal extends Modal {
 }
 
 /**
- * The bottom bar and the side bar, your way: any button can be taken off, and any command of the
- * app (its own, this plugin's or another plugin's) can be added as a button.
+ * The bottom bar, the side bar and the popup over a selection, your way: any button can be taken
+ * off, and any command of the app (its own, this plugin's or another plugin's) can be added as a
+ * button.
  */
 export const barButtonsModule = defineModule<BarButtonsSettings>({
 	id: "bar-buttons",
@@ -221,11 +293,17 @@ export const barButtonsModule = defineModule<BarButtonsSettings>({
 				canvas.wrapperEl.querySelectorAll(`.${CUSTOM}, .${CUSTOM_GROUP}`).forEach((el) => el.remove());
 				canvas.wrapperEl.querySelectorAll(`.${HIDDEN}`).forEach((el) => el.removeClass(HIDDEN));
 				mounted.delete(canvas);
+				if (canvas.selection.size) canvas.menu?.render(true);
 			};
 		});
 		ctx.on("data-load", (canvas) => applyTo(ctx, canvas, mounted));
+		// After the other modules have put their buttons in the popup.
+		ctx.on("menu-render", (menu) => queueMicrotask(() => applyToPopup(ctx, menu)));
 		ctx.onSettingsChange(() => {
-			for (const canvas of ctx.canvases()) applyTo(ctx, canvas, mounted);
+			for (const canvas of ctx.canvases()) {
+				applyTo(ctx, canvas, mounted);
+				if (canvas.selection.size) canvas.menu?.render(true);
+			}
 		});
 		// The menu of the settings button on the side bar, where people look for this.
 		const patched = new WeakSet<object>();

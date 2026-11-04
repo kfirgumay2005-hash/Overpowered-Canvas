@@ -282,6 +282,19 @@ const notes: TutorialDefinition = {
 			},
 		},
 		{
+			title: "tut.notes.size.title",
+			body: "tut.notes.size.body",
+			task: "tut.notes.size.task",
+			target: ".canvas-menu .opc-menu-font-size",
+			focus: ["n-g", "n-long"],
+			enter: (rt) => rt.select(["n-long"]),
+			check: (rt) => changedAny(rt, (n) => extraOf(n).fontSize),
+			demo: (rt) => {
+				rt.select(["n-long"]);
+				setExtra(rt, "n-long", { fontSize: 24 });
+			},
+		},
+		{
 			title: "tut.notes.s6.title",
 			body: "tut.notes.s6.body",
 			task: "tut.notes.s6.task",
@@ -2773,7 +2786,7 @@ const settingsButton = (rt: TutorialRuntime) => rt.canvas.canvasControlsEl.query
 const BARS_DIALOG = ".opc-bars-modal";
 const barsVisit = visitedDialog(BARS_DIALOG);
 const hiddenButtons = (rt: TutorialRuntime) => (rt.setting("bar-buttons", "hidden") as string[] | undefined) ?? [];
-const customButtons = (rt: TutorialRuntime) => (rt.setting("bar-buttons", "custom") as unknown[] | undefined) ?? [];
+const customButtons = (rt: TutorialRuntime) => (rt.setting("bar-buttons", "custom") as { bar?: string }[] | undefined) ?? [];
 let hiddenAtStart = 0;
 let customAtStart = 0;
 
@@ -2833,6 +2846,24 @@ const bars: TutorialDefinition = {
 			},
 			check: (rt) => customButtons(rt).length > customAtStart && !dialogOpen(".modal"),
 			demo: (rt) => rt.setSetting("bar-buttons", "custom", [...customButtons(rt), { id: randomId().slice(0, 8), bar: "side", command: "app:toggle-left-sidebar", icon: "lucide-panel-left", name: rt.t("tut.bars.demoButton") }]),
+		},
+		{
+			title: "tut.bars.popup.title",
+			body: "tut.bars.popup.body",
+			task: "tut.bars.popup.task",
+			touch: "tut.bars.popup.touch",
+			target: settingsButton,
+			enter: (rt) => {
+				customAtStart = customButtons(rt).filter((b) => b.bar === "popup").length;
+				hiddenAtStart = hiddenButtons(rt).filter((k) => k.startsWith("popup:")).length;
+				rt.select(["br-1"]);
+			},
+			check: (rt) => (customButtons(rt).filter((b) => b.bar === "popup").length > customAtStart || hiddenButtons(rt).filter((k) => k.startsWith("popup:")).length > hiddenAtStart) && !dialogOpen(".modal"),
+			demo: async (rt) => {
+				rt.setSetting("bar-buttons", "custom", [...customButtons(rt), { id: randomId().slice(0, 8), bar: "popup", command: "app:toggle-left-sidebar", icon: "lucide-panel-left", name: rt.t("tut.bars.demoButton") }]);
+				await rt.wait(300);
+				rt.select(["br-1"]);
+			},
 		},
 		{
 			title: "tut.bars.s4.title",
