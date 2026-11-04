@@ -22,6 +22,8 @@ export interface OutlineItem {
 	heading?: number;
 	/** The root of a page (exports only; not read back from the text). */
 	page?: boolean;
+	/** A header card (exports only): 0 = automatic level, 1–6 = its own. See headers.ts. */
+	header?: number;
 	/** Line of the item's first line in the parsed text (0-based), when asked for. */
 	line?: number;
 	children: OutlineItem[];

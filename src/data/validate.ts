@@ -221,6 +221,10 @@ export const NODE_SHAPE: Shape<OpcNode> = {
 		const n = finite(raw);
 		return n !== undefined && n >= CARD_FONT_MIN && n <= CARD_FONT_MAX ? n : undefined;
 	},
+	header: (raw) => {
+		const n = finite(raw);
+		return n !== undefined && Number.isInteger(n) && n >= 0 && n <= 6 ? n : undefined;
+	},
 	dir: oneOf(DIRECTIONS),
 	autoResize: bool,
 	autoWidth: bool,

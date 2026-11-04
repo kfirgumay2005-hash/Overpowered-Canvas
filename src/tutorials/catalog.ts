@@ -1631,6 +1631,19 @@ const markdown: TutorialDefinition = {
 			},
 		},
 		{
+			title: "tut.markdown.header.title",
+			body: "tut.markdown.header.body",
+			task: "tut.markdown.header.task",
+			touch: "tut.markdown.header.touch",
+			enter: (rt) => rt.select(["md-rocky"]),
+			target: () => document.querySelector<HTMLElement>(".canvas-menu .opc-menu-header"),
+			check: (rt) => rt.extra("md-rocky").header !== undefined,
+			demo: (rt) => {
+				const node = rt.node("md-rocky");
+				if (node) rt.change(() => rt.data.node(node).set({ header: 0 }));
+			},
+		},
+		{
 			title: "tut.markdown.s4.title",
 			body: "tut.markdown.s4.body",
 			task: "tut.markdown.s4.task",

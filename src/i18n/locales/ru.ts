@@ -1267,4 +1267,10 @@ export const ru: Record<I18nKey, string> = {
 	"barButtons.popup": "Всплывающая панель над выделением",
 	"barButtons.popupHint": "Всплывающая панель показывает только кнопки, подходящие к выделенному: здесь перечислены кнопки, которые она уже показывала (сначала выделите карточку, группу или стрелку). Добавленные команды видны при любом выделении.",
 	"barButtons.drag": "Перетащите вверх или вниз, чтобы переместить кнопку на панели",
+	"canvasMarkdown.header.button": "Заголовок в заметке Markdown",
+	"canvasMarkdown.header.auto": "Заголовок (уровень автоматически)",
+	"canvasMarkdown.header.level": "Уровень {level}",
+	"canvasMarkdown.header.none": "Не заголовок",
+	"canvasMarkdown.header.toggle": "Карточка-заголовок: вкл. / выкл.",
+	"canvasMarkdown.header.choose": "Карточка-заголовок…",
 };

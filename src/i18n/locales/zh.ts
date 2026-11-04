@@ -1267,4 +1267,10 @@ export const zh: Record<I18nKey, string> = {
 	"barButtons.popup": "选中内容上方的弹出栏",
 	"barButtons.popupHint": "弹出栏只显示适合所选内容的按钮：它显示过的按钮会列在这里（请先选中一张卡片、一个分组或一条箭头）。添加的命令对任何选中内容都会显示。",
 	"barButtons.drag": "上下拖动，改变此按钮在工具栏中的位置",
+	"canvasMarkdown.header.button": "Markdown 笔记中的标题",
+	"canvasMarkdown.header.auto": "标题（自动级别）",
+	"canvasMarkdown.header.level": "第 {level} 级",
+	"canvasMarkdown.header.none": "不是标题",
+	"canvasMarkdown.header.toggle": "标题卡片：开 / 关",
+	"canvasMarkdown.header.choose": "标题卡片……",
 };

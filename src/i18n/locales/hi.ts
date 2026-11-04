@@ -1267,4 +1267,10 @@ export const hi: Record<I18nKey, string> = {
 	"barButtons.popup": "चयन के ऊपर का पॉपअप",
 	"barButtons.popupHint": "पॉपअप सिर्फ़ वही बटन दिखाता है जो चुनी गई चीज़ के लिए ठीक हों: जो बटन वह एक बार दिखा चुका है वे यहाँ सूची में आते हैं (पहले कोई कार्ड, समूह या तीर चुनें)। जोड़ी गई कमांड हर चयन पर दिखती हैं।",
 	"barButtons.drag": "इस बटन की बार में जगह बदलने के लिए ऊपर या नीचे खींचें",
+	"canvasMarkdown.header.button": "Markdown नोट में शीर्षक",
+	"canvasMarkdown.header.auto": "शीर्षक (अपने आप स्तर)",
+	"canvasMarkdown.header.level": "स्तर {level}",
+	"canvasMarkdown.header.none": "शीर्षक नहीं",
+	"canvasMarkdown.header.toggle": "शीर्षक कार्ड: चालू / बंद",
+	"canvasMarkdown.header.choose": "शीर्षक कार्ड…",
 };

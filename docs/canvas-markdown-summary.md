@@ -130,6 +130,18 @@ line still belongs to that card.
 - The section-based outline format of other outliner plugins (`<!--section: 1.2-->`) is not read;
   convert those notes to a bullet outline first.
 
+## Header cards
+
+A card marked as a header (card popup → **H**, its menu → *Header card…*, or the commands), or
+whose text starts with `#`…`######`, is written as a real heading that starts its own block; its
+children follow as the outline below it. Level: one below the heading it sits under (automatic),
+or a level of its own (never shallower). Only under a heading (the map's root or another header):
+under a plain line it stays in the outline, and past H6 too. Inside a heading, plain lines come
+before sub-headings. Back from the note, a heading under a card's heading is a header card, and a
+plain line where a header could have been unmarks it; cards whose text carries the marks keep
+them at the note's level. Pages: headers start one level below the page's heading
+(`src/modules/canvas-markdown/headers.ts`).
+
 ## Pages
 
 A canvas split into pages (module *Pages*) exports each page as a heading one level below the map

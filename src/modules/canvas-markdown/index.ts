@@ -14,6 +14,7 @@ import { exportClean, exportNote, rootMapLayouts, splitNote, type SplitNote } fr
 import { countItems, isOutline, stripFrontmatter, writeOutline } from "./outline";
 import { DataStore } from "./store";
 import { PagedNotes } from "./paged-view";
+import { enableHeaderCards } from "./header-ui";
 import { pagesHost } from "../pages/api";
 import { viewMemory } from "../../core/view-memory";
 import { buildStructure, childOrderOf } from "./structure";
@@ -469,6 +470,8 @@ export const canvasMarkdownModule = defineModule<CanvasMarkdownSettings>({
 		};
 
 		// Notes with pages: one page at a time, with the pages bar and index.
+		// Header cards: real headings in the note.
+		enableHeaderCards(ctx);
 		const paged = new PagedNotes(app, ctx, {
 			loadData: async (file, text) => splitNote(text).data ?? (await store.load(file.path)),
 			initialPage: (path) => viewMemory.page(path),

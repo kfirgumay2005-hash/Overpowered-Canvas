@@ -8,6 +8,7 @@
  * the export) and drawings are left alone.
  */
 import { pruneOrder } from "../mindmap/order";
+import { headingMarks } from "./headers";
 import type { CanvasEdgeData, CanvasFileData, CanvasNodeData, EdgeSide } from "../../data/json-canvas";
 import { SCHEMA_KEY, SCHEMA_VERSION } from "../../data/schema";
 import { computeLayout, type ElkLike, type LayoutDirection, type LayoutOptions } from "../auto-layout/layout";
@@ -136,7 +137,33 @@ export async function applyNote(items: OutlineItem[], note: NoteData | null, bas
 		if (!id || nodes.has(id)) return undefined;
 		return baseNodes.get(id) ?? fromNote.get(id);
 	};
-	const walk = (list: OutlineItem[], parent: string | null, group: string | null) => {
+	/**
+	 * Header cards (see headers.ts): a heading under a card's heading is a header card, at the
+	 * automatic level (0) or one of its own; a card written as a plain line under a heading where
+	 * it could have been one isn't a header any more. Cards whose text carries the marks keep them,
+	 * at the level the note gives.
+	 */
+	const headerFor = (item: OutlineItem, parent: string | null, parentLevel: number | undefined, pageRoot: boolean): number | null | undefined => {
+		if (!parent || pageRoot || parentLevel === undefined) return undefined;
+		if (item.heading !== undefined) return item.heading === parentLevel + 1 ? 0 : item.heading;
+		return parentLevel < 6 ? null : undefined;
+	};
+	const textFor = (item: OutlineItem, existing: CanvasNodeData | undefined, header: number | null | undefined): string => {
+		const marks = existing?.type === "text" && typeof existing.text === "string" ? headingMarks(existing.text) : 0;
+		if (!marks || item.heading === undefined) return item.text;
+		// A map's root keeps its own marks; a header card's marks follow the level in the note.
+		return `${"#".repeat(header === undefined ? marks : item.heading)} ${item.text}`;
+	};
+	const markHeader = (node: CanvasNodeData, header: number | null | undefined): CanvasNodeData => {
+		if (header === undefined || (node.type === "text" && typeof node.text === "string" && headingMarks(node.text))) return node;
+		const extra = isPlainObject(node[SCHEMA_KEY]) ? (node[SCHEMA_KEY] as Record<string, unknown>) : undefined;
+		const had = typeof extra?.header === "number" ? extra.header : undefined;
+		const want = header === null ? undefined : header;
+		if (had === want) return node;
+		const { header: _old, ...rest } = extra ?? { v: SCHEMA_VERSION };
+		return { ...node, [SCHEMA_KEY]: want === undefined ? rest : { ...rest, header: want } };
+	};
+	const walk = (list: OutlineItem[], parent: string | null, group: string | null, parentLevel?: number) => {
 		for (const item of list) {
 			if (item.kind === "free") {
 				walk(item.children, null, group);
@@ -156,11 +183,13 @@ export async function applyNote(items: OutlineItem[], note: NoteData | null, bas
 				continue;
 			}
 			if (existing && existing.type !== "group" && !isDrawing(existing)) {
-				const next = updateText(existing, item.text, opts.resolveFile, linkTargets);
-				if (next) updated++;
-				nodes.set(existing.id, next ?? existing);
+				const header = headerFor(item, parent, parentLevel, pageRoots.has(existing.id));
+				const next = updateText(existing, textFor(item, existing, header), opts.resolveFile, linkTargets);
+				const marked = markHeader(next ?? existing, header);
+				if (next || marked !== (next ?? existing)) updated++;
+				nodes.set(existing.id, marked);
 				placed.push({ id: existing.id, parent: pageRoots.has(existing.id) ? null : parent, group, isNew: false });
-				walk(item.children, existing.id, group);
+				walk(item.children, existing.id, group, item.heading);
 				continue;
 			}
 			if (!item.text.trim() && item.children.length === 0) continue;
@@ -170,11 +199,13 @@ export async function applyNote(items: OutlineItem[], note: NoteData | null, bas
 			// A new line under a card of a page belongs to that page; in a note with pages, a new
 			// line of its own belongs to the page whose section it is in.
 			const page = parent && nodes.get(parent) ? pageOfNode(nodes.get(parent)!) : section;
-			nodes.set(id, { id, x: 0, y: 0, width: size.width, height: size.height, ...fields, ...(page ? { [SCHEMA_KEY]: { v: SCHEMA_VERSION, page } } : {}) } as CanvasNodeData);
+			const fresh = { id, x: 0, y: 0, width: size.width, height: size.height, ...fields, ...(page ? { [SCHEMA_KEY]: { v: SCHEMA_VERSION, page } } : {}) } as CanvasNodeData;
+			const header = headerFor(item, parent, parentLevel, false);
+			nodes.set(id, header ? markHeader(fresh, header) : header === 0 ? markHeader(fresh, 0) : fresh);
 			unplaced.add(id);
 			created.push(id);
 			placed.push({ id, parent, group, isNew: true });
-			walk(item.children, id, group);
+			walk(item.children, id, group, item.heading);
 		}
 	};
 	// In a note with pages, each page's section starts with its root: what follows is on that page.

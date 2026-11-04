@@ -1269,6 +1269,12 @@ export const en = {
 	"barButtons.popup": "Popup over the selection",
 	"barButtons.popupHint": "The popup shows only the buttons that fit what is selected: its buttons are listed here once it has shown them (select a card, a group or an arrow first). Added commands show for every selection.",
 	"barButtons.drag": "Drag up or down to move this button in its bar",
+	"canvasMarkdown.header.button": "Header in the Markdown note",
+	"canvasMarkdown.header.auto": "Header (automatic level)",
+	"canvasMarkdown.header.level": "Level {level}",
+	"canvasMarkdown.header.none": "Not a header",
+	"canvasMarkdown.header.toggle": "Header card: on / off",
+	"canvasMarkdown.header.choose": "Header card…",
 } as const;
 
 export type I18nKey = keyof typeof en;

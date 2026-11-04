@@ -1267,4 +1267,10 @@ export const ja: Record<I18nKey, string> = {
 	"barButtons.popup": "選択の上のポップアップ",
 	"barButtons.popupHint": "ポップアップには選択に合うボタンだけが出ます。一度表示されたボタンがここに並びます（先にカード、グループ、矢印のどれかを選択してください）。追加したコマンドはどの選択でも表示されます。",
 	"barButtons.drag": "上下にドラッグして、このボタンのバー内の位置を変える",
+	"canvasMarkdown.header.button": "Markdown ノートの見出し",
+	"canvasMarkdown.header.auto": "見出し（レベル自動）",
+	"canvasMarkdown.header.level": "レベル {level}",
+	"canvasMarkdown.header.none": "見出しにしない",
+	"canvasMarkdown.header.toggle": "見出しカード：オン / オフ",
+	"canvasMarkdown.header.choose": "見出しカード…",
 };

@@ -215,6 +215,8 @@ export interface OpcNode {
 	valign?: VerticalAlign;
 	/** Text size of the card in pixels; without it the canvas's own size. */
 	fontSize?: number;
+	/** A header card: a heading in the Markdown note. 0 = automatic level, 1–6 = its own level. */
+	header?: number;
 	dir?: Direction;
 	/** Grow and shrink in height to fit the text. */
 	autoResize?: boolean;

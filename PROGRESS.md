@@ -8,7 +8,7 @@ When resuming: read this file and `git log`, then continue with the first item t
 | 1 | Auto layout keeps sibling order | IMPROVEMENT (bug) | done |
 | 2 | Markdown mode: page indicator arrows (top right) | IMPROVEMENT (bug) | done |
 | 3 | Markdown mode: Pages button (top left) | IMPROVEMENT (bug) | done |
-| 4 | Header cards → real Markdown headings | NEW | not started |
+| 4 | Header cards → real Markdown headings | NEW | done |
 | 5 | First outline level without a bullet (setting) | NEW | not started |
 | 6A | Radial layout: connector overlaps | IMPROVEMENT (bug) | not started |
 | 6B | Condensed radial layout | NEW | not started |
@@ -54,3 +54,16 @@ nav. Prev / next now follow the index's order exactly (`structure.ts pageOrder`,
 Tested: mdbar.sh (mouse) and mdtouch.sh (touch, editor focused or not), editing and reading view.
 Tutorial "Big maps in pages" (noteLinks step mentions the index button and taps), run in all 5
 languages: 14/14; "Big boards" 2/2. **Needs confirmation on the user's iPad.**
+
+## 4. Header cards (done)
+
+NEW (the export kept a card's heading marks inside its bullet; no header option existed).
+x-opc node `header` (0 = automatic, 1–6 = own level); text starting with `## ` counts too.
+`canvas-markdown/headers.ts` (pure: extractHeaders after pages are placed), `header-ui.ts` (popup
+button **H** with a picker: automatic, levels 1–6, not a header; card menu *Header card…*;
+commands *Header card: on / off* and *Header card…*; badge H / H4 on the card). Import: nested
+headings become header cards, a plain line where a header fits unmarks it, marks in text kept.
+Rules: heading only under a heading (map root or header), up to H6, else stays in the outline;
+plain lines before sub-headings. Works in one long note and in notes with pages (one level below
+the page heading). Tests in roundtrip.test.ts; live test hdr.sh (real clicks). Tutorial
+"Canvas ⇄ Markdown": new step `header` (+ touch text), 6/6 in all 5 languages.
