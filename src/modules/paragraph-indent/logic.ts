@@ -14,6 +14,12 @@ export function indentText(width: number): string {
 	return INDENT_CHAR.repeat(Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, Math.round(width) || MIN_WIDTH)));
 }
 
+/** Class on editor lines that start with a paragraph indent (see styles.css). */
+export const FLAT_CLASS = "opc-indent-line";
+
+/** The line starts with a paragraph indent (em space), not with ordinary indentation. */
+export const startsWithIndent = (text: string): boolean => text.startsWith(INDENT_CHAR);
+
 /** Read-only access to the document, by 0-based line number. */
 export interface Lines {
 	count: number;

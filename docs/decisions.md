@@ -39,6 +39,18 @@ Choices made where the spec left room. Newest section first.
    editing; a WORD JOINER (U+2060, invisible, zero width, not whitespace) after every third
    leading em space keeps that run under four. Measured: 2/4/8 em indents are 32/64/128 px in
    Live Preview, Source mode and Reading mode alike.
+   The editor also gives any line that starts with whitespace a hanging indent (inline
+   `text-indent`/`padding-inline-start`), which shifted and reflowed the whole paragraph while
+   editing; lines starting with an em space get the class `opc-indent-line` and the module's CSS
+   cancels it, so only the first row is indented, as in Reading mode. The editor's
+   `white-space: break-spaces` made a word that just fits wrap early (the trailing space takes
+   room); `pre-wrap` restores Reading mode's breaks (always in canvas card editors, in notes
+   while the module is on). In a right-to-left canvas the card's reading view kept its
+   scrollbar gutter on the left while the editor iframe keeps it on the right, a 12px jump; the
+   reading scroller now stays LTR and only its content follows the card direction. A note's
+   font size also scales `--p-spacing`. Measured: every word lands on the same pixel in edit and
+   reading mode for indented, plain, multi-paragraph, sized and right-to-left cards. Obsidian's
+   own blank-line vs paragraph-margin gap between note paragraphs (8px at 16px) remains.
 9. **Where Tab stays the app's**: lists, tables (including Live Preview's cell editors), code
    and math blocks, inline math/code, frontmatter, indented lines, multi-line selections, open
    suggestion popups and vim normal mode. The keymap has `Prec.high`: above the app's own Tab,

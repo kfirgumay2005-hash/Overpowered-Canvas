@@ -3220,6 +3220,7 @@ const indentNote = (t: Translate) => t("tut.indent.noteName");
 const emCount = (rt: TutorialRuntime) => noteLines(rt, indentNote(rt.t)).join("\n").split(EM).length - 1;
 /** Line numbers in the practice note: title, blank, first paragraph, blank, second, blank, two bullets. */
 const INDENT_P1 = 2;
+const INDENT_CARD = "in-card";
 const INDENT_ITEM2 = 7;
 let emsAtStart = 0;
 
@@ -3235,7 +3236,10 @@ const indent: TutorialDefinition = {
 			content: ["# " + t("tut.indent.note.title"), "", t("tut.indent.note.p1"), "", t("tut.indent.note.p2"), "", "- " + t("tut.indent.note.b1"), "- " + t("tut.indent.note.b2"), ""].join("\n"),
 		},
 	],
-	board: (t) => ({ nodes: [card("in-hint", t("tut.indent.board.hint"), 0, 0, 360, 120, { color: "5" })], edges: [] }),
+	board: (t) => ({
+		nodes: [card("in-hint", t("tut.indent.board.hint"), 0, 0, 360, 120, { color: "5" }), card(INDENT_CARD, t("tut.indent.board.card"), 0, 170, 360, 260)],
+		edges: [],
+	}),
 	steps: [
 		{ title: "tut.indent.s1.title", body: "tut.indent.s1.body", enter: (rt) => void openWritingNote(rt, indentNote(rt.t)) },
 		{
@@ -3280,6 +3284,34 @@ const indent: TutorialDefinition = {
 			touch: "tut.indent.s5.touch",
 			check: (rt) => inReadingMode(rt, indentNote(rt.t)),
 			demo: (rt) => setNoteMode(rt, indentNote(rt.t), "preview"),
+		},
+		{
+			title: "tut.indent.card.title",
+			body: "tut.indent.card.body",
+			task: "tut.indent.card.task",
+			touch: "tut.indent.card.touch",
+			enter: (rt) => rt.select([INDENT_CARD]),
+			check: (rt) => {
+				const node = rt.node(INDENT_CARD);
+				return !!node && !node.isEditing && (node.getData().text ?? "").startsWith(EM);
+			},
+			demo: async (rt) => {
+				const node = rt.node(INDENT_CARD);
+				if (!node) return;
+				rt.select([INDENT_CARD]);
+				node.startEditing();
+				await rt.wait(900);
+				const editor = (node.child as { editor?: { focus(): void; setCursor(line: number, ch: number): void } } | undefined)?.editor;
+				editor?.focus();
+				editor?.setCursor(0, 0);
+				// The same command as Tab (and the one touch screens use from the palette).
+				if (!editor || !runInNote(rt, "paragraph-indent:insert")) {
+					const text = node.getData().text ?? "";
+					rt.change(() => node.setData({ ...node.getData(), text: EM + EM + text }));
+				}
+				await rt.wait(1500);
+				rt.canvas.deselectAll();
+			},
 		},
 		{ title: "tut.indent.s6.title", body: "tut.indent.s6.body" },
 	],

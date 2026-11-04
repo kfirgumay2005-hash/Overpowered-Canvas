@@ -1,9 +1,9 @@
-import { EditorSelection, Prec } from "@codemirror/state";
-import { EditorView, keymap } from "@codemirror/view";
+import { EditorSelection, Prec, RangeSetBuilder } from "@codemirror/state";
+import { Decoration, type DecorationSet, EditorView, keymap, ViewPlugin, type ViewUpdate } from "@codemirror/view";
 import { Setting, type Editor } from "obsidian";
 import { defineModule, type ModuleContext } from "../../core/module";
 import { mergeWithDefaults } from "../../settings/settings";
-import { applyIndent, applyOutdent, inInlineMath, MAX_WIDTH, MIN_WIDTH, tabKeepsDefault, type LineEdit, type Lines } from "./logic";
+import { applyIndent, applyOutdent, FLAT_CLASS, inInlineMath, MAX_WIDTH, MIN_WIDTH, startsWithIndent, tabKeepsDefault, type LineEdit, type Lines } from "./logic";
 
 export interface ParagraphIndentSettings {
 	/** Em spaces per indent. */
@@ -82,6 +82,40 @@ function removeIndent(view: EditorView, width: number): boolean {
 	return true;
 }
 
+const flatLine = Decoration.line({ class: FLAT_CLASS });
+
+function flatLines(view: EditorView): DecorationSet {
+	const builder = new RangeSetBuilder<Decoration>();
+	const doc = view.state.doc;
+	for (const { from, to } of view.visibleRanges) {
+		for (let pos = from; pos <= to; ) {
+			const line = doc.lineAt(pos);
+			if (startsWithIndent(line.text)) builder.add(line.from, line.from, flatLine);
+			pos = line.to + 1;
+		}
+	}
+	return builder.finish();
+}
+
+/**
+ * The editor gives a line that starts with whitespace a hanging indent (every wrapped row lines
+ * up under the first word), and it counts em spaces as whitespace. Reading mode indents only
+ * the first row. Lines that start with a paragraph indent are marked so the stylesheet cancels
+ * the hanging indent: the paragraph wraps the same way in every mode.
+ */
+const flatIndentLines = ViewPlugin.fromClass(
+	class {
+		decorations: DecorationSet;
+		constructor(view: EditorView) {
+			this.decorations = flatLines(view);
+		}
+		update(u: ViewUpdate) {
+			if (u.docChanged || u.viewportChanged) this.decorations = flatLines(u.view);
+		}
+	},
+	{ decorations: (v) => v.decorations },
+);
+
 /** The CodeMirror view behind an Obsidian editor (Editor.cm in the desktop and mobile apps). */
 const cmOf = (editor: Editor) => (editor as Editor & { cm?: EditorView }).cm;
 
@@ -103,6 +137,7 @@ export const paragraphIndentModule = defineModule<ParagraphIndentSettings>({
 	},
 
 	enable(ctx: Ctx) {
+		ctx.registerEditorExtension(flatIndentLines);
 		ctx.registerEditorExtension(
 			// Before the app's own Tab (which indents the whole line), after plugins that bind Tab
 			// with the highest precedence (snippet tab stops, math tab-out, outliners). Lists and
