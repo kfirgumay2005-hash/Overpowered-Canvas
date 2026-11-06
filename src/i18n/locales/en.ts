@@ -176,7 +176,7 @@ export const en = {
 	"betterDefaults.doubleClickMs.desc": "Milliseconds between the two clicks (100–2000).",
 
 	"autoResize.name": "Auto-resize cards",
-	"autoResize.desc": "Per-card choice in the selection toolbar: instead of scrolling, the card fits its text. Fit text: as wide as the text up to a maximum width, then the lines wrap and the card grows downwards. Or grow only downwards, or only sideways.",
+	"autoResize.desc": "Per-card choice in the selection toolbar: instead of scrolling, the card grows with its text, downwards or sideways. Fit text (as wide as the text up to a maximum width, then the lines wrap and the card grows downwards) is for new cards (setting below) and the command “Fit cards to their text”.",
 	"autoResize.button": "Grow to fit text",
 	"autoResize.mode.fit": "Fit text",
 	"autoResize.fitAll": "Fit cards to their text",
