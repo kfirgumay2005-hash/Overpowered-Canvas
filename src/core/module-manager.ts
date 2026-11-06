@@ -308,7 +308,7 @@ export class ModuleManager {
 			decorateNodes: (decorator) => component.register(host.ui.decorateNodes(decorator)),
 			decorateEdges: (decorator) => component.register(host.ui.decorateEdges(decorator)),
 			addMenuButton: (spec) => {
-				const offButton = spec.menu === false ? () => {} : host.ui.addMenuButton(spec);
+				const offButton = host.ui.addMenuButton(spec);
 				let offCommand = () => {};
 				if (spec.command !== false) {
 					// Every toolbar action is also a command on the current selection.
