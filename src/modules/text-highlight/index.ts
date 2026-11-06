@@ -4,7 +4,7 @@ import type { CanvasLike } from "../../internals/types";
 import { mergeWithDefaults } from "../../settings/settings";
 import { capturePointer, claimTool, isTextBox, mutate, nodeType, releaseTool } from "../shared";
 import { marksHost, type MarkMode, type MarkSurface, type MarkTarget } from "./api";
-import { locate, recolor, rehighlight, toWords, uncolor, unhighlight, withoutColors, withoutHighlights } from "./source";
+import { locate, pickedRange, recolor, rehighlight, uncolor, unhighlight, withoutColors, withoutHighlights } from "./source";
 import { logWarn } from "../../core/log";
 
 interface HighlightSettings {
@@ -58,9 +58,46 @@ const THEME_HIGHLIGHT = "var(--text-highlight-bg, rgba(255, 208, 0, 0.4))";
 /** A pen was used in this window: from then on, fingers move the board. */
 let penSeen = false;
 
-interface Caret {
-	node: Node;
-	offset: number;
+/** How far (px) a press may move and still count as a tap on one word. */
+const TAP_SLOP = 6;
+
+/**
+ * The rendered character of `root` under a screen point (index into its text), found from the
+ * characters' own boxes: the one holding the point, else the nearest on the line under it. Not
+ * the browser's caret guess, which on tablets can land on the edge of a whole paragraph (and
+ * mark the whole line) and differs by browser in right-to-left text.
+ */
+function charAt(root: HTMLElement, x: number, y: number): number | null {
+	const doc = root.doc;
+	const walker = doc.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+	const range = doc.createRange();
+	let seen = 0;
+	let best: { index: number; dist: number } | null = null;
+	for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+		const text = n.textContent ?? "";
+		const box = n.parentElement?.getBoundingClientRect();
+		// Skip whole text nodes whose element is far above or below the point.
+		if (box && (y < box.top - 40 || y > box.bottom + 40)) {
+			seen += text.length;
+			continue;
+		}
+		for (let i = 0; i < text.length; i++) {
+			if (text[i] === "\n") continue;
+			range.setStart(n, i);
+			range.setEnd(n, i + 1);
+			for (const r of Array.from(range.getClientRects())) {
+				if (r.width === 0 && r.height === 0) continue;
+				const dy = y < r.top ? r.top - y : y > r.bottom ? y - r.bottom : 0;
+				const dx = x < r.left ? r.left - x : x > r.right ? x - r.right : 0;
+				// Other lines count far less than this one.
+				const dist = dy * 1000 + dx;
+				if (!best || dist < best.dist) best = { index: seen + i, dist };
+				if (dist === 0) return best.index;
+			}
+		}
+		seen += text.length;
+	}
+	return best && best.dist < 40 * 1000 ? best.index : null;
 }
 
 /** The board as a surface to mark cards on. */
@@ -96,7 +133,7 @@ class HighlightSession {
 	private readonly bar: HTMLElement;
 	private readonly marks: HTMLElement;
 	private erase = false;
-	private gesture: { pointerId: number; target: MarkTarget; start: Caret; end: Caret; restore: () => void } | null = null;
+	private gesture: { pointerId: number; target: MarkTarget; start: number; end: number; x: number; y: number; moved: boolean; restore: () => void } | null = null;
 	private penUntil = 0;
 
 	constructor(
@@ -214,19 +251,9 @@ class HighlightSession {
 		}
 	}
 
-	private caretAt(target: MarkTarget, x: number, y: number): Caret | null {
-		const doc = this.surface.host.doc;
-		const caret = this.probe((): Caret | null => {
-			if (typeof doc.caretPositionFromPoint === "function") {
-				const p = doc.caretPositionFromPoint(x, y);
-				return p ? { node: p.offsetNode, offset: p.offset } : null;
-			}
-			// Older WebKit (tablets) only has the earlier, non-standard call.
-			const legacy = doc as unknown as { caretRangeFromPoint?(x: number, y: number): Range | null };
-			const r = legacy.caretRangeFromPoint?.(x, y);
-			return r ? { node: r.startContainer, offset: r.startOffset } : null;
-		});
-		return caret && target.root.isConnected && target.root.contains(caret.node) ? caret : null;
+	/** The character under a point, in the card's rendered text (see charAt). */
+	private charIn(target: MarkTarget, x: number, y: number): number | null {
+		return target.root.isConnected ? charAt(target.root, x, y) : null;
 	}
 
 	private onDown = (e: PointerEvent) => {
@@ -252,13 +279,13 @@ class HighlightSession {
 		e.preventDefault();
 		e.stopPropagation();
 		const restore = target.open?.() ?? (() => {});
-		const start = this.caretAt(target, e.clientX, e.clientY);
-		if (!start) {
+		const start = this.charIn(target, e.clientX, e.clientY);
+		if (start === null) {
 			restore();
 			return;
 		}
 		capturePointer(this.overlay, e.pointerId);
-		this.gesture = { pointerId: e.pointerId, target, start, end: start, restore };
+		this.gesture = { pointerId: e.pointerId, target, start, end: start, x: e.clientX, y: e.clientY, moved: false, restore };
 		this.preview();
 	};
 
@@ -266,8 +293,9 @@ class HighlightSession {
 		const g = this.gesture;
 		if (!g || e.pointerId !== g.pointerId) return;
 		e.preventDefault();
-		const end = this.caretAt(g.target, e.clientX, e.clientY);
-		if (end) g.end = end;
+		if (Math.hypot(e.clientX - g.x, e.clientY - g.y) > TAP_SLOP) g.moved = true;
+		const end = this.charIn(g.target, e.clientX, e.clientY);
+		if (end !== null) g.end = end;
 		this.preview();
 	};
 
@@ -277,7 +305,7 @@ class HighlightSession {
 		this.gesture = null;
 		this.marks.empty();
 		try {
-			this.apply(g.target, g.start, g.end);
+			this.apply(g.target, g.start, g.end, !g.moved);
 		} finally {
 			g.restore();
 		}
@@ -300,19 +328,12 @@ class HighlightSession {
 		g.restore();
 	}
 
-	/** Rendered-text offsets of the gesture, widened to whole words. */
-	private span(root: HTMLElement, a: Caret, b: Caret): { rendered: string; from: number; to: number } | null {
-		const doc = root.doc;
-		const offset = (c: Caret) => {
-			const r = doc.createRange();
-			r.setStart(root, 0);
-			r.setEnd(c.node, c.offset);
-			return r.toString().length;
-		};
-		const all = doc.createRange();
+	/** What the gesture marks, in rendered-text offsets: a tap its whole word, a swipe exactly the characters swiped. */
+	private span(root: HTMLElement, a: number, b: number, tap: boolean): { rendered: string; from: number; to: number } | null {
+		const all = root.doc.createRange();
 		all.selectNodeContents(root);
 		const rendered = all.toString();
-		const [from, to] = toWords(rendered, offset(a), offset(b));
+		const [from, to] = pickedRange(rendered, a, b, tap);
 		return from < to ? { rendered, from, to } : null;
 	}
 
@@ -322,7 +343,7 @@ class HighlightSession {
 		const g = this.gesture;
 		if (!g) return;
 		const root = g.target.root;
-		const s = this.span(root, g.start, g.end);
+		const s = this.span(root, g.start, g.end, !g.moved);
 		if (!s) return;
 		const range = rangeOf(root, s.from, s.to);
 		if (!range) return;
@@ -336,9 +357,9 @@ class HighlightSession {
 		}
 	}
 
-	private apply(target: MarkTarget, a: Caret, b: Caret): void {
+	private apply(target: MarkTarget, a: number, b: number, tap: boolean): void {
 		const node = target.node;
-		const s = this.span(target.root, a, b);
+		const s = this.span(target.root, a, b, tap);
 		if (!s) return;
 		const data = node.getData();
 		const source = typeof data.text === "string" ? data.text : "";

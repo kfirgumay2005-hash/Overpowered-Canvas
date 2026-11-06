@@ -416,7 +416,7 @@ export const tutorialsEn = {
 	"tut.drawing.s7.body": "Move the card you marked: the marks stay exactly on the words.",
 	"tut.drawing.s7.task": "Drag **Circle me!** somewhere else.",
 	"tut.drawing.hl.title": "Highlight words",
-	"tut.drawing.hl.body": "For a real text highlight, use the **highlighter button** in the bottom bar (or press **H**): pick a color, then swipe over words in a card, or tap a single word. The card's text gets the highlight, so it stays right even when the card is resized or its text wraps differently. The eraser in the same bar removes highlights; swiping over a highlight in another color recolors it. The first choice, **Neutral**, uses Obsidian's own highlight (`==text==`) in your theme's highlight color: plain Markdown that looks the same in every view and app.",
+	"tut.drawing.hl.body": "For a real text highlight, use the **highlighter button** in the bottom bar (or press **H**): pick a color, then swipe over words in a card, or tap a single word. The card's text gets the highlight, so it stays right even when the card is resized or its text wraps differently. The eraser in the same bar removes highlights; swiping over a highlight in another color recolors it. The first choice, **Neutral**, uses Obsidian's own highlight (`==text==`) in your theme's highlight color: plain Markdown that looks the same in every view and app. A swipe marks exactly the letters it passes over, so you can mark part of a word; a tap marks the whole word.",
 	"tut.drawing.hl.task": "Turn on the highlighter and swipe over the words in **Circle me!**",
 	"tut.vault.title": "Notes as cards",
 	"tut.vault.summary": "Status columns that update your notes, groups that fill themselves, and arrows from note properties.",
