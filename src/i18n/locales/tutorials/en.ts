@@ -54,7 +54,7 @@ export const tutorialsEn = {
 	"tut.basics.s4.body": "The bar at the bottom adds things: cards, notes, groups, and Overpowered Canvas extras like **sticky notes**, text, shapes, lines, drawing and templates. Click a button, or **drag it** to exactly where you want the new item.",
 	"tut.basics.s4.task": "Add a sticky note with the sticky note button (highlighted).",
 	"tut.basics.s5.title": "The selection toolbar",
-	"tut.basics.s5.body": "Select a card and a **toolbar** appears above it: color, shape, border, text alignment, growing with the text, locking and more. It changes everything that's selected at once. Text options (text size, alignment, direction, growing with the text) only show when the selection holds a card with text; with images selected too, they change only the cards with text.",
+	"tut.basics.s5.body": "Select a card and a **toolbar** appears above it: color, shape, border, text alignment, locking and more. It changes everything that's selected at once. Text options (text size, alignment, direction) only show when the selection holds a card with text; with images selected too, they change only the cards with text.",
 	"tut.basics.s5.task": "With **Idea B** selected, open the shape button in the toolbar and pick any shape.",
 	"tut.basics.s6.title": "Colors",
 	"tut.basics.s6.body": "The palette button colors cards, groups and arrows. Colored cards help a board read at a glance: one color per topic, status or person.",
@@ -92,8 +92,8 @@ export const tutorialsEn = {
 	"tut.notes.s5.body": "The alignment button puts text at the start, center or end, and at the top, middle or bottom of a card.",
 	"tut.notes.s5.task": "Center the text of the long card (or any other card).",
 	"tut.notes.s6.title": "Grow to fit",
-	"tut.notes.s6.body": "Normally a card scrolls when its text is too long. Pick a size mode in **Grow to fit text**: **Fit text** makes the card as wide as its text up to a maximum width, then the lines wrap and it grows downwards. You can also let it grow only downwards or only sideways.\n\nNew cards fit their text by themselves; for older cards, run **Fit cards to their text** from the command palette (settings: Auto-resize cards).",
-	"tut.notes.s6.task": "With the long card selected, pick **Fit text** (or another grow mode) in **Grow to fit text**.",
+	"tut.notes.s6.body": "Normally a card scrolls when its text is too long. With the card selected, run **Selection: Grow to fit text** from the command palette and pick a size mode: **Fit text** makes the card as wide as its text up to a maximum width, then the lines wrap and it grows downwards. You can also let it grow only downwards or only sideways.\n\nNew cards fit their text by themselves; for older cards, run **Fit cards to their text** from the command palette (settings: Auto-resize cards).",
+	"tut.notes.s6.task": "With the long card selected, run **Selection: Grow to fit text** and pick **Fit text** (or another grow mode).",
 
 	// ---------- 3. Shapes ----------
 	"tut.shapes.title": "Shapes and dividers",
@@ -883,4 +883,5 @@ export const tutorialsEn = {
 	"tut.bars.image.body": "Select a picture (JPG, PNG and other image files) and its popup is set on its own: the list has **Popup over images**, with its own switches, order and **Add a command**. Whatever you change there leaves the popup over cards as it is, and the other way round.",
 	"tut.bars.image.task": "Select the picture, open the list and switch off a button of **Popup over images**, or add a command to it.",
 	"tut.bars.image.touch": "Tap the picture, then open **Customize the bars** from the settings button of the side bar.",
+	"tut.notes.s6.touch": "No keyboard? Tap the long card, open the command palette from the side ribbon, and run **Selection: Grow to fit text**.",
 } as const;

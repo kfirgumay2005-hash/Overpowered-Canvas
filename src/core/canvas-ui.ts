@@ -44,6 +44,8 @@ export interface MenuButtonSpec {
 	 * searchable list. Set false when the module has its own command for it.
 	 */
 	command?: boolean;
+	/** Shown in the popup over the selection (default true); false: only the command. */
+	menu?: boolean;
 	isVisible(selection: CanvasItemLike[], canvas: CanvasLike): boolean;
 	/** Toggle buttons: highlighted while true. */
 	isActive?(selection: CanvasItemLike[], canvas: CanvasLike): boolean;

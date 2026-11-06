@@ -298,6 +298,8 @@ export const autoResizeModule = defineModule<AutoResizeSettings>({
 			},
 			tooltip: () => ctx.t("autoResize.button"),
 			order: 13,
+			// Not in the popup over cards (owner's choice): the command "Selection: Grow to fit text" offers the same modes.
+			menu: false,
 			isVisible: (selection) => !!eligible(selection),
 			isActive: (selection) => (current(eligible(selection) ?? []) ?? "off") !== "off",
 			onClick: ({ canvas, selection, buttonEl }) => {

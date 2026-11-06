@@ -299,7 +299,7 @@ const notes: TutorialDefinition = {
 			title: "tut.notes.s6.title",
 			body: "tut.notes.s6.body",
 			task: "tut.notes.s6.task",
-			target: ".canvas-menu",
+			touch: "tut.notes.s6.touch",
 			enter: (rt) => rt.select(["n-long"]),
 			check: (rt) => nodesOf(rt.now()).some((n) => n.id === "n-long" && (extraOf(n).autoResize === true || extraOf(n).autoWidth === true || extraOf(n).autoFit === true)),
 			demo: async (rt) => {
