@@ -8,7 +8,7 @@ When resuming: read this file and `git log`, then continue with the first item t
 |---|------|-------|--------|
 | 1 | Page navigation in notes with pages (4th report) + Debug mode | IMPROVEMENT (bug) + NEW setting | done |
 | 2 | No blank lines between a heading's plain lines | IMPROVEMENT (bug) | done |
-| 3 | Text options only for selections with text | IMPROVEMENT (bug) | to do |
+| 3 | Text options only for selections with text | IMPROVEMENT (bug) | done |
 | 4 | Shape text rotates with the shape | IMPROVEMENT | to do |
 | 5 | Highlighter: "Neutral" option | ALREADY EXISTS → IMPROVEMENT (discoverability) | to do |
 
@@ -91,3 +91,21 @@ heading; Reading view and Live Preview both 25–26 px per line from "Esami emat
 bioptici"; note → canvas unchanged, a typed plain line + bullet became a new sibling and its
 child; Flu with 7 pages in pages mode: same spacing, one page shown. Setting description and
 tutorial step `plain` updated in 5 locales. Tutorial "Canvas ⇄ Markdown": 7/7 in en, zh, ja, hi, ru.
+
+## 3. Text options only where there is text (done)
+
+Cause: the text buttons of the selection toolbar (text size, alignment, direction, growing with
+the text, header) asked `onlyTextBoxes()`, and `isTextBox()` counts every file card as a text box;
+an image (or PDF, or any other file) on the board is a file card. They also hid themselves for a
+mixed selection, since every selected item had to qualify.
+
+Fix: `hasFormattableText()` / `textCardsIn()` in `modules/shared.ts`: text cards (not ink, lines
+or infinite lines) and note file cards (`.md`) only. Each text button shows when the selection
+holds at least one such card and acts on those only; images, other files, arrows and groups in the
+selection are left alone. `isTextBox()` itself is unchanged (ink sticking to cards and dropping
+note blocks onto cards still work with image cards). `onlyTextBoxes()` removed (no users left).
+
+Tested (test vault, real selection toolbar): text card → 5 text buttons; image → none; note file
+card → 4 (header is for text cards only); image + text card and image + note → shown; text size
+24 and right-to-left from a selection of image + text card + note card changed the text card and
+the note card, not the image. Tutorial "Basics" step s5 (the toolbar) says so, in 5 locales; 7/7 in en, zh, ja, hi, ru.

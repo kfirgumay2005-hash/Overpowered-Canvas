@@ -54,7 +54,7 @@ export const tutorialsEn = {
 	"tut.basics.s4.body": "The bar at the bottom adds things: cards, notes, groups, and Overpowered Canvas extras like **sticky notes**, text, shapes, lines, drawing and templates. Click a button, or **drag it** to exactly where you want the new item.",
 	"tut.basics.s4.task": "Add a sticky note with the sticky note button (highlighted).",
 	"tut.basics.s5.title": "The selection toolbar",
-	"tut.basics.s5.body": "Select a card and a **toolbar** appears above it: color, shape, border, text alignment, growing with the text, locking and more. It changes everything that's selected at once.",
+	"tut.basics.s5.body": "Select a card and a **toolbar** appears above it: color, shape, border, text alignment, growing with the text, locking and more. It changes everything that's selected at once. Text options (text size, alignment, direction, growing with the text) only show when the selection holds a card with text; with images selected too, they change only the cards with text.",
 	"tut.basics.s5.task": "With **Idea B** selected, open the shape button in the toolbar and pick any shape.",
 	"tut.basics.s6.title": "Colors",
 	"tut.basics.s6.body": "The palette button colors cards, groups and arrows. Colored cards help a board read at a glance: one color per topic, status or person.",

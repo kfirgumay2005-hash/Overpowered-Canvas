@@ -6,7 +6,7 @@ import type { CanvasLike, CanvasNodeLike } from "../../internals/types";
 import { mergeWithDefaults } from "../../settings/settings";
 import { NumberPromptModal } from "../../ui/number-prompt";
 import { showPicker } from "../../ui/picker";
-import { canvasDirection, common, mutate, nodeType, onlyNodes, onlyTextBoxes, selectedNodes } from "../shared";
+import { canvasDirection, common, mutate, nodeType, onlyNodes, selectedNodes, textCardsIn } from "../shared";
 import { logError } from "../../core/log";
 
 interface TextAlignSettings {
@@ -92,12 +92,12 @@ export const textAlignModule = defineModule<TextAlignSettings>({
 			},
 		});
 
-		const eligible = (selection: Parameters<typeof onlyNodes>[0]) => onlyTextBoxes(ctx, selection);
+		const eligible = (selection: Parameters<typeof onlyNodes>[0]) => textCardsIn(ctx, selection);
 
 		ctx.addMenuButton({
 			id: "align",
 			icon: (selection) => {
-				const nodes = onlyNodes(selection) ?? [];
+				const nodes = eligible(selection) ?? [];
 				const current = common(nodes, (n) => ctx.data.node(n).get().align ?? "start") ?? "start";
 				const first = nodes[0];
 				return alignIcon(current, first ? canvasDirection(first.canvas) : "ltr");

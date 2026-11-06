@@ -5,7 +5,7 @@ import type { I18nKey } from "../../i18n";
 import type { CanvasLike, CanvasNodeLike } from "../../internals/types";
 import { mergeWithDefaults } from "../../settings/settings";
 import { showPicker } from "../../ui/picker";
-import { common, mutate, nodeType, onlyNodes, onlyTextBoxes } from "../shared";
+import { common, mutate, nodeType, onlyNodes, textCardsIn } from "../shared";
 
 interface DirectionSettings {
 	/** Layout direction of canvases: follow Obsidian's interface, or fixed. */
@@ -102,7 +102,7 @@ export const directionModule = defineModule<DirectionSettings>({
 		});
 
 		// Per-card text direction.
-		const textNodes = (selection: Parameters<typeof onlyNodes>[0]) => onlyTextBoxes(ctx, selection);
+		const textNodes = (selection: Parameters<typeof onlyNodes>[0]) => textCardsIn(ctx, selection);
 		ctx.addMenuButton({
 			id: "text-direction",
 			icon: (selection) => ICONS[common(textNodes(selection) ?? [], (n) => ctx.data.node(n).get().dir) ?? "auto"],

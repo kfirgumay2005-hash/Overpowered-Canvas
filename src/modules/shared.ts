@@ -26,10 +26,25 @@ export function isTextBox(ctx: ModuleContext<object>, node: CanvasNodeLike): boo
 	return (type === "text" || type === "file") && !NOT_TEXT_BOXES.has(ctx.data.node(node).get().kind ?? "");
 }
 
-/** The selected nodes when every one of them is a text box, else null. */
-export function onlyTextBoxes(ctx: ModuleContext<object>, selection: CanvasItemLike[]): CanvasNodeLike[] | null {
-	const nodes = onlyNodes(selection);
-	return nodes && nodes.every((n) => isTextBox(ctx, n)) ? nodes : null;
+/**
+ * A card whose text can be formatted (size, alignment, direction…): a text box showing a note,
+ * not an image, a PDF or another file shown on a file card.
+ */
+export function hasFormattableText(ctx: ModuleContext<object>, node: CanvasNodeLike): boolean {
+	if (!isTextBox(ctx, node)) return false;
+	if (nodeType(node) !== "file") return true;
+	const path = node.file?.path ?? node.filePath ?? "";
+	return /\.md$/i.test(path);
+}
+
+/**
+ * The cards of a selection whose text can be formatted, null when there are none. Everything
+ * else selected (images, arrows, groups, ink) is left out: a mixed selection still gets the text
+ * options, and they act on its text cards only.
+ */
+export function textCardsIn(ctx: ModuleContext<object>, selection: CanvasItemLike[]): CanvasNodeLike[] | null {
+	const cards = selection.filter(isNode).filter((n) => hasFormattableText(ctx, n));
+	return cards.length ? cards : null;
 }
 
 export function selectedNodes(canvas: CanvasLike): CanvasNodeLike[] {
