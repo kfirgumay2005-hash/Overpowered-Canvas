@@ -511,7 +511,6 @@ export const zh: Record<I18nKey, string> = {
 	"textHighlight.desc": "无需打开卡片编辑即可标记其中的文字。荧光笔（卡片栏按钮、命令或 H）会在文字后面加上真正的高亮；文字颜色工具（卡片栏按钮或命令）会给文字本身上色。打开一个工具，选一种颜色，然后用触控笔或鼠标划过文字，或点一下某个词。工具栏开头的按钮可在两个工具之间切换；橡皮擦会去掉高亮或文字颜色。用过触控笔之后，手指用来移动画板。两个工具在分栏视图中也能使用。",
 	"textHighlight.simple": "轻轻一划就能标出卡片里的重要文字：像纸上的荧光笔，或是给文字上色的笔。",
 	"textHighlight.button": "高亮文本",
-	"textHighlight.theme": "主题高亮",
 	"textHighlight.erase": "移除高亮",
 	"textHighlight.close": "完成（Esc）",
 	"textHighlight.notFound": "在卡片文本中找不到这些文字。请试试选择更小的部分。",
@@ -1297,4 +1296,6 @@ export const zh: Record<I18nKey, string> = {
 	"debug.nav.indexOpen": "调试：页面索引已打开。",
 	"debug.nav.indexClosed": "调试：页面索引没有保持打开（侧边栏已关闭）。",
 	"canvasMarkdown.paged.one": "一次显示一页",
+	"textHighlight.neutral": "中性",
+	"textHighlight.neutral.tip": "中性：Obsidian 自带的高亮（==text==），使用你的主题的高亮颜色。纯 Markdown，在任何应用中都一样。",
 };

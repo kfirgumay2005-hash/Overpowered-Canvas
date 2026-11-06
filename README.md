@@ -70,7 +70,7 @@ number box, and shape recognition (hold at the end of a stroke). Every stroke is
 drawing; resize a drawing's card and its strokes scale with it. Marks drawn on a card stick to it: they move, copy and delete with the card.
 Highlight words inside a card without editing it, or color their letters (swipe or tap with a pen
 or the mouse; the highlight or color goes into the card's text, so it shows in every view and in
-Markdown). Free lines and arrows whose ends stick to cards and that
+Markdown; **Neutral** writes Obsidian's own `==highlight==` in your theme's color). Free lines and arrows whose ends stick to cards and that
 keep the corners you draw; bend points keep the route's shape when cards move (square routes stay
 square), drawn above the cards (or under them). Standalone shapes with
 fill, outline, opacity and rotation. Sticky notes in any color (the last 10 custom colors are

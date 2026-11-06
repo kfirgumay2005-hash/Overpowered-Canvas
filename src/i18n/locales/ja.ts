@@ -511,7 +511,6 @@ export const ja: Record<I18nKey, string> = {
 	"textHighlight.desc": "カードを編集で開かずに文字に印を付けます。蛍光ペン（カードバーのボタン、コマンド、または H）は文字の後ろに本物のハイライトを付け、文字色ツール（カードバーのボタンまたはコマンド）は文字そのものに色を付けます。ツールをオンにして色を選び、ペンやマウスで文字をなぞるか、単語を 1 つタップします。バーの先頭のボタンで 2 つのツールを切り替えられ、消しゴムはハイライトや文字色を取り除きます。ペンを一度使うと、指ではボードを動かします。どちらのツールも列ビューで使えます。",
 	"textHighlight.simple": "カードの大事な言葉をさっとなぞって印を付けます。紙の蛍光ペンのように、または文字に色を付けるペンのように。",
 	"textHighlight.button": "テキストをハイライト",
-	"textHighlight.theme": "テーマのハイライト",
 	"textHighlight.erase": "ハイライトを外す",
 	"textHighlight.close": "完了（Esc）",
 	"textHighlight.notFound": "カードのテキストにこの言葉が見つかりませんでした。もっと短い部分で試してください。",
@@ -1297,4 +1296,6 @@ export const ja: Record<I18nKey, string> = {
 	"debug.nav.indexOpen": "デバッグ：ページ索引が開いています。",
 	"debug.nav.indexClosed": "デバッグ：ページ索引が開いたままになりませんでした（サイドパネルが閉じています）。",
 	"canvasMarkdown.paged.one": "1 ページずつ表示",
+	"textHighlight.neutral": "ニュートラル",
+	"textHighlight.neutral.tip": "ニュートラル：Obsidian 標準のハイライト（==text==）で、テーマのハイライト色で表示されます。素の Markdown なので、どのアプリでも同じです。",
 };

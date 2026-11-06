@@ -10,7 +10,7 @@ When resuming: read this file and `git log`, then continue with the first item t
 | 2 | No blank lines between a heading's plain lines | IMPROVEMENT (bug) | done |
 | 3 | Text options only for selections with text | IMPROVEMENT (bug) | done |
 | 4 | Shape text rotates with the shape | IMPROVEMENT | done |
-| 5 | Highlighter: "Neutral" option | ALREADY EXISTS → IMPROVEMENT (discoverability) | to do |
+| 5 | Highlighter: "Neutral" option | ALREADY EXISTS → IMPROVEMENT (discoverability) | done |
 
 ## 1. Page navigation in notes with pages (done)
 
@@ -125,3 +125,18 @@ unchanged: while editing, the core editor puts a shape's text at the top of its 
 unrotated), and image export bounds use the unrotated box (a rotated corner can be cut at the
 image edge). Tutorial "Shapes" step s3 updated (with the double-tap alternative), 6/6 in en, zh,
 ja, hi, ru.
+
+## 5. Highlighter "Neutral" (done)
+
+Classification: the function already existed. The highlighter's first color slot (`""`, tooltip
+"Theme highlight") writes Obsidian's own `==text==` (source.ts `highlight()`), and it was even the
+default. But it was drawn as one more round swatch in the theme's highlight color, so it looked
+like a yellow color slot. Improvement: it is now a labeled **Neutral** button before the color
+slots, set apart by a divider, active state like the swatches, tooltip explaining `==text==` and
+the theme's color; the color slots no longer include it. Same bar on the board and in column view
+(both use HighlightSession). The highlighter does not run inside Markdown notes (it never did);
+`==text==` written on cards is carried by Canvas ⇄ Markdown unchanged and renders natively there.
+
+Tested (test vault): bar order mode · Neutral · divider · 5 colors · eraser · close; Neutral
+sets the color setting to "" and becomes active; tapping a word wrote `==Some== text`, rendered
+as Obsidian's native `<mark>`. Tutorial "Drawing" step hl mentions Neutral (5 locales). Run in English: Drawing 10/10, Columns 11/11.

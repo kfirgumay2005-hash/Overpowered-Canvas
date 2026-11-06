@@ -58,9 +58,24 @@ body.opc-mod-text-highlight .opc-hl-bar.is-color .opc-hl-swatch {
 body.opc-mod-text-highlight .opc-hl-mode {
 	margin-inline-end: var(--size-4-1);
 }
-body.opc-mod-text-highlight .opc-hl-swatch.is-theme {
+/* Neutral: the theme's own highlight (==text==), a labeled button set apart from the color slots. */
+body.opc-mod-text-highlight .opc-hl-neutral {
+	height: 26px;
+	padding: 0 var(--size-4-2);
+	border-radius: 13px;
+	border: 2px solid transparent;
+	box-shadow: none;
+	font-size: var(--font-ui-smaller);
+	color: var(--text-normal);
 	background: var(--text-highlight-bg, rgba(255, 208, 0, 0.4));
 }
+body.opc-mod-text-highlight .opc-hl-divider {
+	align-self: stretch;
+	width: 1px;
+	margin: var(--size-2-1) var(--size-2-1);
+	background: var(--background-modifier-border);
+}
+body.opc-mod-text-highlight .opc-hl-neutral.is-active,
 body.opc-mod-text-highlight .opc-hl-swatch.is-active,
 body.opc-mod-text-highlight .opc-hl-eraser.is-active {
 	border-color: var(--interactive-accent);
