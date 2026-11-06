@@ -150,14 +150,24 @@ their old order. Pages: headers start one level below the page's heading
 
 Settings → Canvas ⇄ Markdown → *First level without bullets*. Each first-level item under a
 heading is written as a plain line, its children as bullets right below it (an indented list
-after a paragraph would render as part of the paragraph). A heading is the title of its block:
-its first plain line follows right below it, each further one after a blank line, and blank
-lines go only before a heading. A heading's own further lines are joined onto its line with
-`<br>` (a line right below a heading is its first plain line); blank lines inside a plain line's
-text are written as `<br>` lines. The note's data records the mode (`plain: true`, and
-`tight: true` for this layout; plain notes written before 0.18 have no `tight` and are read the
-old way, with a blank line after each heading and heading lines continued below it); notes
-without data (pasted outlines) are read the way the setting says.
+after a paragraph would render as part of the paragraph). Packed: everything between one heading
+and the next is one block with no blank lines; blank lines go only before a heading. Every
+first-level item is one line (its further lines, and those of a heading, are joined onto it with
+`<br>`), and every line at the start of a line that is no bullet or heading is a first-level item
+of its own (never the continuation of the line above).
+
+Markdown itself would read a plain line right after a bullet as part of that bullet, and two plain
+lines in a row as one paragraph. So in reading view (one note or notes with pages) the plugin
+draws each such block of a packed note again from a copy with a blank line before each plain line
+and without paragraph/list margins (`packed.ts`, `packed-view.ts`, class `opc-md-packed`): each
+line shows on its own line with no gaps. Live Preview shows the lines as they are. Other apps show
+the raw Markdown rules.
+
+The note's data records the layout: `plain: true, tight: true, packed: true`. Older plain notes
+are read the way they were written: no `tight` (before 0.17.2: a blank line after each heading,
+heading lines continued below it), `tight` without `packed` (0.17.2: a blank line before each
+further first-level line, its further lines below it). Notes without data (pasted outlines) are
+read packed when the setting is on.
 
 ## Pages
 

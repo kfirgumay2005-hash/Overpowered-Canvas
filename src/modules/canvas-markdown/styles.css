@@ -67,3 +67,8 @@ body.opc-mod-canvas-markdown .canvas-node[data-opc-header]::after {
 	line-height: 1.5;
 	pointer-events: none;
 }
+
+/* Packed plain notes in reading view (packed-view.ts): one block, each first-level line on its own line. */
+body.opc-mod-canvas-markdown .opc-md-packed > :is(p, ul, ol) {
+	margin-block: 0;
+}

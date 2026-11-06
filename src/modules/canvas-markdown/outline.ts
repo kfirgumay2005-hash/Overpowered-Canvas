@@ -37,11 +37,13 @@ export interface WriteOptions {
 	/** Write no hidden comment at all, not even the free-cards mark. */
 	clean?: boolean;
 	/**
-	 * The first level under each heading as plain lines, not bullets: the first one right below
-	 * its heading (a heading is the title of its block), each further one after a blank line, its
-	 * children as bullets right below it (an indented list after a paragraph would read as part
-	 * of the paragraph). A heading's own further lines go on its line, joined by `<br>`. Read back
-	 * with `parseOutline(md, { plain: true, tight: true })`.
+	 * The first level under each heading as plain lines, not bullets, packed: everything between
+	 * one heading and the next is one block with no blank line (blank lines only come before
+	 * headings). Each first-level item is one line (its further lines on it, joined by `<br>`),
+	 * its children as bullets right below it. A heading's own further lines go on its line too.
+	 * Read back with `parseOutline(md, { plain: true, tight: true, packed: true })`. In Markdown a
+	 * plain line right after a bullet continues that bullet's paragraph, so reading view shows
+	 * packed notes through `packedSections` (see packed-view.ts).
 	 */
 	plain?: boolean;
 }
@@ -57,6 +59,11 @@ export interface ParseOptions {
 	 * note from before: lines right below a heading continue its text.
 	 */
 	tight?: boolean;
+	/**
+	 * With `plain` and `tight`: written packed (see WriteOptions.plain): every line at the start of
+	 * the line that is no bullet or heading is a first-level item of its own.
+	 */
+	packed?: boolean;
 }
 
 const BULLET = /^([ \t]*)([-+*]|\d{1,9}[.)])(?:[ \t](.*))?$/;
@@ -234,11 +241,14 @@ export function parseOutline(md: string, opts: ParseOptions = {}): OutlineItem[]
 		// Plain text line.
 		const o = open;
 		const col = columns(leading(line));
+		// Packed: a line at the start of the line is a first-level item of its own, never the
+		// lazy continuation of the bullet or plain line above it.
+		const packed = !!(opts.plain && opts.packed);
 		const continues =
 			o !== null &&
 			((o.type === "heading" && o.item.kind === "node" && (!opts.plain || (!opts.tight && o.blank === 0))) ||
-				(o.type === "bullet" && (col >= o.content || o.blank === 0)) ||
-				(o.type === "paragraph" && o.blank === 0));
+				(o.type === "bullet" && (col >= o.content || (o.blank === 0 && !(packed && col === 0)))) ||
+				(o.type === "paragraph" && o.blank === 0 && !packed));
 		if (o && continues) {
 			const stripped = o.type === "bullet" ? stripColumns(line, o.content) : line;
 			const text =
@@ -255,6 +265,7 @@ export function parseOutline(md: string, opts: ParseOptions = {}): OutlineItem[]
 		list = [];
 		// Plain mode: the line is a first-level item as written (with its id, escapes undone).
 		const first = opts.plain ? splitMarker(unescapeLine(line.trim())) : { text: line.trim() };
+		if (opts.plain && opts.packed) first.text = joinedLines(first.text);
 		const item = at({ kind: "node", text: first.text, children: [], ...(first.id && first.kind === "node" ? { id: first.id } : {}) }, index);
 		add(scope(), item);
 		if (opts.plain) para = item;
@@ -278,13 +289,12 @@ export function writeOutline(items: OutlineItem[], opts: WriteOptions): string {
 	 * Lines after the first. Code fences are written as they are when every fence in the text
 	 * closes; otherwise fence lines are escaped too, so an open fence can't swallow the outline.
 	 */
-	/** `unbroken`: the text may hold no blank line (it would end the item): those are written as BREAK. */
-	const continuation = (first: string, rest: string[], prefix: string, unbroken = false) => {
+	const continuation = (first: string, rest: string[], prefix: string) => {
 		const balanced = [first, ...rest].reduce<string | null>((open, l) => fenceStep(l, open), null) === null;
 		let fence = balanced ? fenceStep(first, null) : null;
 		for (const line of rest) {
 			if (line.trim() === "") {
-				out.push(unbroken ? BREAK : "");
+				out.push("");
 				continue;
 			}
 			if (fence || (balanced && FENCE.test(line))) {
@@ -304,15 +314,9 @@ export function writeOutline(items: OutlineItem[], opts: WriteOptions): string {
 		for (const child of item.children) bullet(child, depth + 1);
 	};
 
-	/** Set right after a heading's line: its first plain line follows without a blank line. */
-	let underHeading = false;
-	/** A first-level item as a plain line (see WriteOptions.plain). */
+	/** A first-level item as one plain line, packed under the line above (see WriteOptions.plain). */
 	const plainLine = (item: OutlineItem) => {
-		if (out.length > 0 && !underHeading) out.push("");
-		underHeading = false;
-		const [first = "", ...rest] = item.text.split("\n");
-		out.push(`${escapeLine(first)}${marker(item)}`);
-		continuation(first, rest, "", true);
+		out.push(`${escapeLine(joinLines(item.text))}${marker(item)}`);
 		for (const child of item.children) bullet(child, 0);
 	};
 	const firstLevel = (item: OutlineItem) => (opts.plain && item.kind === "node" ? plainLine(item) : bullet(item, 0));
@@ -323,7 +327,6 @@ export function writeOutline(items: OutlineItem[], opts: WriteOptions): string {
 		if (opts.plain) {
 			// The heading is the title of its block: all of it on its line, its content right below.
 			out.push(`${"#".repeat(level)} ${joinLines(item.text)}${marker(item)}`.trimEnd());
-			underHeading = true;
 		} else {
 			const [first = "", ...rest] = item.text.split("\n");
 			out.push(`${"#".repeat(level)} ${first}${marker(item)}`.trimEnd());
@@ -333,7 +336,6 @@ export function writeOutline(items: OutlineItem[], opts: WriteOptions): string {
 		const bullets = item.children.filter((c) => c.heading === undefined);
 		const headings = item.children.filter((c) => c.heading !== undefined);
 		for (const child of bullets) firstLevel(child);
-		underHeading = false;
 		for (const child of headings) heading(child);
 	};
 

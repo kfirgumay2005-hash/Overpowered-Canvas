@@ -7,7 +7,7 @@ When resuming: read this file and `git log`, then continue with the first item t
 | # | Item | Class | Status |
 |---|------|-------|--------|
 | 1 | Page navigation in notes with pages (4th report) + Debug mode | IMPROVEMENT (bug) + NEW setting | done |
-| 2 | No blank lines between a heading's plain lines | IMPROVEMENT (bug) | to do |
+| 2 | No blank lines between a heading's plain lines | IMPROVEMENT (bug) | done |
 | 3 | Text options only for selections with text | IMPROVEMENT (bug) | to do |
 | 4 | Shape text rotates with the shape | IMPROVEMENT | to do |
 | 5 | Highlighter: "Neutral" option | ALREADY EXISTS → IMPROVEMENT (discoverability) | to do |
@@ -62,3 +62,32 @@ position fallback). Crumb redrawn by a real note edit while the finger is down: 
 Tutorial "Big maps in pages" (step noteLinks text updated in 5 locales): 14/14 in en, zh, ja,
 hi, ru. Unit tests 722/722, typecheck, store lint clean.
 **Needs confirmation on the iPad**: turn on Debug mode; each tap must show a message.
+
+## 2. No blank lines between a heading's plain lines (done)
+
+Cause: the "first level without bullets" writer put a blank line before every first-level line
+except the first under a heading (0.17.2 only removed the one right after the heading). Markdown
+needs those blank lines: without them a plain line right after a bullet is read as the lazy
+continuation of that bullet, and two plain lines in a row are one paragraph. Measured in Obsidian
+1.15 (Reading view vs Live Preview): no separator → Live Preview right, Reading view puts the
+siblings inside the last bullet; `%%%%` / `<!-- -->` separator lines or prefixes → no help in
+Reading view and visible lines in Live Preview; blank lines → right structure but a ~15 px gap.
+
+Method: the note is written packed — no blank line anywhere between one heading and the next,
+every first-level item on one line (a card's own further lines joined with `<br>`, like
+headings), its bullets right below; blank lines only before headings. The parser reads every
+line at the start of a line that is no bullet or heading as a first-level item (data
+`packed: true`; notes from 0.17.2 and older are read the way they were written). Live Preview
+shows the lines as they are. Reading view (one note and notes with pages): a post-processor
+(`packed-view.ts`, pure part `packed.ts`) draws each block section of a packed note again from a
+copy with a blank line before each plain line, and every block section gets class
+`opc-md-packed` (no paragraph/list margins), so each line is on its own line with no gaps. Only
+notes whose data says packed are touched.
+
+Tested: unit tests (the reported layout written exactly as requested and read back; 0.17.2
+notes read as before; packed splitter); live, test map with the reported structure (header card
+"Esami del laboratorio" with three plain children): source has a blank line only before the
+heading; Reading view and Live Preview both 25–26 px per line from "Esami ematici" to "Prelievi
+bioptici"; note → canvas unchanged, a typed plain line + bullet became a new sibling and its
+child; Flu with 7 pages in pages mode: same spacing, one page shown. Setting description and
+tutorial step `plain` updated in 5 locales. Tutorial "Canvas ⇄ Markdown": 7/7 in en, zh, ja, hi, ru.

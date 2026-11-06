@@ -763,14 +763,36 @@ describe("first level without bullets", () => {
 			],
 		},
 	];
-	it("writes each first-level line plain, its children as bullets right below; a heading's content starts right below it", () => {
+	it("writes each first-level line plain, its children as bullets right below; blank lines only before headings", () => {
 		expect(writeOutline(items, { indent: "\t", ids: false, plain: true })).toBe(
-			"# Root\nBeta\n- b1\n\t- b11\n- b2\n\n\\- looks like a bullet\nsecond line\n\nGamma\n\n## Alpha\na1\n",
+			"# Root\nBeta\n- b1\n\t- b11\n- b2\n\\- looks like a bullet<br>second line\nGamma\n\n## Alpha\na1\n",
 		);
 	});
 	it("reads back the same tree", () => {
 		const md = writeOutline(items, { indent: "\t", ids: false, plain: true });
-		expect(shapeOf(parseOutline(md, { plain: true, tight: true }))).toEqual(shapeOf(items));
+		expect(shapeOf(parseOutline(md, { plain: true, tight: true, packed: true }))).toEqual(shapeOf(items));
+	});
+	it("packs siblings with children under a heading (the reported layout)", () => {
+		const lab: OutlineItem[] = [
+			{
+				kind: "node",
+				text: "Esami del laboratorio",
+				heading: 2,
+				children: [
+					{ kind: "node", text: "Esami ematici", children: [{ kind: "node", text: "Emocromo", children: [] }, { kind: "node", text: "EGA", children: [] }] },
+					{ kind: "node", text: "Esami delle urine", children: [{ kind: "node", text: "Urinocultura", children: [] }] },
+					{ kind: "node", text: "Prelievi bioptici", children: [] },
+				],
+			},
+		];
+		const md = writeOutline(lab, { indent: "\t", ids: false, plain: true });
+		expect(md).toBe("## Esami del laboratorio\nEsami ematici\n- Emocromo\n- EGA\nEsami delle urine\n- Urinocultura\nPrelievi bioptici\n");
+		expect(shapeOf(parseOutline(md, { plain: true, tight: true, packed: true }))).toEqual(shapeOf(lab));
+	});
+	it("reads tight plain notes from 0.17.2 (a blank line before each further line) the same way as then", () => {
+		const old = "# Root\nBeta\n- b1\n\nGamma\nsecond line\n";
+		const { items: back } = splitNote(`${old}\n%%\n## canvas-data\n\`\`\`json\n{"version":1,"plain":true,"tight":true}\n\`\`\`\n%%\n`);
+		expect(shapeOf(back)).toEqual([["Root", 1, [["Beta", null, [["b1", null, []]]], ["Gamma\nsecond line", null, []]]]]);
 	});
 	it("writes a heading's further lines on its own line", () => {
 		const multi: OutlineItem[] = [{ kind: "node", text: "Title\nsubtitle\n\nmore", heading: 1, children: [{ kind: "node", text: "first", children: [] }] }];
@@ -796,6 +818,7 @@ describe("first level without bullets", () => {
 		const { items: back, data } = splitNote(md);
 		expect(data?.plain).toBe(true);
 		expect(data?.tight).toBe(true);
+		expect(data?.packed).toBe(true);
 		const again = await applyNote(back, data, null, elk, options());
 		expect(exportNote(again.data, plainOpts)).toBe(md);
 	});
