@@ -7,6 +7,11 @@ body.opc-mod-shapes .canvas-node[data-opc-kind="shape"] > svg.opc-shape {
 	transform-origin: center;
 	transform-box: fill-box;
 }
+/* The text turns with its shape, around the same center, also while it is being edited. */
+body.opc-mod-shapes .canvas-node[data-opc-kind="shape"] > .canvas-node-container {
+	transform: rotate(var(--opc-rotation, 0deg));
+	transform-origin: center;
+}
 body.opc-mod-shapes .canvas-node[data-opc-kind="shape"] > svg.opc-shape path {
 	stroke-width: var(--opc-stroke-width, 1.5px);
 }

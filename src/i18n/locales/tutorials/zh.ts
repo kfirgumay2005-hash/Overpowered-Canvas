@@ -108,7 +108,7 @@ export const tutorialsZh: Record<keyof typeof tutorialsEn, string> = {
 	"tut.shapes.s2.body": "选中形状：工具栏中的 **形状样式** 可以设置填充（淡色、实色或无）、轮廓粗细、不透明度和旋转。",
 	"tut.shapes.s2.task": "修改任意形状的填充、不透明度或旋转。",
 	"tut.shapes.s3.title": "形状里的文字",
-	"tut.shapes.s3.body": "双击形状即可在里面写字。即使形状旋转，文字也保持正向。",
+	"tut.shapes.s3.body": "双击形状（触屏上双击轻点）即可在里面写字。形状旋转时，文字会随之一起旋转，并保持在形状内的同一位置；文字仍可编辑，重新加载后和导出图片中也保持旋转。",
 	"tut.shapes.s3.task": "双击一个形状并输入一些文字。",
 	"tut.shapes.s4.title": "把卡片变成流程图形状",
 	"tut.shapes.s4.body": "普通卡片也可以有形状：起止、处理、判断、数据库、文档……非常适合流程图，卡片的文本功能都还在。",

@@ -9,7 +9,7 @@ When resuming: read this file and `git log`, then continue with the first item t
 | 1 | Page navigation in notes with pages (4th report) + Debug mode | IMPROVEMENT (bug) + NEW setting | done |
 | 2 | No blank lines between a heading's plain lines | IMPROVEMENT (bug) | done |
 | 3 | Text options only for selections with text | IMPROVEMENT (bug) | done |
-| 4 | Shape text rotates with the shape | IMPROVEMENT | to do |
+| 4 | Shape text rotates with the shape | IMPROVEMENT | done |
 | 5 | Highlighter: "Neutral" option | ALREADY EXISTS → IMPROVEMENT (discoverability) | to do |
 
 ## 1. Page navigation in notes with pages (done)
@@ -109,3 +109,19 @@ Tested (test vault, real selection toolbar): text card → 5 text buttons; image
 card → 4 (header is for text cards only); image + text card and image + note → shown; text size
 24 and right-to-left from a selection of image + text card + note card changed the text card and
 the note card, not the image. Tutorial "Basics" step s5 (the toolbar) says so, in 5 locales; 7/7 in en, zh, ja, hi, ru.
+
+## 4. Shape text turns with the shape (done)
+
+Before: only the shape's outline (`svg.opc-shape`) was rotated by `--opc-rotation`; the text was
+kept upright on purpose. Now the shape's card container (transparent for shapes, same box as the
+node) gets the same `rotate()` around the same center (`shapes/styles.css`), so the text turns
+with the shape, keeps its place inside it, and the card editor turns too.
+
+Tested (test vault): rectangle 30°, star −45°, ellipse 90°: outline center = text box center for
+each; double-click + typing in the rotated rectangle saved the text; rotation and text after
+closing and reopening the canvas; PNG export shows the text rotated with each shape (export
+clones the node DOM and its CSS); Canvas → Markdown → Canvas keeps rotation and text. Known and
+unchanged: while editing, the core editor puts a shape's text at the top of its box (also
+unrotated), and image export bounds use the unrotated box (a rotated corner can be cut at the
+image edge). Tutorial "Shapes" step s3 updated (with the double-tap alternative), 6/6 in en, zh,
+ja, hi, ru.

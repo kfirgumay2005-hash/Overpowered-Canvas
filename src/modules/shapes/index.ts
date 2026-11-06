@@ -42,7 +42,7 @@ function apply(node: CanvasNodeLike, extra: OpcNode | null): void {
 
 /**
  * Standalone shapes (kind "shape"): rectangles, ellipses, stars, clouds, block arrows…, with
- * fill, stroke width, opacity and rotation. Text typed into a shape stays upright. Shapes come
+ * fill, stroke width, opacity and rotation. Text typed into a shape turns with it. Shapes come
  * from the card menu, or from shape recognition while drawing.
  */
 export const shapesModule = defineModule({

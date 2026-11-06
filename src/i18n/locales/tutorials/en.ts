@@ -109,7 +109,7 @@ export const tutorialsEn = {
 	"tut.shapes.s2.body": "Select a shape: **Shape style** in the toolbar sets its fill (tinted, solid or none), outline width, opacity and rotation.",
 	"tut.shapes.s2.task": "Change the fill, opacity or rotation of any shape.",
 	"tut.shapes.s3.title": "Words in shapes",
-	"tut.shapes.s3.body": "Double-click a shape to write in it. The text stays upright even when the shape is rotated.",
+	"tut.shapes.s3.body": "Double-click a shape (double-tap on a touch screen) to write in it. When the shape is rotated, its text turns with it and stays in the same place inside it; you can still edit it, and it stays rotated after a reload and in image exports.",
 	"tut.shapes.s3.task": "Double-click a shape and type something.",
 	"tut.shapes.s4.title": "Cards as flowchart shapes",
 	"tut.shapes.s4.body": "Ordinary cards can take a shape too: terminal, process, decision, database, document… Perfect for flowcharts, and the card keeps all its text features.",
