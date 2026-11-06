@@ -1285,6 +1285,20 @@ export const en = {
 	"autoLayout.radialEdges.simple": "Curved or straight branches in round mind maps.",
 	"autoLayout.radialEdges.curved": "Curved",
 	"autoLayout.radialEdges.straight": "Straight",
+	"settings.debug.name": "Debug mode",
+	"settings.debug.desc": "Shows a short message on screen each time a page-navigation control is pressed (the pages bar of boards and notes: index, crumbs, previous and next page, whole note) and when the page change is done, with what received the press. Meant for checking problems on devices without developer tools, such as tablets.",
+	"settings.debug.simple": "Shows on-screen messages that help find problems.",
+	"debug.nav.direct": "on the control",
+	"debug.nav.cover": "through {element}, which lies on top of it",
+	"debug.nav.tapped": "Debug: “{control}” tapped ({received}).",
+	"debug.nav.clicked": "Debug: “{control}” clicked ({received}).",
+	"debug.nav.off": "Debug: “{control}” pressed ({received}), but it is turned off right now.",
+	"debug.nav.left": "Debug: “{control}” not run: the press ended away from it.",
+	"debug.nav.failed": "Debug: “{control}” failed: {error}",
+	"debug.nav.shown": "Debug: page shown: “{page}” ({at}) in {place}.",
+	"debug.nav.indexOpen": "Debug: the pages index is open.",
+	"debug.nav.indexClosed": "Debug: the pages index did not stay open (the side panel is closed).",
+	"canvasMarkdown.paged.one": "Show one page at a time",
 } as const;
 
 export type I18nKey = keyof typeof en;

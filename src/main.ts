@@ -22,6 +22,8 @@ import { TutorialListModal, type TutorialListHost } from "./tutorials/list";
 import { TutorialRunner } from "./tutorials/runner";
 import { logError } from "./core/log";
 import { fitMenu } from "./ui/menu-fit";
+import { configureDebug } from "./core/debug";
+import { removeNavControls } from "./ui/nav-controls";
 
 export default class OverpoweredCanvasPlugin extends Plugin {
 	declare settings: PluginSettings;
@@ -86,6 +88,7 @@ export default class OverpoweredCanvasPlugin extends Plugin {
 				t: () => this.translate,
 				saveSettings: () => this.saveSettings(),
 				setLanguage: (language) => this.setLanguage(language),
+				setDebug: (on) => configureDebug(on, this.translate),
 				tutorials,
 				applyFilesFolder: async (to) => {
 					// Practice boards live in that folder: end a running tutorial first.
@@ -105,6 +108,7 @@ export default class OverpoweredCanvasPlugin extends Plugin {
 	}
 
 	override onunload(): void {
+		removeNavControls();
 		void this.modules?.stopAll();
 	}
 
@@ -175,6 +179,7 @@ export default class OverpoweredCanvasPlugin extends Plugin {
 	setLanguage(language: LanguageSetting): void {
 		this.settings.language = language;
 		this.translate = createTranslator(resolveLocale(language, getLanguage()));
+		configureDebug(this.settings.debug, this.translate);
 	}
 
 	private warnReadOnly(canvas: CanvasLike, found: number | string): void {

@@ -81,6 +81,12 @@
 	max-width: var(--opc-menu-max-width);
 }
 
+/* Debug mode messages (core/debug.ts): presses go through them to what lies below. */
+.opc-debug-notice,
+.opc-debug-notice * {
+	pointer-events: none;
+}
+
 /* Plain-language explanation under a setting's description. */
 .opc-setting-simple {
 	display: flex;
