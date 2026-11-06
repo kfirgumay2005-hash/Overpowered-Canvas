@@ -1,14 +1,23 @@
 /**
- * Which buttons the bottom bar, the side bar and the popup over a selection show (pure,
- * unit-tested).
+ * Which buttons the bottom bar, the side bar, the popup over a selection and the popup over
+ * images show (pure, unit-tested).
  *
  * The app gives its bar buttons no ids and translates their labels, so a button is known by what
  * stays the same across languages and devices: our own class, else its icon.
  */
 
-export type Bar = "bottom" | "side" | "popup";
+/** "image": the popup when only images are selected; it has its own buttons, order and commands. */
+export type Bar = "bottom" | "side" | "popup" | "image";
 
-export const BARS: readonly Bar[] = ["bottom", "side", "popup"];
+export const BARS: readonly Bar[] = ["bottom", "side", "popup", "image"];
+
+/** The two popups over a selection (built for each selection, not mounted once). */
+export const isPopupBar = (bar: Bar): boolean => bar === "popup" || bar === "image";
+
+/** Which popup a selection gets: the image one when it holds images only. */
+export function popupFor(items: readonly { image: boolean }[]): Bar {
+	return items.length > 0 && items.every((i) => i.image) ? "image" : "popup";
+}
 
 /** A button added by hand: it runs a command from the command palette. */
 export interface CustomButton {

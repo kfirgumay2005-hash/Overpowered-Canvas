@@ -12,7 +12,8 @@ import { logError } from "../../core/log";
 import type { ModuleContext } from "../../core/module";
 import { pagesHost, pageSources, type PagesSource } from "../pages/api";
 import { renderPagesBar } from "../pages/bar";
-import { onPress } from "../../ui/press";
+import { navControl } from "../../ui/nav-controls";
+import { debugNotice } from "../../core/debug";
 import type { NoteData } from "./note";
 import { readPagedNote, sectionAt, type PagedNote, type PageSection } from "./paged";
 import { pageOrder } from "./structure";
@@ -261,6 +262,16 @@ export class PagedNotes {
 			} else if (view.getMode() === "preview") view.previewMode.applyScroll(target);
 		}
 		pagesHost.api?.refreshIndex();
+		const order = this.order(open);
+		debugNotice("debug.nav.shown", {
+			page: page === null ? this.ctx.t("canvasMarkdown.paged.all") : this.sourceTitle(open, path, page),
+			at: page === null ? "—" : `${order.indexOf(page) + 1} / ${order.length}`,
+			place: path,
+		});
+	}
+
+	private sourceTitle(open: Open, path: string, page: string): string {
+		return page ? open.note.sections.find((s) => s.page === page)?.title || this.ctx.t("pages.untitled") : (path.split("/").pop()?.replace(/\.md$/, "") ?? path);
 	}
 
 	// ---------- the bar and the index ----------
@@ -282,11 +293,10 @@ export class PagedNotes {
 
 	/**
 	 * The bar above a note with pages: the index button and where you are (left), the previous
-	 * and next page in reading order with "n / total", and the whole note (right). The buttons
-	 * are made once per view and only updated, and each one reads the page shown when it is
-	 * pressed: a bar drawn again (the note changed, the keyboard of a tablet closed) never leaves
-	 * a press on a button that is gone or on a page that is no longer shown. Pressing them keeps
-	 * the editor's focus, so a tablet's keyboard doesn't close and move the view mid-tap.
+	 * and next page in reading order with "n / total", and the whole note (right). The same bar
+	 * and the same press handling (navControl) as on the board; every button shows a page with
+	 * show(), the function the links in the note use too. Each one reads the page shown when it
+	 * is pressed, so a bar drawn again mid-press still acts on the right page.
 	 */
 	private renderBar(view: MarkdownView, open: Open): void {
 		let bar = this.bars.get(view);
@@ -295,11 +305,6 @@ export class PagedNotes {
 			bar = createDiv({ cls: "opc-pages-bar opc-md-pages-bar" });
 			view.containerEl.insertBefore(bar, view.contentEl);
 			this.bars.set(view, bar);
-			const keepFocus = (evt: Event) => {
-				if ((evt.target as HTMLElement | null)?.closest?.("button")) evt.preventDefault();
-			};
-			// Mouse: the editor keeps its focus. Touch: onPress cancels the tap's mouse events.
-			bar.addEventListener("mousedown", keepFocus);
 			bar.createDiv({ cls: "opc-md-pages-where" });
 			this.makeTools(view, bar.createDiv({ cls: "opc-md-pages-tools" }));
 		}
@@ -315,15 +320,13 @@ export class PagedNotes {
 			const b = tools.createEl("button", { cls: `clickable-icon ${cls}`, attr: { "aria-label": label } });
 			setIcon(b, icon);
 			setTooltip(b, label);
-			onPress(b, (evt) => {
-				evt.preventDefault();
-				run();
-			});
+			navControl(b, run);
 		};
 		button("opc-md-pages-prev", "chevron-left", t("textPages.previous"), () => this.step(view, -1));
 		tools.createSpan({ cls: "opc-md-pages-count" });
 		button("opc-md-pages-next", "chevron-right", t("textPages.next"), () => this.step(view, 1));
-		button("opc-md-pages-all", "list", t("canvasMarkdown.paged.all"), () => {
+		// Whole note ⇄ one page at a time (icon and label follow the state, see updateTools).
+		button("opc-md-pages-all", "unfold-vertical", t("canvasMarkdown.paged.all"), () => {
 			const path = view.file?.path;
 			const open = path ? this.open.get(path) : undefined;
 			if (path && open) this.show(path, open.page === null ? this.host.initialPage(path) || "" : null);
@@ -351,7 +354,18 @@ export class PagedNotes {
 			count.setText(paged ? `${at + 1} / ${order.length}` : "");
 			count.toggle(paged);
 		}
-		bar.querySelector(".opc-md-pages-all")?.toggleClass("is-active", open.page === null);
+		const all = bar.querySelector<HTMLElement>(".opc-md-pages-all");
+		if (all) {
+			const whole = open.page === null;
+			if (all.dataset.whole !== String(whole)) {
+				all.dataset.whole = String(whole);
+				const label = this.ctx.t(whole ? "canvasMarkdown.paged.one" : "canvasMarkdown.paged.all");
+				setIcon(all, whole ? "fold-vertical" : "unfold-vertical");
+				all.setAttr("aria-label", label);
+				setTooltip(all, label);
+			}
+			all.toggleClass("is-active", whole);
+		}
 	}
 
 	/** The page before or after the one shown, in the index's order (main page, then each page with its pages). */

@@ -9,6 +9,7 @@ import { pageSources, pagesHost, type PagesSource } from "./api";
 import { renderPagesBar } from "./bar";
 import { boundsOf, branchOf, cardLink, freeRegion, pageChildren, pointLinksAt, titleOf, withLink, withoutLink, withoutPage, type PlanNode } from "./logic";
 import { logError } from "../../core/log";
+import { debugMode, debugNotice } from "../../core/debug";
 
 export const PAGES_VIEW = "opc-pages";
 
@@ -157,6 +158,10 @@ export const pagesModule = defineModule<PagesSettings>({
 			}
 			canvas.markViewportChanged();
 			if (from !== page) ctx.events.emit("page-shown", canvas, page);
+			if (debugMode()) {
+				const all = ["", ...pagesOf(canvas).map((p) => p.id)];
+				debugNotice("debug.nav.shown", { page: pageTitle(canvas, page), at: `${all.indexOf(page) + 1} / ${all.length}`, place: path ?? "" });
+			}
 		};
 
 		const pageTitle = (canvas: CanvasLike, page: string): string => {
@@ -644,11 +649,21 @@ export const pagesModule = defineModule<PagesSettings>({
 		ctx.registerView(PAGES_VIEW, (leaf) => new PagesView(leaf, ctx, sourceOf));
 		const openIndex = async () => {
 			const existing = ctx.app.workspace.getLeavesOfType(PAGES_VIEW)[0];
-			if (existing) return ctx.app.workspace.revealLeaf(existing);
-			const leaf = ctx.app.workspace.getLeftLeaf(false);
-			if (!leaf) return;
-			await leaf.setViewState({ type: PAGES_VIEW, active: true });
-			await ctx.app.workspace.revealLeaf(leaf);
+			if (existing) await ctx.app.workspace.revealLeaf(existing);
+			else {
+				const leaf = ctx.app.workspace.getLeftLeaf(false);
+				if (!leaf) return;
+				await leaf.setViewState({ type: PAGES_VIEW, active: true });
+				await ctx.app.workspace.revealLeaf(leaf);
+			}
+			if (debugMode()) {
+				// Checked a moment later: on a tablet the side drawer can close right after opening.
+				window.setTimeout(() => {
+					const index = ctx.app.workspace.getLeavesOfType(PAGES_VIEW)[0];
+					const shown = !!index && (index.getRoot() !== ctx.app.workspace.leftSplit || !ctx.app.workspace.leftSplit.collapsed);
+					debugNotice(shown ? "debug.nav.indexOpen" : "debug.nav.indexClosed");
+				}, 800);
+			}
 		};
 
 		// ---------- commands and menus ----------

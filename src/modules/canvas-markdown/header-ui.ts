@@ -4,10 +4,10 @@
  * the Markdown note (see headers.ts); a small badge on the card says so.
  */
 import type { ModuleContext } from "../../core/module";
-import type { CanvasLike, CanvasNodeLike } from "../../internals/types";
+import type { CanvasItemLike, CanvasLike, CanvasNodeLike } from "../../internals/types";
 import { ChoiceModal, type Choice } from "../../ui/choice-modal";
 import { showPicker } from "../../ui/picker";
-import { common, mutate, nodeType, onlyTextBoxes, selectedNodes } from "../shared";
+import { common, mutate, nodeType, selectedNodes, textCardsIn } from "../shared";
 import { headingMarks, withoutMarks } from "./headers";
 
 const LEVELS = [1, 2, 3, 4, 5, 6];
@@ -21,7 +21,9 @@ export function enableHeaderCards(ctx: ModuleContext<object>): void {
 		if (own !== undefined) return own;
 		return headingMarks(textOf(n)) || undefined;
 	};
-	const cards = (canvas: CanvasLike) => onlyTextBoxes(ctx, selectedNodes(canvas))?.filter((n) => nodeType(n) === "text") ?? [];
+	/** The text cards of a selection (file cards, images and the rest are left out). */
+	const textOnly = (selection: CanvasItemLike[]) => (textCardsIn(ctx, selection) ?? []).filter((n) => nodeType(n) === "text");
+	const cards = (canvas: CanvasLike) => textOnly(selectedNodes(canvas));
 
 	/** "auto", "1"…"6" or "none". */
 	const apply = (canvas: CanvasLike, nodes: CanvasNodeLike[], choice: string) =>
@@ -59,10 +61,10 @@ export function enableHeaderCards(ctx: ModuleContext<object>): void {
 		tooltip: () => t("canvasMarkdown.header.button"),
 		order: 14,
 		command: false,
-		isVisible: (selection) => !!onlyTextBoxes(ctx, selection)?.every((n) => nodeType(n) === "text"),
-		isActive: (selection) => (onlyTextBoxes(ctx, selection) ?? []).some((n) => stateOf(n) !== undefined),
+		isVisible: (selection) => textOnly(selection).length > 0,
+		isActive: (selection) => textOnly(selection).some((n) => stateOf(n) !== undefined),
 		onClick: ({ canvas, selection, buttonEl }) => {
-			const nodes = (onlyTextBoxes(ctx, selection) ?? []).filter((n) => nodeType(n) === "text");
+			const nodes = textOnly(selection);
 			const list = choices(nodes);
 			showPicker(
 				buttonEl,

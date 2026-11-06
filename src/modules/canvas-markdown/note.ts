@@ -47,6 +47,8 @@ export interface NoteData {
 	plain?: boolean;
 	/** Plain notes: a heading's content starts right below it (see ParseOptions.tight). */
 	tight?: boolean;
+	/** Plain notes: no blank line between a heading's lines (see ParseOptions.packed). */
+	packed?: boolean;
 }
 
 export interface ExportOptions {
@@ -135,7 +137,7 @@ function build(canvas: CanvasFileData, opts: ExportOptions): { items: OutlineIte
 		drawings: s.drawings.map((id) => byId.get(id)!),
 		order: (canvas.nodes ?? []).map((n) => n.id),
 		...(paged ? { paged: true } : {}),
-		...(opts.plain ? { plain: true, tight: true } : {}),
+		...(opts.plain ? { plain: true, tight: true, packed: true } : {}),
 	};
 	return { items: s.items, data };
 }
@@ -176,7 +178,7 @@ const BLOCK = /(?:^|\n)%%[ \t]*\n## canvas-data[ \t]*\n```json[ \t]*\n([\s\S]*?)
  */
 /** How to read a note's outline: the way its data says it was written, else the way this version writes (`plain` from the setting). */
 export function readOptions(data: NoteData | null, plain = false): ParseOptions {
-	return data ? { plain: !!data.plain, tight: !!data.tight } : { plain, tight: true };
+	return data ? { plain: !!data.plain, tight: !!data.tight, packed: !!data.packed } : { plain, tight: true, packed: true };
 }
 
 export function splitNote(md: string, plain = false): SplitNote {
@@ -235,6 +237,7 @@ export function readData(raw: unknown): NoteData | null {
 	if (raw.paged === true) out.paged = true;
 	if (raw.plain === true) out.plain = true;
 	if (raw.tight === true) out.tight = true;
+	if (raw.packed === true) out.packed = true;
 	if (Array.isArray(raw.outline)) out.outline = readOutline(raw.outline);
 	return out;
 }

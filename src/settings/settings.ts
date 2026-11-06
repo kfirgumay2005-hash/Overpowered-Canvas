@@ -41,10 +41,12 @@ export interface PluginSettings {
 	};
 	/** Folder for the plugin's files (see DEFAULT_FILES_FOLDER). */
 	filesFolder: string;
+	/** Debug mode: on-screen messages about presses on page-navigation controls (core/debug.ts). */
+	debug: boolean;
 }
 
 export function defaultSettings(): PluginSettings {
-	return { settingsVersion: SETTINGS_VERSION, language: "auto", modules: {}, coexistence: { acknowledged: [] }, tutorials: { done: [] }, filesFolder: DEFAULT_FILES_FOLDER };
+	return { settingsVersion: SETTINGS_VERSION, language: "auto", modules: {}, coexistence: { acknowledged: [] }, tutorials: { done: [] }, filesFolder: DEFAULT_FILES_FOLDER, debug: false };
 }
 
 const LANGUAGES: readonly LanguageSetting[] = ["auto", "en", "zh", "ja", "hi", "ru"];
@@ -76,6 +78,8 @@ export function sanitizeSettings(raw: unknown): PluginSettings {
 	const legacy = out.modules["canvas-markdown"]?.settings.dataFolder;
 	const folder = typeof raw.filesFolder === "string" ? raw.filesFolder : typeof legacy === "string" ? legacy : "";
 	out.filesFolder = cleanFolderPath(folder) ?? DEFAULT_FILES_FOLDER;
+
+	out.debug = raw.debug === true;
 
 	return out;
 }

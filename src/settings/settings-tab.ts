@@ -15,6 +15,8 @@ export interface SettingsTabHost {
 	t(): Translate;
 	saveSettings(): Promise<void>;
 	setLanguage(language: LanguageSetting): void;
+	/** Turns debug mode on or off (the setting is already stored in `settings`). */
+	setDebug(on: boolean): void;
 	readonly tutorials: TutorialListHost;
 	/** Moves the plugin's files to `to` and makes it the files folder. */
 	applyFilesFolder(to: string): Promise<MoveResult>;
@@ -97,6 +99,21 @@ export class OpcSettingTab extends PluginSettingTab {
 								new Notice(host.t()("settings.language.reload"));
 								this.update();
 							}),
+					);
+				},
+			},
+			{
+				name: t("settings.debug.name"),
+				desc: t("settings.debug.desc"),
+				render: (s) => {
+					s.settingEl.setAttr("data-opc-search", searchText(t, ["settings.debug.name", "settings.debug.desc", "settings.debug.simple"]));
+					addSimpleLine(s.descEl, t("settings.debug.simple"));
+					s.addToggle((toggle) =>
+						toggle.setValue(host.settings.debug).onChange(async (value) => {
+							host.settings.debug = value;
+							host.setDebug(value);
+							await host.saveSettings();
+						}),
 					);
 				},
 			},

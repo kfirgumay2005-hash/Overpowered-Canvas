@@ -70,7 +70,7 @@ number box, and shape recognition (hold at the end of a stroke). Every stroke is
 drawing; resize a drawing's card and its strokes scale with it. Marks drawn on a card stick to it: they move, copy and delete with the card.
 Highlight words inside a card without editing it, or color their letters (swipe or tap with a pen
 or the mouse; the highlight or color goes into the card's text, so it shows in every view and in
-Markdown). Free lines and arrows whose ends stick to cards and that
+Markdown; **Neutral** writes Obsidian's own `==highlight==` in your theme's color). Free lines and arrows whose ends stick to cards and that
 keep the corners you draw; bend points keep the route's shape when cards move (square routes stay
 square), drawn above the cards (or under them). Standalone shapes with
 fill, outline, opacity and rotation. Sticky notes in any color (the last 10 custom colors are
@@ -142,7 +142,9 @@ and phones), and twenty-seven hands-on tutorials (at the top of the settings and
 controls). Each tutorial opens a temporary practice board with a coach panel: small tasks that
 tick themselves off as you do them, a "Show me" button that does each task live on the board, and
 highlights on the controls involved. The board (and any practice notes it uses) is deleted when the tutorial closes. At the top of the settings you choose the vault folder for the plugin's own files (note data and
-tutorial practice boards); Apply moves the files already there. The settings page has its own search box and collapsible sections, a plain-language
+tutorial practice boards); Apply moves the files already there. **Debug mode** (off by default) shows
+an on-screen message for every press on a page-navigation control and every page change, for
+checking problems on tablets and phones. The settings page has its own search box and collapsible sections, a plain-language
 explanation under every setting, and every module and option also shows up in Obsidian's
 settings search. A double-click on the empty canvas creates a card at a speed you choose
 (fast, regular, slow or your own); dragging never creates one.
@@ -203,7 +205,7 @@ still clickable ([docs/BENCHMARKS.md](docs/BENCHMARKS.md)).
 
 The bottom bar, the side bar and the popup over a selection are yours to arrange: take off any
 button, drag buttons into the order you like, and add a button for any command, from this plugin, the app or other plugins (_Customize
-the bars_).
+the bars_). Images (JPG, PNG…) get a popup of their own, arranged separately from the one over cards.
 
 Every toolbar action is also in the command palette ("Selection: …"), so you can assign your
 own hotkeys to any of them.

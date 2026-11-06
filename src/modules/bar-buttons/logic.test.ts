@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buttonKeys, buttonLabel, hiddenKey, orderOf, sanitizeBarSettings, sortKeys, type ButtonFacts } from "./logic";
+import { buttonKeys, buttonLabel, hiddenKey, isPopupBar, orderOf, popupFor, sanitizeBarSettings, sortKeys, type ButtonFacts } from "./logic";
 
 const button = (over: Partial<ButtonFacts>): ButtonFacts => ({ classes: [], groupClasses: [], iconClasses: [], label: "", ...over });
 
@@ -81,5 +81,20 @@ describe("the order of a bar", () => {
 		expect(s.order).toEqual({ bottom: ["custom:x", "lucide-trash-2"] });
 		expect(orderOf("lucide-trash-2", 5, s.order.bottom)).toBe(1);
 		expect(orderOf("other", 5, s.order.bottom)).toBeGreaterThan(1);
+	});
+});
+
+describe("the popup over images", () => {
+	it("is the popup of a selection of images only", () => {
+		expect(popupFor([{ image: true }, { image: true }])).toBe("image");
+		expect(popupFor([{ image: true }, { image: false }])).toBe("popup");
+		expect(popupFor([{ image: false }])).toBe("popup");
+		expect(popupFor([])).toBe("popup");
+	});
+	it("keeps its own commands and order", () => {
+		const s = sanitizeBarSettings({ custom: [{ id: "i", bar: "image", command: "app:reload" }], order: { image: ["a", "b"], popup: ["c"] } });
+		expect(s.custom[0]!.bar).toBe("image");
+		expect(s.order).toEqual({ popup: ["c"], image: ["a", "b"] });
+		expect(isPopupBar("image") && isPopupBar("popup") && !isPopupBar("side")).toBe(true);
 	});
 });

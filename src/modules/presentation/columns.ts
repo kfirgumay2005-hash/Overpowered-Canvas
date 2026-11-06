@@ -5,7 +5,7 @@ import type { CanvasLike, CanvasNodeLike } from "../../internals/types";
 import { nodeText } from "../canvas-markdown/structure";
 import type { InkSurface } from "../drawing/api";
 import { strokeD } from "../drawing/render";
-import { nodeType } from "../shared";
+import { IMAGE_EXTENSIONS, nodeType } from "../shared";
 import type { MarkSurface } from "../text-highlight/api";
 import { columnPositions, keepZoom, zoomAround, type View } from "./column-layout";
 
@@ -52,7 +52,6 @@ const TOOL_LABELS = { ink: "drawing.command", highlight: "textHighlight.button",
 /** How near a card (screen px) a pen press still draws on it. */
 const INK_REACH = 12;
 
-const IMAGE_EXTENSIONS: ReadonlySet<string> = new Set(["png", "jpg", "jpeg", "gif", "bmp", "svg", "webp", "avif"]);
 /** Wheel distance that counts as one step along the siblings. */
 const WHEEL_STEP = 60;
 /** Inertial wheels keep sending events: at most one step in this time. */

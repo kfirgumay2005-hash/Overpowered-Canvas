@@ -5,7 +5,7 @@ import type { I18nKey } from "../../i18n";
 import type { CanvasLike, CanvasNodeLike } from "../../internals/types";
 import { mergeWithDefaults } from "../../settings/settings";
 import { showPicker } from "../../ui/picker";
-import { common, isTextBox, mutate, nodeType, onlyNodes, onlyTextBoxes, selectedNodes } from "../shared";
+import { common, isTextBox, mutate, nodeType, onlyNodes, selectedNodes, textCardsIn } from "../shared";
 import { logError } from "../../core/log";
 
 interface AutoResizeSettings {
@@ -287,7 +287,7 @@ export const autoResizeModule = defineModule<AutoResizeSettings>({
 			};
 		});
 
-		const eligible = (selection: Parameters<typeof onlyNodes>[0]) => onlyTextBoxes(ctx, selection);
+		const eligible = (selection: Parameters<typeof onlyNodes>[0]) => textCardsIn(ctx, selection);
 		const current = (nodes: CanvasNodeLike[]) => common(nodes, (n) => modeOf(ctx.data.node(n).get()));
 
 		ctx.addMenuButton({

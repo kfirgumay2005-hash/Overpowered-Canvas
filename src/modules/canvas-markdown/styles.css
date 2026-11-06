@@ -5,7 +5,8 @@ body.opc-mod-canvas-markdown .workspace-leaf-content.opc-md-paged > .view-conten
 	height: auto;
 }
 body.opc-mod-canvas-markdown .workspace-leaf-content > .opc-pages-bar.opc-md-pages-bar {
-	position: static;
+	/* Above the note and the header's overflow, below the side drawers and their backdrop. */
+	position: relative;
 	flex: 0 0 auto;
 	align-self: stretch;
 	display: flex;
@@ -20,7 +21,7 @@ body.opc-mod-canvas-markdown .workspace-leaf-content > .opc-pages-bar.opc-md-pag
 	border-bottom: 1px solid var(--background-modifier-border);
 	border-radius: 0;
 	box-shadow: none;
-	z-index: auto;
+	z-index: calc(var(--layer-cover) - 1);
 }
 body.opc-mod-canvas-markdown .opc-md-pages-bar .opc-pages-index.is-hidden {
 	display: none;
@@ -65,4 +66,9 @@ body.opc-mod-canvas-markdown .canvas-node[data-opc-header]::after {
 	font-size: var(--font-ui-smaller);
 	line-height: 1.5;
 	pointer-events: none;
+}
+
+/* Packed plain notes in reading view (packed-view.ts): one block, each first-level line on its own line. */
+body.opc-mod-canvas-markdown .opc-md-packed > :is(p, ul, ol) {
+	margin-block: 0;
 }

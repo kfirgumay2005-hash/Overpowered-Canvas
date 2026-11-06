@@ -23,6 +23,11 @@ body.opc-mod-pages .opc-pages-bar {
 	box-shadow: var(--shadow-s);
 	font-size: var(--font-ui-small);
 }
+/* Page-navigation controls (ui/nav-controls.ts): a finger on them never pans or scrolls. */
+.opc-nav-control {
+	touch-action: none;
+	user-select: none;
+}
 body.opc-mod-pages .opc-pages-crumb {
 	background: none;
 	box-shadow: none;
@@ -30,6 +35,8 @@ body.opc-mod-pages .opc-pages-crumb {
 	height: auto;
 	padding: var(--size-2-1) var(--size-2-2);
 	color: var(--text-muted);
+	/* Not a centered flex box: a long title is cut at its end with "…", not on both sides. */
+	display: inline-block;
 	max-width: 220px;
 	overflow: hidden;
 	text-overflow: ellipsis;

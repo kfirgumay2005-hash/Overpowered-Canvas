@@ -18,7 +18,7 @@ interface HighlightSettings {
 
 type Ctx = ModuleContext<HighlightSettings>;
 
-/** "" = the theme's highlight (==text==). */
+/** "" = Neutral: the theme's own highlight (==text==), shown as its own button before the colors. */
 const COLORS = ["", "#ffd43b", "#8ce99a", "#74c0fc", "#faa2c1", "#ffa94d"];
 /** Text colors that read well on light and dark themes alike. */
 const TEXT_COLORS = ["#e03131", "#f08c00", "#2f9e44", "#1971c2", "#7048e8", "#c2255c"];
@@ -153,17 +153,26 @@ class HighlightSession {
 		other.addEventListener("click", () => this.setMode(coloring ? "highlight" : "color"));
 		const presets = coloring ? TEXT_COLORS : COLORS;
 		const current = coloring ? this.ctx.settings.textColor : this.ctx.settings.color;
+		const pick = (c: string) => () => {
+			this.erase = false;
+			void this.ctx.updateSettings(coloring ? { textColor: c } : { color: c }).then(() => this.renderBar());
+		};
+		if (!coloring) {
+			// Neutral: Obsidian's own highlight (==text==), drawn the theme's way; then the color slots.
+			const neutral = this.bar.createEl("button", { cls: "opc-hl-neutral", text: t("textHighlight.neutral") });
+			neutral.toggleClass("is-active", !this.erase && current === "");
+			setTooltip(neutral, t("textHighlight.neutral.tip"));
+			neutral.addEventListener("click", pick(""));
+			this.bar.createDiv({ cls: "opc-hl-divider" });
+		}
 		for (const c of [...new Set([...presets, ...this.ctx.settings.customColors])]) {
+			if (!c) continue;
 			const b = this.bar.createEl("button", { cls: "opc-hl-swatch clickable-icon" });
-			if (c) b.style.setProperty("--opc-hl-color", c);
-			else b.addClass("is-theme");
+			b.style.setProperty("--opc-hl-color", c);
 			if (coloring) b.setText("A");
 			b.toggleClass("is-active", !this.erase && current === c);
-			setTooltip(b, c ? c : t("textHighlight.theme"));
-			b.addEventListener("click", () => {
-				this.erase = false;
-				void this.ctx.updateSettings(coloring ? { textColor: c } : { color: c }).then(() => this.renderBar());
-			});
+			setTooltip(b, c);
+			b.addEventListener("click", pick(c));
 		}
 		const eraser = this.bar.createEl("button", { cls: "opc-hl-eraser clickable-icon" });
 		setIcon(eraser, "eraser");
