@@ -169,95 +169,111 @@ function wrap(source: string, start: number, end: number, open: string, close: s
 	return source.slice(0, start) + wrapped.join("\n") + source.slice(end);
 }
 
-/** Removes every highlight (`==…==` or `<mark>…</mark>`) that overlaps source [start, end). */
-export function unhighlight(source: string, start: number, end: number): string {
-	return unwrap(source, start, end, HIGHLIGHTS);
+/** Marks the start and the end of the stretch worked on while the text around it changes (private use characters, never in a card). */
+const FROM = "";
+const TO = "";
+/** HTML tags and `==` in the source: a mark never runs across one (it is split there instead). */
+const TOKENS = /<\/?[a-zA-Z][^>\n]*>|==/g;
+
+/** An element of `pattern` (a highlight or a text color): its whole extent and that of its text. */
+interface Element {
+	from: number;
+	to: number;
+	innerStart: number;
+	innerEnd: number;
 }
 
-/** Removes every text color that overlaps source [start, end). */
-export function uncolor(source: string, start: number, end: number): string {
-	return unwrap(source, start, end, COLORED);
-}
-
-/** `pattern` matches with their text in group 1 or 2: each one overlapping [start, end) is undone. */
-function unwrap(source: string, start: number, end: number, pattern: RegExp): string {
-	const spans: { from: number; to: number; inner: string }[] = [];
+function elementsOf(source: string, pattern: RegExp): Element[] {
+	const out: Element[] = [];
 	for (const m of source.matchAll(pattern)) {
-		const from = m.index;
-		const to = from + m[0].length;
-		if (from < end && to > start) spans.push({ from, to, inner: m[1] ?? m[2] ?? "" });
+		const inner = m[1] ?? m[2] ?? "";
+		const close = m[0].startsWith("==") ? 2 : m[0].length - m[0].lastIndexOf("<");
+		const to = m.index + m[0].length;
+		out.push({ from: m.index, to, innerStart: to - close - inner.length, innerEnd: to - close });
 	}
-	let out = source;
-	for (const s of spans.reverse()) out = out.slice(0, s.from) + s.inner + out.slice(s.to);
 	return out;
 }
 
 /**
- * [start, end) widened over every `pattern` element it cuts through, so the tag that goes
- * around it nests properly: an element the stretch lies inside, or one it holds whole, stays.
+ * Takes the marks of `pattern` off exactly the stretch between the FROM and TO markers of `text`:
+ * a mark reaching past the stretch keeps its parts outside it (split in two or three), a mark
+ * inside it goes. Marks of other kinds are not touched.
  */
-function widen(source: string, start: number, end: number, pattern: RegExp): [number, number] {
-	for (let changed = true; changed; ) {
-		changed = false;
-		for (const m of source.matchAll(pattern)) {
-			const from = m.index;
-			const to = from + m[0].length;
-			const inner = m[1] ?? m[2] ?? "";
-			const close = m[0].startsWith("==") ? 2 : m[0].length - m[0].lastIndexOf("<");
-			const innerEnd = to - close;
-			const innerStart = innerEnd - inner.length;
-			const overlaps = from < end && to > start;
-			const inside = start >= innerStart && end <= innerEnd;
-			const holds = start <= from && end >= to;
-			if (overlaps && !inside && !holds) {
-				start = Math.min(start, from);
-				end = Math.max(end, to);
-				changed = true;
-			}
-		}
+function cutOut(text: string, pattern: RegExp): string {
+	for (;;) {
+		const s = text.indexOf(FROM);
+		const e = text.indexOf(TO) + 1;
+		const el = elementsOf(text, pattern).find((m) => m.from < e && m.to > s);
+		if (!el) return text;
+		const open = text.slice(el.from, el.innerStart);
+		const close = text.slice(el.innerEnd, el.to);
+		const a = Math.min(el.innerEnd, Math.max(el.innerStart, s));
+		const b = Math.max(a, Math.min(el.innerEnd, e));
+		// The part of a mark left outside the stretch, with its spaces outside it (`== c==` is no highlight).
+		const keep = (part: string) => {
+			const core = part.trim();
+			if (!core) return part;
+			const lead = part.length - part.trimStart().length;
+			return part.slice(0, lead) + open + core + close + part.slice(lead + core.length);
+		};
+		text = text.slice(0, el.from) + keep(text.slice(el.innerStart, a)) + text.slice(a, b) + keep(text.slice(b, el.innerEnd)) + text.slice(el.to);
 	}
-	return [start, end];
 }
 
 /**
- * Highlights source [start, end) in `style`; highlights it overlaps are taken in and recolored,
- * so marking part of a highlight again changes its color instead of nesting a second one.
+ * Puts `open` … `close` around the stretch between the markers, split wherever a tag or `==` lies
+ * inside it, so every piece nests properly in the marks around it (a highlight inside a colored
+ * word, a color inside a highlight).
+ */
+function markStretch(text: string, open: string, close: string, takeMarkup: boolean): string {
+	const s = text.indexOf(FROM) + 1;
+	const e = text.indexOf(TO);
+	const cuts = [s];
+	for (const m of text.slice(s, e).matchAll(TOKENS)) cuts.push(s + m.index, s + m.index + m[0].length);
+	cuts.push(e);
+	// Right to left, so the places still ahead stay where they are.
+	for (let i = cuts.length - 2; i >= 0; i -= 2) {
+		const a = cuts[i]!;
+		const b = cuts[i + 1]!;
+		if (text.slice(a, b).trim()) text = wrap(text, a, b, open, close, takeMarkup);
+	}
+	return text;
+}
+
+/** Runs `edit` on source [start, end) marked out by the FROM/TO markers, then takes the markers away. */
+function onStretch(source: string, start: number, end: number, edit: (text: string) => string): string {
+	const text = source.slice(0, start) + FROM + source.slice(start, end) + TO + source.slice(end);
+	return edit(text).split(FROM).join("").split(TO).join("");
+}
+
+/** Takes highlights (`==…==` or `<mark>…</mark>`) off exactly source [start, end): parts of them outside it stay. */
+export function unhighlight(source: string, start: number, end: number): string {
+	return onStretch(source, start, end, (t) => cutOut(t, HIGHLIGHTS));
+}
+
+/** Takes text colors off exactly source [start, end): parts of them outside it stay. */
+export function uncolor(source: string, start: number, end: number): string {
+	return onStretch(source, start, end, (t) => cutOut(t, COLORED));
+}
+
+/**
+ * Highlights exactly source [start, end) in `style`: a highlight there is replaced (its parts
+ * outside the stretch keep their color), and the letters of a colored word keep their color.
  */
 export function rehighlight(source: string, start: number, end: number, style: HighlightStyle): string {
-	// A text color it cuts through is taken in whole.
-	[start, end] = widen(source, start, end, COLORED);
-	let from = start;
-	let to = end;
-	for (const m of source.matchAll(HIGHLIGHTS)) {
-		const a = m.index;
-		const b = a + m[0].length;
-		if (a < end && b > start) {
-			from = Math.min(from, a);
-			to = Math.max(to, b);
-		}
-	}
-	if (from === start && to === end) return highlight(source, start, end, style);
-	const inner = unhighlight(source.slice(from, to), 0, to - from);
-	return highlight(source.slice(0, from) + inner + source.slice(to), from, from + inner.length, style);
+	const open = style.color ? `<mark style="background: ${style.color};">` : "==";
+	const close = style.color ? "</mark>" : "==";
+	return onStretch(source, start, end, (t) => {
+		const marked = markStretch(cutOut(t, HIGHLIGHTS), open, close, true);
+		// Neutral next to neutral (`==ab====cd==`) reads as no highlight at all: one highlight again.
+		return style.color ? marked : marked.split(`==${FROM}==`).join(FROM).split(`==${TO}==`).join(TO);
+	});
 }
 
 /**
- * Colors the text of source [start, end) (`<span style="color: …;">`); colors it overlaps are
- * taken in and replaced, and a highlight it cuts through is taken in whole. Line by line, like
- * highlights.
+ * Colors exactly the letters of source [start, end) (`<span style="color: …;">`): a color there
+ * is replaced (its parts outside the stretch keep it), and highlights stay as they are.
  */
 export function recolor(source: string, start: number, end: number, color: string): string {
-	[start, end] = widen(source, start, end, HIGHLIGHTS);
-	let from = start;
-	let to = end;
-	for (const m of source.matchAll(COLORED)) {
-		const a = m.index;
-		const b = a + m[0].length;
-		if (a < end && b > start) {
-			from = Math.min(from, a);
-			to = Math.max(to, b);
-		}
-	}
-	const inner = uncolor(source.slice(from, to), 0, to - from);
-	return wrap(source.slice(0, from) + inner + source.slice(to), from, from + inner.length, `<span style="color: ${color};">`, "</span>", false);
+	return onStretch(source, start, end, (t) => markStretch(cutOut(t, COLORED), `<span style="color: ${color};">`, "</span>", false));
 }

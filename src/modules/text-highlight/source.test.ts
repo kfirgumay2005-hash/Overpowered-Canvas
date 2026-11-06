@@ -37,8 +37,11 @@ describe("text highlight", () => {
 		expect(unhighlight(s, 2, 7)).toBe('a b c <mark style="background: red;">d</mark> ==e==');
 		expect(unhighlight(s, 0, s.length)).toBe("a b c d e");
 	});
-	it("recolors a highlight instead of nesting another", () => {
-		expect(rehighlight("a ==b c== d", 4, 5, { color: "#ffd43b" })).toBe('a <mark style="background: #ffd43b;">b c</mark> d');
+	it("recolors exactly the letters picked inside a highlight; the rest keeps its own", () => {
+		expect(rehighlight("a ==b c== d", 4, 5, { color: "#ffd43b" })).toBe('a <mark style="background: #ffd43b;">b</mark> ==c== d');
+		expect(rehighlight("a ==b c== d", 4, 7, { color: "#ffd43b" })).toBe('a <mark style="background: #ffd43b;">b c</mark> d');
+		// Neutral inside neutral stays one highlight.
+		expect(rehighlight("a ==bcd== e", 5, 6, { color: "" })).toBe("a ==bcd== e");
 		expect(rehighlight("a b c", 2, 3, { color: "" })).toBe("a ==b== c");
 	});
 	it("doesn't land inside an earlier colored mark", () => {
@@ -93,27 +96,30 @@ describe("text color", () => {
 		expect(twice).toBe(`one <span style="color: ${blue};">two</span> three`);
 		expect(withoutColors(twice)).toBe("one two three");
 	});
-	it("widens over a color it cuts through", () => {
+	it("recolors exactly the letters picked; the rest of a color keeps it", () => {
 		const once = recolor("one two three", ...at("one two three", "two three"), red);
 		const [, end] = at(once, "two");
 		const start = once.indexOf("one");
-		expect(recolor(once, start, end, blue)).toBe(`<span style="color: ${blue};">one two three</span>`);
+		expect(recolor(once, start, end, blue)).toBe(`<span style="color: ${blue};">one two</span> <span style="color: ${red};">three</span>`);
+		// Letters in the middle of a colored word.
+		const word = recolor("abcdef", 0, 6, red);
+		expect(recolor(word, ...at(word, "cd"), blue)).toBe(`<span style="color: ${red};">ab</span><span style="color: ${blue};">cd</span><span style="color: ${red};">ef</span>`);
 	});
-	it("keeps highlights whole: inside one, or around one it cuts through", () => {
+	it("colors inside highlights without touching them", () => {
 		const marked = "a ==b c== d";
 		// Inside the highlight: the color nests in it.
 		expect(recolor(marked, ...at(marked, "b"), red)).toBe(`a ==<span style="color: ${red};">b</span> c== d`);
-		// Across its edge: the whole highlight is taken in.
-		const [s] = at(marked, "c");
+		// Across its edge: each piece colored where it is.
+		const [s] = at(marked, "c==");
 		const [, e] = at(marked, "d");
-		expect(recolor(marked, s, e, red)).toBe(`a <span style="color: ${red};">==b c== d</span>`);
+		expect(recolor(marked, s, e, red)).toBe(`a ==b <span style="color: ${red};">c</span>== <span style="color: ${red};">d</span>`);
 	});
-	it("a highlight across a color's edge takes the color in whole", () => {
+	it("highlights letters of colored text, keeping their color", () => {
 		const colored = recolor("a b c d", ...at("a b c d", "b c"), red);
-		const [s] = at(colored, "c");
+		const [s] = at(colored, "c</span>");
 		const [, e] = at(colored, "d");
 		const out = rehighlight(colored, s, e, { color: "" });
-		expect(out).toBe(`a ==<span style="color: ${red};">b c</span> d==`);
+		expect(out).toBe(`a <span style="color: ${red};">b ==c==</span> ==d==`);
 		expect(withoutColors(withoutHighlights(out))).toBe("a b c d");
 	});
 	it("colors line by line, keeping list markers out", () => {
@@ -123,7 +129,10 @@ describe("text color", () => {
 	it("removes the colors a stretch touches, and only colors", () => {
 		const both = `<span style="color: ${red};">x</span> ==y== <span style="color: ${blue};">z</span>`;
 		expect(uncolor(both, 0, both.length)).toBe("x ==y== z");
-		expect(uncolor(both, 0, 3)).toBe(`x ==y== <span style="color: ${blue};">z</span>`);
+		expect(uncolor(both, ...at(both, "x"))).toBe(`x ==y== <span style="color: ${blue};">z</span>`);
+		// Only the letters picked lose their color.
+		const word = recolor("abcdef", 0, 6, red);
+		expect(uncolor(word, ...at(word, "cd"))).toBe(`<span style="color: ${red};">ab</span>cd<span style="color: ${red};">ef</span>`);
 	});
 	it("maps rendered words back through colored text", () => {
 		const source = `alpha <span style="color: ${red};">beta</span> gamma`;
