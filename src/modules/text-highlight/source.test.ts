@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { align, highlight, locate, recolor, rehighlight, sourceRange, toWords, uncolor, unhighlight, withoutColors, withoutHighlights } from "./source";
+import { align, highlight, locate, pickedRange, recolor, rehighlight, sourceRange, toWords, uncolor, unhighlight, withoutColors, withoutHighlights } from "./source";
 
 /** Highlights the rendered words `pick` (first occurrence) of `source`. */
 function pickAndMark(source: string, rendered: string, pick: string, color = ""): string {
@@ -133,5 +133,21 @@ describe("text color", () => {
 	it("leaves other spans alone", () => {
 		const other = `<span class="x">keep</span>`;
 		expect(withoutColors(other)).toBe(other);
+	});
+});
+
+describe("pickedRange", () => {
+	it("a swipe marks exactly the letters swiped, either way round", () => {
+		expect(pickedRange("Hello wonderful world", 8, 11, false)).toEqual([8, 12]);
+		expect(pickedRange("Hello wonderful world", 11, 8, false)).toEqual([8, 12]);
+		expect(pickedRange("שלום עולם", 6, 7, false)).toEqual([6, 8]);
+	});
+	it("a tap marks the whole word under it", () => {
+		expect(pickedRange("Hello wonderful world", 9, 9, true)).toEqual([6, 15]);
+		expect(pickedRange("שלום עולם", 6, 6, true)).toEqual([5, 9]);
+	});
+	it("leaves spaces at the ends out", () => {
+		expect(pickedRange("ab cd", 1, 3, false)).toEqual([1, 4]);
+		expect(pickedRange("ab cd", 2, 2, false)).toEqual([3, 3]);
 	});
 });

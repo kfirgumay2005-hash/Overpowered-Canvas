@@ -510,7 +510,7 @@ export const en = {
 	"lasso.quickMove.desc": "A pen on a selected item, or a finger on an item of a multi-selection, moves the selection at once, without a long press. A second finger cancels the move.",
 	"lasso.quickMove.simple": "On touch screens, drag selected cards immediately instead of holding them first.",
 	"textHighlight.name": "Highlight and color text in cards",
-	"textHighlight.desc": "Mark words in a card without opening it for editing. The highlighter (card bar button, command or H) puts a real highlight behind the words; the text color tool (card bar button or command) colors their letters. Turn a tool on, pick a color, then swipe over the words with a pen or the mouse, or tap one word. The button at the start of the bar switches between the two tools; the eraser takes off highlights or text colors. Once a pen has been used, fingers move the board. Both tools also work in the column view.",
+	"textHighlight.desc": "Mark words in a card without opening it for editing. The highlighter (card bar button, command or H) puts a real highlight behind the words; the text color tool (card bar button or command) colors their letters. Turn a tool on, pick a color, then swipe over the words with a pen or the mouse, or tap one word. The button at the start of the bar switches between the two tools; the eraser takes off highlights or text colors. Once a pen has been used, fingers move the board. Both tools also work in the column view. A swipe marks exactly the letters it passes over; a tap marks the whole word.",
 	"textHighlight.simple": "Mark important words in a card with a quick swipe: a highlighter like on paper, or a pen that colors the letters.",
 	"textHighlight.button": "Highlight text",
 	"textHighlight.erase": "Remove highlights",

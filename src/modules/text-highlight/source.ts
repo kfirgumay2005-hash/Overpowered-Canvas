@@ -107,6 +107,20 @@ export function toWords(text: string, start: number, end: number): [number, numb
 	return [start, end];
 }
 
+/**
+ * What a gesture marks, in rendered characters [from, to): a tap (`tap`) marks the whole word
+ * under it; a swipe marks exactly the characters from the one it started on to the one it ended
+ * on (either way round), without spaces at its ends.
+ */
+export function pickedRange(text: string, a: number, b: number, tap: boolean): [number, number] {
+	if (tap) return toWords(text, a, Math.min(text.length, a + 1));
+	let start = Math.min(a, b);
+	let end = Math.min(text.length, Math.max(a, b) + 1);
+	while (start < end && /\s/.test(text[start]!)) start++;
+	while (end > start && /\s/.test(text[end - 1]!)) end--;
+	return [start, end];
+}
+
 /** The source range [start, end) shown by rendered characters [from, to), or null. */
 export function sourceRange(map: number[], from: number, to: number): [number, number] | null {
 	let s = -1;
