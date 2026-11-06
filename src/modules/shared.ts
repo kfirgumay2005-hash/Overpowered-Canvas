@@ -26,6 +26,16 @@ export function isTextBox(ctx: ModuleContext<object>, node: CanvasNodeLike): boo
 	return (type === "text" || type === "file") && !NOT_TEXT_BOXES.has(ctx.data.node(node).get().kind ?? "");
 }
 
+/** File types shown as a picture on a file card. */
+export const IMAGE_EXTENSIONS: ReadonlySet<string> = new Set(["png", "jpg", "jpeg", "gif", "webp", "bmp", "svg", "avif"]);
+
+/** A file card showing an image (JPG, PNG…). */
+export function isImageCard(node: CanvasNodeLike): boolean {
+	if (nodeType(node) !== "file") return false;
+	const path = node.file?.path ?? node.filePath ?? "";
+	return IMAGE_EXTENSIONS.has(path.slice(path.lastIndexOf(".") + 1).toLowerCase());
+}
+
 /**
  * A card whose text can be formatted (size, alignment, direction…): a text box showing a note,
  * not an image, a PDF or another file shown on a file card.

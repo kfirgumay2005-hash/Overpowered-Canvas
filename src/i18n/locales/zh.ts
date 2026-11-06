@@ -1098,7 +1098,7 @@ export const zh: Record<I18nKey, string> = {
 	"pages.linkLabel.desc": "在卡片下方和其页面第一张卡片下方添加的链接所显示的文字。",
 	"pages.linkLabel.simple": "在卡片和它的页面之间跳转的可点击文字。",
 	"barButtons.name": "自定义工具栏",
-	"barButtons.desc": "选择底部栏、侧边栏和选中内容上方的弹出栏显示什么以及按什么顺序：可以移除任何按钮，在列表中上下拖动按钮来调整顺序，也可以添加按钮来运行任何命令，无论它来自本插件、应用还是其他插件。",
+	"barButtons.desc": "选择底部栏、侧边栏和选中内容上方的弹出栏显示什么以及按什么顺序：可以移除任何按钮，在列表中上下拖动按钮来调整顺序，也可以添加按钮来运行任何命令，无论它来自本插件、应用还是其他插件。 图片（JPG、PNG……）有自己的弹出栏，可单独设置。",
 	"barButtons.simple": "只保留你用的按钮，并把常用命令添加到画布的工具栏。",
 	"barButtons.edit": "自定义…",
 	"barButtons.edit.name": "自定义工具栏",
@@ -1298,4 +1298,6 @@ export const zh: Record<I18nKey, string> = {
 	"canvasMarkdown.paged.one": "一次显示一页",
 	"textHighlight.neutral": "中性",
 	"textHighlight.neutral.tip": "中性：Obsidian 自带的高亮（==text==），使用你的主题的高亮颜色。纯 Markdown，在任何应用中都一样。",
+	"barButtons.image": "图片上方的弹出栏",
+	"barButtons.imageHint": "只选中图片（JPG、PNG 等图片文件）时，显示它来代替选中内容上方的弹出栏，它有自己的按钮、顺序和命令。它显示过的按钮会列在这里（请先选中一张图片）。",
 };

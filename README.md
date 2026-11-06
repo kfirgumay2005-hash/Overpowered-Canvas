@@ -205,7 +205,7 @@ still clickable ([docs/BENCHMARKS.md](docs/BENCHMARKS.md)).
 
 The bottom bar, the side bar and the popup over a selection are yours to arrange: take off any
 button, drag buttons into the order you like, and add a button for any command, from this plugin, the app or other plugins (_Customize
-the bars_).
+the bars_). Images (JPG, PNG…) get a popup of their own, arranged separately from the one over cards.
 
 Every toolbar action is also in the command palette ("Selection: …"), so you can assign your
 own hotkeys to any of them.

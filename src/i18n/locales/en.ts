@@ -1100,7 +1100,7 @@ export const en = {
 	"pages.linkLabel.desc": "The word shown for the link added under a card and under its page's first card.",
 	"pages.linkLabel.simple": "The clickable word that jumps between a card and its page.",
 	"barButtons.name": "Customize the bars",
-	"barButtons.desc": "Choose what the bottom bar, the side bar and the popup over a selection show, and in what order: take off any button, drag buttons up or down in the list to reorder them, and add buttons that run any command, from this plugin, from the app or from other plugins.",
+	"barButtons.desc": "Choose what the bottom bar, the side bar and the popup over a selection show, and in what order: take off any button, drag buttons up or down in the list to reorder them, and add buttons that run any command, from this plugin, from the app or from other plugins. Images (JPG, PNG…) have a popup of their own, set separately.",
 	"barButtons.simple": "Keep only the buttons you use, and add your favorite commands to the canvas bars.",
 	"barButtons.edit": "Customize…",
 	"barButtons.edit.name": "Customize the bars",
@@ -1300,6 +1300,8 @@ export const en = {
 	"canvasMarkdown.paged.one": "Show one page at a time",
 	"textHighlight.neutral": "Neutral",
 	"textHighlight.neutral.tip": "Neutral: Obsidian's own highlight (==text==), in your theme's highlight color. Plain Markdown, the same in every app.",
+	"barButtons.image": "Popup over images",
+	"barButtons.imageHint": "Shown instead of the popup over the selection when only images are selected (JPG, PNG and other picture files), with its own buttons, order and commands. Its buttons are listed here once it has shown them (select an image first).",
 } as const;
 
 export type I18nKey = keyof typeof en;

@@ -11,6 +11,7 @@ When resuming: read this file and `git log`, then continue with the first item t
 | 3 | Text options only for selections with text | IMPROVEMENT (bug) | done |
 | 4 | Shape text rotates with the shape | IMPROVEMENT | done |
 | 5 | Highlighter: "Neutral" option | ALREADY EXISTS → IMPROVEMENT (discoverability) | done |
+| 6 | Customize the bars: a popup over images | IMPROVEMENT | done |
 
 ## 1. Page navigation in notes with pages (done)
 
@@ -140,3 +141,20 @@ the theme's color; the color slots no longer include it. Same bar on the board a
 Tested (test vault): bar order mode · Neutral · divider · 5 colors · eraser · close; Neutral
 sets the color setting to "" and becomes active; tapping a word wrote `==Some== text`, rendered
 as Obsidian's native `<mark>`. Tutorial "Drawing" step hl mentions Neutral (5 locales). Run in English: Drawing 10/10, Columns 11/11.
+
+## 6. Customize the bars: the popup over images (done, follow-up request)
+
+Classification: IMPROVEMENT of the bar-buttons module (no new module or setting key). A fourth
+bar, `image`: the popup shown when the selection holds image cards only (png, jpg, jpeg, gif,
+webp, bmp, svg, avif). It has its own hidden buttons (`image:<key>`), order (`order.image`) and
+added commands (`bar: "image"`), listed in Customize the bars as "Popup over images" with its own
+switches, drag handles and Add a command. A mixed selection gets the regular popup. The image
+test moved to `shared.ts` (`IMAGE_EXTENSIONS`, `isImageCard`), now used by image-crop and the
+column view too instead of their own copies. The image popup starts with everything shown,
+whatever was hidden in the regular popup before.
+
+Tested: unit tests (popup choice, settings); live: image selected → image popup listed as the
+4th section; switching off Delete and adding a command there changed the image popup only, the
+text card popup kept Delete and got no command; image + text card → regular popup. Tutorial
+"Your own bars": new step "The popup over images" with a practice picture (touch alternative
+included), texts in 5 locales, run in English: 7/7, no files left behind.

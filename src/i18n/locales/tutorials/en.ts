@@ -878,4 +878,9 @@ export const tutorialsEn = {
 	"tut.mindmap.condensed.body": "**Condensed radial** is a round map that stays compact: the branches share the space around the root by their size, and each card sits close to its parent, fanning out in its branch's direction. Cards never overlap, connectors never cross or run under cards, and the children keep their order. The classic **Radial** layout is still there next to it.\n\nCurved or straight branches: Settings → Auto layout → **Connectors of radial maps**.",
 	"tut.mindmap.condensed.task": "Run `Ctrl/Cmd+P` → **Auto layout: condensed radial mind map**.",
 	"tut.mindmap.condensed.touch": "Long-press **Trip to Japan** → **Auto layout…** → **Direction**: **Condensed radial** → **Arrange**.",
+	"tut.bars.photoName": "Practice picture",
+	"tut.bars.image.title": "The popup over images",
+	"tut.bars.image.body": "Select a picture (JPG, PNG and other image files) and its popup is set on its own: the list has **Popup over images**, with its own switches, order and **Add a command**. Whatever you change there leaves the popup over cards as it is, and the other way round.",
+	"tut.bars.image.task": "Select the picture, open the list and switch off a button of **Popup over images**, or add a command to it.",
+	"tut.bars.image.touch": "Tap the picture, then open **Customize the bars** from the settings button of the side bar.",
 } as const;

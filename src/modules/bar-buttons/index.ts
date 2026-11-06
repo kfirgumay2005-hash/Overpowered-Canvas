@@ -4,8 +4,9 @@ import { commandRunner } from "../../internals/app";
 import type { CanvasLike, CanvasMenuLike } from "../../internals/types";
 import { BARS_TUTORIAL, TUTORIAL_KEY } from "../../tutorials/runner";
 import { IconPickerModal } from "../../ui/icon-picker";
-import { randomId } from "../shared";
-import { BARS, buttonKeys, buttonLabel, customKey, hiddenKey, orderOf, sanitizeBarSettings, sortKeys, type Bar, type BarButtonsSettings, type CustomButton } from "./logic";
+import { isImageCard, randomId } from "../shared";
+import { isNode } from "../../core/canvas-ui";
+import { BARS, buttonKeys, buttonLabel, customKey, hiddenKey, isPopupBar, orderOf, popupFor, sanitizeBarSettings, sortKeys, type Bar, type BarButtonsSettings, type CustomButton } from "./logic";
 
 type Ctx = ModuleContext<BarButtonsSettings>;
 
@@ -31,9 +32,20 @@ interface Row {
 
 /**
  * The popup over a selection is built again for every selection, with the buttons that fit it:
- * the buttons it has shown are remembered (for this session) so the list can name them all.
+ * the buttons each popup (over any selection, over images) has shown are remembered (for this
+ * session) so the list can name them all.
  */
-const popupSeen = new Map<string, { label: string; svg: string }>();
+const popupSeen = new Map<Bar, Map<string, { label: string; svg: string }>>();
+const seenOn = (bar: Bar) => {
+	let seen = popupSeen.get(bar);
+	if (!seen) popupSeen.set(bar, (seen = new Map<string, { label: string; svg: string }>()));
+	return seen;
+};
+
+/** The popup the current selection gets: over images when only image cards are selected. */
+function popupOf(canvas: CanvasLike): Bar {
+	return popupFor([...canvas.selection].map((item) => ({ image: isNode(item) && isImageCard(item) })));
+}
 
 const classes = (el: Element | null | undefined) => (el ? [...el.classList] : []);
 
@@ -49,7 +61,7 @@ function buttonsOf(canvas: CanvasLike, bar: Bar): BarButton[] {
 	const keys = buttonKeys(
 		els.map((el, i) => {
 			const icon = classes(el.querySelector("svg"));
-			return { classes: classes(el), groupClasses: bar === "side" ? classes(el.parentElement) : [], iconClasses: icon, label: labels[i]!, ...(bar === "popup" ? { iconName: icon.find((c) => c !== "svg-icon") } : {}) };
+			return { classes: classes(el), groupClasses: bar === "side" ? classes(el.parentElement) : [], iconClasses: icon, label: labels[i]!, ...(isPopupBar(bar) ? { iconName: icon.find((c) => c !== "svg-icon") } : {}) };
 		}),
 	);
 	return els.map((el, i) => ({ el, key: keys[i]!, label: buttonLabel(labels[i]!) || keys[i]! }));
@@ -69,26 +81,28 @@ function hiddenOn(ctx: Ctx, canvas: CanvasLike): Set<string> {
 
 /**
  * The popup over a selection, as set: buttons taken off are hidden, added commands come last.
- * Runs after every rebuild of the popup (each selection).
+ * A selection of images only gets the image popup's settings. Runs after every rebuild of the
+ * popup (each selection).
  */
 function applyToPopup(ctx: Ctx, menu: CanvasMenuLike): void {
 	const canvas = menu.canvas;
 	const el = menu.menuEl;
 	if (!el.isConnected || canvas.selection.size === 0) return;
+	const bar = popupOf(canvas);
 	el.querySelectorAll(`:scope > .${CUSTOM}`).forEach((b) => b.remove());
 	const hidden = hiddenOn(ctx, canvas);
-	for (const b of buttonsOf(canvas, "popup")) {
-		popupSeen.set(b.key, { label: b.label, svg: b.el.querySelector("svg")?.outerHTML ?? "" });
-		b.el.toggleClass(HIDDEN, hidden.has(hiddenKey("popup", b.key)));
+	for (const b of buttonsOf(canvas, bar)) {
+		seenOn(bar).set(b.key, { label: b.label, svg: b.el.querySelector("svg")?.outerHTML ?? "" });
+		b.el.toggleClass(HIDDEN, hidden.has(hiddenKey(bar, b.key)));
 	}
 	for (const button of ctx.settings.custom) {
-		if (button.bar !== "popup") continue;
+		if (button.bar !== bar) continue;
 		const b = el.createEl("button", { cls: `clickable-icon ${CUSTOM}`, attr: { "aria-label": button.name, "data-opc-custom": button.id } });
 		setIcon(b, button.icon);
 		setTooltip(b, button.name, { placement: "top" });
 		b.addEventListener("click", () => run(ctx, canvas, button));
 	}
-	applyOrder(ctx, canvas, "popup");
+	applyOrder(ctx, canvas, bar);
 	// Centered again over the selection, with its new width.
 	menu.render(false);
 }
@@ -98,7 +112,7 @@ function mountCustom(ctx: Ctx, canvas: CanvasLike): void {
 	const side = ctx.settings.custom.filter((b) => b.bar === "side");
 	const group = side.length ? canvas.canvasControlsEl.createDiv({ cls: `canvas-control-group mod-raised ${CUSTOM_GROUP}` }) : null;
 	for (const button of ctx.settings.custom) {
-		if (button.bar === "popup") continue;
+		if (isPopupBar(button.bar)) continue;
 		const el = button.bar === "side" ? group!.createDiv({ cls: `canvas-control-item ${CUSTOM}` }) : canvas.cardMenuEl.createDiv({ cls: `canvas-card-menu-button opc-card-button ${CUSTOM}` });
 		if (button.bar === "bottom") el.dataset.opcOrder = LAST_ORDER;
 		el.dataset.opcCustom = button.id;
@@ -126,7 +140,7 @@ function applyOrder(ctx: Ctx, canvas: CanvasLike, bar: Bar): void {
 
 /** The added buttons of a bar, as they stand. */
 function customEls(canvas: CanvasLike, bar: Bar): HTMLElement[] {
-	const root = bar === "bottom" ? canvas.cardMenuEl : bar === "side" ? canvas.canvasControlsEl : canvas.menu?.menuEl;
+	const root = bar === "bottom" ? canvas.cardMenuEl : bar === "side" ? canvas.canvasControlsEl : popupOf(canvas) === bar ? canvas.menu?.menuEl : null;
 	return root ? (Array.from(root.querySelectorAll<HTMLElement>(`.${CUSTOM}[data-opc-custom]`))) : [];
 }
 
@@ -138,7 +152,7 @@ function applyTo(ctx: Ctx, canvas: CanvasLike, mounted: WeakMap<CanvasLike, stri
 		mountCustom(ctx, canvas);
 	}
 	const hidden = hiddenOn(ctx, canvas);
-	for (const bar of BARS) if (bar !== "popup") for (const b of buttonsOf(canvas, bar)) b.el.toggleClass(HIDDEN, hidden.has(hiddenKey(bar, b.key)));
+	for (const bar of BARS) if (!isPopupBar(bar)) for (const b of buttonsOf(canvas, bar)) b.el.toggleClass(HIDDEN, hidden.has(hiddenKey(bar, b.key)));
 	// A group or a bar with nothing left in it goes too.
 	for (const group of canvas.canvasControlsEl.querySelectorAll<HTMLElement>(":scope > .canvas-control-group")) group.toggleClass(HIDDEN, group.childElementCount > 0 && [...group.children].every((c) => c.hasClass(HIDDEN)));
 	canvas.cardMenuEl.toggleClass(HIDDEN, [...canvas.cardMenuEl.children].every((c) => c.hasClass(HIDDEN)));
@@ -198,7 +212,7 @@ class BarsModal extends Modal {
 		const top = contentEl.scrollTop;
 		contentEl.empty();
 		for (const bar of BARS) {
-			new Setting(contentEl).setName(ctx.t(bar === "bottom" ? "barButtons.bottom" : bar === "side" ? "barButtons.side" : "barButtons.popup")).setHeading();
+			new Setting(contentEl).setName(ctx.t(bar === "bottom" ? "barButtons.bottom" : bar === "side" ? "barButtons.side" : bar === "popup" ? "barButtons.popup" : "barButtons.image")).setHeading();
 			const rows = this.rowsOf(bar);
 			const keys = sortKeys(
 				rows.map((r) => r.key),
@@ -209,6 +223,7 @@ class BarsModal extends Modal {
 			for (const key of keys) this.row(list, bar, byKey.get(key)!);
 			this.dragToOrder(list, bar);
 			if (bar === "popup") new Setting(contentEl).setDesc(ctx.t("barButtons.popupHint"));
+			if (bar === "image") new Setting(contentEl).setDesc(ctx.t("barButtons.imageHint"));
 			new Setting(contentEl).addButton((button) => button.setButtonText(ctx.t("barButtons.add")).onClick(() => this.addTo(bar)));
 		}
 		new Setting(contentEl).addButton((button) =>
@@ -239,13 +254,14 @@ class BarsModal extends Modal {
 	private rowsOf(bar: Bar): Row[] {
 		const { ctx } = this;
 		const rows: Row[] = [];
-		if (bar === "popup") {
+		if (isPopupBar(bar)) {
 			// What the popup shows right now, if something is selected.
-			for (const b of buttonsOf(this.canvas, "popup")) popupSeen.set(b.key, { label: b.label, svg: b.el.querySelector("svg")?.outerHTML ?? "" });
-			const keys = new Set(popupSeen.keys());
-			for (const k of ctx.settings.hidden) if (k.startsWith("popup:")) keys.add(k.slice("popup:".length));
+			if (this.canvas.selection.size && popupOf(this.canvas) === bar)
+				for (const b of buttonsOf(this.canvas, bar)) seenOn(bar).set(b.key, { label: b.label, svg: b.el.querySelector("svg")?.outerHTML ?? "" });
+			const keys = new Set(seenOn(bar).keys());
+			for (const k of ctx.settings.hidden) if (k.startsWith(`${bar}:`)) keys.add(k.slice(bar.length + 1));
 			for (const key of keys) {
-				const seen = popupSeen.get(key);
+				const seen = seenOn(bar).get(key);
 				rows.push({
 					key,
 					label: seen?.label ?? key,

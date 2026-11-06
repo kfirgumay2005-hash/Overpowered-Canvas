@@ -3,14 +3,13 @@ import { defineModule } from "../../core/module";
 import type { CropRect, OpcNode } from "../../data/schema";
 import type { Translate } from "../../i18n";
 import type { CanvasLike, CanvasNodeLike } from "../../internals/types";
-import { capturePointer, mutate, nodeType, onlyNodes } from "../shared";
+import { capturePointer, isImageCard, mutate, onlyNodes } from "../shared";
 import { centeredRect, clampRect, croppedRatio, dragRect, FULL, isFull, roundRect, type Handle } from "./crop";
 
-const IMAGE_EXTENSIONS = new Set(["png", "jpg", "jpeg", "gif", "webp", "bmp", "svg", "avif"]);
 const HANDLES: Handle[] = ["nw", "n", "ne", "e", "se", "s", "sw", "w"];
 
 function isImageNode(node: CanvasNodeLike): boolean {
-	return nodeType(node) === "file" && node.file instanceof TFile && IMAGE_EXTENSIONS.has(node.file.extension.toLowerCase());
+	return node.file instanceof TFile && isImageCard(node);
 }
 
 function imgOf(node: CanvasNodeLike): HTMLImageElement | null {

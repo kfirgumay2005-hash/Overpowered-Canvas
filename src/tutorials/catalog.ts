@@ -2868,8 +2868,15 @@ const bars: TutorialDefinition = {
 		{ module: "bar-buttons", key: "custom" },
 		{ module: "bar-buttons", key: "order" },
 	],
-	board: (t) => ({
-		nodes: [title("br-title", t("tut.bars.board.title"), 0, -140, 700, 80), card("br-1", t("tut.bars.board.c1"), 0, 0, 280, 90, { color: "5" }), card("br-2", t("tut.bars.board.c2"), 340, 0, 280, 90, { color: "4" })],
+	// A picture, for the popup over images.
+	files: (t) => [{ path: barsPhotoName(t), content: PRACTICE_PHOTO }],
+	board: (t, folder) => ({
+		nodes: [
+			title("br-title", t("tut.bars.board.title"), 0, -140, 700, 80),
+			card("br-1", t("tut.bars.board.c1"), 0, 0, 280, 90, { color: "5" }),
+			card("br-2", t("tut.bars.board.c2"), 340, 0, 280, 90, { color: "4" }),
+			fileCard("br-photo", `${folder}/${barsPhotoName(t)}`, 680, -20, 240, 150),
+		],
 		edges: [],
 	}),
 	steps: [
@@ -2933,6 +2940,36 @@ const bars: TutorialDefinition = {
 			},
 		},
 		{
+			title: "tut.bars.image.title",
+			body: "tut.bars.image.body",
+			task: "tut.bars.image.task",
+			touch: "tut.bars.image.touch",
+			target: settingsButton,
+			focus: ["br-photo"],
+			enter: (rt) => {
+				customAtStart = customButtons(rt).filter((b) => b.bar === "image").length;
+				hiddenAtStart = hiddenButtons(rt).filter((k) => k.startsWith("image:")).length;
+				rt.select(["br-photo"]);
+			},
+			check: (rt) => (customButtons(rt).filter((b) => b.bar === "image").length > customAtStart || hiddenButtons(rt).filter((k) => k.startsWith("image:")).length > hiddenAtStart) && !dialogOpen(".modal"),
+			demo: async (rt) => {
+				rt.select(["br-photo"]);
+				await rt.wait(400);
+				rt.command("bar-buttons:customize");
+				await rt.wait(900);
+				// The first switch of the image popup's list goes off.
+				const heads = Array.from(activeDocument.querySelectorAll<HTMLElement>(`${BARS_DIALOG} .setting-item-heading`));
+				const head = heads[3];
+				let el = head?.nextElementSibling;
+				while (el && !el.hasClass("opc-bars-list")) el = el.nextElementSibling;
+				el?.querySelector<HTMLElement>(".checkbox-container.is-enabled")?.click();
+				await rt.wait(900);
+				closeDialog(BARS_DIALOG);
+				await rt.wait(300);
+				rt.select(["br-photo"]);
+			},
+		},
+		{
 			title: "tut.bars.s4.title",
 			body: "tut.bars.s4.body",
 			task: "tut.bars.s4.task",
@@ -2975,6 +3012,7 @@ const CROP_DIALOG = ".opc-crop-modal";
 const EXPORT_DIALOG = ".opc-export-modal";
 const exportVisit = visitedDialog(EXPORT_DIALOG);
 const photoName = (t: TutorialRuntime["t"]) => `${fileSafe(t("tut.images.photoName"))}.svg`;
+const barsPhotoName = (t: TutorialRuntime["t"]) => `${fileSafe(t("tut.bars.photoName"))}.svg`;
 
 /** A small landscape to crop: text, so it fits the practice files. */
 const PRACTICE_PHOTO = `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="500" viewBox="0 0 800 500">

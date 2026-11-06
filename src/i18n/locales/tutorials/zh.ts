@@ -877,4 +877,9 @@ export const tutorialsZh: Record<keyof typeof tutorialsEn, string> = {
 	"tut.mindmap.condensed.body": "**紧凑放射状** 是保持紧凑的圆形导图：各分支按大小分享根卡片周围的空间，每张卡片都靠近它的父卡片，沿着分支的方向展开。卡片从不重叠，连线从不交叉也不从卡片下面穿过，子卡片保持顺序。经典的 **放射状** 布局仍在它旁边。\n\n曲线或直线分支：设置 → 自动布局 → **放射状导图的连线**。",
 	"tut.mindmap.condensed.task": "运行 `Ctrl/Cmd+P` → **自动布局：紧凑放射状思维导图**。",
 	"tut.mindmap.condensed.touch": "长按 **日本之旅** → **自动布局……** → **方向**：**紧凑放射状** → **整理**。",
+	"tut.bars.photoName": "练习图片",
+	"tut.bars.image.title": "图片上方的弹出栏",
+	"tut.bars.image.body": "选中一张图片（JPG、PNG 等图片文件），它的弹出栏是单独设置的：列表中有 **图片上方的弹出栏**，有自己的开关、顺序和 **添加命令**。在那里做的更改不会影响卡片上方的弹出栏，反之亦然。",
+	"tut.bars.image.task": "选中图片，打开列表，关闭 **图片上方的弹出栏** 中的一个按钮，或向它添加一个命令。",
+	"tut.bars.image.touch": "轻点图片，然后从侧边栏的设置按钮打开 **自定义工具栏**。",
 };

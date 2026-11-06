@@ -1098,7 +1098,7 @@ export const ja: Record<I18nKey, string> = {
 	"pages.linkLabel.desc": "カードの下と、そのページの最初のカードの下に追加されるリンクに表示される語です。",
 	"pages.linkLabel.simple": "カードとそのページの間を移動するための、クリックできる語です。",
 	"barButtons.name": "バーのカスタマイズ",
-	"barButtons.desc": "下部バー、サイドバー、選択の上に出るポップアップに何をどの順番で表示するかを選びます。どのボタンも外せ、一覧でボタンを上下にドラッグして並べ替えられ、このプラグイン、アプリ、他のプラグインのどのコマンドもボタンとして追加できます。",
+	"barButtons.desc": "下部バー、サイドバー、選択の上に出るポップアップに何をどの順番で表示するかを選びます。どのボタンも外せ、一覧でボタンを上下にドラッグして並べ替えられ、このプラグイン、アプリ、他のプラグインのどのコマンドもボタンとして追加できます。 画像（JPG、PNG…）には専用のポップアップがあり、別に設定できます。",
 	"barButtons.simple": "使うボタンだけを残し、よく使うコマンドをキャンバスのバーに追加します。",
 	"barButtons.edit": "カスタマイズ…",
 	"barButtons.edit.name": "バーのカスタマイズ",
@@ -1298,4 +1298,6 @@ export const ja: Record<I18nKey, string> = {
 	"canvasMarkdown.paged.one": "1 ページずつ表示",
 	"textHighlight.neutral": "ニュートラル",
 	"textHighlight.neutral.tip": "ニュートラル：Obsidian 標準のハイライト（==text==）で、テーマのハイライト色で表示されます。素の Markdown なので、どのアプリでも同じです。",
+	"barButtons.image": "画像の上のポップアップ",
+	"barButtons.imageHint": "画像（JPG、PNG などの画像ファイル）だけを選択したとき、選択の上のポップアップの代わりに表示されます。ボタン、順番、コマンドはそれぞれ独自です。表示されたボタンがここに一覧されます（先に画像を選択してください）。",
 };
