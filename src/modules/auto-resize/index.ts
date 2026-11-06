@@ -25,6 +25,8 @@ interface Watch {
 
 type Mode = "off" | "fit" | "height" | "width";
 const MODES: readonly Mode[] = ["off", "fit", "height", "width"];
+/** The choices in the toolbar's picker: "Fit text" is left out (owner's choice); it stays for new cards (setting) and the "Fit cards to their text" command. */
+const PICKER_MODES: readonly Mode[] = MODES.filter((m) => m !== "fit");
 const ICONS: Record<Mode, string> = { off: "square", fit: "wrap-text", height: "fold-vertical", width: "fold-horizontal" };
 /** Widest a card grows to by itself. */
 const MAX_WIDTH = 2400;
@@ -305,7 +307,7 @@ export const autoResizeModule = defineModule<AutoResizeSettings>({
 				const now = current(nodes);
 				showPicker(
 					buttonEl,
-					[{ columns: 3, items: MODES.map((m) => ({ id: m, label: ctx.t(`autoResize.mode.${m}` as I18nKey), icon: ICONS[m], active: now === m })) }],
+					[{ columns: 3, items: PICKER_MODES.map((m) => ({ id: m, label: ctx.t(`autoResize.mode.${m}` as I18nKey), icon: ICONS[m], active: now === m })) }],
 					(id) => {
 						const mode = id as Mode;
 						mutate(ctx, canvas, () => {

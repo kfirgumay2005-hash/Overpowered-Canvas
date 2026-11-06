@@ -174,7 +174,7 @@ export const zh: Record<I18nKey, string> = {
 	"betterDefaults.doubleClickMs.desc": "两次点击之间的毫秒数（100–2000）。",
 
 	"autoResize.name": "自动调整卡片大小",
-	"autoResize.desc": "在选择工具栏中逐张设置：卡片不再滚动，而是适应其文本。适应文本：宽度随文本增加到最大宽度，之后换行并向下增长。也可以只向下或只向侧面增长。",
+	"autoResize.desc": "在选择工具栏中逐张设置：卡片不再滚动，而是随文本向下或向侧面增长。适应文本（宽度随文本增加到最大宽度，之后换行并向下增长）用于新卡片（见下方设置）和命令“让卡片适应其文本”。",
 	"autoResize.button": "随文本扩展",
 	"autoResize.mode.fit": "适应文本",
 	"autoResize.fitAll": "让卡片适应其文本",
