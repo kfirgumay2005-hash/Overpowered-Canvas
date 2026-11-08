@@ -65,6 +65,7 @@ import { smartGroupsModule } from "./smart-groups";
 import { paragraphIndentModule } from "./paragraph-indent";
 import { noteFontSizeModule } from "./note-font-size";
 import { emojiPickerModule } from "./emoji-picker";
+import { menuStyleModule } from "./menu-style";
 
 /** Every feature module, in display order within its settings group. */
 export const MODULES: readonly AnyModule[] = [
@@ -96,6 +97,7 @@ export const MODULES: readonly AnyModule[] = [
 	canvasCommandsModule,
 	clipboardModule,
 	toolbarSizeModule,
+	menuStyleModule,
 	barButtonsModule,
 	presentationModule,
 	portalsModule,

@@ -594,7 +594,7 @@ export const tutorialsZh: Record<keyof typeof tutorialsEn, string> = {
 	"tut.arrows.s4.title": "由你选择",
 	"tut.arrows.s4.body": "设置 → **自动布局**：**箭头连接的位置**（畅通的路径，或相对的两侧）和**需要时让箭头绕过卡片**。设置 → **演示**：**浏览导图时的方向键**（按层级，或按卡片的位置）。",
 	"tut.bars.title": "你自己的工具栏",
-	"tut.bars.summary": "移除底部栏、侧边栏和选中内容上方弹出栏中的按钮，并添加运行任何命令的按钮。",
+	"tut.bars.summary": "移除底部栏、侧边栏和选中内容上方弹出栏中的按钮，并添加运行任何命令的按钮。还可以设置右键菜单的样式。",
 	"tut.bars.board.title": "让工具栏属于你",
 	"tut.bars.board.c1": "减少从不使用的按钮",
 	"tut.bars.board.c2": "增加总在使用的命令",
@@ -912,4 +912,8 @@ export const tutorialsZh: Record<keyof typeof tutorialsEn, string> = {
 	"tut.notes.emoji.body": "底部栏的 **笑脸** 按钮会打开所有表情符号：搜索（英文和插件语言）、分类、最近使用和肤色（顶部的手）。表情符号插入的位置：\n\n- 正在编辑卡片：光标处；\n- 选中了卡片：文字末尾；\n- 什么都没选：视图中央的新卡片。\n\n选择器会保持打开，可以连续添加多个；按 `Esc` 或点按外部即可关闭。",
 	"tut.notes.emoji.task": "选中那张长卡片，给它添加一个表情符号。",
 	"tut.notes.emoji.touch": "点按长卡片，再点按底部栏的笑脸按钮，然后点按一个表情符号。",
+	"tut.bars.menu.title": "设置右键菜单样式",
+	"tut.bars.menu.body": "右键菜单也可以按你的喜好显示。侧边栏顶部的齿轮会打开插件设置；在 **右键菜单样式** 中可以设置文字大小、间距、宽度、圆角、图标、阴影和颜色（浅色和深色模式分别设置），并带有实时预览。\n\n默认只改变在画布中打开的菜单；**应用到整个仓库** 会作用于 Obsidian 的所有菜单。**重置为默认** 可恢复主题的外观。",
+	"tut.bars.menu.task": "修改 **右键菜单样式** 的一个选项（例如文字大小），关闭设置，然后右键单击一张卡片查看效果。",
+	"tut.bars.menu.touch": "点按侧边栏顶部的齿轮，修改 **右键菜单样式** 的一个选项，关闭设置，然后长按一张卡片。",
 };

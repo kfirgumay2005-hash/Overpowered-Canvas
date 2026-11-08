@@ -11,7 +11,7 @@ When resuming: read this file and `git log`, then continue with the first item t
 | 3 | Emoji picker in the bottom toolbar | NEW | done |
 | 4 | Cropped images become invisible | IMPROVEMENT (bug) | done |
 | 5 | Shortcuts window (replaces the shortcut settings) | NEW (replaces 2 settings + the core help list) | done |
-| 6 | Context menu styling | NEW | todo |
+| 6 | Context menu styling | NEW | done |
 
 ## 1. Pages bar vs. palettes (done)
 
@@ -172,3 +172,33 @@ new card "🍕"; clicked 😀 → same card "🍕 😀"; editing "Hello world" w
 "Lunch"; recent list updates at once; search "ピザ" (UI in Japanese) and "пицца" (Russian) find
 🍕, "pizza" still works. Unit tests (logic) 7. Tutorial "Sticky notes and text": new step
 "Emoji" (touch line, 5 locales), run in English: 8/8.
+
+## 6. Right-click menu style (done)
+
+Classification: NEW (nothing styled menus before; `ui/menu-fit.ts` only keeps long canvas menus on
+screen and is unchanged). Module `menu-style` (group Interaction, on by default but changes nothing
+until an option is set).
+
+- Options: text size, space between items, item side padding, menu width (at least), corner radius,
+  icon size, space after the icon, shadow (theme / none / soft / strong), colors — background, text
+  and icons, item under the pointer, border and separators — separately for light and dark mode
+  (one color can't suit both), "Apply to the whole vault", "Reset to default", and ↺ per option.
+  Every option starts at "theme" (-1 / empty): only what the user changes is written, so themes and
+  other plugins' items keep their look; warning items (Delete…) keep their color.
+- Scope: `Menu.prototype.showAtPosition` is patched to mark menus opened in a canvas (the point or
+  the menu's parent control is in a canvas view) with `opc-menu-styled`; the generated CSS targets
+  `.menu.opc-menu-styled`, or every `.menu` with the whole-vault switch. Mobile menus (long press)
+  go through the same call; on phones the width option is left out (they are bottom sheets).
+- CSS (`logic.ts`, unit-tested) is written into a `<style>` of every window: main, popouts and the
+  settings window (which may be a popout). The settings show a live preview: a menu built with
+  Obsidian's own classes, so the same CSS styles it (one item shown "under the pointer").
+  Native system menus can't be styled (said in the description).
+
+Tested (test vault, dark theme): text 20, spacing 9, width 300, radius 14, dark background, red
+hover, light background → right-click on a card: styled (rgb(16,32,48), 20 px, 9 px, 300 px, 14 px);
+light mode: light background used; tab header menu: unstyled, with "Apply to the whole vault":
+styled; touch long-press on a card: styled; another plugin's item (AI Tools ›) and the red
+"Remove" intact; settings (popout window): preview follows each change, slider 2 px → preview 2 px,
+Reset to default → all theme, preview back to theme values. Unit tests 5. Tutorial "Your own bars":
+new step "Style the right-click menu" (touch line, settings restored at the end), summary updated,
+5 locales; run in English 8/8.

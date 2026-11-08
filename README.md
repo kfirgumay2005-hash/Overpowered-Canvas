@@ -52,6 +52,9 @@ done.
 
 ## Features
 
+**Right-click menu style** — text size, spacing, width, corners, icons, shadow and colors (light and
+dark mode) of context menus, with a live preview; canvas menus only, or every menu of the vault.
+
 **Emoji** — a bottom-bar button with every emoji (search in English and the plugin's language,
 categories, recently used, skin tones; bundled, works offline): into the card you're editing at
 the cursor, at the end of the selected card, or into a new card.

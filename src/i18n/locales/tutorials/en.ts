@@ -595,7 +595,7 @@ export const tutorialsEn = {
 	"tut.arrows.s4.title": "Your choice",
 	"tut.arrows.s4.body": "Settings → **Auto layout**: **Where arrows attach** (clear path, or sides facing each other) and **Bend arrows around cards when needed**. Settings → **Presentation**: **Arrow keys when walking through a map** (by hierarchy, or by where the cards are).",
 	"tut.bars.title": "Your own bars",
-	"tut.bars.summary": "Take buttons off the bottom bar, the side bar and the popup over a selection, and add buttons that run any command.",
+	"tut.bars.summary": "Take buttons off the bottom bar, the side bar and the popup over a selection, and add buttons that run any command. Style the right-click menu too.",
 	"tut.bars.board.title": "Make the bars yours",
 	"tut.bars.board.c1": "Fewer buttons you never use",
 	"tut.bars.board.c2": "More of the commands you always use",
@@ -913,4 +913,8 @@ export const tutorialsEn = {
 	"tut.notes.emoji.body": "The **smiley** button in the bottom bar opens every emoji: search (in English and in the plugin's language), categories, recently used and skin tones (the hand at the top). Where the emoji goes:\n\n- editing a card: at the cursor;\n- a card selected: at the end of its text;\n- nothing selected: a new card in the middle of the view.\n\nThe picker stays open, so you can add several; `Esc` or a tap outside closes it.",
 	"tut.notes.emoji.task": "Select the long card and add an emoji to it.",
 	"tut.notes.emoji.touch": "Tap the long card, then the smiley button in the bottom bar, then an emoji.",
+	"tut.bars.menu.title": "Style the right-click menu",
+	"tut.bars.menu.body": "The right-click menu can look your way too. The gear at the top of the side bar opens the plugin's settings; there, **Right-click menu style** sets the text size, spacing, width, corners, icons, shadow and colors (for light and for dark mode), with a live preview.\n\nBy default only menus opened in a canvas change; **Apply to the whole vault** styles every menu of Obsidian. **Reset to default** brings your theme's look back.",
+	"tut.bars.menu.task": "Change an option of **Right-click menu style** (for example the text size), close the settings, then right-click a card to see it.",
+	"tut.bars.menu.touch": "Tap the gear at the top of the side bar, change an option of **Right-click menu style**, close the settings, then long-press a card.",
 } as const;

@@ -2884,18 +2884,28 @@ const customButtons = (rt: TutorialRuntime) => (rt.setting("bar-buttons", "custo
 let hiddenAtStart = 0;
 let customAtStart = 0;
 let orderAtStart = "";
+const MENU_STYLE_KEYS = ["allVault", "fontSize", "itemPadding", "itemIndent", "width", "radius", "iconSize", "iconGap", "shadow", "light", "dark"] as const;
+let menuStyleAtStart = "";
+const menuStyleOf = (rt: TutorialRuntime) => JSON.stringify(MENU_STYLE_KEYS.map((k) => rt.setting("menu-style", k)));
+/** Obsidian's settings are open (in this window or a window of their own). */
+const settingsOpen = (rt: TutorialRuntime) => {
+	const setting = (rt.app as unknown as { setting?: { containerEl?: HTMLElement; popout?: unknown } }).setting;
+	return !!setting?.popout || !!setting?.containerEl?.isConnected;
+};
+
 
 const bars: TutorialDefinition = {
 	id: BARS_TUTORIAL,
 	icon: "sliders-horizontal",
 	title: "tut.bars.title",
 	summary: "tut.bars.summary",
-	modules: ["bar-buttons", "toolbar-size"],
-	// The practice changes the real settings of the bars: they go back when the tutorial ends.
+	modules: ["bar-buttons", "toolbar-size", "menu-style"],
+	// The practice changes the real settings of the bars and the menu: they go back when the tutorial ends.
 	restoreSettings: [
 		{ module: "bar-buttons", key: "hidden" },
 		{ module: "bar-buttons", key: "custom" },
 		{ module: "bar-buttons", key: "order" },
+		...MENU_STYLE_KEYS.map((key) => ({ module: "menu-style", key })),
 	],
 	// A picture, for the popup over images.
 	files: (t) => [{ path: barsPhotoName(t), content: PRACTICE_PHOTO }],
@@ -3030,6 +3040,29 @@ const bars: TutorialDefinition = {
 				if (keys.length > 1) rt.setSetting("bar-buttons", "order", { ...order, bottom: [...keys.slice(1), keys[0]!] });
 				await rt.wait(900);
 				closeDialog(BARS_DIALOG);
+			},
+		},
+		{
+			title: "tut.bars.menu.title",
+			body: "tut.bars.menu.body",
+			task: "tut.bars.menu.task",
+			touch: "tut.bars.menu.touch",
+			target: settingsButton,
+			enter: (rt) => {
+				menuStyleAtStart = menuStyleOf(rt);
+			},
+			// An option changed and the settings closed again (they cover the board and this panel).
+			check: (rt) => menuStyleOf(rt) !== menuStyleAtStart && !settingsOpen(rt),
+			demo: async (rt) => {
+				rt.setSetting("menu-style", "fontSize", 18);
+				rt.setSetting("menu-style", "itemPadding", 8);
+				await rt.wait(400);
+				// Show it: the menu of a card.
+				const node = rt.node("br-1");
+				const r = node?.nodeEl.getBoundingClientRect();
+				if (node && r) node.nodeEl.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX: r.x + 30, clientY: r.y + 20, button: 2 }));
+				await rt.wait(1800);
+				activeDocument.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", code: "Escape", keyCode: 27, bubbles: true, cancelable: true }));
 			},
 		},
 		{ title: "tut.bars.s5.title", body: "tut.bars.s5.body" },
