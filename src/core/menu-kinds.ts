@@ -83,13 +83,13 @@ export class MenuKinds {
 			}),
 		);
 
-		const self = this;
+		const announce = (menu: Menu, pos: { x: number; y: number }, doc?: Document) => this.announce(menu, pos, doc);
 		plugin.register(
 			patcher.apply("core", "Menu.showAtPosition (menu kinds)", Menu.prototype, {
 				showAtPosition: (next) =>
 					function (this: Menu, pos: { x: number; y: number }, doc?: Document) {
 						try {
-							self.announce(this, pos, doc);
+							announce(this, pos, doc);
 						} catch (error) {
 							logError("[overpowered-canvas] menu kind failed", error);
 						}

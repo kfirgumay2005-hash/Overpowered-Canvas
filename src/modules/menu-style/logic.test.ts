@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cleanColor, isThemeDefault, MENU_STYLE_DEFAULTS, menuCss, sanitizeMenuStyle } from "./logic";
+import { ALL_MENU_CLASSES, ALL_MENU_VARS, cleanColor, isThemeDefault, MENU_STYLE_DEFAULTS, menuStyleProps, sanitizeMenuStyle } from "./logic";
 
 describe("sanitizeMenuStyle", () => {
 	it("keeps the theme for missing or bad values and clamps numbers", () => {
@@ -18,22 +18,21 @@ describe("sanitizeMenuStyle", () => {
 	});
 });
 
-describe("menuCss", () => {
-	it("writes nothing for the theme's own look", () => {
-		expect(menuCss(MENU_STYLE_DEFAULTS, [{ body: "", menu: ".menu" }])).toBe("");
+describe("menuStyleProps", () => {
+	it("sets nothing for the theme's own look", () => {
+		expect(menuStyleProps(MENU_STYLE_DEFAULTS)).toEqual({ classes: [], vars: {} });
 		expect(isThemeDefault(MENU_STYLE_DEFAULTS)).toBe(true);
 	});
-	it("writes only what changed, per theme for colors", () => {
-		const css = menuCss({ ...MENU_STYLE_DEFAULTS, fontSize: 16, width: 260, dark: { background: "#101010", text: "", hover: "#333333", border: "" } }, [{ body: ".x", menu: ".menu.y" }]);
-		expect(css).toContain("body.x .menu.y { font-size: 16px; }");
-		expect(css).toContain("body.x:not(.is-phone) .menu.y { min-width: 260px; }");
-		expect(css).toContain("body.x.theme-dark .menu.y { background-color: #101010; }");
-		expect(css).toContain("body.x.theme-dark .menu.y .menu-item:not(.is-disabled):not(.is-label):hover, body.x.theme-dark .menu.y .menu-item.selected:not(.is-disabled):not(.is-label) { background-color: #333333; }");
-		expect(css).not.toContain("theme-light");
+	it("sets only what changed, per theme for colors", () => {
+		const { classes, vars } = menuStyleProps({ ...MENU_STYLE_DEFAULTS, fontSize: 16, width: 260, shadow: "none", dark: { background: "#101010", text: "", hover: "#333333", border: "" } });
+		expect(classes.sort()).toEqual(["opc-ms-dark-bg", "opc-ms-dark-hover", "opc-ms-font", "opc-ms-shadow", "opc-ms-width"]);
+		expect(vars).toEqual({ "--opc-ms-font": "16px", "--opc-ms-width": "260px", "--opc-ms-shadow": "none", "--opc-ms-dark-bg": "#101010", "--opc-ms-dark-hover": "#333333" });
 		expect(isThemeDefault({ ...MENU_STYLE_DEFAULTS, fontSize: 16 })).toBe(false);
 	});
-	it("applies to every selector of a list", () => {
-		const css = menuCss({ ...MENU_STYLE_DEFAULTS, radius: 4 }, [{ body: ".a", menu: ".menu.c" }, { body: ".a.b", menu: ".menu" }]);
-		expect(css).toBe("body.a .menu.c, body.a.b .menu { border-radius: 4px; }");
+	it("lists every class it can set", () => {
+		const all = { ...MENU_STYLE_DEFAULTS, fontSize: 12, itemPadding: 2, itemIndent: 4, width: 200, radius: 3, iconSize: 14, iconGap: 5, shadow: "soft" as const };
+		const c = { background: "#111", text: "#222", hover: "#333", border: "#444" };
+		expect(menuStyleProps({ ...all, light: c, dark: c }).classes.sort()).toEqual([...ALL_MENU_CLASSES].sort());
+		expect(ALL_MENU_VARS).toContain("--opc-ms-light-border");
 	});
 });

@@ -137,7 +137,7 @@ export class EmojiPanel {
 		section.createDiv({ cls: `${CLS}-heading`, text: title });
 		const grid = section.createDiv({ cls: `${CLS}-grid` });
 		if (empty) section.createDiv({ cls: `${CLS}-empty`, text: empty });
-		const frag = document.createDocumentFragment();
+		const frag = createFragment();
 		for (const item of items) {
 			const b = this.item(item);
 			frag.appendChild(b);

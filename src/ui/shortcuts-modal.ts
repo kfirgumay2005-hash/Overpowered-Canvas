@@ -14,7 +14,7 @@
 import { Modal, Notice, Platform, setIcon, setTooltip, type App, type Command } from "obsidian";
 import type { I18nKey, Translate } from "../i18n";
 import { openSettingsTab } from "../internals/app";
-import { CATEGORY_ORDER, collisions, contextsOverlap, SHORTCUTS, shortcutDef, type ShortcutDef } from "../core/shortcuts/catalog";
+import { CATEGORY_ORDER, collisions, contextsOverlap, SHORTCUTS, type ShortcutDef } from "../core/shortcuts/catalog";
 import { comboFromEvent, comboFromHotkey, formatCombo, hotkeyFromCombo, type Combo, type HotkeyLike } from "../core/shortcuts/keys";
 import type { ShortcutStore } from "../core/shortcuts/store";
 
@@ -309,16 +309,18 @@ export class ShortcutsModal extends Modal {
 		const freeable = takers.some((x) => x.free);
 		if (freeable) {
 			const replace = buttons.createEl("button", { cls: "mod-cta", text: t("shortcuts.replace") });
-			replace.addEventListener("click", async () => {
+			replace.addEventListener("click", () => {
 				panel.remove();
-				for (const x of takers) await x.free?.();
-				await add();
+				void (async () => {
+					for (const x of takers) await x.free?.();
+					await add();
+				})();
 			});
 		}
 		const keep = buttons.createEl("button", { text: freeable ? t("shortcuts.keepBoth") : t("shortcuts.useAnyway") });
-		keep.addEventListener("click", async () => {
+		keep.addEventListener("click", () => {
 			panel.remove();
-			await add();
+			void add();
 		});
 		buttons.createEl("button", { text: t("shortcuts.cancel") }).addEventListener("click", () => panel.remove());
 	}
