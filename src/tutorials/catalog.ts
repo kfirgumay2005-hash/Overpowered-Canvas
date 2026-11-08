@@ -197,12 +197,15 @@ const basics: TutorialDefinition = {
 
 // ---------- 2. Sticky notes and text ----------
 
+/** Emoji in the text cards of a board. */
+const emojiCount = (nodes: CanvasNodeData[]) => nodes.reduce((sum, n) => sum + (typeof n.text === "string" ? (n.text.match(/\p{Extended_Pictographic}/gu) ?? []).length : 0), 0);
+
 const notes: TutorialDefinition = {
 	id: "notes",
 	icon: "sticky-note",
 	title: "tut.notes.title",
 	summary: "tut.notes.summary",
-	modules: ["sticky-notes", "floating-text", "text-align", "auto-resize"],
+	modules: ["sticky-notes", "floating-text", "text-align", "auto-resize", "emoji-picker"],
 	board: (t) => ({
 		nodes: [
 			title("n-title", t("tut.notes.board.title"), 0, -170),
@@ -293,6 +296,32 @@ const notes: TutorialDefinition = {
 			demo: (rt) => {
 				rt.select(["n-long"]);
 				setExtra(rt, "n-long", { fontSize: 24 });
+			},
+		},
+		{
+			title: "tut.notes.emoji.title",
+			body: "tut.notes.emoji.body",
+			task: "tut.notes.emoji.task",
+			touch: "tut.notes.emoji.touch",
+			target: ".opc-card-emoji",
+			focus: ["n-g", "n-long"],
+			enter: (rt) => rt.select(["n-long"]),
+			// An emoji more than before, in any card (the long one, or a new one).
+			check: (rt) => emojiCount(nodesOf(rt.now())) > emojiCount(nodesOf(rt.before)),
+			demo: async (rt) => {
+				rt.select(["n-long"]);
+				await rt.wait(300);
+				rt.canvas.cardMenuEl.querySelector<HTMLElement>(".opc-card-emoji")?.click();
+				await rt.wait(900);
+				const search = activeDocument.querySelector<HTMLInputElement>(".opc-emoji input");
+				if (search) {
+					search.value = "party";
+					search.dispatchEvent(new Event("input"));
+				}
+				await rt.wait(700);
+				activeDocument.querySelector<HTMLElement>(".opc-emoji-results .opc-emoji-item")?.click();
+				await rt.wait(900);
+				closeDialog(".opc-emoji");
 			},
 		},
 		{
@@ -2843,7 +2872,7 @@ function visitedDialog(selector: string): { reset(): void; check(): boolean } {
 	};
 }
 
-/** The side bar's settings button, which opens the canvas options. */
+/** The side bar's settings button: a click opens the plugin's settings, a right-click or long press the canvas options. */
 const settingsButton = (rt: TutorialRuntime) => rt.canvas.canvasControlsEl.querySelector("svg.lucide-settings")?.closest<HTMLElement>(".canvas-control-item");
 
 // ---------- 21. Your own bars ----------
@@ -2855,18 +2884,32 @@ const customButtons = (rt: TutorialRuntime) => (rt.setting("bar-buttons", "custo
 let hiddenAtStart = 0;
 let customAtStart = 0;
 let orderAtStart = "";
+const MENU_STYLE_KEYS = ["fontSize", "itemPadding", "itemIndent", "width", "radius", "iconSize", "iconGap", "shadow", "light", "dark"] as const;
+let menuStyleAtStart = "";
+let menuHiddenAtStart = 0;
+const contextMenuChoice = (rt: TutorialRuntime) =>
+	((rt.setting("bar-buttons", "menus") as Record<string, { hidden: string[]; seen: { title: string }[]; allVault: boolean }> | undefined)?.context ?? { hidden: [], seen: [], allVault: false });
+const menuStyleOf = (rt: TutorialRuntime) => JSON.stringify(MENU_STYLE_KEYS.map((k) => rt.setting("menu-style", k)));
+/** Obsidian's settings are open (in this window or a window of their own). */
+const settingsOpen = (rt: TutorialRuntime) => {
+	const setting = (rt.app as unknown as { setting?: { containerEl?: HTMLElement; popout?: unknown } }).setting;
+	return !!setting?.popout || !!setting?.containerEl?.isConnected;
+};
+
 
 const bars: TutorialDefinition = {
 	id: BARS_TUTORIAL,
 	icon: "sliders-horizontal",
 	title: "tut.bars.title",
 	summary: "tut.bars.summary",
-	modules: ["bar-buttons", "toolbar-size"],
-	// The practice changes the real settings of the bars: they go back when the tutorial ends.
+	modules: ["bar-buttons", "toolbar-size", "menu-style"],
+	// The practice changes the real settings of the bars and the menu: they go back when the tutorial ends.
 	restoreSettings: [
 		{ module: "bar-buttons", key: "hidden" },
 		{ module: "bar-buttons", key: "custom" },
 		{ module: "bar-buttons", key: "order" },
+		{ module: "bar-buttons", key: "menus" },
+		...MENU_STYLE_KEYS.map((key) => ({ module: "menu-style", key })),
 	],
 	// A picture, for the popup over images.
 	files: (t) => [{ path: barsPhotoName(t), content: PRACTICE_PHOTO }],
@@ -2884,6 +2927,7 @@ const bars: TutorialDefinition = {
 			title: "tut.bars.s1.title",
 			body: "tut.bars.s1.body",
 			task: "tut.bars.s1.task",
+			touch: "tut.bars.s1.touch",
 			target: settingsButton,
 			enter: () => barsVisit.reset(),
 			check: () => barsVisit.check(),
@@ -3000,6 +3044,59 @@ const bars: TutorialDefinition = {
 				if (keys.length > 1) rt.setSetting("bar-buttons", "order", { ...order, bottom: [...keys.slice(1), keys[0]!] });
 				await rt.wait(900);
 				closeDialog(BARS_DIALOG);
+			},
+		},
+		{
+			title: "tut.bars.menus.title",
+			body: "tut.bars.menus.body",
+			task: "tut.bars.menus.task",
+			touch: "tut.bars.menus.touch",
+			target: settingsButton,
+			enter: (rt) => {
+				menuHiddenAtStart = contextMenuChoice(rt).hidden.length;
+			},
+			check: (rt) => contextMenuChoice(rt).hidden.length > menuHiddenAtStart && !dialogOpen(BARS_DIALOG),
+			demo: async (rt) => {
+				// The menu shows its items once, so the list knows them.
+				const node = rt.node("br-1");
+				const r = node?.nodeEl.getBoundingClientRect();
+				if (node && r) node.nodeEl.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX: r.x + 30, clientY: r.y + 20, button: 2 }));
+				await rt.wait(1200);
+				activeDocument.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", code: "Escape", keyCode: 27, bubbles: true, cancelable: true }));
+				await rt.wait(400);
+				rt.command("bar-buttons:customize");
+				await rt.wait(900);
+				activeDocument.querySelector(`${BARS_DIALOG} .opc-bars-menu-list[data-menu="context"]`)?.scrollIntoView({ block: "center" });
+				await rt.wait(600);
+				const choice = contextMenuChoice(rt);
+				const item = choice.seen.find((i) => !choice.hidden.includes(i.title));
+				const menus = rt.setting("bar-buttons", "menus") as Record<string, unknown>;
+				if (item) rt.setSetting("bar-buttons", "menus", { ...menus, context: { ...choice, hidden: [...choice.hidden, item.title] } });
+				await rt.wait(1200);
+				closeDialog(BARS_DIALOG);
+			},
+		},
+		{
+			title: "tut.bars.menu.title",
+			body: "tut.bars.menu.body",
+			task: "tut.bars.menu.task",
+			touch: "tut.bars.menu.touch",
+			target: settingsButton,
+			enter: (rt) => {
+				menuStyleAtStart = menuStyleOf(rt);
+			},
+			// An option changed and the settings closed again (they cover the board and this panel).
+			check: (rt) => menuStyleOf(rt) !== menuStyleAtStart && !settingsOpen(rt),
+			demo: async (rt) => {
+				rt.setSetting("menu-style", "fontSize", 18);
+				rt.setSetting("menu-style", "itemPadding", 8);
+				await rt.wait(400);
+				// Show it: the menu of a card.
+				const node = rt.node("br-1");
+				const r = node?.nodeEl.getBoundingClientRect();
+				if (node && r) node.nodeEl.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX: r.x + 30, clientY: r.y + 20, button: 2 }));
+				await rt.wait(1800);
+				activeDocument.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", code: "Escape", keyCode: 27, bubbles: true, cancelable: true }));
 			},
 		},
 		{ title: "tut.bars.s5.title", body: "tut.bars.s5.body" },
@@ -3164,6 +3261,7 @@ const file: TutorialDefinition = {
 			title: "tut.file.s3.title",
 			body: "tut.file.s3.body",
 			task: "tut.file.s3.task",
+			touch: "tut.file.s3.touch",
 			target: settingsButton,
 			check: (rt) => rt.canvas.readonly,
 			demo: (rt) => rt.canvas.setReadonly(true),
@@ -3172,6 +3270,7 @@ const file: TutorialDefinition = {
 			title: "tut.file.s4.title",
 			body: "tut.file.s4.body",
 			task: "tut.file.s4.task",
+			touch: "tut.file.s4.touch",
 			target: settingsButton,
 			enter: (rt) => {
 				readonlyAtStart = rt.canvas.readonly;
@@ -3508,4 +3607,94 @@ const fontSize: TutorialDefinition = {
 	],
 };
 
-export const TUTORIALS: readonly TutorialDefinition[] = [basics, notes, shapes, edges, drawing, layers, present, mindmap, navigate, organize, markdown, select, blocks, vault, style, big, direction, pdf, pages, arrows, bars, images, file, columns, smartGroups, indent, fontSize];
+// ---------- 28. Your shortcuts ----------
+
+const SHORTCUTS_DIALOG = ".opc-shortcuts-modal";
+const shortcutsVisit = visitedDialog(SHORTCUTS_DIALOG);
+/** The help button (?) of the side bar, which opens the Shortcuts window. */
+const helpButton = (rt: TutorialRuntime) => rt.canvas.canvasControlsEl.querySelector<HTMLElement>(".opc-shortcuts-button");
+const drawingOn = (rt: TutorialRuntime) => !!rt.canvas.wrapperEl.querySelector(".opc-ink-toolbar");
+/** Opens the Shortcuts window the way a user would (the ? button) and searches for `query`. */
+const openShortcutsWindow = async (rt: TutorialRuntime, query: string) => {
+	if (!dialogOpen(SHORTCUTS_DIALOG)) helpButton(rt)?.click();
+	await rt.wait(600);
+	const search = activeDocument.querySelector<HTMLInputElement>(`${SHORTCUTS_DIALOG} .opc-shortcuts-search`);
+	if (search) {
+		search.value = query;
+		search.dispatchEvent(new Event("input"));
+	}
+	await rt.wait(900);
+};
+
+const shortcuts: TutorialDefinition = {
+	id: "shortcuts",
+	icon: "keyboard",
+	title: "tut.keys.title",
+	summary: "tut.keys.summary",
+	modules: ["drawing"],
+	// The practice changes the real keys: the user's own come back when the tutorial ends.
+	restoreShortcuts: true,
+	board: (t) => ({
+		nodes: [title("ks-title", t("tut.keys.board.title"), 0, -140, 640, 80), card("ks-1", t("tut.keys.board.c1"), 0, 0, 300, 120, { color: "5" }), card("ks-2", t("tut.keys.board.c2"), 340, 0, 300, 120, { color: "4" })],
+		edges: [],
+	}),
+	steps: [
+		{
+			title: "tut.keys.s1.title",
+			body: "tut.keys.s1.body",
+			task: "tut.keys.s1.task",
+			touch: "tut.keys.s1.touch",
+			target: helpButton,
+			enter: () => shortcutsVisit.reset(),
+			check: () => shortcutsVisit.check(),
+			demo: async (rt) => {
+				await openShortcutsWindow(rt, "");
+				await rt.wait(1200);
+				closeDialog(SHORTCUTS_DIALOG);
+			},
+		},
+		{
+			title: "tut.keys.s2.title",
+			body: "tut.keys.s2.body",
+			task: "tut.keys.s2.task",
+			touch: "tut.keys.s2.touch",
+			target: helpButton,
+			check: (rt) => !rt.shortcuts.isDefault("drawing.toggle") && !dialogOpen(SHORTCUTS_DIALOG),
+			demo: async (rt) => {
+				await openShortcutsWindow(rt, rt.t("shortcuts.action.drawing.toggle"));
+				await rt.shortcuts.set("drawing.toggle", [...rt.shortcuts.combos("drawing.toggle"), "Shift+D"]);
+				await rt.wait(1400);
+				closeDialog(SHORTCUTS_DIALOG);
+			},
+		},
+		{
+			title: "tut.keys.s3.title",
+			body: "tut.keys.s3.body",
+			task: "tut.keys.s3.task",
+			touch: "tut.keys.s3.touch",
+			check: (rt) => drawingOn(rt),
+			demo: (rt) => void rt.command("drawing:toggle-drawing"),
+		},
+		{
+			title: "tut.keys.s4.title",
+			body: "tut.keys.s4.body",
+			task: "tut.keys.s4.task",
+			touch: "tut.keys.s4.touch",
+			target: helpButton,
+			// Drawing would keep the keys of the board busy: it ends here.
+			enter: (rt) => {
+				if (drawingOn(rt)) rt.command("drawing:toggle-drawing");
+			},
+			check: (rt) => rt.shortcuts.isDefault("drawing.toggle") && !dialogOpen(SHORTCUTS_DIALOG),
+			demo: async (rt) => {
+				await openShortcutsWindow(rt, rt.t("shortcuts.action.drawing.toggle"));
+				await rt.shortcuts.reset("drawing.toggle");
+				await rt.wait(1200);
+				closeDialog(SHORTCUTS_DIALOG);
+			},
+		},
+		{ title: "tut.keys.s5.title", body: "tut.keys.s5.body" },
+	],
+};
+
+export const TUTORIALS: readonly TutorialDefinition[] = [basics, notes, shapes, edges, drawing, layers, present, mindmap, navigate, organize, markdown, select, blocks, vault, style, big, direction, pdf, pages, arrows, bars, images, file, columns, smartGroups, indent, fontSize, shortcuts];

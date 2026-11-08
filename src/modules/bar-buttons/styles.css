@@ -41,3 +41,60 @@ body.opc-mod-bar-buttons .canvas-wrapper .canvas-menu > .opc-bar-hidden {
 .opc-bars-list {
 	touch-action: pan-y;
 }
+
+/* Customize the bars: the title, the search box and the section icons stay; the list below scrolls. */
+.opc-bars-modal {
+	overflow: hidden;
+}
+.opc-bars-modal .modal-content {
+	display: flex;
+	flex-direction: column;
+	flex: 1 1 auto;
+	min-height: 0;
+	overflow: hidden;
+}
+.opc-bars-modal .opc-bars-head {
+	flex: 0 0 auto;
+	display: flex;
+	flex-direction: column;
+	gap: var(--size-2-3);
+	padding-bottom: var(--size-2-3);
+	border-bottom: 1px solid var(--background-modifier-border);
+}
+.opc-bars-modal .opc-bars-head .search-input-container input {
+	width: 100%;
+}
+.opc-bars-modal .opc-bars-scroll {
+	flex: 1 1 auto;
+	min-height: 0;
+	overflow-y: auto;
+	overscroll-behavior: contain;
+}
+.opc-bars-modal .opc-bars-nav {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: center;
+	gap: var(--size-2-2);
+}
+.opc-bars-modal .opc-bars-nav-item {
+	width: 40px;
+	height: 36px;
+	padding: 0;
+	--icon-size: 20px;
+}
+.opc-bars-modal .opc-bars-nav-item.is-active {
+	color: var(--text-accent);
+	background-color: var(--background-modifier-hover);
+	box-shadow: inset 0 -2px 0 var(--interactive-accent);
+}
+/* Searching: only matching rows; hints, Add and Restore step aside. */
+.opc-bars-modal .opc-bars-filtered,
+.opc-bars-modal .opc-bars-scroll.is-searching .opc-bars-extra,
+.opc-bars-modal .opc-bars-scroll.is-searching .opc-bars-menu-hint,
+.opc-bars-modal .opc-bars-scroll.is-searching .opc-bars-menu-empty {
+	display: none;
+}
+.opc-bars-modal .opc-bars-no-match {
+	padding: var(--size-4-4);
+	text-align: center;
+}

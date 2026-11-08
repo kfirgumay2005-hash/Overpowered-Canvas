@@ -291,14 +291,14 @@ class InkSession {
 
 	private onKey = (evt: KeyboardEvent) => {
 		if ((evt.target as HTMLElement | null)?.closest?.("input, textarea, [contenteditable=true]")) return;
-		if (evt.key === "Escape") {
+		if (this.ctx.isShortcut("drawing.done", evt)) {
 			evt.preventDefault();
 			evt.stopPropagation();
 			// Esc ends drawing only (not the walk or the view it draws on).
 			evt.stopImmediatePropagation();
 			if (this.selection.size) this.clearSelection();
 			else this.onClose();
-		} else if ((evt.key === "Delete" || evt.key === "Backspace") && this.selection.size) {
+		} else if (this.selection.size && this.ctx.isShortcut("drawing.delete", evt)) {
 			evt.preventDefault();
 			evt.stopPropagation();
 			this.deleteSelection();
@@ -759,7 +759,7 @@ export const drawingModule = defineModule<DrawingSettings>({
 		const toggle = (canvas: CanvasLike) => (sessions.has(canvas) ? stop(canvas) : start(canvas));
 		inkHost.api = { start, stop, active: (canvas) => sessions.has(canvas) };
 
-		ctx.addCanvasKey({ modifiers: [], key: "P", handle: (canvas) => (canvas.readonly ? false : (toggle(canvas), true)) });
+		ctx.addCanvasKey({ shortcut: "drawing.toggle", handle: (canvas) => (canvas.readonly ? false : (toggle(canvas), true)) });
 		ctx.onCanvas((canvas) => () => stop(canvas));
 		ctx.on("readonly-change", (canvas) => canvas.readonly && stop(canvas));
 

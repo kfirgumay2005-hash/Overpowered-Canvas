@@ -24,11 +24,11 @@ body.opc-mod-minimap .opc-minimap[data-corner="bottom-start"] {
 }
 /* Top-end sits beside the canvas controls. */
 body.opc-mod-minimap .opc-minimap[data-corner="top-end"] {
-	top: var(--size-4-3);
+	top: calc(var(--size-4-3) + var(--opc-lane-offset, 0px));
 	inset-inline-end: 64px;
 }
 body.opc-mod-minimap .opc-minimap[data-corner="top-start"] {
-	top: var(--size-4-3);
+	top: calc(var(--size-4-3) + var(--opc-lane-offset, 0px));
 	inset-inline-start: var(--size-4-3);
 }
 body.opc-mod-minimap .opc-minimap-control .canvas-control-item.is-active {

@@ -1,4 +1,4 @@
-import { Notice, Setting, setIcon } from "obsidian";
+import { Notice, Setting, setIcon, setTooltip } from "obsidian";
 import { defineModule, type ModuleContext } from "../../core/module";
 import type { OpcNode } from "../../data/schema";
 import { LOCALES } from "../../i18n";
@@ -52,8 +52,6 @@ const SLIDE_CLICK_MOVE = 5;
 /** Wait this long so a double-click (label editing) doesn't toggle twice. */
 const SLIDE_CLICK_DELAY = 300;
 
-const NEXT_KEYS = new Set(["ArrowRight", "ArrowDown", "PageDown", " ", "Enter"]);
-const PREV_KEYS = new Set(["ArrowLeft", "ArrowUp", "PageUp", "Backspace"]);
 
 function edgesOf(ctx: ModuleContext<PresentationSettings>, canvas: CanvasLike): SlideEdge[] {
 	return [...canvas.edges.values()].map((e) => ({ from: e.from.node.id, to: e.to.node.id, order: ctx.data.edge(e).get().order, label: e.label }));
@@ -156,10 +154,11 @@ export const presentationModule = defineModule<PresentationSettings>({
 			navButton("x", ctx.t("presentation.end"), () => exit(canvas));
 			const onKey = (evt: KeyboardEvent) => {
 				if (!sessions.has(canvas)) return;
-				if (NEXT_KEYS.has(evt.key)) step(canvas, 1);
-				else if (PREV_KEYS.has(evt.key)) step(canvas, -1);
-				else if (evt.key === "Escape") exit(canvas);
-				else if (evt.key === "Home") {
+				const action = ctx.shortcutOf(evt, ["slides.next", "slides.previous", "slides.end", "slides.first"] as const);
+				if (action === "slides.next") step(canvas, 1);
+				else if (action === "slides.previous") step(canvas, -1);
+				else if (action === "slides.end") exit(canvas);
+				else if (action === "slides.first") {
 					const s = sessions.get(canvas)!;
 					s.history = s.history.slice(0, 1);
 					show(canvas, s);
@@ -242,6 +241,21 @@ export const presentationModule = defineModule<PresentationSettings>({
 		command("walk", ctx.t("presentation.walk.start"), "route", idle, (c) => walker.start(c));
 		command("walk-end", ctx.t("presentation.walk.end"), "x", walker.walking, walker.stop);
 		command("walk-columns", ctx.t("presentation.walk.columns"), "columns-3", (c) => !sessions.has(c), (c) => walker.start(c, undefined, true));
+		// The column view from the side bar too (also in the command palette). While it is open the
+		// side bar is hidden; its own × closes it.
+		ctx.onCanvas((canvas) => {
+			const controls = canvas.wrapperEl.querySelector(".canvas-controls");
+			const group = controls?.createDiv({ cls: "canvas-control-group mod-raised opc-columns-control" });
+			const item = group?.createDiv({ cls: "canvas-control-item", attr: { "aria-label": ctx.t("presentation.walk.columns"), "data-tooltip-position": "left" } });
+			if (item) {
+				setIcon(item, "columns-3");
+				setTooltip(item, ctx.t("presentation.walk.columns"), { placement: "left" });
+				item.addEventListener("click", () => {
+					if (!sessions.has(canvas) && !walker.walking(canvas)) walker.start(canvas, undefined, true);
+				});
+			}
+			return () => group?.remove();
+		});
 		command("set-start", ctx.t("presentation.setStart"), "flag", (c) => !c.readonly && selectedNodes(c).length === 1, (c) => setStart(c, selectedNodes(c)[0]!));
 		command("set-edge-order", ctx.t("presentation.edgeOrder"), "list-ordered", (c) => !c.readonly && selectedEdges(c).length === 1, (c) => promptOrder(c, selectedEdges(c)[0]!));
 

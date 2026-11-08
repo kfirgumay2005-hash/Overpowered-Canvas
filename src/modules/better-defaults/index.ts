@@ -1,4 +1,4 @@
-import { Setting } from "obsidian";
+import { Setting, type Menu } from "obsidian";
 import { defineModule } from "../../core/module";
 import type { CanvasLike } from "../../internals/types";
 import { mergeWithDefaults } from "../../settings/settings";
@@ -159,6 +159,38 @@ export const betterDefaultsModule = defineModule<BetterDefaultsSettings>({
 							if (up && !dropAllowed(this, from, up)) return;
 							onDrop(pos);
 						});
+					},
+			});
+		});
+
+		// The gear of the side controls: its menu (snap, read-only, Customize the bars…) ends with
+		// this plugin's settings. Added just before the menu shows, so it comes after every other item.
+		const patchedGear = new WeakSet<object>();
+		ctx.onCanvas((canvas) => {
+			const proto = Object.getPrototypeOf(canvas) as CanvasLike & { showQuickSettingsMenu?(menu: Menu): void };
+			if (patchedGear.has(proto) || typeof proto.showQuickSettingsMenu !== "function") return;
+			patchedGear.add(proto);
+			ctx.patch("canvas.showQuickSettingsMenu (plugin settings)", proto as CanvasLike & { showQuickSettingsMenu(menu: Menu): void }, {
+				showQuickSettingsMenu: (next) =>
+					function (this: CanvasLike, menu: Menu) {
+						next.call(this, menu);
+						// A little more room between each icon and its name (styles.css).
+						(menu as Menu & { dom?: HTMLElement }).dom?.addClass("opc-gear-menu");
+						const show = menu.showAtPosition;
+						let added = false;
+						menu.showAtPosition = function (this: Menu, ...args: Parameters<Menu["showAtPosition"]>) {
+							if (!added) {
+								added = true;
+								menu.addItem((item) =>
+									item
+										.setSection("opc-plugin-settings")
+										.setTitle(ctx.t("betterDefaults.pluginSettings"))
+										.setIcon("settings")
+										.onClick(() => ctx.openPluginSettings()),
+								);
+							}
+							return show.apply(this, args);
+						};
 					},
 			});
 		});

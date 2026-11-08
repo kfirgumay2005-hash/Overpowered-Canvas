@@ -387,10 +387,10 @@ export class TextPagesView extends FileView {
 		let cancelled = false;
 		input.addEventListener("input", fit);
 		input.addEventListener("keydown", (evt) => {
-			if (evt.key === "Escape") {
+			if (this.ctx.isShortcut("edit.cancel", evt)) {
 				cancelled = true;
 				input.blur();
-			} else if (evt.key === "Enter" && (evt.ctrlKey || evt.metaKey)) input.blur();
+			} else if (this.ctx.isShortcut("edit.save", evt)) input.blur();
 		});
 		input.addEventListener("blur", () => {
 			this.openEditor = null;

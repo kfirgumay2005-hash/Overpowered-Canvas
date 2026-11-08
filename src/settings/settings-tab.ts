@@ -17,6 +17,8 @@ export interface SettingsTabHost {
 	setLanguage(language: LanguageSetting): void;
 	/** Turns debug mode on or off (the setting is already stored in `settings`). */
 	setDebug(on: boolean): void;
+	/** The Shortcuts window: the one place for the plugin's keys. */
+	openShortcuts(): void;
 	readonly tutorials: TutorialListHost;
 	/** Moves the plugin's files to `to` and makes it the files folder. */
 	applyFilesFolder(to: string): Promise<MoveResult>;
@@ -70,6 +72,15 @@ export class OpcSettingTab extends PluginSettingTab {
 				type: "group",
 				cls: "opc-settings-search-group",
 				items: [{ name: t("settings.search.placeholder"), searchable: false, render: (s) => this.renderSearch(s) }],
+			},
+			{
+				name: t("shortcuts.title"),
+				desc: t("settings.shortcuts.desc"),
+				render: (s) => {
+					s.settingEl.setAttr("data-opc-search", searchText(t, ["shortcuts.title", "settings.shortcuts.desc", "settings.shortcuts.simple"]));
+					addSimpleLine(s.descEl, t("settings.shortcuts.simple"));
+					s.addButton((b) => b.setButtonText(t("shortcuts.open")).setCta().onClick(() => host.openShortcuts()));
+				},
 			},
 			{
 				name: t("settings.filesFolder.name"),

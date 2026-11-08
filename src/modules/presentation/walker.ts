@@ -47,7 +47,8 @@ interface Walk {
 	cleanup: () => void;
 }
 
-const ARROWS: Record<string, Dir> = { ArrowRight: "right", ArrowLeft: "left", ArrowDown: "down", ArrowUp: "up" };
+const WALK_KEYS = ["walk.up", "walk.down", "walk.left", "walk.right", "walk.end", "walk.start", "walk.zoomIn", "walk.zoomOut"] as const;
+const COLUMN_KEYS = ["columns.child", "columns.sibling", "columns.edit"] as const;
 const SIDE: Record<Dir, EdgeSide> = { right: "right", left: "left", down: "bottom", up: "top" };
 const OPPOSITE: Record<Dir, EdgeSide> = { right: "left", left: "right", down: "top", up: "bottom" };
 /** A press that moved less than this is a tap (jump to that card). */
@@ -500,24 +501,25 @@ export function enableWalk(ctx: ModuleContext<object>, presenting: (canvas: Canv
 		if (lift > 0) wrapper.setCssProps({ "--opc-pad-lift": `${Math.round(lift)}px` });
 
 		const onKey = (evt: KeyboardEvent) => {
-			if (ctx.activeCanvas() !== canvas || evt.ctrlKey || evt.metaKey || evt.altKey) return;
+			if (ctx.activeCanvas() !== canvas) return;
 			// Typing in a card edited from the column view.
 			const typing = evt.target as HTMLElement | null;
 			if (typing?.closest?.("textarea, input, [contenteditable=true]") || walks.get(canvas)?.columns?.isEditing()) return;
 			const walk = walks.get(canvas);
 			if (!walk) return;
-			// Esc with a tool of the column view on ends the tool (it handles it), not the walk.
-			if (walk.tool && evt.key === "Escape") return;
-			const dir = ARROWS[evt.key];
+			// Keys from the Shortcuts window. The column view's own keys first (they take Tab and Enter).
 			const inColumns = !!walk.columns;
-			if (dir) step(canvas, dir);
-			else if (evt.key === "Escape") stop(canvas);
-			else if (evt.key === "Home") go(canvas, walk, walk.start);
-			else if (evt.key === "+" || evt.key === "=") zoom(canvas, ZOOM_STEP);
-			else if (evt.key === "-") zoom(canvas, -ZOOM_STEP);
-			else if (inColumns && evt.key === "Tab" && !evt.shiftKey) addCard(canvas, "child");
-			else if (inColumns && evt.key === "Enter" && !evt.shiftKey) addCard(canvas, "sibling");
-			else if (inColumns && evt.key === "F2") walk.columns?.edit(walk.current);
+			const action = (inColumns ? ctx.shortcutOf(evt, COLUMN_KEYS) : null) ?? ctx.shortcutOf(evt, WALK_KEYS);
+			// The end key with a tool of the column view on ends the tool (it handles it), not the walk.
+			if (walk.tool && action === "walk.end") return;
+			if (action === "walk.up" || action === "walk.down" || action === "walk.left" || action === "walk.right") step(canvas, action.slice(5) as Dir);
+			else if (action === "walk.end") stop(canvas);
+			else if (action === "walk.start") go(canvas, walk, walk.start);
+			else if (action === "walk.zoomIn") zoom(canvas, ZOOM_STEP);
+			else if (action === "walk.zoomOut") zoom(canvas, -ZOOM_STEP);
+			else if (action === "columns.child") addCard(canvas, "child");
+			else if (action === "columns.sibling") addCard(canvas, "sibling");
+			else if (action === "columns.edit") walk.columns?.edit(walk.current);
 			else return;
 			evt.preventDefault();
 			evt.stopPropagation();

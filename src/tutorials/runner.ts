@@ -17,6 +17,7 @@ import type { CanvasLike, CanvasNodeLike, CanvasViewLike } from "../internals/ty
 import { extraOf } from "./board";
 import { renderRich } from "./rich";
 import type { TutorialDefinition, TutorialRuntime, TutorialStep } from "./types";
+import type { ShortcutStore } from "../core/shortcuts/store";
 import { logError } from "../core/log";
 
 /** The tutorials' folder inside the plugin's files folder (a plugin setting). */
@@ -90,6 +91,7 @@ export interface TutorialHost {
 	readonly data: CanvasDataApi;
 	readonly history: HistoryApi;
 	readonly hooks: CanvasHooks;
+	readonly shortcuts: ShortcutStore;
 	t(): Translate;
 	/** The plugin's files folder; the tutorials folder is inside it. */
 	filesFolder(): string;
@@ -352,6 +354,10 @@ class Session {
 	begin(): void {
 		const { app } = this.host;
 		for (const { module, key } of this.def.restoreSettings ?? []) this.saved.set(`${module}\0${key}`, this.rt.setting(module, key));
+		if (this.def.restoreShortcuts) {
+			const keys = this.host.shortcuts.snapshot();
+			this.cleanups.push(() => void this.host.shortcuts.restore(keys));
+		}
 
 		const refs: EventRef[] = WATCHED_EVENTS.map((name) =>
 			app.workspace.on(`${EVENT_PREFIX}${name}` as "quit", (...args: unknown[]) => this.record(name, args)),
@@ -687,6 +693,7 @@ class Session {
 		return {
 			app,
 			canvas,
+			shortcuts: host.shortcuts,
 			folder: this.folder,
 			get t() {
 				return host.t();

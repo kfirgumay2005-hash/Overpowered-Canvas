@@ -1,6 +1,7 @@
 import esbuild from "esbuild";
 import { readFile } from "node:fs/promises";
 import { builtinModules, createRequire } from "node:module";
+import { emojiDataPlugin } from "./scripts/emoji-data.mjs";
 
 const require = createRequire(import.meta.url);
 
@@ -40,7 +41,7 @@ const jsContext = await esbuild.context({
 	banner: { js: banner },
 	entryPoints: ["src/main.ts"],
 	bundle: true,
-	plugins: [elkWorkerText],
+	plugins: [elkWorkerText, emojiDataPlugin],
 	external,
 	format: "cjs",
 	target: "es2022",

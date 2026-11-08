@@ -1,0 +1,150 @@
+/* Emoji picker (bottom bar button). The popover is in the document body. */
+body.opc-mod-emoji-picker .opc-picker.opc-emoji-popover {
+	padding: 0;
+	max-height: none;
+	overflow: hidden;
+}
+body.opc-mod-emoji-picker .opc-emoji {
+	display: flex;
+	flex-direction: column;
+	width: min(372px, calc(100vw - 16px));
+	height: min(440px, calc(100vh - 140px));
+	font-family: var(--font-interface);
+}
+body.opc-mod-emoji-picker .opc-emoji-top {
+	display: flex;
+	align-items: center;
+	gap: var(--size-2-2);
+	padding: var(--size-4-2) var(--size-4-2) var(--size-2-2);
+}
+body.opc-mod-emoji-picker .opc-emoji-top .search-input-container {
+	flex: 1 1 auto;
+	min-width: 0;
+}
+body.opc-mod-emoji-picker .opc-emoji-top input {
+	width: 100%;
+}
+body.opc-mod-emoji-picker .opc-emoji-tone-button,
+body.opc-mod-emoji-picker .opc-emoji-tone {
+	font-size: 20px;
+	line-height: 1;
+	width: 36px;
+	height: 36px;
+	padding: 0;
+	font-family: var(--opc-emoji-font, inherit);
+}
+body.opc-mod-emoji-picker .opc-emoji-tones {
+	display: flex;
+	justify-content: flex-end;
+	gap: var(--size-2-1);
+	padding: 0 var(--size-4-2) var(--size-2-2);
+}
+body.opc-mod-emoji-picker .opc-emoji-tones.is-hidden {
+	display: none;
+}
+body.opc-mod-emoji-picker .opc-emoji-tone.is-active {
+	background-color: var(--background-modifier-active-hover);
+	outline: 2px solid var(--interactive-accent);
+}
+body.opc-mod-emoji-picker .opc-emoji-tabs {
+	display: flex;
+	justify-content: space-between;
+	padding: 0 var(--size-2-3);
+	border-bottom: 1px solid var(--background-modifier-border);
+}
+body.opc-mod-emoji-picker .opc-emoji-tab {
+	flex: 1 1 0;
+	min-width: 0;
+	height: 34px;
+	padding: 0;
+	border-radius: var(--radius-s) var(--radius-s) 0 0;
+	color: var(--text-muted);
+	--icon-size: 16px;
+}
+body.opc-mod-emoji-picker .opc-emoji-tab.is-active {
+	color: var(--text-accent);
+	box-shadow: inset 0 -2px 0 var(--interactive-accent);
+}
+body.opc-mod-emoji-picker .opc-emoji-scroll {
+	position: relative;
+	flex: 1 1 auto;
+	min-height: 0;
+	overflow-y: auto;
+	padding: 0 var(--size-2-3) var(--size-2-3);
+	overscroll-behavior: contain;
+	-webkit-overflow-scrolling: touch;
+}
+/* While searching only the results show. */
+body.opc-mod-emoji-picker .opc-emoji-scroll.is-searching > .opc-emoji-section:not(.opc-emoji-results) {
+	display: none;
+}
+body.opc-mod-emoji-picker .opc-emoji-section {
+	/* The browser skips drawing sections far out of view. */
+	content-visibility: auto;
+	contain-intrinsic-size: auto 300px;
+}
+body.opc-mod-emoji-picker .opc-emoji-heading {
+	position: sticky;
+	top: 0;
+	z-index: 1;
+	padding: var(--size-2-3) var(--size-2-1) var(--size-2-1);
+	background-color: var(--background-primary);
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
+	font-weight: var(--font-semibold);
+}
+body.opc-mod-emoji-picker .opc-emoji-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(38px, 1fr));
+}
+body.opc-mod-emoji-picker .opc-emoji-item {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	height: 38px;
+	padding: 0;
+	background: none;
+	border: none;
+	box-shadow: none;
+	border-radius: var(--radius-s);
+	font-size: 24px;
+	line-height: 1;
+	cursor: pointer;
+	font-family: var(--opc-emoji-font, inherit);
+}
+body.opc-mod-emoji-picker .opc-emoji-item:hover,
+body.opc-mod-emoji-picker .opc-emoji-item:focus-visible {
+	background-color: var(--background-modifier-hover);
+}
+body.opc-mod-emoji-picker .opc-emoji-empty {
+	padding: var(--size-4-2);
+	color: var(--text-faint);
+	font-size: var(--font-ui-small);
+}
+body.opc-mod-emoji-picker .opc-emoji-preview {
+	display: flex;
+	align-items: center;
+	gap: var(--size-4-2);
+	min-height: 40px;
+	padding: var(--size-2-2) var(--size-4-3);
+	border-top: 1px solid var(--background-modifier-border);
+	color: var(--text-muted);
+	font-size: var(--font-ui-small);
+}
+body.opc-mod-emoji-picker .opc-emoji-preview-emoji {
+	font-size: 26px;
+	line-height: 1;
+}
+/* Touch: bigger cells, no hover preview needed. */
+@media (hover: none) {
+	body.opc-mod-emoji-picker .opc-emoji-grid {
+		grid-template-columns: repeat(auto-fill, minmax(44px, 1fr));
+	}
+	body.opc-mod-emoji-picker .opc-emoji-item {
+		height: 44px;
+		font-size: 28px;
+	}
+	body.opc-mod-emoji-picker .opc-emoji-tab {
+		height: 40px;
+	}
+}

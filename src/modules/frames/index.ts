@@ -173,6 +173,8 @@ interface FrameSession {
  * click to zoom to a frame, drag to reorder (stored in the canvas), and present the frames
  * one by one in panel order.
  */
+const SLIDE_KEYS = ["slides.next", "slides.previous", "slides.first", "slides.last", "slides.end"] as const;
+
 export const framesModule = defineModule<FramesSettings>({
 	id: "frames",
 	name: "frames.name",
@@ -217,11 +219,14 @@ export const framesModule = defineModule<FramesSettings>({
 				show(canvas, session, counter);
 			};
 			const onKey = (evt: KeyboardEvent) => {
-				if (["ArrowRight", "ArrowDown", "PageDown", " "].includes(evt.key)) step(canvasDirection(canvas) === "rtl" && evt.key === "ArrowRight" ? -1 : 1);
-				else if (["ArrowLeft", "ArrowUp", "PageUp"].includes(evt.key)) step(canvasDirection(canvas) === "rtl" && evt.key === "ArrowLeft" ? 1 : -1);
-				else if (evt.key === "Home") step(-order.length);
-				else if (evt.key === "End") step(order.length);
-				else if (evt.key === "Escape") stop(canvas);
+				// Keys from the Shortcuts window; on a right-to-left canvas the left and right arrows swap.
+				const action = ctx.shortcutOf(evt, SLIDE_KEYS);
+				const flip = canvasDirection(canvas) === "rtl" && (evt.key === "ArrowRight" || evt.key === "ArrowLeft") ? -1 : 1;
+				if (action === "slides.next") step(flip);
+				else if (action === "slides.previous") step(-flip);
+				else if (action === "slides.first") step(-order.length);
+				else if (action === "slides.last") step(order.length);
+				else if (action === "slides.end") stop(canvas);
 				else return;
 				evt.preventDefault();
 				evt.stopPropagation();

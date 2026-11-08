@@ -7,6 +7,7 @@ export default defineConfig({
 		alias: {
 			obsidian: fileURLToPath(new URL("./src/testing/obsidian-stub.ts", import.meta.url)),
 			"elk-worker-source": fileURLToPath(new URL("./src/testing/elk-worker-stub.ts", import.meta.url)),
+			"emoji-data": fileURLToPath(new URL("./src/testing/emoji-data-stub.ts", import.meta.url)),
 		},
 	},
 	test: {

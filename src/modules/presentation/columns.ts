@@ -6,6 +6,8 @@ import { nodeText } from "../canvas-markdown/structure";
 import type { InkSurface } from "../drawing/api";
 import { strokeD } from "../drawing/render";
 import { IMAGE_EXTENSIONS, nodeType } from "../shared";
+import { clampRect, isFull } from "../image-crop/crop";
+import type { CropRect } from "../../data/schema";
 import type { MarkSurface } from "../text-highlight/api";
 import { columnPositions, keepZoom, zoomAround, type View } from "./column-layout";
 
@@ -189,6 +191,7 @@ export class ColumnView {
 				card.toggleClass("is-actual", actual);
 				const text = nodeText(node.getData());
 				const image = actual ? this.imageOf(node) : null;
+				const cropped = actual ? null : this.croppedImageOf(node);
 				if (actual && nodeType(node) === "text") {
 					// Laid out by the board's own styles, so handwriting lands on the same words.
 					const sizer = this.textReplica(this.replica(card, node), node);
@@ -196,6 +199,11 @@ export class ColumnView {
 				} else if (image) {
 					const content = this.replica(card, node).createDiv({ cls: "canvas-node-content media-embed image-embed is-loaded" });
 					content.createEl("img", { attr: { src: image, draggable: "false" } });
+				} else if (cropped) {
+					// A cropped picture shows only its crop, at the column's width (like on the board).
+					const view = card.createDiv({ cls: "opc-crop-view", attr: { "data-opc-crop": "" } });
+					view.setCssProps({ "--opc-crop-x": String(cropped.crop.x), "--opc-crop-y": String(cropped.crop.y), "--opc-crop-w": String(cropped.crop.w), "--opc-crop-h": String(cropped.crop.h), "--opc-crop-ratio": String(node.width / Math.max(1, node.height)) });
+					view.createEl("img", { attr: { src: cropped.src, draggable: "false" } });
 				} else {
 					const body = card.createDiv({ cls: "opc-columns-body markdown-preview-view markdown-rendered" });
 					pending.push(MarkdownRenderer.render(this.app, text, body, source, this.component));
@@ -475,6 +483,15 @@ export class ColumnView {
 		return sizer;
 	}
 
+	/** The image of a cropped image card (Crop images is on), and its crop. */
+	private croppedImageOf(node: CanvasNodeLike): { src: string; crop: CropRect } | null {
+		if (!this.ctx.inspect.activeModules().includes("image-crop")) return null;
+		const crop = this.ctx.data.node(node).get().crop;
+		if (!crop || isFull(crop)) return null;
+		const src = this.imageOf(node);
+		return src ? { src, crop: clampRect(crop) } : null;
+	}
+
 	/** The address of the image a file card shows, if it shows one. */
 	private imageOf(node: CanvasNodeLike): string | null {
 		const data = node.getData();
@@ -693,10 +710,10 @@ export class ColumnView {
 		input.addEventListener("pointerdown", (e) => e.stopPropagation());
 		input.addEventListener("keydown", (e) => {
 			e.stopPropagation();
-			if (e.key === "Escape") {
+			if (this.ctx.isShortcut("edit.cancel", e)) {
 				cancelled = true;
 				input.blur();
-			} else if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) input.blur();
+			} else if (this.ctx.isShortcut("edit.save", e)) input.blur();
 		});
 		input.addEventListener("blur", () => {
 			this.editing = null;

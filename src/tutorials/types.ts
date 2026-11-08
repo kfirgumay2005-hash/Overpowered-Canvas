@@ -4,6 +4,7 @@ import type { CanvasEdgeData, CanvasFileData, CanvasNodeData } from "../data/jso
 import type { OpcEdge, OpcNode, OpcRoot } from "../data/schema";
 import type { I18nKey, Translate } from "../i18n";
 import type { CanvasLike, CanvasNodeLike } from "../internals/types";
+import type { ShortcutStore } from "../core/shortcuts/store";
 
 /**
  * Everything a tutorial step can look at and do. Checks read the live canvas; demos ("Show me")
@@ -29,6 +30,8 @@ export interface TutorialRuntime {
 	root(): OpcRoot;
 	/** A module setting, as stored now. */
 	setting(module: string, key: string): unknown;
+	/** The canvas shortcuts (the Shortcuts window's keys). */
+	readonly shortcuts: ShortcutStore;
 	/** Changes a module setting (list the setting in restoreSettings to put it back at the end). */
 	setSetting(module: string, key: string, value: unknown): void;
 	/** Runs once when the tutorial ends, however it ends. */
@@ -78,6 +81,8 @@ export interface TutorialDefinition {
 	modules: readonly string[];
 	/** Module settings the tutorial may change, put back as they were when it ends. */
 	restoreSettings?: readonly { module: string; key: string }[];
+	/** The tutorial changes keys in the Shortcuts window: the user's keys come back when it ends. */
+	restoreShortcuts?: boolean;
 	/**
 	 * Practice files (notes, other canvases) the board uses, written to the tutorial's own folder
 	 * before the board and deleted with it. Paths are relative to that folder.

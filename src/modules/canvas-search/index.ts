@@ -3,6 +3,7 @@ import { defineModule, type ModuleContext } from "../../core/module";
 import type { CanvasLike } from "../../internals/types";
 import { canvasDirection, nodeType } from "../shared";
 import { search, type Searchable } from "./logic";
+import { joinTopLane, LANE_RANK } from "../../ui/top-lane";
 
 const MATCH = "opc-search-match";
 const CURRENT = "opc-search-current";
@@ -22,6 +23,7 @@ class CanvasSearchBar {
 	) {
 		const t = ctx.t;
 		this.el = canvas.wrapperEl.createDiv({ cls: "opc-search-bar document-search-container", attr: { role: "search" } });
+		joinTopLane(canvas.wrapperEl, this.el, LANE_RANK.search);
 		const box = this.el.createDiv({ cls: "document-search" });
 		const inputWrap = box.createDiv({ cls: "search-input-container document-search-input" });
 		this.input = inputWrap.createEl("input", { type: "search", attr: { placeholder: t("canvasSearch.placeholder"), "aria-label": t("canvasSearch.placeholder"), spellcheck: "false" } });
@@ -162,8 +164,8 @@ export const canvasSearchModule = defineModule({
 			bars.set(canvas, new CanvasSearchBar(ctx, canvas));
 		};
 
-		// Canvas-local Mod+F: only in canvases, no conflict with the editor's global "Find".
-		ctx.addCanvasKey({ modifiers: ["Mod"], key: "F", handle: (canvas) => (open(canvas), true) });
+		// Canvas-local Mod+F (by default): only in canvases, no conflict with the editor's global "Find".
+		ctx.addCanvasKey({ shortcut: "search.open", handle: (canvas) => (open(canvas), true) });
 		ctx.onCanvas((canvas) => () => {
 			const bar = bars.get(canvas);
 			if (bar?.isOpen) bar.close();

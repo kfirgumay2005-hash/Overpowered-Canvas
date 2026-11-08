@@ -29,12 +29,60 @@ export interface CustomButton {
 	name: string;
 }
 
+/** A menu item seen in a right-click or ⋮ menu: its title (what it is known by) and icon. */
+export interface SeenItem {
+	title: string;
+	icon: string;
+}
+
+/** The right-click menu or the ⋮ menu: which items are taken off, and where that applies. */
+export interface MenuChoice {
+	/** Off: menus opened in a canvas. On: these menus everywhere in Obsidian. */
+	allVault: boolean;
+	/** Titles of the items taken off. */
+	hidden: string[];
+	/** Items the menu has shown (newest last), for the list in Customize the bars. */
+	seen: SeenItem[];
+}
+
+export type MenuKey = "context" | "more";
+export const MENU_KEYS: readonly MenuKey[] = ["context", "more"];
+export const MAX_SEEN = 200;
+
 export interface BarButtonsSettings {
 	/** `<bar>:<button key>` of the buttons taken off the bars. */
 	hidden: string[];
 	custom: CustomButton[];
 	/** Per bar, the order chosen: button keys and `custom:<id>` of added buttons. Absent: as it comes. */
 	order: Partial<Record<Bar, string[]>>;
+	menus: Record<MenuKey, MenuChoice>;
+}
+
+export const emptyMenus = (): Record<MenuKey, MenuChoice> => ({ context: { allVault: false, hidden: [], seen: [] }, more: { allVault: false, hidden: [], seen: [] } });
+
+/** A menu item's title as a key: one line, trimmed. */
+export const itemTitle = (text: string | null | undefined): string => (text ?? "").replace(/\s+/g, " ").trim();
+
+/** `seen` with the items of a menu added (known ones keep their place); null when nothing is new. */
+export function addSeen(seen: readonly SeenItem[], items: readonly SeenItem[]): SeenItem[] | null {
+	const known = new Set(seen.map((s) => s.title));
+	const fresh = items.filter((i) => i.title && !known.has(i.title) && known.add(i.title));
+	if (!fresh.length) return null;
+	return [...seen, ...fresh].slice(-MAX_SEEN);
+}
+
+function sanitizeMenuChoice(raw: unknown): MenuChoice {
+	const r = (raw ?? {}) as Partial<Record<keyof MenuChoice, unknown>>;
+	const hidden = Array.isArray(r.hidden) ? [...new Set(r.hidden.filter((k): k is string => typeof k === "string" && k.trim().length > 0).map(itemTitle))] : [];
+	const seen: SeenItem[] = [];
+	const titles = new Set<string>();
+	for (const s of Array.isArray(r.seen) ? (r.seen as Partial<SeenItem>[]) : []) {
+		const title = itemTitle(typeof s?.title === "string" ? s.title : "");
+		if (!title || titles.has(title)) continue;
+		titles.add(title);
+		seen.push({ title, icon: typeof s.icon === "string" ? s.icon : "" });
+	}
+	return { allVault: r.allVault === true, hidden, seen: seen.slice(-MAX_SEEN) };
 }
 
 /** The key of an added button in an order list. */
@@ -122,5 +170,6 @@ export function sanitizeBarSettings(raw: unknown): BarButtonsSettings {
 		const list = savedOrder[bar];
 		if (Array.isArray(list)) order[bar] = [...new Set(list.filter((k): k is string => typeof k === "string" && k.length > 0))];
 	}
-	return { hidden, custom, order };
+	const menus = (r as { menus?: Partial<Record<MenuKey, unknown>> }).menus ?? {};
+	return { hidden, custom, order, menus: { context: sanitizeMenuChoice(menus.context), more: sanitizeMenuChoice(menus.more) } };
 }

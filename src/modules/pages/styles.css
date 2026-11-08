@@ -8,14 +8,17 @@ body.opc-mod-pages .canvas-path-label-wrapper.opc-page-hidden {
 /* Where you are: main page › page › page. */
 body.opc-mod-pages .opc-pages-bar {
 	position: absolute;
-	top: var(--size-4-3);
+	/* Lower when another top bar needs the room (ui/top-lane.ts). */
+	top: calc(var(--size-4-3) + var(--opc-lane-offset, 0px));
 	inset-inline-start: var(--size-4-3);
 	z-index: calc(var(--layer-popover) - 1);
 	display: flex;
 	align-items: center;
-	flex-wrap: wrap;
+	/* One row: on a narrow screen the crumbs get shorter ("…") instead of stacking. */
+	flex-wrap: nowrap;
 	gap: var(--size-2-1);
-	max-width: calc(100% - 120px);
+	max-width: calc(100% - var(--size-4-3) - var(--opc-lane-side, 108px));
+	min-width: 0;
 	padding: var(--size-2-1) var(--size-2-3);
 	background-color: var(--background-primary);
 	border: 1px solid var(--background-modifier-border);
@@ -37,6 +40,8 @@ body.opc-mod-pages .opc-pages-crumb {
 	color: var(--text-muted);
 	/* Not a centered flex box: a long title is cut at its end with "…", not on both sides. */
 	display: inline-block;
+	flex: 0 1 auto;
+	min-width: 3.5em;
 	max-width: 220px;
 	overflow: hidden;
 	text-overflow: ellipsis;
@@ -48,8 +53,14 @@ body.opc-mod-pages .opc-pages-crumb:hover {
 	background-color: var(--background-modifier-hover);
 }
 body.opc-mod-pages .opc-pages-crumb.is-current {
+	/* The page you are on keeps the most room. */
+	flex-shrink: 0.3;
 	color: var(--text-normal);
 	font-weight: var(--font-semibold);
+}
+body.opc-mod-pages .opc-pages-sep,
+body.opc-mod-pages .opc-pages-bar > .opc-pages-index {
+	flex: 0 0 auto;
 }
 body.opc-mod-pages .opc-pages-sep {
 	color: var(--text-faint);

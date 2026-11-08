@@ -1,4 +1,4 @@
-import { getLanguage, Notice, Plugin, setIcon, setTooltip, type EventRef, type Menu } from "obsidian";
+import { getLanguage, Notice, Platform, Plugin, setIcon, setTooltip, type EventRef, type Menu } from "obsidian";
 import { CanvasHooks } from "./core/canvas-hooks";
 import { trackCanvasRects } from "./core/canvas-rect";
 import { CanvasTracker } from "./core/canvas-tracker";
@@ -24,6 +24,10 @@ import { logError } from "./core/log";
 import { fitMenu } from "./ui/menu-fit";
 import { configureDebug } from "./core/debug";
 import { removeNavControls } from "./ui/nav-controls";
+import { ShortcutStore } from "./core/shortcuts/store";
+import { MenuKinds } from "./core/menu-kinds";
+import { ShortcutsModal } from "./ui/shortcuts-modal";
+import { takeOverHelpButton } from "./ui/help-button";
 
 export default class OverpoweredCanvasPlugin extends Plugin {
 	declare settings: PluginSettings;
@@ -33,6 +37,8 @@ export default class OverpoweredCanvasPlugin extends Plugin {
 	hooks!: CanvasHooks;
 	private translate!: Translate;
 	private readOnlyWarned = new WeakSet<CanvasLike>();
+	/** Keys of the canvas shortcuts (the Shortcuts window edits them). */
+	shortcuts!: ShortcutStore;
 
 	override async onload(): Promise<void> {
 		this.settings = sanitizeSettings(await this.loadData());
@@ -46,7 +52,11 @@ export default class OverpoweredCanvasPlugin extends Plugin {
 		const hooks = (this.hooks = new CanvasHooks(this.patcher, tracker));
 		const saveGuard = new SaveGuard(this.patcher, tracker, () => this.translate("saveGuard.dropped"));
 		this.register(() => saveGuard.setActive(false));
-		const ui = new CanvasUi(hooks, tracker);
+		const shortcuts = (this.shortcuts = new ShortcutStore(() => this.settings.shortcuts, () => this.saveSettings(), Platform.isMacOS));
+		const ui = new CanvasUi(hooks, tracker, shortcuts);
+		// Right-click and ⋮ menus, told apart for Customize the bars and the menu style.
+		const menus = new MenuKinds();
+		menus.install(this.app, this, this.patcher);
 		const data: CanvasDataApi = createCanvasDataApi(
 			history,
 			(canvas, found) => this.warnReadOnly(canvas, found),
@@ -69,6 +79,9 @@ export default class OverpoweredCanvasPlugin extends Plugin {
 				history,
 				events: new PublicEvents(this.app.workspace),
 				settings: this.settings,
+				shortcuts,
+				menus,
+				openShortcuts: (query) => this.openShortcuts(query),
 				t: () => this.translate,
 				saveSettings: () => this.saveSettings(),
 				onActiveModulesChange: (count) => saveGuard.setActive(count > 0),
@@ -80,6 +93,17 @@ export default class OverpoweredCanvasPlugin extends Plugin {
 		const workspace = this.app.workspace as unknown as { on(name: string, cb: (menu: Menu) => void): EventRef };
 		for (const name of ["canvas:node-menu", "canvas:edge-menu", "canvas:selection-menu"]) this.registerEvent(workspace.on(name, (menu) => fitMenu(menu)));
 
+		// The Shortcuts window: a command, the help button of every canvas, the settings.
+		this.addCommand({ id: "shortcuts", name: this.translate("shortcuts.title"), icon: "keyboard", callback: () => this.openShortcuts() });
+		this.register(
+			tracker.subscribe((canvas) =>
+				takeOverHelpButton(canvas, {
+					label: () => this.translate("shortcuts.title"),
+					open: () => this.openShortcuts(),
+				}),
+			),
+		);
+
 		const tutorials = this.setupTutorials(tracker, data, history, hooks);
 		this.addSettingTab(
 			new OpcSettingTab(this.app, this, {
@@ -89,6 +113,7 @@ export default class OverpoweredCanvasPlugin extends Plugin {
 				saveSettings: () => this.saveSettings(),
 				setLanguage: (language) => this.setLanguage(language),
 				setDebug: (on) => configureDebug(on, this.translate),
+				openShortcuts: () => this.openShortcuts(),
 				tutorials,
 				applyFilesFolder: async (to) => {
 					// Practice boards live in that folder: end a running tutorial first.
@@ -121,6 +146,7 @@ export default class OverpoweredCanvasPlugin extends Plugin {
 		const runner = new TutorialRunner({
 			app: this.app,
 			pluginId: this.manifest.id,
+			shortcuts: this.shortcuts,
 			modules: this.modules,
 			data,
 			history,
@@ -169,7 +195,26 @@ export default class OverpoweredCanvasPlugin extends Plugin {
 		// Mutate in place: the module manager and settings tab hold this object.
 		Object.assign(this.settings, next);
 		this.setLanguage(this.settings.language);
+		this.shortcuts.notify();
 		await this.modules.reconcile();
+	}
+
+	/** Opens the Shortcuts window, searching for `query` if given. */
+	openShortcuts(query?: string): void {
+		// From the settings: they may be a window of their own, which would hide this one.
+		const setting = (this.app as unknown as { setting?: { close?(): void; containerEl?: HTMLElement; popout?: unknown } }).setting;
+		if (setting?.popout || setting?.containerEl?.isConnected) setting.close?.();
+		new ShortcutsModal(
+			{
+				app: this.app,
+				store: this.shortcuts,
+				t: () => this.translate,
+				pluginId: this.manifest.id,
+				pluginName: this.manifest.name,
+				moduleOn: (id) => this.modules.status(id) === "enabled",
+			},
+			query,
+		).open();
 	}
 
 	async saveSettings(): Promise<void> {

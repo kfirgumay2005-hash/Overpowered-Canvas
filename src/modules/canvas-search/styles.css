@@ -1,6 +1,6 @@
 body.opc-mod-canvas-search .opc-search-bar {
 	position: absolute;
-	top: var(--size-4-3);
+	top: calc(var(--size-4-3) + var(--opc-lane-offset, 0px));
 	inset-inline-end: calc(var(--size-4-3) + 48px);
 	z-index: calc(var(--layer-popover) - 1);
 	width: min(420px, calc(100% - 100px));

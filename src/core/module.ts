@@ -8,6 +8,7 @@ import type { CanvasKeySpec, CardMenuButtonSpec, EdgeDecorator, MenuButtonSpec, 
 import type { PublicEvents } from "./events";
 import type { HistoryApi } from "./history";
 import type { PatchFactories, PatchRecord } from "./patcher";
+import type { MenuKinds } from "./menu-kinds";
 
 export type SettingsGroup =
 	| "core"
@@ -72,6 +73,16 @@ export interface ModuleContext<S extends object> {
 	readonly settings: Readonly<S>;
 	/** The vault folder for the plugin's files (a plugin-wide setting). */
 	filesFolder(): string;
+	/** Opens Obsidian's settings on this plugin's tab. */
+	openPluginSettings(): void;
+	/** Right-click and ⋮ menus: their kind before they show, and the "whole vault" switches. */
+	readonly menus: MenuKinds;
+	/** Opens the Shortcuts window, optionally searching for `query`. */
+	openShortcuts(query?: string): void;
+	/** True when a key press is one of the keys of a shortcut (core/shortcuts/catalog.ts). */
+	isShortcut(id: string, evt: KeyboardEvent): boolean;
+	/** Which of `ids` a key press is a key of, if any. */
+	shortcutOf<T extends string>(evt: KeyboardEvent, ids: readonly T[]): T | null;
 	updateSettings(patch: Partial<S>): Promise<void>;
 	onSettingsChange(cb: (next: Readonly<S>, prev: Readonly<S>) => void): void;
 
