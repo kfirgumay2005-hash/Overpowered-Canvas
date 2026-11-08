@@ -1491,4 +1491,6 @@ export const zh: Record<I18nKey, string> = {
 	"barButtons.menu.empty": "暂无：请先打开一次菜单。",
 	"menuStyle.where.name": "作用的菜单",
 	"menuStyle.where.desc": "画布中打开的所有菜单。若在“自定义工具栏”中为右键菜单或 ⋮ 菜单打开了“应用到整个仓库”，其他位置的这些菜单也会生效。",
+	"barButtons.search": "搜索按钮和菜单项…",
+	"barButtons.noMatch": "没有与搜索匹配的内容。",
 };

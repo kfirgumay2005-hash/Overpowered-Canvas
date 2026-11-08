@@ -601,7 +601,7 @@ export const tutorialsEn = {
 	"tut.bars.board.c2": "More of the commands you always use",
 	"tut.bars.demoButton": "Left sidebar",
 	"tut.bars.s1.title": "Find the list of buttons",
-	"tut.bars.s1.body": "The settings button at the top of the side bar opens the canvas options, with an item **Customize the bars**. It lists every button of the bottom bar, the side bar and the popup over a selection, and the items of the right-click menu and the ⋮ menu. It's also in the command palette. The icons at its top jump straight to each part.\n\nThe dialog covers this panel, so read each step first.",
+	"tut.bars.s1.body": "The settings button at the top of the side bar opens the canvas options, with an item **Customize the bars**. It lists every button of the bottom bar, the side bar and the popup over a selection, and the items of the right-click menu and the ⋮ menu. It's also in the command palette. The search box at its top finds any button or menu item, and the icons below it jump straight to each part.\n\nThe dialog covers this panel, so read each step first.",
 	"tut.bars.s1.task": "Open **Customize the bars**, look through the list, then close it.",
 	"tut.bars.s2.title": "Take a button off",
 	"tut.bars.s2.body": "Each button has a switch. Turn one off and the button leaves the bar right away, on every canvas. Your bars go back to how they were when this tutorial ends, so try anything you like.",

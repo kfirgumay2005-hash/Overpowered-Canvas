@@ -1491,4 +1491,6 @@ export const ja: Record<I18nKey, string> = {
 	"barButtons.menu.empty": "まだありません：一度メニューを開いてください。",
 	"menuStyle.where.name": "対象のメニュー",
 	"menuStyle.where.desc": "キャンバスで開いたすべてのメニュー。「バーのカスタマイズ」で「保管庫全体に適用」をオンにした右クリックメニューと ⋮ メニューは、ほかの場所でも対象になります。",
+	"barButtons.search": "ボタンとメニュー項目を検索…",
+	"barButtons.noMatch": "検索に一致するものはありません。",
 };

@@ -42,21 +42,39 @@ body.opc-mod-bar-buttons .canvas-wrapper .canvas-menu > .opc-bar-hidden {
 	touch-action: pan-y;
 }
 
-/* Icons at the top of Customize the bars: one per section, to jump there. */
+/* Customize the bars: the title, the search box and the section icons stay; the list below scrolls. */
+.opc-bars-modal {
+	overflow: hidden;
+}
+.opc-bars-modal .modal-content {
+	display: flex;
+	flex-direction: column;
+	flex: 1 1 auto;
+	min-height: 0;
+	overflow: hidden;
+}
+.opc-bars-modal .opc-bars-head {
+	flex: 0 0 auto;
+	display: flex;
+	flex-direction: column;
+	gap: var(--size-2-3);
+	padding-bottom: var(--size-2-3);
+	border-bottom: 1px solid var(--background-modifier-border);
+}
+.opc-bars-modal .opc-bars-head .search-input-container input {
+	width: 100%;
+}
+.opc-bars-modal .opc-bars-scroll {
+	flex: 1 1 auto;
+	min-height: 0;
+	overflow-y: auto;
+	overscroll-behavior: contain;
+}
 .opc-bars-modal .opc-bars-nav {
-	position: sticky;
-	top: 0;
-	z-index: 2;
 	display: flex;
 	flex-wrap: wrap;
 	justify-content: center;
 	gap: var(--size-2-2);
-	padding: var(--size-2-3) 0;
-	margin-bottom: var(--size-2-3);
-	background-color: var(--modal-background, var(--background-primary));
-	border-bottom: 1px solid var(--background-modifier-border);
-	/* Covers the dialog's padding above it, so the list doesn't show through while scrolling. */
-	box-shadow: 0 calc(-1 * var(--size-4-4)) 0 var(--modal-background, var(--background-primary));
 }
 .opc-bars-modal .opc-bars-nav-item {
 	width: 40px;
@@ -68,4 +86,15 @@ body.opc-mod-bar-buttons .canvas-wrapper .canvas-menu > .opc-bar-hidden {
 	color: var(--text-accent);
 	background-color: var(--background-modifier-hover);
 	box-shadow: inset 0 -2px 0 var(--interactive-accent);
+}
+/* Searching: only matching rows; hints, Add and Restore step aside. */
+.opc-bars-modal .opc-bars-filtered,
+.opc-bars-modal .opc-bars-scroll.is-searching .opc-bars-extra,
+.opc-bars-modal .opc-bars-scroll.is-searching .opc-bars-menu-hint,
+.opc-bars-modal .opc-bars-scroll.is-searching .opc-bars-menu-empty {
+	display: none;
+}
+.opc-bars-modal .opc-bars-no-match {
+	padding: var(--size-4-4);
+	text-align: center;
 }

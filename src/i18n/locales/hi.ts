@@ -1491,4 +1491,6 @@ export const hi: Record<I18nKey, string> = {
 	"barButtons.menu.empty": "अभी कुछ नहीं: मेनू एक बार खोलें।",
 	"menuStyle.where.name": "कौन-से मेनू",
 	"menuStyle.where.desc": "कैनवास में खुला हर मेनू। बार अनुकूलित करें में जिनके लिए \"पूरे वॉल्ट पर लागू करें\" चालू हो, वे राइट-क्लिक और ⋮ मेनू दूसरी जगहों पर भी।",
+	"barButtons.search": "बटन और मेनू आइटम खोजें…",
+	"barButtons.noMatch": "खोज से कुछ मेल नहीं खाता।",
 };

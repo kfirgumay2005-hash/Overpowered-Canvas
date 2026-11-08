@@ -237,3 +237,13 @@ new step "Style the right-click menu" (touch line, settings restored at the end)
   Customize the bars → side bar) next to the existing command; the side bar is hidden while the
   column view is open, its × closes it.
 - Tutorials: Your own bars s1 and Column view s1 mention them (5 locales); run in English: 9/9, 11/11.
+
+## Follow-up 3
+
+- Customize the bars: the title was cut by the cover drawn above the sticky icon row. Now the title,
+  a new search box and the icon row are fixed and only the list below scrolls (no cover needed).
+- Search: rows whose name has every word typed (a section whose name matches keeps all its rows);
+  hints, Add a command and Restore step aside while searching; "Nothing matches" when empty. The
+  search, its focus and the scroll place survive the redraw after a switch; a section icon clears
+  the search and jumps. Tested by typing ("layer" → side bar + right-click menu rows; toggling
+  "Move to the layer above" kept the search). Tutorial Your own bars s1 mentions it (5 locales), 9/9.

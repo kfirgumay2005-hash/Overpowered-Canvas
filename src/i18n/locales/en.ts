@@ -1493,6 +1493,8 @@ export const en = {
 	"barButtons.menu.empty": "Nothing yet: open the menu once.",
 	"menuStyle.where.name": "Which menus",
 	"menuStyle.where.desc": "Every menu opened in a canvas. Right-click menus and ⋮ menus elsewhere too when \"Apply to the whole vault\" is on for them in Customize the bars.",
+	"barButtons.search": "Search buttons and menu items…",
+	"barButtons.noMatch": "Nothing matches the search.",
 } as const;
 
 export type I18nKey = keyof typeof en;

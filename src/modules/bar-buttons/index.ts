@@ -235,14 +235,82 @@ class BarsModal extends Modal {
 		this.contentEl.empty();
 	}
 
+	/** The part of the dialog that scrolls (under the search box and the section icons). */
+	private scrollEl: HTMLElement | null = null;
+	private query = "";
+
 	private render(): void {
-		const { ctx, contentEl, modalEl } = this;
-		// The dialog itself scrolls: keep the place when the list is drawn again.
-		const top = modalEl.scrollTop;
+		const { ctx, contentEl } = this;
+		// Keep the place (and the typing in the search box) when the list is drawn again.
+		const top = this.scrollEl?.scrollTop ?? 0;
+		const searching = activeDocument.activeElement?.hasClass("opc-bars-search") ?? false;
 		contentEl.empty();
-		this.renderNav();
-		for (const bar of BARS) {
-			new Setting(contentEl)
+		const head = contentEl.createDiv({ cls: "opc-bars-head" });
+		const search = head.createDiv({ cls: "search-input-container" }).createEl("input", { type: "search", cls: "opc-bars-search", attr: { placeholder: ctx.t("barButtons.search"), "aria-label": ctx.t("barButtons.search"), spellcheck: "false" } });
+		search.value = this.query;
+		search.addEventListener("input", () => {
+			this.query = search.value;
+			this.filter();
+			if (this.scrollEl) this.scrollEl.scrollTop = 0;
+		});
+		const scroll = (this.scrollEl = contentEl.createDiv({ cls: "opc-bars-scroll" }));
+		this.renderNav(head, scroll);
+		for (const bar of BARS) this.renderBar(scroll.createDiv({ cls: "opc-bars-section", attr: { "data-section": bar } }), bar);
+		for (const kind of MENU_KEYS) this.renderMenu(scroll.createDiv({ cls: "opc-bars-section", attr: { "data-section": kind } }), kind);
+		new Setting(scroll)
+			.addButton((button) =>
+				button
+					.setButtonText(ctx.t("barButtons.restore"))
+					.setDestructive()
+					.onClick(() => {
+						const menus = ctx.settings.menus;
+						void this.save({ hidden: [], custom: [], order: {}, menus: { context: { ...menus.context, hidden: [], allVault: false }, more: { ...menus.more, hidden: [], allVault: false } } });
+					}),
+			)
+			.settingEl.addClass("opc-bars-extra");
+		this.filter();
+		scroll.scrollTop = top;
+		if (searching) {
+			search.focus();
+			search.setSelectionRange(search.value.length, search.value.length);
+		}
+	}
+
+	/**
+	 * Shows only the rows whose name has every word of the search (a section whose own name matches
+	 * keeps all its rows); hints and buttons step aside while searching.
+	 */
+	private filter(): void {
+		const scroll = this.scrollEl;
+		if (!scroll) return;
+		const norm = (text: string) => text.toLocaleLowerCase().normalize("NFKD").replace(/\p{M}/gu, "");
+		const words = norm(this.query).split(/\s+/).filter(Boolean);
+		const has = (text: string) => words.every((w) => norm(text).includes(w));
+		scroll.toggleClass("is-searching", words.length > 0);
+		let any = false;
+		for (const section of Array.from(scroll.querySelectorAll<HTMLElement>(".opc-bars-section"))) {
+			const title = section.querySelector(".setting-item-heading .setting-item-name")?.textContent ?? "";
+			const all = words.length === 0 || has(title);
+			let shown = 0;
+			for (const row of Array.from(section.querySelectorAll<HTMLElement>(".opc-bars-row"))) {
+				const ok = all || has(row.querySelector(".setting-item-name")?.textContent ?? "");
+				row.toggleClass("opc-bars-filtered", !ok);
+				if (ok) shown++;
+			}
+			const visible = all || shown > 0;
+			section.toggleClass("opc-bars-filtered", !visible);
+			any ||= visible;
+		}
+		const empty = scroll.querySelector(".opc-bars-no-match");
+		if (!any && !empty) scroll.createDiv({ cls: "opc-bars-no-match setting-item-description", text: this.ctx.t("barButtons.noMatch") });
+		else if (any) empty?.remove();
+	}
+
+	/** A bar's section: its buttons (switch off, drag into order), its hint, Add a command. */
+	private renderBar(sectionEl: HTMLElement, bar: Bar): void {
+		const { ctx } = this;
+		{
+			new Setting(sectionEl)
 				.setName(ctx.t(bar === "bottom" ? "barButtons.bottom" : bar === "side" ? "barButtons.side" : bar === "popup" ? "barButtons.popup" : "barButtons.image"))
 				.setHeading()
 				.settingEl.dataset.section = bar;
@@ -252,40 +320,27 @@ class BarsModal extends Modal {
 				ctx.settings.order[bar],
 			);
 			const byKey = new Map(rows.map((r) => [r.key, r]));
-			const list = contentEl.createDiv({ cls: "opc-bars-list" });
+			const list = sectionEl.createDiv({ cls: "opc-bars-list" });
 			for (const key of keys) this.row(list, bar, byKey.get(key)!);
 			this.dragToOrder(list, bar);
-			if (bar === "popup") new Setting(contentEl).setDesc(ctx.t("barButtons.popupHint"));
-			if (bar === "image") new Setting(contentEl).setDesc(ctx.t("barButtons.imageHint"));
-			new Setting(contentEl).addButton((button) => button.setButtonText(ctx.t("barButtons.add")).onClick(() => this.addTo(bar)));
+			if (bar === "popup") new Setting(sectionEl).setDesc(ctx.t("barButtons.popupHint")).settingEl.addClass("opc-bars-extra");
+			if (bar === "image") new Setting(sectionEl).setDesc(ctx.t("barButtons.imageHint")).settingEl.addClass("opc-bars-extra");
+			new Setting(sectionEl).addButton((button) => button.setButtonText(ctx.t("barButtons.add")).onClick(() => this.addTo(bar))).settingEl.addClass("opc-bars-extra");
 		}
-		for (const kind of MENU_KEYS) this.renderMenu(kind);
-		new Setting(contentEl).addButton((button) =>
-			button
-				.setButtonText(ctx.t("barButtons.restore"))
-				.setDestructive()
-				.onClick(() => {
-					const menus = ctx.settings.menus;
-					void this.save({ hidden: [], custom: [], order: {}, menus: { context: { ...menus.context, hidden: [], allVault: false }, more: { ...menus.more, hidden: [], allVault: false } } });
-				}),
-		);
-		modalEl.scrollTop = top;
 	}
 
 	/**
 	 * Icons at the top, one per section (the bars, the right-click menu, the ⋮ menu): a press jumps
 	 * to that section; the one in view is marked while scrolling.
 	 */
-	private renderNav(): void {
-		const { ctx, contentEl, modalEl } = this;
-		const nav = contentEl.createDiv({ cls: "opc-bars-nav", attr: { role: "tablist" } });
-		/** Where a section's heading is in the scrolling dialog. */
-		const headingTop = (id: string) => {
-			const heading = contentEl.querySelector<HTMLElement>(`.setting-item-heading[data-section="${id}"]`);
-			return heading ? heading.getBoundingClientRect().top - modalEl.getBoundingClientRect().top + modalEl.scrollTop : null;
+	private renderNav(head: HTMLElement, scroll: HTMLElement): void {
+		const { ctx } = this;
+		const nav = head.createDiv({ cls: "opc-bars-nav", attr: { role: "tablist" } });
+		/** Where a section starts in the scrolling list. */
+		const sectionTop = (id: string) => {
+			const el = scroll.querySelector<HTMLElement>(`.opc-bars-section[data-section="${id}"]`);
+			return el ? el.getBoundingClientRect().top - scroll.getBoundingClientRect().top + scroll.scrollTop : null;
 		};
-		/** How far down the dialog the icon row ends once it sticks to the top while scrolling. */
-		const navBottom = () => (parseFloat(getComputedStyle(modalEl).paddingTop) || 0) + nav.offsetHeight;
 		const sections: [string, string, string][] = [
 			["bottom", "panel-bottom", ctx.t("barButtons.bottom")],
 			["side", "panel-right", ctx.t("barButtons.side")],
@@ -300,30 +355,34 @@ class BarsModal extends Modal {
 			setIcon(b, icon);
 			setTooltip(b, label, { placement: "bottom" });
 			b.addEventListener("click", () => {
-				const at = headingTop(id);
-				if (at !== null) modalEl.scrollTo({ top: at - navBottom() - 4, behavior: "smooth" });
+				// A jump shows the whole list again.
+				if (this.query) {
+					this.query = "";
+					const input = head.querySelector<HTMLInputElement>(".opc-bars-search");
+					if (input) input.value = "";
+					this.filter();
+				}
+				const at = sectionTop(id);
+				if (at !== null) scroll.scrollTo({ top: at, behavior: "smooth" });
 			});
 			buttons.set(id, b);
 		}
 		const mark = () => {
 			let current = sections[0]![0];
 			for (const [id] of sections) {
-				const at = headingTop(id);
-				if (at !== null && at - navBottom() - 12 <= modalEl.scrollTop) current = id;
+				const at = sectionTop(id);
+				if (at !== null && at - 8 <= scroll.scrollTop) current = id;
 			}
 			for (const [id, b] of buttons) b.toggleClass("is-active", id === current);
 		};
-		this.onScroll?.();
-		modalEl.addEventListener("scroll", mark, { passive: true });
-		this.onScroll = () => modalEl.removeEventListener("scroll", mark);
+		scroll.addEventListener("scroll", mark, { passive: true });
 		window.requestAnimationFrame(mark);
 	}
 
-	private onScroll: (() => void) | null = null;
 
 	/** The right-click menu or the ⋮ menu: where it applies, and a switch per item it has shown. */
-	private renderMenu(kind: MenuKey): void {
-		const { ctx, contentEl } = this;
+	private renderMenu(contentEl: HTMLElement, kind: MenuKey): void {
+		const { ctx } = this;
 		const choice = () => ctx.settings.menus[kind];
 		const setChoice = (patch: Partial<MenuChoice>) => this.save({ menus: { ...ctx.settings.menus, [kind]: { ...choice(), ...patch } } });
 		const heading = new Setting(contentEl).setName(ctx.t(kind === "context" ? "barButtons.menu.context" : "barButtons.menu.more")).setHeading();
@@ -334,8 +393,8 @@ class BarsModal extends Modal {
 			.setName(ctx.t("barButtons.menu.allVault"))
 			.setDesc(ctx.t(kind === "context" ? "barButtons.menu.allVault.context" : "barButtons.menu.allVault.more"))
 			.addToggle((tg) => tg.setValue(choice().allVault).onChange((v) => void setChoice({ allVault: v })))
-			.settingEl.addClass("opc-bars-menu-scope");
-		new Setting(contentEl).setDesc(ctx.t(kind === "context" ? "barButtons.menu.hint.context" : "barButtons.menu.hint.more"));
+			.settingEl.addClass("opc-bars-menu-scope", "opc-bars-extra");
+		new Setting(contentEl).setDesc(ctx.t(kind === "context" ? "barButtons.menu.hint.context" : "barButtons.menu.hint.more")).settingEl.addClass("opc-bars-extra");
 		const items = [...choice().seen];
 		for (const title of choice().hidden) if (!items.some((i) => i.title === title)) items.push({ title, icon: "" });
 		const list = contentEl.createDiv({ cls: "opc-bars-list opc-bars-menu-list", attr: { "data-menu": kind } });
