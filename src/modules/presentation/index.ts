@@ -1,4 +1,4 @@
-import { Notice, Setting, setIcon } from "obsidian";
+import { Notice, Setting, setIcon, setTooltip } from "obsidian";
 import { defineModule, type ModuleContext } from "../../core/module";
 import type { OpcNode } from "../../data/schema";
 import { LOCALES } from "../../i18n";
@@ -241,6 +241,21 @@ export const presentationModule = defineModule<PresentationSettings>({
 		command("walk", ctx.t("presentation.walk.start"), "route", idle, (c) => walker.start(c));
 		command("walk-end", ctx.t("presentation.walk.end"), "x", walker.walking, walker.stop);
 		command("walk-columns", ctx.t("presentation.walk.columns"), "columns-3", (c) => !sessions.has(c), (c) => walker.start(c, undefined, true));
+		// The column view from the side bar too (also in the command palette). While it is open the
+		// side bar is hidden; its own × closes it.
+		ctx.onCanvas((canvas) => {
+			const controls = canvas.wrapperEl.querySelector(".canvas-controls");
+			const group = controls?.createDiv({ cls: "canvas-control-group mod-raised opc-columns-control" });
+			const item = group?.createDiv({ cls: "canvas-control-item", attr: { "aria-label": ctx.t("presentation.walk.columns"), "data-tooltip-position": "left" } });
+			if (item) {
+				setIcon(item, "columns-3");
+				setTooltip(item, ctx.t("presentation.walk.columns"), { placement: "left" });
+				item.addEventListener("click", () => {
+					if (!sessions.has(canvas) && !walker.walking(canvas)) walker.start(canvas, undefined, true);
+				});
+			}
+			return () => group?.remove();
+		});
 		command("set-start", ctx.t("presentation.setStart"), "flag", (c) => !c.readonly && selectedNodes(c).length === 1, (c) => setStart(c, selectedNodes(c)[0]!));
 		command("set-edge-order", ctx.t("presentation.edgeOrder"), "list-ordered", (c) => !c.readonly && selectedEdges(c).length === 1, (c) => promptOrder(c, selectedEdges(c)[0]!));
 

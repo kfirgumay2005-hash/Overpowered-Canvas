@@ -225,3 +225,15 @@ new step "Style the right-click menu" (touch line, settings restored at the end)
   a canvas, still in a note until "Apply to the whole vault" is on, then gone there too; "Paste" in a
   note's right-click menu the same, and the menu style (21 px) followed the switch. New tutorial
   step "Choose the right-click menu's items" (5 locales).
+
+## Follow-up 2
+
+- Gear menu: 8 px between each icon and its name (`opc-gear-menu`, better-defaults CSS; it was 0).
+- Customize the bars: a row of icons at the top (bottom bar, side bar, popup, image popup,
+  right-click menu, ⋮ menu) that stays in view; a press scrolls to that section, the one in view is
+  marked. The dialog (not its content) is the scroller: redrawing the list after a switch now keeps
+  the scroll position too.
+- Column view: a button in the side bar (presentation module, `opc-columns-control`, listed in
+  Customize the bars → side bar) next to the existing command; the side bar is hidden while the
+  column view is open, its × closes it.
+- Tutorials: Your own bars s1 and Column view s1 mention them (5 locales); run in English: 9/9, 11/11.

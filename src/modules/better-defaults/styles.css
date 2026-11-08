@@ -3,3 +3,8 @@
 body.opc-mod-better-defaults.opc-no-font-scaling .canvas-wrapper > * {
 	--zoom-multiplier: 1;
 }
+
+/* The gear's menu (snap, read-only, Customize the bars…): more room between icon and name. */
+body.opc-mod-better-defaults .menu.opc-gear-menu .menu-item-icon {
+	margin-inline-end: var(--size-4-2);
+}

@@ -41,3 +41,31 @@ body.opc-mod-bar-buttons .canvas-wrapper .canvas-menu > .opc-bar-hidden {
 .opc-bars-list {
 	touch-action: pan-y;
 }
+
+/* Icons at the top of Customize the bars: one per section, to jump there. */
+.opc-bars-modal .opc-bars-nav {
+	position: sticky;
+	top: 0;
+	z-index: 2;
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: center;
+	gap: var(--size-2-2);
+	padding: var(--size-2-3) 0;
+	margin-bottom: var(--size-2-3);
+	background-color: var(--modal-background, var(--background-primary));
+	border-bottom: 1px solid var(--background-modifier-border);
+	/* Covers the dialog's padding above it, so the list doesn't show through while scrolling. */
+	box-shadow: 0 calc(-1 * var(--size-4-4)) 0 var(--modal-background, var(--background-primary));
+}
+.opc-bars-modal .opc-bars-nav-item {
+	width: 40px;
+	height: 36px;
+	padding: 0;
+	--icon-size: 20px;
+}
+.opc-bars-modal .opc-bars-nav-item.is-active {
+	color: var(--text-accent);
+	background-color: var(--background-modifier-hover);
+	box-shadow: inset 0 -2px 0 var(--interactive-accent);
+}

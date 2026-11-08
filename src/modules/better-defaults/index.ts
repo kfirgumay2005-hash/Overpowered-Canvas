@@ -174,6 +174,8 @@ export const betterDefaultsModule = defineModule<BetterDefaultsSettings>({
 				showQuickSettingsMenu: (next) =>
 					function (this: CanvasLike, menu: Menu) {
 						next.call(this, menu);
+						// A little more room between each icon and its name (styles.css).
+						(menu as Menu & { dom?: HTMLElement }).dom?.addClass("opc-gear-menu");
 						const show = menu.showAtPosition;
 						let added = false;
 						menu.showAtPosition = function (this: Menu, ...args: Parameters<Menu["showAtPosition"]>) {

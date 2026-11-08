@@ -236,11 +236,16 @@ class BarsModal extends Modal {
 	}
 
 	private render(): void {
-		const { ctx, contentEl } = this;
-		const top = contentEl.scrollTop;
+		const { ctx, contentEl, modalEl } = this;
+		// The dialog itself scrolls: keep the place when the list is drawn again.
+		const top = modalEl.scrollTop;
 		contentEl.empty();
+		this.renderNav();
 		for (const bar of BARS) {
-			new Setting(contentEl).setName(ctx.t(bar === "bottom" ? "barButtons.bottom" : bar === "side" ? "barButtons.side" : bar === "popup" ? "barButtons.popup" : "barButtons.image")).setHeading();
+			new Setting(contentEl)
+				.setName(ctx.t(bar === "bottom" ? "barButtons.bottom" : bar === "side" ? "barButtons.side" : bar === "popup" ? "barButtons.popup" : "barButtons.image"))
+				.setHeading()
+				.settingEl.dataset.section = bar;
 			const rows = this.rowsOf(bar);
 			const keys = sortKeys(
 				rows.map((r) => r.key),
@@ -264,8 +269,57 @@ class BarsModal extends Modal {
 					void this.save({ hidden: [], custom: [], order: {}, menus: { context: { ...menus.context, hidden: [], allVault: false }, more: { ...menus.more, hidden: [], allVault: false } } });
 				}),
 		);
-		contentEl.scrollTop = top;
+		modalEl.scrollTop = top;
 	}
+
+	/**
+	 * Icons at the top, one per section (the bars, the right-click menu, the ⋮ menu): a press jumps
+	 * to that section; the one in view is marked while scrolling.
+	 */
+	private renderNav(): void {
+		const { ctx, contentEl, modalEl } = this;
+		const nav = contentEl.createDiv({ cls: "opc-bars-nav", attr: { role: "tablist" } });
+		/** Where a section's heading is in the scrolling dialog. */
+		const headingTop = (id: string) => {
+			const heading = contentEl.querySelector<HTMLElement>(`.setting-item-heading[data-section="${id}"]`);
+			return heading ? heading.getBoundingClientRect().top - modalEl.getBoundingClientRect().top + modalEl.scrollTop : null;
+		};
+		/** How far down the dialog the icon row ends once it sticks to the top while scrolling. */
+		const navBottom = () => (parseFloat(getComputedStyle(modalEl).paddingTop) || 0) + nav.offsetHeight;
+		const sections: [string, string, string][] = [
+			["bottom", "panel-bottom", ctx.t("barButtons.bottom")],
+			["side", "panel-right", ctx.t("barButtons.side")],
+			["popup", "message-square", ctx.t("barButtons.popup")],
+			["image", "image", ctx.t("barButtons.image")],
+			["context", "mouse-pointer-click", ctx.t("barButtons.menu.context")],
+			["more", "more-vertical", ctx.t("barButtons.menu.more")],
+		];
+		const buttons = new Map<string, HTMLElement>();
+		for (const [id, icon, label] of sections) {
+			const b = nav.createEl("button", { cls: "clickable-icon opc-bars-nav-item", attr: { role: "tab", "aria-label": label, "data-section": id } });
+			setIcon(b, icon);
+			setTooltip(b, label, { placement: "bottom" });
+			b.addEventListener("click", () => {
+				const at = headingTop(id);
+				if (at !== null) modalEl.scrollTo({ top: at - navBottom() - 4, behavior: "smooth" });
+			});
+			buttons.set(id, b);
+		}
+		const mark = () => {
+			let current = sections[0]![0];
+			for (const [id] of sections) {
+				const at = headingTop(id);
+				if (at !== null && at - navBottom() - 12 <= modalEl.scrollTop) current = id;
+			}
+			for (const [id, b] of buttons) b.toggleClass("is-active", id === current);
+		};
+		this.onScroll?.();
+		modalEl.addEventListener("scroll", mark, { passive: true });
+		this.onScroll = () => modalEl.removeEventListener("scroll", mark);
+		window.requestAnimationFrame(mark);
+	}
+
+	private onScroll: (() => void) | null = null;
 
 	/** The right-click menu or the ⋮ menu: where it applies, and a switch per item it has shown. */
 	private renderMenu(kind: MenuKey): void {
@@ -275,6 +329,7 @@ class BarsModal extends Modal {
 		const heading = new Setting(contentEl).setName(ctx.t(kind === "context" ? "barButtons.menu.context" : "barButtons.menu.more")).setHeading();
 		heading.settingEl.addClass("opc-bars-menu-heading");
 		heading.settingEl.dataset.menu = kind;
+		heading.settingEl.dataset.section = kind;
 		new Setting(contentEl)
 			.setName(ctx.t("barButtons.menu.allVault"))
 			.setDesc(ctx.t(kind === "context" ? "barButtons.menu.allVault.context" : "barButtons.menu.allVault.more"))
