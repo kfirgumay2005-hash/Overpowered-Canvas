@@ -214,7 +214,7 @@ class LassoSession {
 	};
 
 	private onKey = (e: KeyboardEvent) => {
-		if (e.key !== "Escape") return;
+		if (!this.ctx.isShortcut("lasso.done", e)) return;
 		// An open menu closes first (the app may have closed it already, a moment ago).
 		if (e.defaultPrevented || this.canvas.wrapperEl.doc.querySelector(".menu") || Date.now() - this.menuClosedAt < 100) return;
 		e.preventDefault();
@@ -459,7 +459,7 @@ export const lassoModule = defineModule<LassoSettings>({
 				return true;
 			},
 		});
-		ctx.addCanvasKey({ modifiers: [], key: "L", handle: (canvas) => (toggle(canvas), true) });
+		ctx.addCanvasKey({ shortcut: "lasso.toggle", handle: (canvas) => (toggle(canvas), true) });
 
 		// Quick move: a pen on a selected item, or a finger on an item of a multi-selection, moves
 		// the selection right away (the core waits for a long press on touch screens).

@@ -621,7 +621,7 @@ export const noteBlocksModule = defineModule<NoteBlocksSettings>({
 			};
 			const onTouchEnd = () => finish(true);
 			const onKey = (e: KeyboardEvent) => {
-				if (e.key === "Escape") {
+				if (ctx.isShortcut("noteBlocks.cancel", e)) {
 					e.preventDefault();
 					finish(false);
 				}

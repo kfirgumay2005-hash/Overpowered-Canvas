@@ -228,7 +228,7 @@ class HighlightSession {
 	}
 
 	private onKey = (e: KeyboardEvent) => {
-		if (e.key !== "Escape") return;
+		if (!this.ctx.isShortcut("highlight.done", e)) return;
 		e.preventDefault();
 		// Esc ends this tool only (not the walk or the view the tool is on).
 		e.stopImmediatePropagation();
@@ -505,7 +505,7 @@ export const textHighlightModule = defineModule<HighlightSettings>({
 			});
 		command("toggle", ctx.t("textHighlight.button"), "highlighter", "highlight");
 		command("toggle-color", ctx.t("textHighlight.color.button"), "baseline", "color");
-		ctx.addCanvasKey({ modifiers: [], key: "H", handle: (canvas) => (canvas.readonly ? false : (toggle(canvas, "highlight"), true)) });
+		ctx.addCanvasKey({ shortcut: "highlight.toggle", handle: (canvas) => (canvas.readonly ? false : (toggle(canvas, "highlight"), true)) });
 	},
 
 	renderSettings(el, ctx: ModuleContext<HighlightSettings>) {

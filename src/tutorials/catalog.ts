@@ -3511,4 +3511,94 @@ const fontSize: TutorialDefinition = {
 	],
 };
 
-export const TUTORIALS: readonly TutorialDefinition[] = [basics, notes, shapes, edges, drawing, layers, present, mindmap, navigate, organize, markdown, select, blocks, vault, style, big, direction, pdf, pages, arrows, bars, images, file, columns, smartGroups, indent, fontSize];
+// ---------- 28. Your shortcuts ----------
+
+const SHORTCUTS_DIALOG = ".opc-shortcuts-modal";
+const shortcutsVisit = visitedDialog(SHORTCUTS_DIALOG);
+/** The help button (?) of the side bar, which opens the Shortcuts window. */
+const helpButton = (rt: TutorialRuntime) => rt.canvas.canvasControlsEl.querySelector<HTMLElement>(".opc-shortcuts-button");
+const drawingOn = (rt: TutorialRuntime) => !!rt.canvas.wrapperEl.querySelector(".opc-ink-toolbar");
+/** Opens the Shortcuts window the way a user would (the ? button) and searches for `query`. */
+const openShortcutsWindow = async (rt: TutorialRuntime, query: string) => {
+	if (!dialogOpen(SHORTCUTS_DIALOG)) helpButton(rt)?.click();
+	await rt.wait(600);
+	const search = activeDocument.querySelector<HTMLInputElement>(`${SHORTCUTS_DIALOG} .opc-shortcuts-search`);
+	if (search) {
+		search.value = query;
+		search.dispatchEvent(new Event("input"));
+	}
+	await rt.wait(900);
+};
+
+const shortcuts: TutorialDefinition = {
+	id: "shortcuts",
+	icon: "keyboard",
+	title: "tut.keys.title",
+	summary: "tut.keys.summary",
+	modules: ["drawing"],
+	// The practice changes the real keys: the user's own come back when the tutorial ends.
+	restoreShortcuts: true,
+	board: (t) => ({
+		nodes: [title("ks-title", t("tut.keys.board.title"), 0, -140, 640, 80), card("ks-1", t("tut.keys.board.c1"), 0, 0, 300, 120, { color: "5" }), card("ks-2", t("tut.keys.board.c2"), 340, 0, 300, 120, { color: "4" })],
+		edges: [],
+	}),
+	steps: [
+		{
+			title: "tut.keys.s1.title",
+			body: "tut.keys.s1.body",
+			task: "tut.keys.s1.task",
+			touch: "tut.keys.s1.touch",
+			target: helpButton,
+			enter: () => shortcutsVisit.reset(),
+			check: () => shortcutsVisit.check(),
+			demo: async (rt) => {
+				await openShortcutsWindow(rt, "");
+				await rt.wait(1200);
+				closeDialog(SHORTCUTS_DIALOG);
+			},
+		},
+		{
+			title: "tut.keys.s2.title",
+			body: "tut.keys.s2.body",
+			task: "tut.keys.s2.task",
+			touch: "tut.keys.s2.touch",
+			target: helpButton,
+			check: (rt) => !rt.shortcuts.isDefault("drawing.toggle") && !dialogOpen(SHORTCUTS_DIALOG),
+			demo: async (rt) => {
+				await openShortcutsWindow(rt, rt.t("shortcuts.action.drawing.toggle"));
+				await rt.shortcuts.set("drawing.toggle", [...rt.shortcuts.combos("drawing.toggle"), "Shift+D"]);
+				await rt.wait(1400);
+				closeDialog(SHORTCUTS_DIALOG);
+			},
+		},
+		{
+			title: "tut.keys.s3.title",
+			body: "tut.keys.s3.body",
+			task: "tut.keys.s3.task",
+			touch: "tut.keys.s3.touch",
+			check: (rt) => drawingOn(rt),
+			demo: (rt) => void rt.command("drawing:toggle-drawing"),
+		},
+		{
+			title: "tut.keys.s4.title",
+			body: "tut.keys.s4.body",
+			task: "tut.keys.s4.task",
+			touch: "tut.keys.s4.touch",
+			target: helpButton,
+			// Drawing would keep the keys of the board busy: it ends here.
+			enter: (rt) => {
+				if (drawingOn(rt)) rt.command("drawing:toggle-drawing");
+			},
+			check: (rt) => rt.shortcuts.isDefault("drawing.toggle") && !dialogOpen(SHORTCUTS_DIALOG),
+			demo: async (rt) => {
+				await openShortcutsWindow(rt, rt.t("shortcuts.action.drawing.toggle"));
+				await rt.shortcuts.reset("drawing.toggle");
+				await rt.wait(1200);
+				closeDialog(SHORTCUTS_DIALOG);
+			},
+		},
+		{ title: "tut.keys.s5.title", body: "tut.keys.s5.body" },
+	],
+};
+
+export const TUTORIALS: readonly TutorialDefinition[] = [basics, notes, shapes, edges, drawing, layers, present, mindmap, navigate, organize, markdown, select, blocks, vault, style, big, direction, pdf, pages, arrows, bars, images, file, columns, smartGroups, indent, fontSize, shortcuts];

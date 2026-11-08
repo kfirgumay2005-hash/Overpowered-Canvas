@@ -4,6 +4,7 @@
  */
 import type { LanguageSetting } from "../i18n";
 import { isPlainObject } from "../data/validate";
+import { migrateLegacyShortcuts, sanitizeOverrides, type ShortcutOverrides } from "../core/shortcuts/store";
 
 export const SETTINGS_VERSION = 1;
 
@@ -43,10 +44,12 @@ export interface PluginSettings {
 	filesFolder: string;
 	/** Debug mode: on-screen messages about presses on page-navigation controls (core/debug.ts). */
 	debug: boolean;
+	/** Canvas shortcuts changed in the Shortcuts window: id → keys ([] = off). Absent = default. */
+	shortcuts: ShortcutOverrides;
 }
 
 export function defaultSettings(): PluginSettings {
-	return { settingsVersion: SETTINGS_VERSION, language: "auto", modules: {}, coexistence: { acknowledged: [] }, tutorials: { done: [] }, filesFolder: DEFAULT_FILES_FOLDER, debug: false };
+	return { settingsVersion: SETTINGS_VERSION, language: "auto", modules: {}, coexistence: { acknowledged: [] }, tutorials: { done: [] }, filesFolder: DEFAULT_FILES_FOLDER, debug: false, shortcuts: {} };
 }
 
 const LANGUAGES: readonly LanguageSetting[] = ["auto", "en", "zh", "ja", "hi", "ru"];
@@ -80,6 +83,9 @@ export function sanitizeSettings(raw: unknown): PluginSettings {
 	out.filesFolder = cleanFolderPath(folder) ?? DEFAULT_FILES_FOLDER;
 
 	out.debug = raw.debug === true;
+
+	// Before the Shortcuts window, two module options chose keys: their choice becomes an override.
+	out.shortcuts = isPlainObject(raw.shortcuts) ? sanitizeOverrides(raw.shortcuts) : migrateLegacyShortcuts(out.modules);
 
 	return out;
 }

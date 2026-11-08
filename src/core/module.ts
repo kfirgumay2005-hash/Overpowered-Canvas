@@ -74,6 +74,12 @@ export interface ModuleContext<S extends object> {
 	filesFolder(): string;
 	/** Opens Obsidian's settings on this plugin's tab. */
 	openPluginSettings(): void;
+	/** Opens the Shortcuts window, optionally searching for `query`. */
+	openShortcuts(query?: string): void;
+	/** True when a key press is one of the keys of a shortcut (core/shortcuts/catalog.ts). */
+	isShortcut(id: string, evt: KeyboardEvent): boolean;
+	/** Which of `ids` a key press is a key of, if any. */
+	shortcutOf<T extends string>(evt: KeyboardEvent, ids: readonly T[]): T | null;
 	updateSettings(patch: Partial<S>): Promise<void>;
 	onSettingsChange(cb: (next: Readonly<S>, prev: Readonly<S>) => void): void;
 

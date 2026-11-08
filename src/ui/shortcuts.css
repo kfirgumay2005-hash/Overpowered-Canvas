@@ -1,0 +1,197 @@
+/* The Shortcuts window (ui/shortcuts-modal.ts). */
+.opc-shortcuts-modal {
+	width: min(860px, 96vw);
+	height: min(85vh, 900px);
+}
+.opc-shortcuts-modal .modal-content {
+	display: flex;
+	flex-direction: column;
+	min-height: 0;
+	flex: 1 1 auto;
+}
+.opc-shortcuts-top {
+	display: flex;
+	gap: var(--size-4-2);
+	align-items: center;
+	margin-bottom: var(--size-4-2);
+}
+.opc-shortcuts-top .search-input-container {
+	flex: 1 1 auto;
+	min-width: 0;
+}
+.opc-shortcuts-top .search-input-container input {
+	width: 100%;
+}
+.opc-shortcuts-reset-all {
+	flex: 0 0 auto;
+}
+.opc-shortcuts-intro {
+	color: var(--text-muted);
+	font-size: var(--font-ui-small);
+	margin-bottom: var(--size-4-2);
+}
+.opc-shortcuts-touch {
+	margin-top: var(--size-2-2);
+	color: var(--text-accent);
+}
+.opc-shortcuts-list {
+	flex: 1 1 auto;
+	min-height: 0;
+	overflow-y: auto;
+	padding-inline-end: var(--size-2-2);
+}
+.opc-shortcuts-section {
+	margin-bottom: var(--size-4-4);
+}
+.opc-shortcuts-section-head {
+	position: sticky;
+	top: 0;
+	z-index: 1;
+	display: flex;
+	align-items: center;
+	gap: var(--size-4-2);
+	padding: var(--size-2-3) 0;
+	background-color: var(--modal-background, var(--background-primary));
+	border-bottom: 1px solid var(--background-modifier-border);
+}
+.opc-shortcuts-section-title {
+	flex: 1 1 auto;
+	font-weight: var(--font-semibold);
+}
+.opc-shortcuts-section-hint {
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
+	margin: var(--size-2-2) 0;
+}
+.opc-shortcuts-row {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--size-2-2) var(--size-4-2);
+	padding: var(--size-4-1) 0;
+	border-bottom: 1px solid var(--background-modifier-border-hover, var(--background-modifier-border));
+}
+.opc-shortcuts-row.is-hidden,
+.opc-shortcuts-section.is-hidden {
+	display: none;
+}
+.opc-shortcuts-info {
+	flex: 1 1 220px;
+	min-width: 0;
+}
+.opc-shortcuts-name {
+	color: var(--text-normal);
+}
+.opc-shortcuts-when {
+	color: var(--text-faint);
+	font-size: var(--font-ui-smaller);
+}
+.opc-shortcuts-off {
+	margin-inline-start: var(--size-2-3);
+	padding: 0 var(--size-2-2);
+	border-radius: var(--radius-s);
+	background-color: var(--background-modifier-hover);
+	color: var(--text-muted);
+}
+.opc-shortcuts-right {
+	display: flex;
+	align-items: center;
+	gap: var(--size-2-2);
+	margin-inline-start: auto;
+	max-width: 100%;
+}
+.opc-shortcuts-keys {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--size-2-2);
+	justify-content: flex-end;
+	align-items: center;
+}
+.opc-shortcuts-chip {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--size-2-1);
+	padding: var(--size-2-1) var(--size-2-3);
+	border-radius: var(--radius-s);
+	background-color: var(--background-modifier-hover);
+	border: 1px solid var(--background-modifier-border);
+	font-family: var(--font-interface);
+	font-size: var(--font-ui-small);
+	white-space: nowrap;
+}
+.opc-shortcuts-chip.is-gesture {
+	background: none;
+	color: var(--text-muted);
+}
+.opc-shortcuts-chip.is-recording {
+	border-color: var(--interactive-accent);
+	color: var(--text-accent);
+	animation: opc-shortcuts-pulse 1.2s ease-in-out infinite;
+}
+@keyframes opc-shortcuts-pulse {
+	50% {
+		opacity: 0.55;
+	}
+}
+.opc-shortcuts-chip-remove {
+	padding: 0;
+	width: 16px;
+	height: 16px;
+	--icon-size: 12px;
+}
+.opc-shortcuts-none {
+	color: var(--text-faint);
+	font-size: var(--font-ui-small);
+}
+.opc-shortcuts-tools {
+	display: flex;
+	gap: var(--size-2-1);
+}
+.opc-shortcuts-icon.is-active {
+	color: var(--text-accent);
+	background-color: var(--background-modifier-hover);
+}
+.opc-shortcuts-row.is-fixed .opc-shortcuts-name {
+	color: var(--text-muted);
+}
+.opc-shortcuts-warning,
+.opc-shortcuts-conflict-head {
+	display: flex;
+	align-items: center;
+	gap: var(--size-2-2);
+	color: var(--text-warning, var(--color-orange));
+	font-size: var(--font-ui-smaller);
+	--icon-size: 14px;
+}
+.opc-shortcuts-conflict {
+	flex: 1 1 100%;
+	padding: var(--size-4-2);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-m);
+	background-color: var(--background-secondary);
+}
+.opc-shortcuts-conflict ul {
+	margin: var(--size-2-2) 0;
+	padding-inline-start: var(--size-4-5);
+}
+.opc-shortcuts-conflict-buttons {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--size-2-3);
+}
+.opc-shortcuts-empty {
+	padding: var(--size-4-4);
+	text-align: center;
+	color: var(--text-muted);
+}
+/* Touch: bigger targets. */
+@media (hover: none) {
+	.opc-shortcuts-icon {
+		min-width: 36px;
+		min-height: 36px;
+	}
+	.opc-shortcuts-chip-remove {
+		width: 24px;
+		height: 24px;
+	}
+}

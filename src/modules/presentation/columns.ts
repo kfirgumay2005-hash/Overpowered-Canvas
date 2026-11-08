@@ -710,10 +710,10 @@ export class ColumnView {
 		input.addEventListener("pointerdown", (e) => e.stopPropagation());
 		input.addEventListener("keydown", (e) => {
 			e.stopPropagation();
-			if (e.key === "Escape") {
+			if (this.ctx.isShortcut("edit.cancel", e)) {
 				cancelled = true;
 				input.blur();
-			} else if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) input.blur();
+			} else if (this.ctx.isShortcut("edit.save", e)) input.blur();
 		});
 		input.addEventListener("blur", () => {
 			this.editing = null;

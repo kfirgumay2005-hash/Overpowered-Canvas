@@ -141,8 +141,8 @@ export const stickyNotesModule = defineModule<StickySettings>({
 			return true;
 		};
 		// Above the mind map keys, which take the same keys on other cards.
-		ctx.addCanvasKey({ modifiers: [], key: "Tab", priority: 10, handle: (canvas) => next(canvas, canvasDirection(canvas) === "rtl" ? "left" : "right") });
-		for (const [key, dir] of Object.entries(ARROWS)) ctx.addCanvasKey({ modifiers: ["Mod"], key, priority: 10, handle: (canvas) => next(canvas, dir) });
+		ctx.addCanvasKey({ shortcut: "sticky.next", priority: 10, handle: (canvas) => next(canvas, canvasDirection(canvas) === "rtl" ? "left" : "right") });
+		for (const dir of Object.values(ARROWS)) ctx.addCanvasKey({ shortcut: `sticky.${dir}`, priority: 10, handle: (canvas) => next(canvas, dir) });
 
 		// The same without a keyboard: commands and the card menu of a sticky.
 		const SIDES: [Dir, string, I18nKey][] = [

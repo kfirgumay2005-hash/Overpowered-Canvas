@@ -3,13 +3,16 @@
  * and card-menu (bottom bar) buttons. Every registration returns a disposer that removes all
  * DOM it created, so a disabled module leaves nothing behind.
  */
-import { Menu, setIcon, setTooltip, type Modifier, type Scope } from "obsidian";
+import { Menu, setIcon, setTooltip, type Scope } from "obsidian";
 import { readEdge, readNode } from "../data/validate";
 import { SCHEMA_KEY, type OpcEdge, type OpcNode } from "../data/schema";
 import type { CanvasEdgeLike, CanvasItemLike, CanvasLike, CanvasMenuLike, CanvasNodeLike, CanvasViewLike, Point } from "../internals/types";
 import type { CanvasHooks } from "./canvas-hooks";
 import type { CanvasTracker } from "./canvas-tracker";
 import { logError } from "./log";
+import type { ShortcutId } from "./shortcuts/catalog";
+import { comboFromEvent } from "./shortcuts/keys";
+import type { ShortcutStore } from "./shortcuts/store";
 
 export interface NodeDecorator {
 	/** Called after render, setData and our own writes. Must be idempotent and cheap. */
@@ -64,8 +67,8 @@ export interface CardMenuButtonSpec {
 }
 
 export interface CanvasKeySpec {
-	modifiers: Modifier[];
-	key: string;
+	/** Which shortcut of the catalog (core/shortcuts/catalog.ts); its keys come from the Shortcuts window. */
+	shortcut: ShortcutId;
 	/** Higher runs first. */
 	priority?: number;
 	/** Return true when handled (stops other handlers and the default). */
@@ -120,12 +123,13 @@ export class CanvasUi {
 	private cardTrackOff: (() => void) | null = null;
 	private readonly keySpecs = new Set<CanvasKeySpec>();
 	private keyTrackOff: (() => void) | null = null;
-	/** Per view: combo → registered scope handler. */
-	private readonly keyHandlers = new Map<CanvasViewLike, Map<string, unknown>>();
+	/** Per view: the one scope handler that dispatches every canvas shortcut. */
+	private readonly keyHandlers = new Map<CanvasViewLike, unknown>();
 
 	constructor(
 		private readonly hooks: CanvasHooks,
 		private readonly tracker: CanvasTracker,
+		private readonly shortcuts: ShortcutStore,
 	) {}
 
 	decorateNodes(decorator: NodeDecorator): () => void {
@@ -230,8 +234,10 @@ export class CanvasUi {
 	}
 
 	/**
-	 * Canvas-local keys, shared between modules: Obsidian's Scope only runs the first handler of a
-	 * key, so one scope handler per key dispatches to every registered spec by priority.
+	 * Canvas-local shortcuts, shared between modules. Each canvas view gets one handler at the front
+	 * of its keymap scope: it turns the key press into a combo, runs the shortcuts bound to it (keys
+	 * from the Shortcuts window, read on every press, so a change works at once) by priority, and
+	 * lets anything it doesn't handle through to the canvas' own keys and Obsidian's hotkeys.
 	 */
 	addCanvasKey(spec: CanvasKeySpec): () => void {
 		this.keySpecs.add(spec);
@@ -240,16 +246,9 @@ export class CanvasUi {
 				this.bindKeys(canvas, view);
 				return () => this.unbindKeys(view);
 			});
-		} else for (const view of this.tracker.openCanvases()) this.bindKeys(view.canvas, view);
+		}
 		return () => {
 			if (!this.keySpecs.delete(spec)) return;
-			const combo = comboOf(spec);
-			if (![...this.keySpecs].some((s) => comboOf(s) === combo))
-				for (const [view, map] of this.keyHandlers) {
-					const h = map.get(combo);
-					if (h) (view as CanvasViewLike & { scope: Scope }).scope?.unregister(h as never);
-					map.delete(combo);
-				}
 			if (this.keySpecs.size === 0) {
 				this.keyTrackOff?.();
 				this.keyTrackOff = null;
@@ -258,33 +257,33 @@ export class CanvasUi {
 	}
 
 	private bindKeys(canvas: CanvasLike, view: CanvasViewLike): void {
-		const scope = (view as CanvasViewLike & { scope: Scope | null }).scope;
-		if (!scope) return;
-		let map = this.keyHandlers.get(view);
-		if (!map) this.keyHandlers.set(view, (map = new Map<string, unknown>()));
-		for (const spec of this.keySpecs) {
-			const combo = comboOf(spec);
-			if (map.has(combo)) continue;
-			const handler = scope.register(spec.modifiers, spec.key, (evt) => {
-				const typing = isTyping(evt);
-				const specs = [...this.keySpecs].filter((s) => comboOf(s) === combo && (!typing || s.whileTyping)).sort((a, b) => (b.priority ?? 0) - (a.priority ?? 0));
-				for (const s of specs) {
-					try {
-						if (s.handle(canvas, evt)) return false;
-					} catch (error) {
-						logError("[overpowered-canvas] key handler failed", error);
-					}
+		const scope = (view as CanvasViewLike & { scope: (Scope & { keys?: unknown[] }) | null }).scope;
+		if (!scope || this.keyHandlers.has(view)) return;
+		const handler = scope.register(null, null, (evt) => {
+			const combo = comboFromEvent(evt, this.shortcuts.mac);
+			if (!combo) return undefined;
+			const typing = isTyping(evt);
+			const specs = [...this.keySpecs].filter((s) => (!typing || s.whileTyping) && this.shortcuts.combos(s.shortcut).includes(combo)).sort((a, b) => (b.priority ?? 0) - (a.priority ?? 0));
+			for (const s of specs) {
+				try {
+					if (s.handle(canvas, evt)) return false;
+				} catch (error) {
+					logError("[overpowered-canvas] key handler failed", error);
 				}
-				return true;
-			});
-			map.set(combo, handler);
-		}
+			}
+			// Not ours: the canvas' own keys and Obsidian's hotkeys get it.
+			return undefined;
+		}) as unknown;
+		// First in the scope, so a key moved onto one the canvas uses itself still reaches us.
+		const keys = scope.keys;
+		if (Array.isArray(keys) && keys[keys.length - 1] === handler) keys.unshift(keys.pop());
+		this.keyHandlers.set(view, handler);
 	}
 
 	private unbindKeys(view: CanvasViewLike): void {
-		const map = this.keyHandlers.get(view);
+		const handler = this.keyHandlers.get(view);
 		const scope = (view as CanvasViewLike & { scope: Scope | null }).scope;
-		if (map && scope) for (const h of map.values()) scope.unregister(h as never);
+		if (handler && scope) scope.unregister(handler as never);
 		this.keyHandlers.delete(view);
 	}
 
@@ -376,8 +375,4 @@ export class CanvasUi {
 /** Marks a card bar holding our buttons (another plugin may hide the bar; ours keep it). */
 function markCardMenu(menu: HTMLElement): void {
 	menu.toggleClass("opc-has-card-buttons", !!menu.querySelector(":scope > .opc-card-button"));
-}
-
-function comboOf(spec: { modifiers: string[]; key: string }): string {
-	return `${[...spec.modifiers].sort().join("+")}|${spec.key.toLowerCase()}`;
 }

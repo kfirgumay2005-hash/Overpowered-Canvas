@@ -357,7 +357,7 @@ export const minimapModule = defineModule<MinimapSettings>({
 		ctx.on("history-apply", redraw);
 		ctx.registerEvent(ctx.app.workspace.on("css-change", () => maps.forEach((m) => m.invalidate())));
 
-		ctx.addCanvasKey({ modifiers: [], key: "M", handle: () => (toggle(), true) });
+		ctx.addCanvasKey({ shortcut: "minimap.toggle", handle: () => (toggle(), true) });
 		ctx.addCommand({
 			id: "toggle",
 			name: ctx.t("minimap.toggle"),

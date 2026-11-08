@@ -479,7 +479,7 @@ export const pagesModule = defineModule<PagesSettings>({
 			put.addEventListener("click", () => void placeHere(canvas));
 			cancel.addEventListener("click", () => stopPlacing(canvas));
 			const onKey = (evt: KeyboardEvent) => {
-				if (evt.key === "Escape" && ctx.activeCanvas() === canvas) stopPlacing(canvas);
+				if (ctx.isShortcut("pages.cancelPlacing", evt) && ctx.activeCanvas() === canvas) stopPlacing(canvas);
 			};
 			const win = canvas.wrapperEl.win;
 			win.addEventListener("keydown", onKey, true);

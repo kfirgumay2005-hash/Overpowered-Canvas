@@ -8,7 +8,6 @@ import { recordChild } from "./order-store";
 import { childPosition, childrenOf, descendants, directionBetween, logical, neighbor, parentOf, type Dir, type TEdge } from "./tree";
 
 interface MindmapSettings {
-	siblingKey: "Enter" | "Shift+Enter";
 	direction: "right" | "down";
 	mirrorRtl: boolean;
 }
@@ -36,7 +35,7 @@ export const mindmapModule = defineModule<MindmapSettings>({
 	description: "mindmap.desc",
 	group: "mindmap",
 	defaultEnabled: true,
-	defaultSettings: { siblingKey: "Enter", direction: "right", mirrorRtl: true },
+	defaultSettings: { direction: "right", mirrorRtl: true },
 	overlapsWith: ["canvas-mindmap", "cammvas"],
 
 	enable(ctx) {
@@ -114,11 +113,10 @@ export const mindmapModule = defineModule<MindmapSettings>({
 				for (const node of nodes) for (const e of canvas.getEdgesForNode(node)) if (e.from.node === node) e.setColor(node.color);
 			});
 
-		// Canvas-local keys (shared keymap: sticky notes take Tab / Ctrl+Arrows on stickies first).
-		const key = (modifiers: ("Mod" | "Shift" | "Alt")[], k: string, fn: (canvas: CanvasLike, node: CanvasNodeLike) => void) =>
+		// Canvas-local keys, set in the Shortcuts window (sticky notes take the same keys on stickies first).
+		const key = (shortcut: string, fn: (canvas: CanvasLike, node: CanvasNodeLike) => void) =>
 			ctx.addCanvasKey({
-				modifiers,
-				key: k,
+				shortcut,
 				handle: (canvas) => {
 					const node = single(canvas);
 					if (!node || canvas.readonly) return false;
@@ -126,13 +124,12 @@ export const mindmapModule = defineModule<MindmapSettings>({
 					return true;
 				},
 			});
-		key([], "Tab", (c, n) => addChild(c, n));
-		key([], "Enter", (c, n) => ctx.settings.siblingKey === "Enter" && addSibling(c, n));
-		key(["Shift"], "Enter", (c, n) => ctx.settings.siblingKey === "Shift+Enter" && addSibling(c, n));
-		for (const [k, dir] of Object.entries(ARROW)) {
-			key(["Alt"], k, (c, n) => navigate(c, n, dir));
-			key(["Mod"], k, (c, n) => addFloating(c, n, dir));
-			key(["Mod", "Shift"], k, (c, n) => addChild(c, n, dir));
+		key("mindmap.child", (c, n) => addChild(c, n));
+		key("mindmap.sibling", (c, n) => addSibling(c, n));
+		for (const dir of Object.values(ARROW)) {
+			key(`mindmap.go.${dir}`, (c, n) => navigate(c, n, dir));
+			key(`mindmap.floating.${dir}`, (c, n) => addFloating(c, n, dir));
+			key(`mindmap.childAt.${dir}`, (c, n) => addChild(c, n, dir));
 		}
 
 		const command = (id: string, name: string, icon: string, fn: (c: CanvasLike, n: CanvasNodeLike) => void, needsWrite = true) =>
@@ -186,9 +183,9 @@ export const mindmapModule = defineModule<MindmapSettings>({
 
 	renderSettings(el, ctx: ModuleContext<MindmapSettings>) {
 		new Setting(el)
-			.setName(ctx.t("mindmap.siblingKey.name"))
-			.setDesc(ctx.t("mindmap.siblingKey.desc"))
-			.addDropdown((d) => d.addOptions({ Enter: "Enter", "Shift+Enter": "Shift+Enter" }).setValue(ctx.settings.siblingKey).onChange((v) => ctx.updateSettings({ siblingKey: v as MindmapSettings["siblingKey"] })));
+			.setName(ctx.t("mindmap.keys.name"))
+			.setDesc(ctx.t("mindmap.keys.desc"))
+			.addButton((b) => b.setButtonText(ctx.t("shortcuts.open")).onClick(() => ctx.openShortcuts(ctx.t("shortcuts.cat.mindmap"))));
 		new Setting(el)
 			.setName(ctx.t("mindmap.direction.name"))
 			.addDropdown((d) =>

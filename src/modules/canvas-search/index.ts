@@ -164,8 +164,8 @@ export const canvasSearchModule = defineModule({
 			bars.set(canvas, new CanvasSearchBar(ctx, canvas));
 		};
 
-		// Canvas-local Mod+F: only in canvases, no conflict with the editor's global "Find".
-		ctx.addCanvasKey({ modifiers: ["Mod"], key: "F", handle: (canvas) => (open(canvas), true) });
+		// Canvas-local Mod+F (by default): only in canvases, no conflict with the editor's global "Find".
+		ctx.addCanvasKey({ shortcut: "search.open", handle: (canvas) => (open(canvas), true) });
 		ctx.onCanvas((canvas) => () => {
 			const bar = bars.get(canvas);
 			if (bar?.isOpen) bar.close();

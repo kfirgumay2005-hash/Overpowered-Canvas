@@ -52,8 +52,6 @@ const SLIDE_CLICK_MOVE = 5;
 /** Wait this long so a double-click (label editing) doesn't toggle twice. */
 const SLIDE_CLICK_DELAY = 300;
 
-const NEXT_KEYS = new Set(["ArrowRight", "ArrowDown", "PageDown", " ", "Enter"]);
-const PREV_KEYS = new Set(["ArrowLeft", "ArrowUp", "PageUp", "Backspace"]);
 
 function edgesOf(ctx: ModuleContext<PresentationSettings>, canvas: CanvasLike): SlideEdge[] {
 	return [...canvas.edges.values()].map((e) => ({ from: e.from.node.id, to: e.to.node.id, order: ctx.data.edge(e).get().order, label: e.label }));
@@ -156,10 +154,11 @@ export const presentationModule = defineModule<PresentationSettings>({
 			navButton("x", ctx.t("presentation.end"), () => exit(canvas));
 			const onKey = (evt: KeyboardEvent) => {
 				if (!sessions.has(canvas)) return;
-				if (NEXT_KEYS.has(evt.key)) step(canvas, 1);
-				else if (PREV_KEYS.has(evt.key)) step(canvas, -1);
-				else if (evt.key === "Escape") exit(canvas);
-				else if (evt.key === "Home") {
+				const action = ctx.shortcutOf(evt, ["slides.next", "slides.previous", "slides.end", "slides.first"] as const);
+				if (action === "slides.next") step(canvas, 1);
+				else if (action === "slides.previous") step(canvas, -1);
+				else if (action === "slides.end") exit(canvas);
+				else if (action === "slides.first") {
 					const s = sessions.get(canvas)!;
 					s.history = s.history.slice(0, 1);
 					show(canvas, s);

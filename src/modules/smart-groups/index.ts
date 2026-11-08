@@ -3,7 +3,6 @@ import { isNode } from "../../core/canvas-ui";
 import { logError } from "../../core/log";
 import { defineModule, type ModuleContext } from "../../core/module";
 import { SCHEMA_KEY } from "../../data/schema";
-import { runHotkeyCommand } from "../../internals/app";
 import type { CanvasItemLike, CanvasLike, CanvasNodeLike } from "../../internals/types";
 import { mergeWithDefaults } from "../../settings/settings";
 import { BackgroundDoubleClick, DOUBLE_CLICK_PRESETS } from "../better-defaults/double-click";
@@ -12,7 +11,6 @@ import { fixSelection, leavesGroup, regroupCopies } from "./logic";
 
 export interface SmartGroupSettings {
 	/** Ctrl/Cmd+G groups and Ctrl/Cmd+Shift+G ungroups while a canvas has the focus. */
-	keys: boolean;
 	/** Group / ungroup button in the selection toolbar. */
 	toolbar: boolean;
 }
@@ -56,11 +54,10 @@ export const smartGroupsModule = defineModule<SmartGroupSettings>({
 	description: "smartGroups.desc",
 	group: "interaction",
 	defaultEnabled: true,
-	defaultSettings: { keys: true, toolbar: true },
+	defaultSettings: { toolbar: true },
 	sanitizeSettings: (raw, defaults) => {
 		const s = mergeWithDefaults(raw, defaults);
 		return {
-			keys: typeof s.keys === "boolean" ? s.keys : defaults.keys,
 			toolbar: typeof s.toolbar === "boolean" ? s.toolbar : defaults.toolbar,
 		};
 	},
@@ -293,14 +290,10 @@ export const smartGroupsModule = defineModule<SmartGroupSettings>({
 		});
 
 		// While a canvas has the focus Ctrl/Cmd+G groups (Obsidian opens the graph view with it
-		// elsewhere). With nothing to group the key goes on to its usual command (the graph view):
-		// the canvas scope keeps a key it matched, so that command is run from here.
-		const passOn = (evt: KeyboardEvent) => {
-			runHotkeyCommand(ctx.app, evt, (id) => id.includes(":smart-groups:"));
-			return true;
-		};
-		ctx.addCanvasKey({ modifiers: ["Mod"], key: "G", handle: (canvas, evt) => (ctx.settings.keys && group(canvas)) || passOn(evt) });
-		ctx.addCanvasKey({ modifiers: ["Mod", "Shift"], key: "G", handle: (canvas, evt) => (ctx.settings.keys && ungroup(canvas)) || passOn(evt) });
+		// elsewhere; keys are set in the Shortcuts window). With nothing to group the key is not
+		// handled, so it goes on to its usual command (the graph view).
+		ctx.addCanvasKey({ shortcut: "groups.group", handle: (canvas) => group(canvas) });
+		ctx.addCanvasKey({ shortcut: "groups.ungroup", handle: (canvas) => ungroup(canvas) });
 
 		ctx.addMenuButton({
 			id: "smart-group",
@@ -344,7 +337,7 @@ export const smartGroupsModule = defineModule<SmartGroupSettings>({
 		new Setting(el)
 			.setName(ctx.t("smartGroups.keys.name"))
 			.setDesc(ctx.t("smartGroups.keys.desc"))
-			.addToggle((t) => t.setValue(ctx.settings.keys).onChange((v) => ctx.updateSettings({ keys: v })));
+			.addButton((b) => b.setButtonText(ctx.t("shortcuts.open")).onClick(() => ctx.openShortcuts(ctx.t("shortcuts.action.groups.group"))));
 		new Setting(el)
 			.setName(ctx.t("smartGroups.toolbar.name"))
 			.setDesc(ctx.t("smartGroups.toolbar.desc"))

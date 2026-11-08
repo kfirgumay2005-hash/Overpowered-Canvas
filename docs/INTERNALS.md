@@ -127,7 +127,7 @@ Verified against: **Obsidian 1.14.4 (desktop, Windows)**.
 | `node.aspectRatio` | Kept during resize when non-zero. On image load the core sets it to the image's own ratio and refits the card (`resize` + `overrideHistory`). Image crop intercepts that first `moveAndResize`, switches to the cropped ratio and keeps the stored size. | 🟢 runtime |
 | `canvas.markDirty(item)` → next animation frame → `item.render()` | `edge.render()` calls `updatePath()`. Frames don't run while the window is hidden (seen in automated runs), so drags call `edge.updatePath()` directly. | 🟢 runtime |
 | `canvas.requestSave()` → `requestPushHistory` (250 ms debounce) | A gesture that writes with `{ history: false }` on every move and calls `requestSave()` once at the end is one undo step. | 🟢 runtime |
-| `view.scope` runs only the first matching handler | Our canvas keys share one handler per combo (`ModuleContext.addCanvasKey`), dispatched by priority: sticky notes (Tab, Ctrl+Arrows on stickies) before the mind map, which only acts when its own conditions hold. | 🟢 runtime |
+| `view.scope.handleKey` stops at the first matching handler that returns a value or has a key; a catch-all (`null`, `null`) handler returning `undefined` lets the key go on | Every canvas shortcut goes through one catch-all handler per view, put first in `scope.keys` (`CanvasUi.addCanvasKey`, keys from `core/shortcuts`): it turns the press into a combo, runs the shortcuts bound to it by priority (sticky notes before the mind map) and returns `false` when one handled it, `undefined` otherwise, so the canvas' own keys and Obsidian's hotkeys still get unhandled presses. Keys are read on every press: a change in the Shortcuts window works at once. | 🟢 runtime |
 
 ## Phase 6 additions
 
@@ -205,3 +205,25 @@ Verified against: **Obsidian 1.14.4 (desktop, Windows)**.
   while `workspace.getActiveFile()` and `activeEditor` still name the note.
 - Touch double-taps produce no `dblclick` on canvas cards; a long press on a card of a
   multi-selection opens the selection's menu (`canvas:selection-menu`), not the node's.
+
+## Feedback round 12 additions (verified at runtime in Obsidian 1.15.0)
+
+- `canvas.quickSettingsButton`: the gear of the side controls; its click (bound by the core)
+  shows the menu built by `canvas.showQuickSettingsMenu(menu)` (snap to grid, snap to objects,
+  read-only, plus items plugins add). A capture `click` listener that stops the event keeps the
+  core from opening it; dispatching a `click` lets it through again.
+- The help control (`svg.lucide-help-circle`) opens `.modal.mod-canvas-help` (the core key list).
+- `app.setting.open()` + `app.setting.openTabById(id)` open the settings on a tab (a plugin's id,
+  or "hotkeys"). Settings may open in a popout window (`app.setting.popout`), so the main
+  window's DOM doesn't show them.
+- Modals of this version have their close button as `.modal-header-button`, not
+  `.modal-close-button`.
+- `app.hotkeyManager`: `getHotkeys(id)` (custom keys, `undefined` when not customized),
+  `getDefaultHotkeys(id)`, `setHotkeys(id, list)`, `removeHotkeys(id)` (back to default),
+  `save()` (writes `.obsidian/hotkeys.json`), `bake()`. Hotkeys are `{ modifiers: string[], key }`
+  with modifiers "Mod", "Ctrl", "Meta", "Alt", "Shift".
+- `Scope.handleKey`: for each registered key that matches, calls it; returns its result if it is
+  not `undefined` or if the entry has a key or modifiers, else goes on (then to the parent scope).
+- Card layout: `.canvas-node-container` is `display: flex` (row) and `.canvas-node-content` is a
+  `flex: 0 1 auto` item as wide as its content. An image taken out of flow (absolute) leaves the
+  content box 0 px wide unless it gets a width of its own (image-crop).

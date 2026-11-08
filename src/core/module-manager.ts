@@ -7,6 +7,7 @@ import type { Translate } from "../i18n";
 import { mergeWithDefaults, type ModuleState, type PluginSettings } from "../settings/settings";
 import { getActiveCanvas } from "../internals/guards";
 import { openSettingsTab } from "../internals/app";
+import type { ShortcutStore } from "./shortcuts/store";
 import type { CanvasHooks } from "./canvas-hooks";
 import type { CanvasTracker } from "./canvas-tracker";
 import type { CanvasUi } from "./canvas-ui";
@@ -28,6 +29,8 @@ export interface ModuleHost {
 	readonly history: HistoryApi;
 	readonly events: PublicEvents;
 	readonly settings: PluginSettings;
+	readonly shortcuts: ShortcutStore;
+	openShortcuts(query?: string): void;
 	t(): Translate;
 	saveSettings(): Promise<void>;
 	/** Called whenever the number of enabled modules changes. */
@@ -244,6 +247,9 @@ export class ModuleManager {
 			},
 			filesFolder: () => host.settings.filesFolder,
 			openPluginSettings: () => openSettingsTab(host.app, host.plugin.manifest.id),
+			openShortcuts: (query) => host.openShortcuts(query),
+			isShortcut: (id, evt) => host.shortcuts.matches(id, evt),
+			shortcutOf: (evt, ids) => host.shortcuts.match(evt, ids),
 			updateSettings: async (patch) => {
 				const next = this.resolveSettings(def, { ...mod.current, ...patch });
 				this.state(def).settings = { ...next };
