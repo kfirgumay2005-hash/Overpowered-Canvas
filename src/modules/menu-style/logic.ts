@@ -12,8 +12,6 @@ export interface MenuColors {
 }
 
 export interface MenuStyleSettings {
-	/** Style every menu of Obsidian, not only those opened in a canvas. */
-	allVault: boolean;
 	fontSize: number;
 	/** Vertical padding of an item (spacing between items), px. */
 	itemPadding: number;
@@ -34,7 +32,6 @@ export interface MenuStyleSettings {
 const NO_COLORS: MenuColors = { background: "", text: "", hover: "", border: "" };
 
 export const MENU_STYLE_DEFAULTS: MenuStyleSettings = {
-	allVault: false,
 	fontSize: -1,
 	itemPadding: -1,
 	itemIndent: -1,
@@ -80,7 +77,6 @@ function cleanColors(raw: unknown): MenuColors {
 export function sanitizeMenuStyle(raw: unknown): MenuStyleSettings {
 	const r = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
 	const out: MenuStyleSettings = { ...MENU_STYLE_DEFAULTS, light: cleanColors(r.light), dark: cleanColors(r.dark) };
-	out.allVault = r.allVault === true;
 	for (const key of Object.keys(LIMITS) as NumberKey[]) out[key] = cleanNumber(r[key], LIMITS[key]);
 	out.shadow = (SHADOWS as readonly string[]).includes(r.shadow as string) ? (r.shadow as MenuStyleSettings["shadow"]) : "theme";
 	return out;
@@ -88,7 +84,7 @@ export function sanitizeMenuStyle(raw: unknown): MenuStyleSettings {
 
 /** True when nothing differs from the theme (no CSS needed). */
 export function isThemeDefault(s: MenuStyleSettings): boolean {
-	return JSON.stringify({ ...s, allVault: false }) === JSON.stringify({ ...MENU_STYLE_DEFAULTS });
+	return JSON.stringify(s) === JSON.stringify(MENU_STYLE_DEFAULTS);
 }
 
 const SHADOW_CSS: Record<Exclude<MenuStyleSettings["shadow"], "theme">, string> = {

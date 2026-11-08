@@ -6,7 +6,7 @@ import { BARS_TUTORIAL, TUTORIAL_KEY } from "../../tutorials/runner";
 import { IconPickerModal } from "../../ui/icon-picker";
 import { isImageCard, randomId } from "../shared";
 import { isNode } from "../../core/canvas-ui";
-import { BARS, buttonKeys, buttonLabel, customKey, hiddenKey, isPopupBar, orderOf, popupFor, sanitizeBarSettings, sortKeys, type Bar, type BarButtonsSettings, type CustomButton } from "./logic";
+import { addSeen, BARS, buttonKeys, buttonLabel, customKey, emptyMenus, hiddenKey, isPopupBar, itemTitle, MENU_KEYS, orderOf, popupFor, sanitizeBarSettings, sortKeys, type Bar, type BarButtonsSettings, type CustomButton, type MenuChoice, type MenuKey } from "./logic";
 
 type Ctx = ModuleContext<BarButtonsSettings>;
 
@@ -189,6 +189,34 @@ class CommandSuggest extends FuzzySuggestModal<Command> {
 }
 
 /** The bars as lists: a switch for each button, added commands with their name and icon. */
+/** An entry of an Obsidian menu: an item (with a title) or a separator. */
+interface MenuEntry {
+	titleEl?: HTMLElement;
+	iconEl?: HTMLElement;
+	dom?: HTMLElement;
+}
+
+/** The icon id of a menu item ("lucide-copy"), for the list in Customize the bars. */
+function iconOf(iconEl: HTMLElement | undefined): string {
+	const svg = iconEl?.querySelector("svg");
+	return Array.from(svg?.classList ?? []).find((c) => c !== "svg-icon") ?? "";
+}
+
+/** Without separators at the start, at the end or two in a row (items around them were taken off). */
+function tidySeparators(items: MenuEntry[]): MenuEntry[] {
+	const out: MenuEntry[] = [];
+	for (const i of items) {
+		const sep = !i.titleEl && !!i.dom?.hasClass("menu-separator");
+		if (sep && (out.length === 0 || (!out[out.length - 1]!.titleEl && out[out.length - 1]!.dom?.hasClass("menu-separator")))) {
+			i.dom?.remove();
+			continue;
+		}
+		out.push(i);
+	}
+	while (out.length && !out[out.length - 1]!.titleEl && out[out.length - 1]!.dom?.hasClass("menu-separator")) out.pop()?.dom?.remove();
+	return out;
+}
+
 class BarsModal extends Modal {
 	constructor(
 		private readonly ctx: Ctx,
@@ -226,13 +254,49 @@ class BarsModal extends Modal {
 			if (bar === "image") new Setting(contentEl).setDesc(ctx.t("barButtons.imageHint"));
 			new Setting(contentEl).addButton((button) => button.setButtonText(ctx.t("barButtons.add")).onClick(() => this.addTo(bar)));
 		}
+		for (const kind of MENU_KEYS) this.renderMenu(kind);
 		new Setting(contentEl).addButton((button) =>
 			button
 				.setButtonText(ctx.t("barButtons.restore"))
 				.setDestructive()
-				.onClick(() => void this.save({ hidden: [], custom: [], order: {} })),
+				.onClick(() => {
+					const menus = ctx.settings.menus;
+					void this.save({ hidden: [], custom: [], order: {}, menus: { context: { ...menus.context, hidden: [], allVault: false }, more: { ...menus.more, hidden: [], allVault: false } } });
+				}),
 		);
 		contentEl.scrollTop = top;
+	}
+
+	/** The right-click menu or the ⋮ menu: where it applies, and a switch per item it has shown. */
+	private renderMenu(kind: MenuKey): void {
+		const { ctx, contentEl } = this;
+		const choice = () => ctx.settings.menus[kind];
+		const setChoice = (patch: Partial<MenuChoice>) => this.save({ menus: { ...ctx.settings.menus, [kind]: { ...choice(), ...patch } } });
+		const heading = new Setting(contentEl).setName(ctx.t(kind === "context" ? "barButtons.menu.context" : "barButtons.menu.more")).setHeading();
+		heading.settingEl.addClass("opc-bars-menu-heading");
+		heading.settingEl.dataset.menu = kind;
+		new Setting(contentEl)
+			.setName(ctx.t("barButtons.menu.allVault"))
+			.setDesc(ctx.t(kind === "context" ? "barButtons.menu.allVault.context" : "barButtons.menu.allVault.more"))
+			.addToggle((tg) => tg.setValue(choice().allVault).onChange((v) => void setChoice({ allVault: v })))
+			.settingEl.addClass("opc-bars-menu-scope");
+		new Setting(contentEl).setDesc(ctx.t(kind === "context" ? "barButtons.menu.hint.context" : "barButtons.menu.hint.more"));
+		const items = [...choice().seen];
+		for (const title of choice().hidden) if (!items.some((i) => i.title === title)) items.push({ title, icon: "" });
+		const list = contentEl.createDiv({ cls: "opc-bars-list opc-bars-menu-list", attr: { "data-menu": kind } });
+		if (!items.length) list.createDiv({ cls: "setting-item-description opc-bars-menu-empty", text: ctx.t("barButtons.menu.empty") });
+		for (const item of items) {
+			const row = new Setting(list).setName(item.title);
+			row.settingEl.addClass("opc-bars-row");
+			row.settingEl.dataset.key = item.title;
+			if (item.icon) this.rowIcon(row, (el) => setIcon(el, item.icon));
+			row.addToggle((toggle) =>
+				toggle
+					.setTooltip(ctx.t("barButtons.show"))
+					.setValue(!choice().hidden.includes(item.title))
+					.onChange((shown) => void setChoice({ hidden: shown ? choice().hidden.filter((t) => t !== item.title) : [...choice().hidden, item.title] })),
+			);
+		}
 	}
 
 	private async save(patch: Partial<BarButtonsSettings>): Promise<void> {
@@ -391,11 +455,41 @@ export const barButtonsModule = defineModule<BarButtonsSettings>({
 	description: "barButtons.desc",
 	group: "interaction",
 	defaultEnabled: true,
-	defaultSettings: { hidden: [], custom: [], order: {} },
+	defaultSettings: { hidden: [], custom: [], order: {}, menus: emptyMenus() },
 	sanitizeSettings: (raw) => sanitizeBarSettings(raw),
 
 	enable(ctx) {
 		const mounted = new WeakMap<CanvasLike, string>();
+
+		// The right-click and ⋮ menus: where the choices apply, and the items taken off.
+		const syncScope = () => {
+			for (const kind of MENU_KEYS) ctx.menus.setScope(kind, ctx.settings.menus[kind].allVault);
+		};
+		syncScope();
+		ctx.onSettingsChange(syncScope);
+		ctx.register(() => {
+			for (const kind of MENU_KEYS) ctx.menus.setScope(kind, false);
+		});
+		ctx.register(
+			ctx.menus.onShow(({ menu, kind, applies }) => {
+				if (!kind || !applies) return;
+				const choice = ctx.settings.menus[kind];
+				const items = (menu as unknown as { items: MenuEntry[] }).items;
+				if (!Array.isArray(items)) return;
+				const titled = items.filter((i) => i.titleEl);
+				const seen = addSeen(
+					choice.seen,
+					titled.map((i) => ({ title: itemTitle(i.titleEl!.textContent), icon: iconOf(i.iconEl) })),
+				);
+				if (seen) void ctx.updateSettings({ menus: { ...ctx.settings.menus, [kind]: { ...choice, seen } } });
+				if (!choice.hidden.length) return;
+				const hidden = new Set(choice.hidden);
+				const kept = items.filter((i) => !(i.titleEl && hidden.has(itemTitle(i.titleEl.textContent))));
+				if (kept.length === items.length) return;
+				for (const i of items) if (!kept.includes(i)) i.dom?.remove();
+				(menu as unknown as { items: MenuEntry[] }).items = tidySeparators(kept);
+			}),
+		);
 		ctx.onCanvas((canvas) => {
 			const apply = () => applyTo(ctx, canvas, mounted);
 			apply();

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buttonKeys, buttonLabel, hiddenKey, isPopupBar, orderOf, popupFor, sanitizeBarSettings, sortKeys, type ButtonFacts } from "./logic";
+import { addSeen, buttonKeys, buttonLabel, emptyMenus, hiddenKey, isPopupBar, orderOf, popupFor, sanitizeBarSettings, sortKeys, type ButtonFacts } from "./logic";
 
 const button = (over: Partial<ButtonFacts>): ButtonFacts => ({ classes: [], groupClasses: [], iconClasses: [], label: "", ...over });
 
@@ -34,8 +34,8 @@ describe("buttonLabel", () => {
 
 describe("sanitizeBarSettings", () => {
 	it("starts empty", () => {
-		expect(sanitizeBarSettings(undefined)).toEqual({ hidden: [], custom: [], order: {} });
-		expect(sanitizeBarSettings({ hidden: "x", custom: 3 })).toEqual({ hidden: [], custom: [], order: {} });
+		expect(sanitizeBarSettings(undefined)).toEqual({ hidden: [], custom: [], order: {}, menus: emptyMenus() });
+		expect(sanitizeBarSettings({ hidden: "x", custom: 3 })).toEqual({ hidden: [], custom: [], order: {}, menus: emptyMenus() });
 	});
 	it("keeps good entries and drops the rest", () => {
 		const s = sanitizeBarSettings({
@@ -96,5 +96,18 @@ describe("the popup over images", () => {
 		expect(s.custom[0]!.bar).toBe("image");
 		expect(s.order).toEqual({ popup: ["c"], image: ["a", "b"] });
 		expect(isPopupBar("image") && isPopupBar("popup") && !isPopupBar("side")).toBe(true);
+	});
+});
+
+describe("menu choices", () => {
+	it("keeps clean titles, without duplicates", () => {
+		const s = sanitizeBarSettings({ menus: { context: { allVault: true, hidden: [" Copy ", "Copy", 4], seen: [{ title: "Copy", icon: "lucide-copy" }, { title: "Copy" }, { title: "" }] }, more: "x" } });
+		expect(s.menus.context).toEqual({ allVault: true, hidden: ["Copy"], seen: [{ title: "Copy", icon: "lucide-copy" }] });
+		expect(s.menus.more).toEqual({ allVault: false, hidden: [], seen: [] });
+	});
+	it("adds new items to the seen list only", () => {
+		const seen = [{ title: "Copy", icon: "" }];
+		expect(addSeen(seen, [{ title: "Copy", icon: "" }])).toBeNull();
+		expect(addSeen(seen, [{ title: "Delete", icon: "x" }, { title: "Delete", icon: "x" }])).toEqual([...seen, { title: "Delete", icon: "x" }]);
 	});
 });

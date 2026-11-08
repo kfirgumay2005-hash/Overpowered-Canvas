@@ -2884,8 +2884,11 @@ const customButtons = (rt: TutorialRuntime) => (rt.setting("bar-buttons", "custo
 let hiddenAtStart = 0;
 let customAtStart = 0;
 let orderAtStart = "";
-const MENU_STYLE_KEYS = ["allVault", "fontSize", "itemPadding", "itemIndent", "width", "radius", "iconSize", "iconGap", "shadow", "light", "dark"] as const;
+const MENU_STYLE_KEYS = ["fontSize", "itemPadding", "itemIndent", "width", "radius", "iconSize", "iconGap", "shadow", "light", "dark"] as const;
 let menuStyleAtStart = "";
+let menuHiddenAtStart = 0;
+const contextMenuChoice = (rt: TutorialRuntime) =>
+	((rt.setting("bar-buttons", "menus") as Record<string, { hidden: string[]; seen: { title: string }[]; allVault: boolean }> | undefined)?.context ?? { hidden: [], seen: [], allVault: false });
 const menuStyleOf = (rt: TutorialRuntime) => JSON.stringify(MENU_STYLE_KEYS.map((k) => rt.setting("menu-style", k)));
 /** Obsidian's settings are open (in this window or a window of their own). */
 const settingsOpen = (rt: TutorialRuntime) => {
@@ -2905,6 +2908,7 @@ const bars: TutorialDefinition = {
 		{ module: "bar-buttons", key: "hidden" },
 		{ module: "bar-buttons", key: "custom" },
 		{ module: "bar-buttons", key: "order" },
+		{ module: "bar-buttons", key: "menus" },
 		...MENU_STYLE_KEYS.map((key) => ({ module: "menu-style", key })),
 	],
 	// A picture, for the popup over images.
@@ -3039,6 +3043,36 @@ const bars: TutorialDefinition = {
 				const order = (rt.setting("bar-buttons", "order") as Record<string, string[]> | undefined) ?? {};
 				if (keys.length > 1) rt.setSetting("bar-buttons", "order", { ...order, bottom: [...keys.slice(1), keys[0]!] });
 				await rt.wait(900);
+				closeDialog(BARS_DIALOG);
+			},
+		},
+		{
+			title: "tut.bars.menus.title",
+			body: "tut.bars.menus.body",
+			task: "tut.bars.menus.task",
+			touch: "tut.bars.menus.touch",
+			target: settingsButton,
+			enter: (rt) => {
+				menuHiddenAtStart = contextMenuChoice(rt).hidden.length;
+			},
+			check: (rt) => contextMenuChoice(rt).hidden.length > menuHiddenAtStart && !dialogOpen(BARS_DIALOG),
+			demo: async (rt) => {
+				// The menu shows its items once, so the list knows them.
+				const node = rt.node("br-1");
+				const r = node?.nodeEl.getBoundingClientRect();
+				if (node && r) node.nodeEl.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX: r.x + 30, clientY: r.y + 20, button: 2 }));
+				await rt.wait(1200);
+				activeDocument.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", code: "Escape", keyCode: 27, bubbles: true, cancelable: true }));
+				await rt.wait(400);
+				rt.command("bar-buttons:customize");
+				await rt.wait(900);
+				activeDocument.querySelector(`${BARS_DIALOG} .opc-bars-menu-list[data-menu="context"]`)?.scrollIntoView({ block: "center" });
+				await rt.wait(600);
+				const choice = contextMenuChoice(rt);
+				const item = choice.seen.find((i) => !choice.hidden.includes(i.title));
+				const menus = rt.setting("bar-buttons", "menus") as Record<string, unknown>;
+				if (item) rt.setSetting("bar-buttons", "menus", { ...menus, context: { ...choice, hidden: [...choice.hidden, item.title] } });
+				await rt.wait(1200);
 				closeDialog(BARS_DIALOG);
 			},
 		},

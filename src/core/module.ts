@@ -8,6 +8,7 @@ import type { CanvasKeySpec, CardMenuButtonSpec, EdgeDecorator, MenuButtonSpec, 
 import type { PublicEvents } from "./events";
 import type { HistoryApi } from "./history";
 import type { PatchFactories, PatchRecord } from "./patcher";
+import type { MenuKinds } from "./menu-kinds";
 
 export type SettingsGroup =
 	| "core"
@@ -74,6 +75,8 @@ export interface ModuleContext<S extends object> {
 	filesFolder(): string;
 	/** Opens Obsidian's settings on this plugin's tab. */
 	openPluginSettings(): void;
+	/** Right-click and ⋮ menus: their kind before they show, and the "whole vault" switches. */
+	readonly menus: MenuKinds;
 	/** Opens the Shortcuts window, optionally searching for `query`. */
 	openShortcuts(query?: string): void;
 	/** True when a key press is one of the keys of a shortcut (core/shortcuts/catalog.ts). */

@@ -1,12 +1,12 @@
-import { Menu, Setting, setIcon, type DropdownComponent } from "obsidian";
+import { Setting, setIcon, type DropdownComponent } from "obsidian";
 import { defineModule, type ModuleContext } from "../../core/module";
 import type { I18nKey } from "../../i18n";
 import { LIMITS, MENU_STYLE_DEFAULTS, menuCss, sanitizeMenuStyle, type MenuColors, type MenuScope, type MenuStyleSettings, type NumberKey } from "./logic";
 
 type Ctx = ModuleContext<MenuStyleSettings>;
 
-/** Class of the menus opened in a canvas (they get the style unless it applies to every menu). */
-const MARK = "opc-menu-styled";
+/** Class of the menus opened in a canvas (core/menu-kinds.ts). */
+const MARK = "opc-menu-in-canvas";
 const STYLE_ID = "opc-menu-style";
 /**
  * The settings' preview menu sits in the page instead of floating. Written into each window with
@@ -16,20 +16,10 @@ const PREVIEW_CSS = `.opc-menu-preview-box { display: flex; flex-direction: colu
 .opc-menu-preview-label { color: var(--text-muted); font-size: var(--font-ui-smaller); }
 .opc-menu-preview-box > .menu.opc-menu-preview { position: relative; inset: auto; display: block; z-index: auto; max-height: none; pointer-events: none; animation: none; }`;
 
-/** Was this menu opened from a canvas: at a point of a canvas view, or under a canvas control? */
-function openedInCanvas(menu: Menu, pos: { x: number; y: number }, doc?: Document): boolean {
-	const d = doc ?? activeDocument;
-	const canvasSel = '.workspace-leaf-content[data-type="canvas"], .canvas-wrapper';
-	const parent = (menu as Menu & { parentEl?: HTMLElement | null }).parentEl;
-	if (parent?.closest?.(canvasSel)) return true;
-	const el = d.elementFromPoint(pos.x, pos.y) as HTMLElement | null;
-	return !!el?.closest?.(canvasSel);
-}
-
 /**
  * Right-click menu style: text size, spacing, width, corners, icons, shadow and colors (for light
- * and dark themes) of context menus. By default only menus opened in a canvas; optionally every
- * menu of the vault. Only what the user changes is written, so themes and other plugins' menu
+ * and dark themes) of menus opened in a canvas, and of right-click and ⋮ menus everywhere when
+ * Customize the bars applies them to the whole vault (core/menu-kinds.ts). Only what the user changes is written, so themes and other plugins' menu
  * items keep working; native (system) menus can't be styled.
  */
 export const menuStyleModule = defineModule<MenuStyleSettings>({
@@ -45,7 +35,10 @@ export const menuStyleModule = defineModule<MenuStyleSettings>({
 		// One <style> per window (the main one, popouts, the settings window).
 		const styles = new Set<HTMLStyleElement>();
 		const css = () => {
-			const scopes: MenuScope[] = [{ body: "", menu: ctx.settings.allVault ? ".menu" : `.menu.${MARK}` }];
+			// Every menu opened in a canvas; right-click and ⋮ menus everywhere when Customize the bars says so.
+			const scopes: MenuScope[] = [{ body: "", menu: `.menu.${MARK}` }];
+			if (ctx.menus.scope.context) scopes.push({ body: "", menu: ".menu.opc-menu-context" });
+			if (ctx.menus.scope.more) scopes.push({ body: "", menu: ".menu.opc-menu-more" });
 			return `${PREVIEW_CSS}
 ${menuCss(ctx.settings, scopes)}`;
 		};
@@ -70,28 +63,13 @@ ${menuCss(ctx.settings, scopes)}`;
 			if (doc !== document) ensure(doc);
 		});
 		ctx.onSettingsChange(refresh);
+		ctx.register(ctx.menus.onScopeChange(refresh));
 		ctx.register(() => {
 			for (const el of styles) el.remove();
 			styles.clear();
 		});
 		ensureStyle = ensure;
 		ctx.register(() => (ensureStyle = null));
-
-		// Mark the menus opened in a canvas (node, edge, selection, background, toolbar menus…).
-		ctx.patch("Menu.showAtPosition (menu style)", Menu.prototype, {
-			showAtPosition: (next) =>
-				function (this: Menu, pos: { x: number; y: number }, doc?: Document) {
-					let inCanvas = false;
-					try {
-						inCanvas = openedInCanvas(this, pos, doc);
-					} catch {
-						// Not ours to break: the menu opens unstyled.
-					}
-					const out = next.call(this, pos, doc);
-					if (inCanvas) (this as Menu & { dom?: HTMLElement }).dom?.addClass(MARK);
-					return out;
-				},
-		});
 	},
 
 	renderSettings(el, ctx: Ctx) {
@@ -126,10 +104,7 @@ function renderMenuStyleSettings(el: HTMLElement, ctx: Ctx): void {
 	const group2 = scroll.createDiv({ cls: "menu-group" });
 	item(group2, "trash-2", "menuStyle.preview.delete");
 
-	new Setting(el)
-		.setName(t("menuStyle.allVault.name"))
-		.setDesc(t("menuStyle.allVault.desc"))
-		.addToggle((tg) => tg.setValue(s().allVault).onChange((v) => update({ allVault: v })));
+	new Setting(el).setName(t("menuStyle.where.name")).setDesc(t("menuStyle.where.desc"));
 
 	/** What the theme shows now (for sliders and color pickers left at the theme's value). */
 	const themeValue = (key: NumberKey): number => {
@@ -229,7 +204,7 @@ function renderMenuStyleSettings(el: HTMLElement, ctx: Ctx): void {
 				.setButtonText(t("menuStyle.reset.button"))
 				.setWarning()
 				.onClick(async () => {
-					await ctx.updateSettings({ ...MENU_STYLE_DEFAULTS, allVault: s().allVault, light: { ...MENU_STYLE_DEFAULTS.light }, dark: { ...MENU_STYLE_DEFAULTS.dark } });
+					await ctx.updateSettings({ ...MENU_STYLE_DEFAULTS, light: { ...MENU_STYLE_DEFAULTS.light }, dark: { ...MENU_STYLE_DEFAULTS.dark } });
 					// Redraw the options with the theme's values.
 					const parent = el;
 					parent.empty();

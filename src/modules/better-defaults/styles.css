@@ -3,9 +3,3 @@
 body.opc-mod-better-defaults.opc-no-font-scaling .canvas-wrapper > * {
 	--zoom-multiplier: 1;
 }
-
-/* The gear of the side controls: a long press opens the canvas options, not the system's callout. */
-body.opc-mod-better-defaults .opc-settings-gear {
-	-webkit-touch-callout: none;
-	user-select: none;
-}

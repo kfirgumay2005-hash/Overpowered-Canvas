@@ -25,6 +25,7 @@ import { fitMenu } from "./ui/menu-fit";
 import { configureDebug } from "./core/debug";
 import { removeNavControls } from "./ui/nav-controls";
 import { ShortcutStore } from "./core/shortcuts/store";
+import { MenuKinds } from "./core/menu-kinds";
 import { ShortcutsModal } from "./ui/shortcuts-modal";
 import { takeOverHelpButton } from "./ui/help-button";
 
@@ -53,6 +54,9 @@ export default class OverpoweredCanvasPlugin extends Plugin {
 		this.register(() => saveGuard.setActive(false));
 		const shortcuts = (this.shortcuts = new ShortcutStore(() => this.settings.shortcuts, () => this.saveSettings(), Platform.isMacOS));
 		const ui = new CanvasUi(hooks, tracker, shortcuts);
+		// Right-click and ⋮ menus, told apart for Customize the bars and the menu style.
+		const menus = new MenuKinds();
+		menus.install(this.app, this, this.patcher);
 		const data: CanvasDataApi = createCanvasDataApi(
 			history,
 			(canvas, found) => this.warnReadOnly(canvas, found),
@@ -76,6 +80,7 @@ export default class OverpoweredCanvasPlugin extends Plugin {
 				events: new PublicEvents(this.app.workspace),
 				settings: this.settings,
 				shortcuts,
+				menus,
 				openShortcuts: (query) => this.openShortcuts(query),
 				t: () => this.translate,
 				saveSettings: () => this.saveSettings(),

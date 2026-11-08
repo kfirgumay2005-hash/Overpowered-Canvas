@@ -202,3 +202,26 @@ styled; touch long-press on a card: styled; another plugin's item (AI Tools ›)
 Reset to default → all theme, preview back to theme values. Unit tests 5. Tutorial "Your own bars":
 new step "Style the right-click menu" (touch line, settings restored at the end), summary updated,
 5 locales; run in English 8/8.
+
+## Follow-up (owner's feedback on items 2 and 6)
+
+- Gear: back to the core menu (Snap to grid, Snap to objects, Read-only, Customize the bars); its
+  last item is now "Overpowered Canvas settings" (added right before the menu shows, own section,
+  so it comes after every other item). The click takeover and its option were removed; tutorial
+  texts back to "the settings button's menu" (with touch lines). Show me passes: Your own bars 9/9,
+  A canvas as a file 4/4.
+- `core/menu-kinds.ts`: tells right-click menus (a `contextmenu` just before, or the canvas
+  node/edge/selection menu events) from the ⋮ menu (a press on the view header's ⋮, or `file-menu`
+  with source "more-options") and whether they belong to a canvas; classes `opc-menu-in-canvas`,
+  `opc-menu-context`, `opc-menu-more`; listeners get the menu before it shows.
+- Customize the bars: sections "Right-click menu" and "More options menu (⋮)": an "Apply to the
+  whole vault" switch each, and a switch per item the menu has shown (items are known by their
+  title; the list fills as menus open). Taken-off items are removed before the menu shows; stray
+  separators are tidied. Restore defaults clears both.
+- Menu style: its own "whole vault" switch is gone (it was never released): it styles every menu
+  opened in a canvas, and right-click / ⋮ menus everywhere when their switch is on.
+- Tested: gear → menu → "Overpowered Canvas settings" opens the plugin's tab; Zoom to selection and
+  Edit taken off → gone from a card's right-click menu; "Split down" taken off the ⋮ menu → gone in
+  a canvas, still in a note until "Apply to the whole vault" is on, then gone there too; "Paste" in a
+  note's right-click menu the same, and the menu style (21 px) followed the switch. New tutorial
+  step "Choose the right-click menu's items" (5 locales).

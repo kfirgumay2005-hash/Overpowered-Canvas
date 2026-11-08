@@ -234,3 +234,10 @@ Verified against: **Obsidian 1.14.4 (desktop, Windows)**.
   pointer highlight, `.is-warning` the red items). `menu.parentEl` is set by `setParentElement`.
 - Popout windows (and the settings popout) copy the main body's classes, theme classes included;
   `<style>` elements added to the main `document.head` are not copied: add them per window.
+- `Menu.sort()` orders items by `menu.sections` (a known list; an unknown section is appended in the
+  order first seen) and puts separators between sections. `menu.items` holds `MenuItem`s
+  (`titleEl`, `iconEl`, `dom`, `section`) and separators; filtering it before the menu shows takes
+  items out cleanly.
+- The ⋮ (more options) menu of a file view fires `workspace "file-menu"` with source
+  "more-options" and the leaf; the button is a `.view-action` in `.view-header` with a
+  `lucide-more-vertical` icon.

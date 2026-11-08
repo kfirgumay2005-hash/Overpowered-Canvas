@@ -53,7 +53,8 @@ done.
 ## Features
 
 **Right-click menu style** — text size, spacing, width, corners, icons, shadow and colors (light and
-dark mode) of context menus, with a live preview; canvas menus only, or every menu of the vault.
+dark mode) of the menus of canvases, with a live preview; right-click and ⋮ menus everywhere when
+Customize the bars applies them to the whole vault.
 
 **Emoji** — a bottom-bar button with every emoji (search in English and the plugin's language,
 categories, recently used, skin tones; bundled, works offline): into the card you're editing at
@@ -219,6 +220,8 @@ stay in Obsidian's own Hotkeys).
 The bottom bar, the side bar and the popup over a selection are yours to arrange: take off any
 button, drag buttons into the order you like, and add a button for any command, from this plugin, the app or other plugins (_Customize
 the bars_). Images (JPG, PNG…) get a popup of their own, arranged separately from the one over cards.
+The right-click menu and the ⋮ menu are there too: switch off the items you don't use, in canvases
+only or (one switch per menu) everywhere in Obsidian.
 
 Every toolbar action is also in the command palette ("Selection: …"), so you can assign your
 own hotkeys to any of them.
