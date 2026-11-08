@@ -1,0 +1,40 @@
+/*
+ * Right-click menu style (index.ts). The module sets a body class per value the user changed and
+ * the value as a CSS variable of the same name; nothing is set for the theme's own look. Menus
+ * opened in a canvas always get it; right-click and ⋮ menus everywhere when the body has
+ * opc-ms-context / opc-ms-more (Customize the bars).
+ */
+
+/* The settings' preview menu sits in the page instead of floating. */
+.opc-menu-preview-box { display: flex; flex-direction: column; align-items: flex-start; gap: var(--size-4-2); padding: var(--size-4-3) 0; }
+.opc-menu-preview-label { color: var(--text-muted); font-size: var(--font-ui-smaller); }
+.opc-menu-preview-box > .menu.opc-menu-preview { position: relative; inset: auto; display: block; z-index: auto; max-height: none; pointer-events: none; animation: none; }
+
+body.opc-ms-font :is(.menu.opc-menu-in-canvas, .opc-ms-context .menu.opc-menu-context, .opc-ms-more .menu.opc-menu-more) { font-size: var(--opc-ms-font); }
+body.opc-ms-font :is(.menu.opc-menu-in-canvas, .opc-ms-context .menu.opc-menu-context, .opc-ms-more .menu.opc-menu-more) .menu-item { font-size: var(--opc-ms-font); }
+body.opc-ms-radius :is(.menu.opc-menu-in-canvas, .opc-ms-context .menu.opc-menu-context, .opc-ms-more .menu.opc-menu-more) { border-radius: var(--opc-ms-radius); }
+body.opc-ms-shadow :is(.menu.opc-menu-in-canvas, .opc-ms-context .menu.opc-menu-context, .opc-ms-more .menu.opc-menu-more) { box-shadow: var(--opc-ms-shadow); }
+/* Mobile menus (sheets from the bottom) keep their own width. */
+body.opc-ms-width:not(.is-phone) :is(.menu.opc-menu-in-canvas, .opc-ms-context .menu.opc-menu-context, .opc-ms-more .menu.opc-menu-more) { min-width: var(--opc-ms-width); }
+body.opc-ms-pad :is(.menu.opc-menu-in-canvas, .opc-ms-context .menu.opc-menu-context, .opc-ms-more .menu.opc-menu-more) .menu-item { padding-top: var(--opc-ms-pad); padding-bottom: var(--opc-ms-pad); }
+body.opc-ms-indent :is(.menu.opc-menu-in-canvas, .opc-ms-context .menu.opc-menu-context, .opc-ms-more .menu.opc-menu-more) .menu-item { padding-inline: var(--opc-ms-indent); }
+body.opc-ms-gap :is(.menu.opc-menu-in-canvas, .opc-ms-context .menu.opc-menu-context, .opc-ms-more .menu.opc-menu-more) .menu-item { gap: var(--opc-ms-gap); }
+body.opc-ms-gap :is(.menu.opc-menu-in-canvas, .opc-ms-context .menu.opc-menu-context, .opc-ms-more .menu.opc-menu-more) .menu-item-icon { margin-inline-end: 0; }
+body.opc-ms-icon :is(.menu.opc-menu-in-canvas, .opc-ms-context .menu.opc-menu-context, .opc-ms-more .menu.opc-menu-more) .menu-item-icon { --icon-size: var(--opc-ms-icon); width: var(--opc-ms-icon); }
+body.opc-ms-icon :is(.menu.opc-menu-in-canvas, .opc-ms-context .menu.opc-menu-context, .opc-ms-more .menu.opc-menu-more) .menu-item-icon .svg-icon { width: var(--opc-ms-icon); height: var(--opc-ms-icon); }
+/* Colors in light mode. Warning items (Delete, Remove…) keep their color. */
+body.opc-ms-light-bg.theme-light :is(.menu.opc-menu-in-canvas, .opc-ms-context .menu.opc-menu-context, .opc-ms-more .menu.opc-menu-more) { background-color: var(--opc-ms-light-bg); }
+body.opc-ms-light-border.theme-light :is(.menu.opc-menu-in-canvas, .opc-ms-context .menu.opc-menu-context, .opc-ms-more .menu.opc-menu-more) { border-color: var(--opc-ms-light-border); }
+body.opc-ms-light-text.theme-light :is(.menu.opc-menu-in-canvas, .opc-ms-context .menu.opc-menu-context, .opc-ms-more .menu.opc-menu-more) { color: var(--opc-ms-light-text); }
+body.opc-ms-light-text.theme-light :is(.menu.opc-menu-in-canvas, .opc-ms-context .menu.opc-menu-context, .opc-ms-more .menu.opc-menu-more) .menu-item:not(.is-disabled):not(.is-label):not(.is-warning) { color: var(--opc-ms-light-text); }
+body.opc-ms-light-text.theme-light :is(.menu.opc-menu-in-canvas, .opc-ms-context .menu.opc-menu-context, .opc-ms-more .menu.opc-menu-more) .menu-item:not(.is-warning) .menu-item-icon { color: var(--opc-ms-light-text); }
+body.opc-ms-light-border.theme-light :is(.menu.opc-menu-in-canvas, .opc-ms-context .menu.opc-menu-context, .opc-ms-more .menu.opc-menu-more) .menu-separator { border-color: var(--opc-ms-light-border); background-color: var(--opc-ms-light-border); }
+body.opc-ms-light-hover.theme-light :is(.menu.opc-menu-in-canvas, .opc-ms-context .menu.opc-menu-context, .opc-ms-more .menu.opc-menu-more) .menu-item:not(.is-disabled):not(.is-label):hover, body.opc-ms-light-hover.theme-light :is(.menu.opc-menu-in-canvas, .opc-ms-context .menu.opc-menu-context, .opc-ms-more .menu.opc-menu-more) .menu-item.selected:not(.is-disabled):not(.is-label) { background-color: var(--opc-ms-light-hover); }
+/* Colors in dark mode. Warning items (Delete, Remove…) keep their color. */
+body.opc-ms-dark-bg.theme-dark :is(.menu.opc-menu-in-canvas, .opc-ms-context .menu.opc-menu-context, .opc-ms-more .menu.opc-menu-more) { background-color: var(--opc-ms-dark-bg); }
+body.opc-ms-dark-border.theme-dark :is(.menu.opc-menu-in-canvas, .opc-ms-context .menu.opc-menu-context, .opc-ms-more .menu.opc-menu-more) { border-color: var(--opc-ms-dark-border); }
+body.opc-ms-dark-text.theme-dark :is(.menu.opc-menu-in-canvas, .opc-ms-context .menu.opc-menu-context, .opc-ms-more .menu.opc-menu-more) { color: var(--opc-ms-dark-text); }
+body.opc-ms-dark-text.theme-dark :is(.menu.opc-menu-in-canvas, .opc-ms-context .menu.opc-menu-context, .opc-ms-more .menu.opc-menu-more) .menu-item:not(.is-disabled):not(.is-label):not(.is-warning) { color: var(--opc-ms-dark-text); }
+body.opc-ms-dark-text.theme-dark :is(.menu.opc-menu-in-canvas, .opc-ms-context .menu.opc-menu-context, .opc-ms-more .menu.opc-menu-more) .menu-item:not(.is-warning) .menu-item-icon { color: var(--opc-ms-dark-text); }
+body.opc-ms-dark-border.theme-dark :is(.menu.opc-menu-in-canvas, .opc-ms-context .menu.opc-menu-context, .opc-ms-more .menu.opc-menu-more) .menu-separator { border-color: var(--opc-ms-dark-border); background-color: var(--opc-ms-dark-border); }
+body.opc-ms-dark-hover.theme-dark :is(.menu.opc-menu-in-canvas, .opc-ms-context .menu.opc-menu-context, .opc-ms-more .menu.opc-menu-more) .menu-item:not(.is-disabled):not(.is-label):hover, body.opc-ms-dark-hover.theme-dark :is(.menu.opc-menu-in-canvas, .opc-ms-context .menu.opc-menu-context, .opc-ms-more .menu.opc-menu-more) .menu-item.selected:not(.is-disabled):not(.is-label) { background-color: var(--opc-ms-dark-hover); }

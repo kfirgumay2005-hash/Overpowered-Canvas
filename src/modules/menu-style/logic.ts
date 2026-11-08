@@ -93,44 +93,43 @@ const SHADOW_CSS: Record<Exclude<MenuStyleSettings["shadow"], "theme">, string> 
 	strong: "0 8px 28px rgba(0, 0, 0, 0.35)",
 };
 
-/** Which menus get the style: menus under a body with `body` classes, matching `menu`. */
-export interface MenuScope {
-	body: string;
-	menu: string;
-}
+/** Prefix of the body classes and CSS variables that switch the style on (styles.css). */
+const P = "opc-ms";
 
-/** The CSS for styled menus. Mobile menus (sheets from the bottom) keep their own width. */
-export function menuCss(s: MenuStyleSettings, scopes: readonly MenuScope[]): string {
-	const rules: string[] = [];
-	const rule = (selector: string, decls: (string | false)[]) => {
-		const list = decls.filter((d): d is string => !!d);
-		if (list.length) rules.push(`${selector} { ${list.join("; ")}; }`);
+const NUMBER_FLAGS: Record<NumberKey, string> = {
+	fontSize: "font",
+	itemPadding: "pad",
+	itemIndent: "indent",
+	width: "width",
+	radius: "radius",
+	iconSize: "icon",
+	iconGap: "gap",
+};
+const COLOR_FLAGS: Record<keyof MenuColors, string> = { background: "bg", text: "text", hover: "hover", border: "border" };
+
+/** Every body class the style may set (to remove them all when the module stops or a value resets). */
+export const ALL_MENU_CLASSES: readonly string[] = [
+	...Object.values(NUMBER_FLAGS).map((f) => `${P}-${f}`),
+	`${P}-shadow`,
+	...(["light", "dark"] as const).flatMap((mode) => Object.values(COLOR_FLAGS).map((f) => `${P}-${mode}-${f}`)),
+];
+/** Every CSS variable the style may set (same names as the classes, as `--` variables). */
+export const ALL_MENU_VARS: readonly string[] = ALL_MENU_CLASSES.map((c) => `--${c}`);
+
+/**
+ * What a body gets for these settings: a class per changed value (styles.css applies it to the
+ * menus) and the value itself as a CSS variable. Nothing for the theme's own look.
+ */
+export function menuStyleProps(s: MenuStyleSettings): { classes: string[]; vars: Record<string, string> } {
+	const classes: string[] = [];
+	const vars: Record<string, string> = {};
+	const put = (flag: string, value: string) => {
+		classes.push(`${P}-${flag}`);
+		vars[`--${P}-${flag}`] = value;
 	};
-	const px = (n: number) => `${n}px`;
-	/** `body<classes><extra> <menu><suffix>` for every scope. */
-	const sel = (suffix = "", extra = "") => scopes.map((sc) => `body${sc.body}${extra} ${sc.menu}${suffix}`).join(", ");
-
-	rule(sel(), [s.fontSize >= 0 && `font-size: ${px(s.fontSize)}`, s.radius >= 0 && `border-radius: ${px(s.radius)}`, s.shadow !== "theme" && `box-shadow: ${SHADOW_CSS[s.shadow]}`]);
-	rule(sel("", ":not(.is-phone)"), [s.width >= 0 && `min-width: ${px(s.width)}`]);
-	rule(sel(" .menu-item"), [
-		s.fontSize >= 0 && `font-size: ${px(s.fontSize)}`,
-		s.itemPadding >= 0 && `padding-top: ${px(s.itemPadding)}`,
-		s.itemPadding >= 0 && `padding-bottom: ${px(s.itemPadding)}`,
-		s.itemIndent >= 0 && `padding-inline: ${px(s.itemIndent)}`,
-		s.iconGap >= 0 && `gap: ${px(s.iconGap)}`,
-	]);
-	rule(sel(" .menu-item-icon"), [s.iconSize >= 0 && `--icon-size: ${px(s.iconSize)}`, s.iconSize >= 0 && `width: ${px(s.iconSize)}`, s.iconGap >= 0 && `margin-inline-end: 0`]);
-	rule(sel(" .menu-item-icon .svg-icon"), [s.iconSize >= 0 && `width: ${px(s.iconSize)}`, s.iconSize >= 0 && `height: ${px(s.iconSize)}`]);
-	for (const [mode, c] of [
-		[".theme-light", s.light],
-		[".theme-dark", s.dark],
-	] as const) {
-		rule(sel("", mode), [c.background && `background-color: ${c.background}`, c.border && `border-color: ${c.border}`, c.text && `color: ${c.text}`]);
-		// Warning items (Delete, Remove…) keep their color.
-		rule(sel(" .menu-item:not(.is-disabled):not(.is-label):not(.is-warning)", mode), [c.text && `color: ${c.text}`]);
-		rule(sel(" .menu-item:not(.is-warning) .menu-item-icon", mode), [c.text && `color: ${c.text}`]);
-		rule(sel(" .menu-separator", mode), [c.border && `border-color: ${c.border}`, c.border && `background-color: ${c.border}`]);
-		rule(`${sel(" .menu-item:not(.is-disabled):not(.is-label):hover", mode)}, ${sel(" .menu-item.selected:not(.is-disabled):not(.is-label)", mode)}`, [c.hover && `background-color: ${c.hover}`]);
-	}
-	return rules.join("\n");
+	for (const key of Object.keys(NUMBER_FLAGS) as NumberKey[]) if (s[key] >= 0) put(NUMBER_FLAGS[key], `${s[key]}px`);
+	if (s.shadow !== "theme") put("shadow", SHADOW_CSS[s.shadow]);
+	for (const mode of ["light", "dark"] as const)
+		for (const key of Object.keys(COLOR_FLAGS) as (keyof MenuColors)[]) if (s[mode][key]) put(`${mode}-${COLOR_FLAGS[key]}`, s[mode][key]);
+	return { classes, vars };
 }

@@ -170,15 +170,15 @@ export const betterDefaultsModule = defineModule<BetterDefaultsSettings>({
 			const proto = Object.getPrototypeOf(canvas) as CanvasLike & { showQuickSettingsMenu?(menu: Menu): void };
 			if (patchedGear.has(proto) || typeof proto.showQuickSettingsMenu !== "function") return;
 			patchedGear.add(proto);
-			ctx.patch("canvas.showQuickSettingsMenu (plugin settings)", proto as CanvasLike & { showQuickSettingsMenu(menu: Menu): void }, {
+			ctx.patch("canvas.showQuickSettingsMenu (plugin settings)", proto, {
 				showQuickSettingsMenu: (next) =>
 					function (this: CanvasLike, menu: Menu) {
 						next.call(this, menu);
 						// A little more room between each icon and its name (styles.css).
 						(menu as Menu & { dom?: HTMLElement }).dom?.addClass("opc-gear-menu");
-						const show = menu.showAtPosition;
+						const show = menu.showAtPosition.bind(menu);
 						let added = false;
-						menu.showAtPosition = function (this: Menu, ...args: Parameters<Menu["showAtPosition"]>) {
+						menu.showAtPosition = (...args: Parameters<Menu["showAtPosition"]>) => {
 							if (!added) {
 								added = true;
 								menu.addItem((item) =>
@@ -189,7 +189,7 @@ export const betterDefaultsModule = defineModule<BetterDefaultsSettings>({
 										.onClick(() => ctx.openPluginSettings()),
 								);
 							}
-							return show.apply(this, args);
+							return show(...args);
 						};
 					},
 			});

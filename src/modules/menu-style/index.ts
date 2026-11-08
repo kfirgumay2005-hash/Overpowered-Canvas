@@ -1,20 +1,12 @@
 import { Setting, setIcon, type DropdownComponent } from "obsidian";
 import { defineModule, type ModuleContext } from "../../core/module";
 import type { I18nKey } from "../../i18n";
-import { LIMITS, MENU_STYLE_DEFAULTS, menuCss, sanitizeMenuStyle, type MenuColors, type MenuScope, type MenuStyleSettings, type NumberKey } from "./logic";
+import { ALL_MENU_CLASSES, ALL_MENU_VARS, LIMITS, MENU_STYLE_DEFAULTS, menuStyleProps, sanitizeMenuStyle, type MenuColors, type MenuStyleSettings, type NumberKey } from "./logic";
 
 type Ctx = ModuleContext<MenuStyleSettings>;
 
 /** Class of the menus opened in a canvas (core/menu-kinds.ts). */
 const MARK = "opc-menu-in-canvas";
-const STYLE_ID = "opc-menu-style";
-/**
- * The settings' preview menu sits in the page instead of floating. Written into each window with
- * the style (the settings may be a window of their own, without the module's body class).
- */
-const PREVIEW_CSS = `.opc-menu-preview-box { display: flex; flex-direction: column; align-items: flex-start; gap: var(--size-4-2); padding: var(--size-4-3) 0; }
-.opc-menu-preview-label { color: var(--text-muted); font-size: var(--font-ui-smaller); }
-.opc-menu-preview-box > .menu.opc-menu-preview { position: relative; inset: auto; display: block; z-index: auto; max-height: none; pointer-events: none; animation: none; }`;
 
 /**
  * Right-click menu style: text size, spacing, width, corners, icons, shadow and colors (for light
@@ -32,28 +24,27 @@ export const menuStyleModule = defineModule<MenuStyleSettings>({
 	sanitizeSettings: (raw) => sanitizeMenuStyle(raw),
 
 	enable(ctx: Ctx) {
-		// One <style> per window (the main one, popouts, the settings window).
-		const styles = new Set<HTMLStyleElement>();
-		const css = () => {
-			// Every menu opened in a canvas; right-click and ⋮ menus everywhere when Customize the bars says so.
-			const scopes: MenuScope[] = [{ body: "", menu: `.menu.${MARK}` }];
-			if (ctx.menus.scope.context) scopes.push({ body: "", menu: ".menu.opc-menu-context" });
-			if (ctx.menus.scope.more) scopes.push({ body: "", menu: ".menu.opc-menu-more" });
-			return `${PREVIEW_CSS}
-${menuCss(ctx.settings, scopes)}`;
+		// The rules are in styles.css; each window's body (the main one, popouts, the settings
+		// window) gets a class per changed value and the value as a CSS variable.
+		const bodies = new Set<HTMLElement>();
+		const apply = (body: HTMLElement) => {
+			const { classes, vars } = menuStyleProps(ctx.settings);
+			body.removeClasses([...ALL_MENU_CLASSES]);
+			for (const v of ALL_MENU_VARS) body.style.removeProperty(v);
+			body.addClasses(classes);
+			body.setCssProps(vars);
+			// Right-click and ⋮ menus everywhere when Customize the bars says so.
+			body.toggleClass("opc-ms-context", ctx.menus.scope.context);
+			body.toggleClass("opc-ms-more", ctx.menus.scope.more);
 		};
 		const ensure = (doc: Document) => {
-			let el = doc.getElementById(STYLE_ID) as HTMLStyleElement | null;
-			if (!el) {
-				el = doc.head.createEl("style", { attr: { id: STYLE_ID } });
-				styles.add(el);
-			}
-			el.textContent = css();
+			bodies.add(doc.body);
+			apply(doc.body);
 		};
 		const refresh = () => {
-			for (const el of [...styles]) {
-				if (!el.isConnected) styles.delete(el);
-				else el.textContent = css();
+			for (const body of [...bodies]) {
+				if (!body.isConnected) bodies.delete(body);
+				else apply(body);
 			}
 		};
 		ensure(document);
@@ -65,8 +56,11 @@ ${menuCss(ctx.settings, scopes)}`;
 		ctx.onSettingsChange(refresh);
 		ctx.register(ctx.menus.onScopeChange(refresh));
 		ctx.register(() => {
-			for (const el of styles) el.remove();
-			styles.clear();
+			for (const body of bodies) {
+				body.removeClasses([...ALL_MENU_CLASSES, "opc-ms-context", "opc-ms-more"]);
+				for (const v of ALL_MENU_VARS) body.style.removeProperty(v);
+			}
+			bodies.clear();
 		});
 		ensureStyle = ensure;
 		ctx.register(() => (ensureStyle = null));
@@ -78,7 +72,7 @@ ${menuCss(ctx.settings, scopes)}`;
 	},
 });
 
-/** Set while the module runs: adds the style to a window (the settings may be a window of their own). */
+/** Set while the module runs: applies the style to a window (the settings may be a window of their own). */
 let ensureStyle: ((doc: Document) => void) | null = null;
 
 function renderMenuStyleSettings(el: HTMLElement, ctx: Ctx): void {
@@ -138,10 +132,9 @@ function renderMenuStyleSettings(el: HTMLElement, ctx: Ctx): void {
 		setting.addSlider((sl) => {
 			slider = sl;
 			sl.setLimits(min, max, 1)
-				.setDynamicTooltip()
 				.setValue(s()[key] < 0 ? Math.min(max, Math.max(min, themeValue(key))) : s()[key])
 				.onChange(async (v) => {
-					await ctx.updateSettings({ [key]: v } as Partial<MenuStyleSettings>);
+					await ctx.updateSettings({ [key]: v });
 					describe();
 				});
 		});
@@ -150,7 +143,7 @@ function renderMenuStyleSettings(el: HTMLElement, ctx: Ctx): void {
 				.setIcon("rotate-ccw")
 				.setTooltip(t("menuStyle.resetOne"))
 				.onClick(async () => {
-					await ctx.updateSettings({ [key]: -1 } as Partial<MenuStyleSettings>);
+					await ctx.updateSettings({ [key]: -1 });
 					slider?.setValue(Math.min(max, Math.max(min, themeValue(key))));
 					describe();
 				}),
@@ -181,14 +174,14 @@ function renderMenuStyleSettings(el: HTMLElement, ctx: Ctx): void {
 			setting.addColorPicker((c) => {
 				const fallback = active ? cssColorOf(preview, key) : "";
 				c.setValue(value() || fallback || "#808080").onChange((v) => {
-					void ctx.updateSettings({ [mode]: { ...s()[mode], [key]: v } } as Partial<MenuStyleSettings>).then(describe);
+					void ctx.updateSettings({ [mode]: { ...s()[mode], [key]: v } }).then(describe);
 				});
 			});
 			setting.addExtraButton((b) =>
 				b
 					.setIcon("rotate-ccw")
 					.setTooltip(t("menuStyle.resetOne"))
-					.onClick(() => void ctx.updateSettings({ [mode]: { ...s()[mode], [key]: "" } } as Partial<MenuStyleSettings>).then(describe)),
+					.onClick(() => void ctx.updateSettings({ [mode]: { ...s()[mode], [key]: "" } }).then(describe)),
 			);
 			describe();
 		}
@@ -202,7 +195,7 @@ function renderMenuStyleSettings(el: HTMLElement, ctx: Ctx): void {
 		.addButton((b) =>
 			b
 				.setButtonText(t("menuStyle.reset.button"))
-				.setWarning()
+				.setDestructive()
 				.onClick(async () => {
 					await ctx.updateSettings({ ...MENU_STYLE_DEFAULTS, light: { ...MENU_STYLE_DEFAULTS.light }, dark: { ...MENU_STYLE_DEFAULTS.dark } });
 					// Redraw the options with the theme's values.

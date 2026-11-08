@@ -11,6 +11,7 @@
 @import "./modules/auto-resize/styles.css";
 @import "./modules/toolbar-size/styles.css";
 @import "./modules/better-defaults/styles.css";
+@import "./modules/menu-style/styles.css";
 @import "./modules/custom-colors/styles.css";
 @import "./modules/emoji-picker/styles.css";
 @import "./ui/stable-text.css";
