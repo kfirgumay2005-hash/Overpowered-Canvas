@@ -131,7 +131,8 @@ body.opc-mod-drawing .opc-ink-selection.opc-ink-handle {
 /* Toolbar */
 body.opc-mod-drawing .opc-ink-toolbar {
 	position: absolute;
-	top: var(--size-4-3);
+	/* Below the pages bar or the search bar when they need the room (ui/top-lane.ts). */
+	top: calc(var(--size-4-3) + var(--opc-lane-offset, 0px));
 	left: 50%;
 	transform: translateX(-50%);
 	z-index: 3;
@@ -140,7 +141,8 @@ body.opc-mod-drawing .opc-ink-toolbar {
 	align-items: center;
 	justify-content: center;
 	gap: var(--size-2-1);
-	max-width: calc(100% - 2 * var(--size-4-4));
+	width: max-content;
+	max-width: calc(100% - 2 * var(--opc-lane-side, var(--size-4-4)));
 	padding: var(--size-2-2) var(--size-4-2);
 	background: var(--background-primary);
 	border: 1px solid var(--background-modifier-border);

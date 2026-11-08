@@ -1,6 +1,7 @@
 /** The drawing-mode toolbar: tools, colors (with a recent row), size and more options. */
 import { Menu, setIcon, setTooltip } from "obsidian";
 import type { I18nKey, Translate } from "../../i18n";
+import { joinTopLane, LANE_RANK } from "../../ui/top-lane";
 
 export type InkTool = "select" | "pen" | "pencil" | "marker" | "highlighter" | "eraser" | "line" | "arrow";
 export const PEN_TOOLS = ["pen", "pencil", "marker", "highlighter"] as const;
@@ -119,6 +120,7 @@ export class InkToolbar {
 		private readonly host: ToolbarHost,
 	) {
 		this.el = parent.createDiv({ cls: "opc-ink-toolbar", attr: { role: "toolbar", "aria-label": host.t("drawing.toolbar") } });
+		joinTopLane(parent, this.el, LANE_RANK.palette);
 		this.el.addEventListener("pointerdown", (e) => e.stopPropagation());
 		this.render();
 	}

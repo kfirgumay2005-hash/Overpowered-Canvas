@@ -28,13 +28,19 @@ body.opc-mod-text-highlight .opc-hl-mark.is-underline {
 }
 body.opc-mod-text-highlight .opc-hl-bar {
 	position: absolute;
-	top: var(--size-4-3);
+	/* Below the pages bar or the search bar when they need the room (ui/top-lane.ts). */
+	top: calc(var(--size-4-3) + var(--opc-lane-offset, 0px));
 	left: 50%;
 	transform: translateX(-50%);
 	z-index: 16;
 	display: flex;
+	flex-wrap: wrap;
+	justify-content: center;
 	gap: var(--size-4-1);
 	align-items: center;
+	/* Clear of the side controls; wraps onto a second row on a narrow screen. */
+	width: max-content;
+	max-width: calc(100% - 2 * var(--opc-lane-side, 12px));
 	padding: var(--size-4-1) var(--size-4-2);
 	background: var(--background-primary);
 	border: 1px solid var(--background-modifier-border);

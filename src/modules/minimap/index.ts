@@ -7,6 +7,7 @@ import { mergeWithDefaults } from "../../settings/settings";
 import { pagesHost } from "../pages/api";
 import { capturePointer, nodeType, isHiddenNode, renderedZ } from "../shared";
 import { cssColor, fitTransform, toMap, toWorld, unionBox, type Box, type MapTransform } from "./logic";
+import { joinTopLane, LANE_RANK } from "../../ui/top-lane";
 
 const CORNERS = ["top-start", "top-end", "bottom-start", "bottom-end"] as const;
 type Corner = (typeof CORNERS)[number];
@@ -48,6 +49,7 @@ class Minimap {
 		private readonly canvas: CanvasLike,
 	) {
 		this.el = canvas.wrapperEl.createDiv({ cls: "opc-minimap", attr: { "aria-label": ctx.t("minimap.name"), role: "img" } });
+		joinTopLane(canvas.wrapperEl, this.el, LANE_RANK.minimap);
 		this.cv = this.el.createEl("canvas");
 		this.el.addEventListener("pointerdown", this.onDown);
 		this.el.addEventListener("wheel", (e) => e.stopPropagation(), { passive: true });

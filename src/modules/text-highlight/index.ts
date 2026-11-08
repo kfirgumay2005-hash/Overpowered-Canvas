@@ -6,6 +6,7 @@ import { capturePointer, claimTool, isTextBox, mutate, nodeType, releaseTool } f
 import { marksHost, type MarkMode, type MarkSurface, type MarkTarget } from "./api";
 import { locate, pickedRange, recolor, rehighlight, uncolor, unhighlight, withoutColors, withoutHighlights } from "./source";
 import { logWarn } from "../../core/log";
+import { joinTopLane, LANE_RANK } from "../../ui/top-lane";
 
 interface HighlightSettings {
 	/** Highlight color: "" for the theme's own highlight, else a CSS color. */
@@ -148,6 +149,7 @@ class HighlightSession {
 		this.overlay = host.createDiv({ cls: "opc-hl-overlay" });
 		this.marks = host.createDiv({ cls: "opc-hl-marks" });
 		this.bar = host.createDiv({ cls: "opc-hl-bar" });
+		joinTopLane(host, this.bar, LANE_RANK.palette);
 		this.bar.addEventListener("pointerdown", (e) => e.stopPropagation());
 		this.renderBar();
 		this.overlay.addEventListener("pointerdown", this.onDown);

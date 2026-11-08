@@ -10,6 +10,7 @@ import { renderPagesBar } from "./bar";
 import { boundsOf, branchOf, cardLink, freeRegion, pageChildren, pointLinksAt, titleOf, withLink, withoutLink, withoutPage, type PlanNode } from "./logic";
 import { logError } from "../../core/log";
 import { debugMode, debugNotice } from "../../core/debug";
+import { joinTopLane, LANE_RANK } from "../../ui/top-lane";
 
 export const PAGES_VIEW = "opc-pages";
 
@@ -186,6 +187,7 @@ export const pagesModule = defineModule<PagesSettings>({
 				// A plugin reload leaves the old bar behind.
 				canvas.wrapperEl.querySelectorAll(".opc-pages-bar").forEach((el) => el.remove());
 				bar = canvas.wrapperEl.createDiv({ cls: "opc-pages-bar" });
+				joinTopLane(canvas.wrapperEl, bar, LANE_RANK.pages);
 				// The bar is not part of the board: no panning or selecting through it.
 				bar.addEventListener("pointerdown", (evt) => evt.stopPropagation());
 				bars.set(canvas, bar);
