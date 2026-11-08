@@ -1,9 +1,26 @@
 /* Cropped image cards: the image is scaled and shifted inside a clipping content box. */
+/* The content box fills the card by itself: the card's container is a flex row whose content box
+   is otherwise as wide as its content, and the image below is out of flow, so it would be 0 wide. */
 body.opc-mod-image-crop .canvas-node[data-opc-crop] > .canvas-node-container > .canvas-node-content {
 	position: relative;
 	overflow: hidden;
+	display: block;
+	flex: 1 1 auto;
+	align-self: stretch;
+	width: 100%;
+	height: 100%;
+	min-width: 0;
+	min-height: 0;
 }
-body.opc-mod-image-crop .canvas-node[data-opc-crop] > .canvas-node-container > .canvas-node-content > img {
+/* The column view: a cropped picture at the column's width. */
+body.opc-mod-image-crop .opc-crop-view {
+	position: relative;
+	overflow: hidden;
+	width: 100%;
+	aspect-ratio: var(--opc-crop-ratio);
+	border-radius: var(--radius-s);
+}
+body.opc-mod-image-crop :is(.canvas-node[data-opc-crop] > .canvas-node-container > .canvas-node-content, .opc-crop-view[data-opc-crop]) > img {
 	position: absolute;
 	left: calc(-100% * var(--opc-crop-x) / var(--opc-crop-w));
 	top: calc(-100% * var(--opc-crop-y) / var(--opc-crop-h));

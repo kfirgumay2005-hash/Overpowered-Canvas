@@ -9,7 +9,7 @@ When resuming: read this file and `git log`, then continue with the first item t
 | 1 | Pages bar overlaps the color palettes | IMPROVEMENT (bug) | done |
 | 2 | Gear in the side controls opens the plugin's settings | IMPROVEMENT | done |
 | 3 | Emoji picker in the bottom toolbar | NEW | todo |
-| 4 | Cropped images become invisible | IMPROVEMENT (bug) | todo |
+| 4 | Cropped images become invisible | IMPROVEMENT (bug) | done |
 | 5 | Shortcuts window (replaces the shortcut settings) | NEW (replaces settings) | todo |
 | 6 | Context menu styling | NEW | todo |
 
@@ -54,3 +54,28 @@ click opens the canvas options, label back to "Canvas settings"; on again → ta
 Tutorials updated (5 locales): "Your own bars" s1 (+ touch line), popup/image touch lines;
 "A canvas as a file" s3/s4 (read-only via right-click / long press, + touch lines).
 Run in English: Your own bars 7/7, A canvas as a file 4/4.
+
+## 4. Cropped images invisible (done)
+
+Root cause. A cropped card shows its picture by taking the `<img>` out of flow
+(`position: absolute`, sized and shifted in % of the content box) inside a clipping
+`.canvas-node-content`. In current Obsidian the card's `.canvas-node-container` is a flex row and
+the content box is a `flex: 0 1 auto` item, i.e. exactly as wide as its content. With the only
+child out of flow the content box shrank to **0 px wide** (height still stretched to 448 px), so
+the image was `100% / w` of 0 = 0 px wide: only the card's border was left. Reproduced in the test
+vault (content 0×448, img 0×448). Data, file and crop math were fine; nothing was "broken" in the
+stored crop, which is why reloading didn't help.
+
+Fix (image-crop CSS): the content box of a cropped card fills the card by itself
+(`flex: 1 1 auto; width: 100%; height: 100%; min-width/min-height: 0`). The column view ignored
+crops in its default mode (it rendered `![[image]]` in full): a cropped image card now shows only
+its crop there too (`.opc-crop-view`, same CSS, at the column's width). Actual-size column mode
+copies the card (and its crop) and works with the CSS fix.
+
+Tested (test vault; PNG 1200×400, JPG 300×900, WebP 64×64, SVG 400×300): crop through the crop
+dialog with 4:3, 1:1, 16:9 presets and a touch drag of a corner handle → each card shows its crop
+right away; closed and reopened the canvas → same; re-crop 1:1 → 3:4 (editor opens on the current
+crop) → updated; "Reset crop" → full picture, attribute gone; column view (default and actual
+size) → crop shown; PNG export → all crops right. Canvas ⇄ Markdown keeps the crop data (the note
+itself shows the whole picture: Markdown has no crop). Tutorials run in English: Images 4/4,
+Column view 11/11 (no text change needed: the feature works as the tutorial already describes).
