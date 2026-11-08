@@ -1300,4 +1300,8 @@ export const ja: Record<I18nKey, string> = {
 	"textHighlight.neutral.tip": "ニュートラル：Obsidian 標準のハイライト（==text==）で、テーマのハイライト色で表示されます。素の Markdown なので、どのアプリでも同じです。",
 	"barButtons.image": "画像の上のポップアップ",
 	"barButtons.imageHint": "画像（JPG、PNG などの画像ファイル）だけを選択したとき、選択の上のポップアップの代わりに表示されます。ボタン、順番、コマンドはそれぞれ独自です。表示されたボタンがここに一覧されます（先に画像を選択してください）。",
+	"betterDefaults.gear.name": "設定ボタンでこのプラグインの設定を開く",
+	"betterDefaults.gear.desc": "キャンバスのサイドバー上部の設定ボタン（歯車）で、Obsidian の設定の Overpowered Canvas を開きます。キャンバスのオプション（グリッドにスナップ、オブジェクトにスナップ、読み取り専用、バーのカスタマイズ）は右クリックまたは長押しで開きます。オフにすると、普通のクリックで再びキャンバスのオプションが開きます。",
+	"betterDefaults.gear.simple": "歯車を一度タップするだけで、この設定に直接移動します。",
+	"betterDefaults.gear.tooltip": "Overpowered Canvas の設定（右クリックまたは長押し：キャンバスのオプション）",
 };

@@ -2843,7 +2843,7 @@ function visitedDialog(selector: string): { reset(): void; check(): boolean } {
 	};
 }
 
-/** The side bar's settings button, which opens the canvas options. */
+/** The side bar's settings button: a click opens the plugin's settings, a right-click or long press the canvas options. */
 const settingsButton = (rt: TutorialRuntime) => rt.canvas.canvasControlsEl.querySelector("svg.lucide-settings")?.closest<HTMLElement>(".canvas-control-item");
 
 // ---------- 21. Your own bars ----------
@@ -2884,6 +2884,7 @@ const bars: TutorialDefinition = {
 			title: "tut.bars.s1.title",
 			body: "tut.bars.s1.body",
 			task: "tut.bars.s1.task",
+			touch: "tut.bars.s1.touch",
 			target: settingsButton,
 			enter: () => barsVisit.reset(),
 			check: () => barsVisit.check(),
@@ -3164,6 +3165,7 @@ const file: TutorialDefinition = {
 			title: "tut.file.s3.title",
 			body: "tut.file.s3.body",
 			task: "tut.file.s3.task",
+			touch: "tut.file.s3.touch",
 			target: settingsButton,
 			check: (rt) => rt.canvas.readonly,
 			demo: (rt) => rt.canvas.setReadonly(true),
@@ -3172,6 +3174,7 @@ const file: TutorialDefinition = {
 			title: "tut.file.s4.title",
 			body: "tut.file.s4.body",
 			task: "tut.file.s4.task",
+			touch: "tut.file.s4.touch",
 			target: settingsButton,
 			enter: (rt) => {
 				readonlyAtStart = rt.canvas.readonly;

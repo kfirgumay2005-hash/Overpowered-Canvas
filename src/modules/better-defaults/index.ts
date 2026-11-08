@@ -2,6 +2,7 @@ import { Setting } from "obsidian";
 import { defineModule } from "../../core/module";
 import type { CanvasLike } from "../../internals/types";
 import { mergeWithDefaults } from "../../settings/settings";
+import { takeOverSettingsGear } from "./settings-gear";
 import { BackgroundDoubleClick, clampDoubleClickMs, DOUBLE_CLICK_PRESETS, type DoubleClickSpeed } from "./double-click";
 
 interface BetterDefaultsSettings {
@@ -14,6 +15,8 @@ interface BetterDefaultsSettings {
 	disableFontScaling: boolean;
 	doubleClickSpeed: DoubleClickSpeed;
 	doubleClickMs: number;
+	/** The gear of the side controls opens this plugin's settings (right-click / long press: canvas options). */
+	gearOpensSettings: boolean;
 }
 
 const DEFAULTS: BetterDefaultsSettings = {
@@ -26,6 +29,7 @@ const DEFAULTS: BetterDefaultsSettings = {
 	disableFontScaling: false,
 	doubleClickSpeed: "regular",
 	doubleClickMs: DOUBLE_CLICK_PRESETS.regular,
+	gearOpensSettings: true,
 };
 
 const SPEEDS: readonly DoubleClickSpeed[] = ["fast", "regular", "slow", "custom"];
@@ -163,6 +167,27 @@ export const betterDefaultsModule = defineModule<BetterDefaultsSettings>({
 			});
 		});
 
+		// The gear of the side controls: this plugin's settings; right-click / long press: the canvas options.
+		const gears = new Map<CanvasLike, () => void>();
+		const syncGear = (canvas: CanvasLike) => {
+			const on = ctx.settings.gearOpensSettings;
+			if (on && !gears.has(canvas)) gears.set(canvas, takeOverSettingsGear(canvas, { tooltip: ctx.t("betterDefaults.gear.tooltip"), openSettings: () => ctx.openPluginSettings() }));
+			else if (!on) {
+				gears.get(canvas)?.();
+				gears.delete(canvas);
+			}
+		};
+		ctx.onCanvas((canvas) => {
+			syncGear(canvas);
+			return () => {
+				gears.get(canvas)?.();
+				gears.delete(canvas);
+			};
+		});
+		ctx.onSettingsChange(() => {
+			for (const canvas of ctx.canvases()) syncGear(canvas);
+		});
+
 		// Nodes created by the user (not loaded or pasted: those get their position from setData right after).
 		ctx.on("node-added", (node) => {
 			if (!ctx.settings.alignToGrid) return;
@@ -228,5 +253,9 @@ export const betterDefaultsModule = defineModule<BetterDefaultsSettings>({
 		// The custom value goes right below the speed choice, shown only for "custom".
 		el.appendChild(customMs.settingEl);
 		customMs.settingEl.toggle(ctx.settings.doubleClickSpeed === "custom");
+		new Setting(el)
+			.setName(t("betterDefaults.gear.name"))
+			.setDesc(t("betterDefaults.gear.desc"))
+			.addToggle((tg) => tg.setValue(ctx.settings.gearOpensSettings).onChange((v) => ctx.updateSettings({ gearOpensSettings: v })));
 	},
 });

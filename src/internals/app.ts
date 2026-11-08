@@ -81,3 +81,17 @@ export function runHotkeyCommand(app: App, evt: KeyboardEvent, skip: (id: string
 	}
 	return false;
 }
+
+interface SettingInternal {
+	open(): void;
+	openTabById(id: string): unknown;
+}
+
+/** Opens Obsidian's settings on one tab (a plugin's id, or a core tab such as "hotkeys"). */
+export function openSettingsTab(app: App, id: string): boolean {
+	const setting = (app as unknown as { setting?: Partial<SettingInternal> }).setting;
+	if (typeof setting?.open !== "function" || typeof setting.openTabById !== "function") return false;
+	setting.open();
+	setting.openTabById(id);
+	return true;
+}

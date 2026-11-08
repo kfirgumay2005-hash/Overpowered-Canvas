@@ -72,6 +72,8 @@ export interface ModuleContext<S extends object> {
 	readonly settings: Readonly<S>;
 	/** The vault folder for the plugin's files (a plugin-wide setting). */
 	filesFolder(): string;
+	/** Opens Obsidian's settings on this plugin's tab. */
+	openPluginSettings(): void;
 	updateSettings(patch: Partial<S>): Promise<void>;
 	onSettingsChange(cb: (next: Readonly<S>, prev: Readonly<S>) => void): void;
 

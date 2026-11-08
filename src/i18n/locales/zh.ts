@@ -1300,4 +1300,8 @@ export const zh: Record<I18nKey, string> = {
 	"textHighlight.neutral.tip": "中性：Obsidian 自带的高亮（==text==），使用你的主题的高亮颜色。纯 Markdown，在任何应用中都一样。",
 	"barButtons.image": "图片上方的弹出栏",
 	"barButtons.imageHint": "只选中图片（JPG、PNG 等图片文件）时，显示它来代替选中内容上方的弹出栏，它有自己的按钮、顺序和命令。它显示过的按钮会列在这里（请先选中一张图片）。",
+	"betterDefaults.gear.name": "设置按钮打开本插件的设置",
+	"betterDefaults.gear.desc": "画布侧边栏顶部的设置按钮（齿轮）会在 Obsidian 设置中打开 Overpowered Canvas。右键单击或长按它可打开画布选项（对齐网格、对齐对象、只读、自定义工具栏）。关闭此项后，普通单击会再次打开画布选项。",
+	"betterDefaults.gear.simple": "点一下齿轮即可直接来到这些设置。",
+	"betterDefaults.gear.tooltip": "Overpowered Canvas 设置（右键或长按：画布选项）",
 };

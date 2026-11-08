@@ -1302,6 +1302,10 @@ export const en = {
 	"textHighlight.neutral.tip": "Neutral: Obsidian's own highlight (==text==), in your theme's highlight color. Plain Markdown, the same in every app.",
 	"barButtons.image": "Popup over images",
 	"barButtons.imageHint": "Shown instead of the popup over the selection when only images are selected (JPG, PNG and other picture files), with its own buttons, order and commands. Its buttons are listed here once it has shown them (select an image first).",
+	"betterDefaults.gear.name": "Settings button opens this plugin's settings",
+	"betterDefaults.gear.desc": "The settings button (gear) at the top of the canvas side bar opens Overpowered Canvas in Obsidian's settings. Right-click it or long-press it for the canvas options (snap to grid, snap to objects, read-only, Customize the bars). Turn this off to get the canvas options with a plain click again.",
+	"betterDefaults.gear.simple": "One tap on the gear takes you straight to these settings.",
+	"betterDefaults.gear.tooltip": "Overpowered Canvas settings (right-click or long-press: canvas options)",
 } as const;
 
 export type I18nKey = keyof typeof en;

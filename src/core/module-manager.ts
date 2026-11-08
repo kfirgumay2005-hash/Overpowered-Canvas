@@ -6,6 +6,7 @@ import type { CanvasDataApi } from "../data/access";
 import type { Translate } from "../i18n";
 import { mergeWithDefaults, type ModuleState, type PluginSettings } from "../settings/settings";
 import { getActiveCanvas } from "../internals/guards";
+import { openSettingsTab } from "../internals/app";
 import type { CanvasHooks } from "./canvas-hooks";
 import type { CanvasTracker } from "./canvas-tracker";
 import type { CanvasUi } from "./canvas-ui";
@@ -242,6 +243,7 @@ export class ModuleManager {
 				return mod.current;
 			},
 			filesFolder: () => host.settings.filesFolder,
+			openPluginSettings: () => openSettingsTab(host.app, host.plugin.manifest.id),
 			updateSettings: async (patch) => {
 				const next = this.resolveSettings(def, { ...mod.current, ...patch });
 				this.state(def).settings = { ...next };
