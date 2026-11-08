@@ -227,3 +227,10 @@ Verified against: **Obsidian 1.14.4 (desktop, Windows)**.
 - Card layout: `.canvas-node-container` is `display: flex` (row) and `.canvas-node-content` is a
   `flex: 0 1 auto` item as wide as its content. An image taken out of flow (absolute) leaves the
   content box 0 px wide unless it gets a width of its own (image-crop).
+- `Menu.prototype.showAtPosition(pos, doc?)` is what every menu goes through (also
+  `showAtMouseEvent` and the long press on touch); the menu's element is `menu.dom`
+  (`.menu > .menu-grabber + .menu-scroll > .menu-group > .menu-item > .menu-item-icon +
+  .menu-item-title`, `.menu-separator` between groups; `.menu-item.selected` is the keyboard /
+  pointer highlight, `.is-warning` the red items). `menu.parentEl` is set by `setParentElement`.
+- Popout windows (and the settings popout) copy the main body's classes, theme classes included;
+  `<style>` elements added to the main `document.head` are not copied: add them per window.
