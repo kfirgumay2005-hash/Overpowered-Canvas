@@ -197,12 +197,15 @@ const basics: TutorialDefinition = {
 
 // ---------- 2. Sticky notes and text ----------
 
+/** Emoji in the text cards of a board. */
+const emojiCount = (nodes: CanvasNodeData[]) => nodes.reduce((sum, n) => sum + (typeof n.text === "string" ? (n.text.match(/\p{Extended_Pictographic}/gu) ?? []).length : 0), 0);
+
 const notes: TutorialDefinition = {
 	id: "notes",
 	icon: "sticky-note",
 	title: "tut.notes.title",
 	summary: "tut.notes.summary",
-	modules: ["sticky-notes", "floating-text", "text-align", "auto-resize"],
+	modules: ["sticky-notes", "floating-text", "text-align", "auto-resize", "emoji-picker"],
 	board: (t) => ({
 		nodes: [
 			title("n-title", t("tut.notes.board.title"), 0, -170),
@@ -293,6 +296,32 @@ const notes: TutorialDefinition = {
 			demo: (rt) => {
 				rt.select(["n-long"]);
 				setExtra(rt, "n-long", { fontSize: 24 });
+			},
+		},
+		{
+			title: "tut.notes.emoji.title",
+			body: "tut.notes.emoji.body",
+			task: "tut.notes.emoji.task",
+			touch: "tut.notes.emoji.touch",
+			target: ".opc-card-emoji",
+			focus: ["n-g", "n-long"],
+			enter: (rt) => rt.select(["n-long"]),
+			// An emoji more than before, in any card (the long one, or a new one).
+			check: (rt) => emojiCount(nodesOf(rt.now())) > emojiCount(nodesOf(rt.before)),
+			demo: async (rt) => {
+				rt.select(["n-long"]);
+				await rt.wait(300);
+				rt.canvas.cardMenuEl.querySelector<HTMLElement>(".opc-card-emoji")?.click();
+				await rt.wait(900);
+				const search = activeDocument.querySelector<HTMLInputElement>(".opc-emoji input");
+				if (search) {
+					search.value = "party";
+					search.dispatchEvent(new Event("input"));
+				}
+				await rt.wait(700);
+				activeDocument.querySelector<HTMLElement>(".opc-emoji-results .opc-emoji-item")?.click();
+				await rt.wait(900);
+				closeDialog(".opc-emoji");
 			},
 		},
 		{

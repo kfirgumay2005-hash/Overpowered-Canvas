@@ -18,6 +18,7 @@
 	"devDependencies": {
 		"@codemirror/state": "^6.7.6",
 		"@codemirror/view": "^6.43.13",
+		"emojibase-data": "^18.0.0",
 		"esbuild": "^0.28.2",
 		"obsidian": "^1.14.4",
 		"typescript": "^7.0.2",

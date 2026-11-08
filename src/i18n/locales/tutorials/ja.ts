@@ -67,7 +67,7 @@ export const tutorialsJa: Record<keyof typeof tutorialsEn, string> = {
 
 	// ---------- 2. Sticky notes and text ----------
 	"tut.notes.title": "付箋とテキスト",
-	"tut.notes.summary": "付箋でブレインストーミングし、自由なテキストを書き、配置し、カードをテキストに合わせて広げる。",
+	"tut.notes.summary": "付箋でブレインストーミングし、自由なテキストを書き、配置し、絵文字を加え、カードをテキストに合わせて広げる。",
 	"tut.notes.board.title": "ブレインストーミング",
 	"tut.notes.board.group": "アイデア",
 	"tut.notes.board.s1": "大きなアイデア",
@@ -908,4 +908,8 @@ export const tutorialsJa: Record<keyof typeof tutorialsEn, string> = {
 	"tut.keys.s4.touch": "**?** でウィンドウを開き、**描画のオン・オフ** の横の **↺** をタップします。",
 	"tut.keys.s5.title": "コマンドと組み込みキー",
 	"tut.keys.s5.body": "リストの最後の **キャンバス（組み込み）** には Obsidian 自体のキャンバスのキーが、**コマンド** にはプラグインのコマンドとその Obsidian のホットキーが表示されます。これらのホットキーは Obsidian 自身のホットキー設定に保存されるので、どちらにも常に同じキーが表示されます。\n\nスマートフォンやタブレットで新しいキーを記録するにはキーボードの接続が必要です。キーの削除とリセットはタッチでできます。",
+	"tut.notes.emoji.title": "絵文字",
+	"tut.notes.emoji.body": "下部バーの **スマイル** ボタンで、すべての絵文字が開きます：検索（英語とプラグインの言語）、カテゴリ、最近使ったもの、肌の色（上部の手）。絵文字が入る場所：\n\n- カードを編集中：カーソル位置；\n- カードを選択中：テキストの末尾；\n- 何も選択していない：表示の中央の新しいカード。\n\nピッカーは開いたままなので、いくつも追加できます。`Esc` か外側をタップすると閉じます。",
+	"tut.notes.emoji.task": "長いカードを選択して、絵文字を追加します。",
+	"tut.notes.emoji.touch": "長いカードをタップし、下部バーのスマイルボタン、続いて絵文字をタップします。",
 };

@@ -68,7 +68,7 @@ export const tutorialsEn = {
 
 	// ---------- 2. Sticky notes and text ----------
 	"tut.notes.title": "Sticky notes and text",
-	"tut.notes.summary": "Brainstorm with sticky notes, write free text, align it and let cards grow with the text.",
+	"tut.notes.summary": "Brainstorm with sticky notes, write free text, align it, add emoji and let cards grow with the text.",
 	"tut.notes.board.title": "Brainstorm",
 	"tut.notes.board.group": "Ideas",
 	"tut.notes.board.s1": "A big idea",
@@ -909,4 +909,8 @@ export const tutorialsEn = {
 	"tut.keys.s4.touch": "Open the window with **?** and tap **↺** next to **Drawing on or off**.",
 	"tut.keys.s5.title": "Commands and built-in keys",
 	"tut.keys.s5.body": "At the end of the list, **Canvas (built in)** shows Obsidian's own canvas keys, and **Commands** lists the plugin's commands with their Obsidian hotkeys. Those hotkeys are kept in Obsidian's own Hotkeys settings, so both places always show the same keys.\n\nOn a phone or tablet, recording a new key needs a connected keyboard; removing keys and resetting work by touch.",
+	"tut.notes.emoji.title": "Emoji",
+	"tut.notes.emoji.body": "The **smiley** button in the bottom bar opens every emoji: search (in English and in the plugin's language), categories, recently used and skin tones (the hand at the top). Where the emoji goes:\n\n- editing a card: at the cursor;\n- a card selected: at the end of its text;\n- nothing selected: a new card in the middle of the view.\n\nThe picker stays open, so you can add several; `Esc` or a tap outside closes it.",
+	"tut.notes.emoji.task": "Select the long card and add an emoji to it.",
+	"tut.notes.emoji.touch": "Tap the long card, then the smiley button in the bottom bar, then an emoji.",
 } as const;

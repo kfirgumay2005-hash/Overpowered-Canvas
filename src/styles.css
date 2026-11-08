@@ -12,6 +12,7 @@
 @import "./modules/toolbar-size/styles.css";
 @import "./modules/better-defaults/styles.css";
 @import "./modules/custom-colors/styles.css";
+@import "./modules/emoji-picker/styles.css";
 @import "./ui/stable-text.css";
 @import "./ui/icon-picker.css";
 @import "./ui/shortcuts.css";

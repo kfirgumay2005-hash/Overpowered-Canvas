@@ -67,7 +67,7 @@ export const tutorialsZh: Record<keyof typeof tutorialsEn, string> = {
 
 	// ---------- 2. Sticky notes and text ----------
 	"tut.notes.title": "便签和文本",
-	"tut.notes.summary": "用便签头脑风暴，写自由文本、对齐文本，并让卡片随文本扩展。",
+	"tut.notes.summary": "用便签头脑风暴，写自由文本、对齐文本、添加表情符号，并让卡片随文本扩展。",
 	"tut.notes.board.title": "头脑风暴",
 	"tut.notes.board.group": "想法",
 	"tut.notes.board.s1": "一个大想法",
@@ -908,4 +908,8 @@ export const tutorialsZh: Record<keyof typeof tutorialsEn, string> = {
 	"tut.keys.s4.touch": "用 **?** 打开窗口，点按 **开启或关闭绘图** 旁边的 **↺**。",
 	"tut.keys.s5.title": "命令和内置按键",
 	"tut.keys.s5.body": "列表末尾的 **画布（内置）** 显示 Obsidian 画布自带的按键，**命令** 列出插件命令及其 Obsidian 热键。这些热键保存在 Obsidian 自己的快捷键设置中，因此两处显示的按键始终一致。\n\n在手机或平板上录制新按键需要连接键盘；删除按键和重置可以用触摸完成。",
+	"tut.notes.emoji.title": "表情符号",
+	"tut.notes.emoji.body": "底部栏的 **笑脸** 按钮会打开所有表情符号：搜索（英文和插件语言）、分类、最近使用和肤色（顶部的手）。表情符号插入的位置：\n\n- 正在编辑卡片：光标处；\n- 选中了卡片：文字末尾；\n- 什么都没选：视图中央的新卡片。\n\n选择器会保持打开，可以连续添加多个；按 `Esc` 或点按外部即可关闭。",
+	"tut.notes.emoji.task": "选中那张长卡片，给它添加一个表情符号。",
+	"tut.notes.emoji.touch": "点按长卡片，再点按底部栏的笑脸按钮，然后点按一个表情符号。",
 };

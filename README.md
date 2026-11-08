@@ -52,6 +52,10 @@ done.
 
 ## Features
 
+**Emoji** — a bottom-bar button with every emoji (search in English and the plugin's language,
+categories, recently used, skin tones; bundled, works offline): into the card you're editing at
+the cursor, at the end of the selected card, or into a new card.
+
 **Cards and edges** — flowchart and basic shapes on cards, border styles, start/center/end and
 top/middle/bottom text alignment (new cards can be centered automatically), a text size per card
 (also while editing and in the column view), cards that fit
@@ -196,12 +200,18 @@ still clickable ([docs/BENCHMARKS.md](docs/BENCHMARKS.md)).
 | Ctrl/Cmd+F                            | Search the canvas                                         |
 | Ctrl/Cmd+G / Ctrl/Cmd+Shift+G         | Smart group / ungroup (nothing to group: graph view)      |
 | Tab                                   | Mind map: add a child (on a sticky note: the next sticky) |
-| Enter / Shift+Enter                   | Mind map: add a sibling (configurable)                    |
+| Enter                                 | Mind map: add a sibling                                   |
 | Alt+Arrows                            | Move between connected cards                              |
 | Ctrl/Cmd+Arrows                       | Add a card (or sticky) in that direction                  |
 | Ctrl/Cmd+Shift+Arrows                 | Add a child in that direction                             |
 | → / Space / PageDown, ← / PageUp, Esc | Presentations                                             |
 | Arrows, + / −, Home, Esc              | Walking through a map: child, parent, siblings; zoom      |
+
+These are the defaults. Every key can be changed, switched off or given a second key in the
+**Shortcuts** window (the **?** button of a canvas' side bar, the command palette, or the top of the
+plugin settings): search by action or key, record a new key, conflicts with other shortcuts and
+Obsidian hotkeys are pointed out, and the plugin's command hotkeys can be edited there too (they
+stay in Obsidian's own Hotkeys).
 
 The bottom bar, the side bar and the popup over a selection are yours to arrange: take off any
 button, drag buttons into the order you like, and add a button for any command, from this plugin, the app or other plugins (_Customize

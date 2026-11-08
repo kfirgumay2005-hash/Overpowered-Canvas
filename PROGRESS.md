@@ -8,7 +8,7 @@ When resuming: read this file and `git log`, then continue with the first item t
 |---|------|-------|--------|
 | 1 | Pages bar overlaps the color palettes | IMPROVEMENT (bug) | done |
 | 2 | Gear in the side controls opens the plugin's settings | IMPROVEMENT | done |
-| 3 | Emoji picker in the bottom toolbar | NEW | todo |
+| 3 | Emoji picker in the bottom toolbar | NEW | done |
 | 4 | Cropped images become invisible | IMPROVEMENT (bug) | done |
 | 5 | Shortcuts window (replaces the shortcut settings) | NEW (replaces 2 settings + the core help list) | done |
 | 6 | Context menu styling | NEW | todo |
@@ -140,3 +140,35 @@ Tutorials: new "Your shortcuts" (5 steps, touch lines, the user's keys restored 
 `restoreShortcuts`); Mind maps s2 and Smart groups s2 point to the window (5 locales). Run in
 English: Your shortcuts 4/4, Mind maps 11/11, Smart groups 5/5, Drawing 10/10, Presentations 5/5,
 Column view 11/11.
+
+## 3. Emoji picker (done)
+
+Classification: NEW (no emoji feature existed; the icon picker of card templates is for Lucide
+icons and stays as it is). Module `emoji-picker` (group Cards, on by default).
+
+- Data: emojibase-data 18 (MIT, in THIRD_PARTY_NOTICES.md), read at build time by
+  `scripts/emoji-data.mjs` (esbuild virtual module "emoji-data"): 1,906 emoji up to Emoji 16 (newer
+  ones are left out because most systems can't draw them yet), 9 categories, 5 skin tones where
+  they exist, English names and keywords as plain text, names and keywords in the other UI
+  languages deflate-compressed (~350 KB in all, main.js 4.76 → 5.17 MB with this round). No network.
+  Parsed only when the picker first opens (~35 ms); the UI language's names are unpacked then
+  (DecompressionStream; English search still works without it).
+- Picker (`panel.ts`, in the shared popover above the bottom bar): search (UI language + English,
+  best matches first, Enter picks the first), category tabs that scroll the list and follow it,
+  Recently used (36, stored in the module settings), skin tone (hand button, remembered), preview
+  with the name, large touch targets, `content-visibility` for the long list. Stays open for
+  several picks; Esc / outside tap closes.
+- Insertion: editing a card → at the cursor (the button keeps the editor's focus; after the picker
+  closes the cursor is right after the emoji); a text card selected → at the end of its text,
+  after a space (the existing words stay intact and it lands where typing would continue; several
+  selected text cards each get it, one undo step); nothing (or no text card) selected → a new
+  120×80 card in the middle of the view, which stays selected, so the next emoji join it.
+  Read-only canvas → notice. Command "Insert emoji" too (assignable in the Shortcuts window).
+
+Tested (test vault, real mouse/touch/keyboard over CDP): nothing selected → typed "pizza", Enter →
+new card "🍕"; clicked 😀 → same card "🍕 😀"; editing "Hello world" with the cursor after "Hello"
+→ clicked the button and 🐵 → "Hello🐵 world", still editing, Esc → typing "!" lands after the emoji;
+"Lunch" selected, by touch: tap button, tone 3, "thumbs up" → "Lunch 👍🏽", one undo restores
+"Lunch"; recent list updates at once; search "ピザ" (UI in Japanese) and "пицца" (Russian) find
+🍕, "pizza" still works. Unit tests (logic) 7. Tutorial "Sticky notes and text": new step
+"Emoji" (touch line, 5 locales), run in English: 8/8.
