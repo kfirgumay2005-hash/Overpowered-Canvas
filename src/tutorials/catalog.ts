@@ -1668,6 +1668,99 @@ const toc: TutorialDefinition = {
 	],
 };
 
+// ---------- 27. Automatic headers ----------
+
+/** The note of the practice board, as text ("" when it is not open). */
+const noteText = (rt: TutorialRuntime) => noteTab(rt)?.view.editor?.getValue() ?? "";
+
+const autoHeaders: TutorialDefinition = {
+	id: "auto-headers",
+	icon: "heading",
+	title: "tut.autoHeaders.title",
+	summary: "tut.autoHeaders.summary",
+	modules: ["canvas-markdown"],
+	restoreSettings: [
+		{ module: "canvas-markdown", key: "autoHeaders" },
+		{ module: "canvas-markdown", key: "autoHeaderChildren" },
+		{ module: "canvas-markdown", key: "autoHeaderDepth" },
+	],
+	board: (t) => ({
+		nodes: [
+			card("ah-root", t("tut.toc.board.root"), 0, 300, 220, 70, { color: "6" }),
+			card("ah-cells", t("tut.toc.board.cells"), 340, 60, 200, 60, { color: "1" }),
+			card("ah-gen", t("tut.toc.board.genetics"), 340, 360, 200, 60, { color: "3" }),
+			card("ah-eco", t("tut.toc.board.ecology"), 340, 520, 200, 60, { color: "4" }),
+			card("ah-nuc", t("tut.toc.board.nucleus"), 660, -120, 300, 80),
+			card("ah-mem", t("tut.toc.board.membrane"), 660, 0, 200, 60),
+			card("ah-mit", t("tut.toc.board.mito"), 660, 100, 200, 60),
+			card("ah-rib", t("tut.toc.board.ribosomes"), 660, 200, 200, 60),
+			card("ah-dna", t("tut.autoHeaders.board.dna"), 660, 360, 200, 60),
+		],
+		edges: [
+			edge("ah-e1", "ah-root", "right", "ah-cells", "left"),
+			edge("ah-e2", "ah-root", "right", "ah-gen", "left"),
+			edge("ah-e3", "ah-root", "right", "ah-eco", "left"),
+			edge("ah-e4", "ah-cells", "right", "ah-nuc", "left"),
+			edge("ah-e5", "ah-cells", "right", "ah-mem", "left"),
+			edge("ah-e6", "ah-cells", "right", "ah-mit", "left"),
+			edge("ah-e7", "ah-cells", "right", "ah-rib", "left"),
+			edge("ah-e8", "ah-gen", "right", "ah-dna", "left"),
+		],
+	}),
+	steps: [
+		{
+			title: "tut.autoHeaders.children.title",
+			body: "tut.autoHeaders.children.body",
+			task: "tut.autoHeaders.children.task",
+			enter: (rt) => {
+				rt.setSetting("canvas-markdown", "autoHeaders", "off");
+				rt.setSetting("canvas-markdown", "autoHeaderChildren", 3);
+				rt.setSetting("canvas-markdown", "autoHeaderDepth", 3);
+			},
+			check: (rt) => rt.setting("canvas-markdown", "autoHeaders") === "children",
+			demo: (rt) => rt.setSetting("canvas-markdown", "autoHeaders", "children"),
+		},
+		{
+			title: "tut.autoHeaders.see.title",
+			body: "tut.autoHeaders.see.body",
+			task: "tut.autoHeaders.see.task",
+			target: (rt) => canvasSwitch(rt),
+			check: (rt) => noteText(rt).includes(`## ${rt.t("tut.toc.board.cells")}`),
+			demo: (rt) => pressSwitch(rt, canvasSwitch(rt), false),
+		},
+		{
+			title: "tut.autoHeaders.depth.title",
+			body: "tut.autoHeaders.depth.body",
+			task: "tut.autoHeaders.depth.task",
+			target: (rt) => canvasSwitch(rt),
+			check: (rt) => rt.setting("canvas-markdown", "autoHeaders") === "depth" && noteText(rt).includes(`### ${rt.t("tut.autoHeaders.board.dna")}`),
+			demo: async (rt) => {
+				rt.setSetting("canvas-markdown", "autoHeaders", "depth");
+				await rt.wait(300);
+				await pressSwitch(rt, canvasSwitch(rt), false);
+			},
+		},
+		{
+			title: "tut.autoHeaders.own.title",
+			body: "tut.autoHeaders.own.body",
+			task: "tut.autoHeaders.own.task",
+			touch: "tut.autoHeaders.own.touch",
+			enter: (rt) => {
+				const leaf = (rt.canvas.view as unknown as { leaf?: unknown }).leaf;
+				if (leaf) (rt.app.workspace as unknown as { setActiveLeaf(l: unknown, o?: object): void }).setActiveLeaf(leaf, { focus: true });
+				rt.select(["ah-gen"]);
+			},
+			target: () => document.querySelector<HTMLElement>(".canvas-menu .opc-menu-header"),
+			check: (rt) => rt.extra("ah-gen").header === -1,
+			demo: (rt) => {
+				const node = rt.node("ah-gen");
+				if (node) rt.change(() => rt.data.node(node).set({ header: -1 }));
+			},
+		},
+		{ title: "tut.autoHeaders.end.title", body: "tut.autoHeaders.end.body" },
+	],
+};
+
 // ---------- 9. Finding your way ----------
 
 const CAMP = { w: 900, h: 560 };
@@ -4022,4 +4115,4 @@ const shortcuts: TutorialDefinition = {
 	],
 };
 
-export const TUTORIALS: readonly TutorialDefinition[] = [basics, notes, shapes, edges, drawing, layers, present, mindmap, navigate, organize, markdown, select, blocks, vault, style, big, direction, pdf, pages, arrows, bars, images, file, columns, columnsDown, toc, smartGroups, indent, fontSize, shortcuts];
+export const TUTORIALS: readonly TutorialDefinition[] = [basics, notes, shapes, edges, drawing, layers, present, mindmap, navigate, organize, markdown, select, blocks, vault, style, big, direction, pdf, pages, arrows, bars, images, file, columns, columnsDown, toc, autoHeaders, smartGroups, indent, fontSize, shortcuts];

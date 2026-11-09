@@ -1,4 +1,5 @@
 import { navControl } from "../../ui/nav-controls";
+import { autoHeadersHost } from "../canvas-markdown/headers";
 import { Component, FileView, Keymap, MarkdownRenderer, Notice, Platform, TFile, debounce, normalizePath, parseLinktext, setIcon, type ViewStateResult, type WorkspaceLeaf } from "obsidian";
 import type { ModuleContext } from "../../core/module";
 import { logError } from "../../core/log";
@@ -136,7 +137,7 @@ export class TextPagesView extends FileView {
 		if (!this.file) return;
 		const { t } = this.ctx;
 		try {
-			this.book = buildBook(await this.readData(), { rtl: this.rtl, mainTitle: this.file.basename, untitled: t("pages.untitled"), freeLabel: t("canvasMarkdown.freeNodes") });
+			this.book = buildBook(await this.readData(), { rtl: this.rtl, mainTitle: this.file.basename, untitled: t("pages.untitled"), freeLabel: t("canvasMarkdown.freeNodes"), autoHeaders: autoHeadersHost.rules });
 		} catch (error) {
 			logError("[overpowered-canvas] text pages: could not read the canvas", error);
 			this.book = null;

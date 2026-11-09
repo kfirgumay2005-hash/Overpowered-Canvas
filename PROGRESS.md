@@ -15,7 +15,7 @@ When resuming: read this file and `git log`, then continue with the first item t
 | B1 | Resize cards in column mode | NEW | done |
 | C1 | Vertical column mode | NEW (orientation of the column view) | done |
 | C2 | Table of Contents mode | NEW | done |
-| D1 | Automatic header rules | IMPROVEMENT (headers) | todo |
+| D1 | Automatic header rules | IMPROVEMENT (headers) | done |
 | E1 | Handwriting performance + Ink-style features | IMPROVEMENT + NEW | todo |
 | E2 | Page format mode | NEW | todo |
 
@@ -179,3 +179,27 @@ real size: cells 260/100 px wide like the cards; group menu recolor; group moved
 → DIA; pages: anchor arrow opens the sub-page and back returns; simple/free switch; lint clean.
 New tutorial "Table of contents" (8 tasks, touch lines; 5 locales): Show me 8/8; "Column view"
 12/12 and "Column view, top to bottom" 4/4 re-run after the rendering refactor. Tests 794/794.
+
+## D1. Automatic header rules (done)
+
+Classification: IMPROVEMENT of the existing header cards (round 9): the same lifting and level
+rules, more cards made headers by a setting.
+What: Canvas ⇄ Markdown settings "Automatic headers" (off / by number of children / by depth),
+"Automatic headers: children" (N, 1–20, default 3), "Automatic headers: depth" (N, 1–6, default
+3); command "Automatic headers: choose the rule" (palette / tablets). `headers.ts`:
+`autoHeader`, `headerSetting`, `headerWith`; `structure.ts` counts depth from each map's first
+card (depth 1) and children per card; levels then follow the existing rules (nearest heading + 1,
+up to H6, lifted out of plain lines), and the existing formatting (no blank line under a heading,
+blank lines only before headings, first level without bullets) is untouched because the rules
+only set `header: 0` on outline items. Manual settings win: a level, "automatic", or the new
+"never a header" (`header: -1`, stored by "Not a header" while a rule is on; validator, schema
+and SCHEMA.md updated). Round trip (`apply.ts`): a heading the rule makes is not stored on the
+card (so turning the rule off or changing N changes the note next time); a rule heading written
+as a plain line in the note becomes "never a header". Applies to notes from canvases, notes with
+pages, copied outlines and text pages (`autoHeadersHost` tells the text pages view).
+Tested: 7 unit tests (both rules, N = 1 / 3, manual level and "never", plain-first format, round
+trip stores nothing and gives the same note, plain line → -1); harness: Copy as outline on the
+DIA board with off / children 4 / depth 2 gave the expected headings; "Not a header" stored -1
+and kept A a plain line under the depth rule. New tutorial "Automatic headers" (4 tasks, command
+alternative, touch line; 5 locales) 4/4; "Canvas ⇄ Markdown" (header step got a pointer) 7/7.
+Tests 807/807, lint clean.

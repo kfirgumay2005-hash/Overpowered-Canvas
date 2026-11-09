@@ -8,16 +8,17 @@ import type { CanvasItemLike, CanvasLike, CanvasNodeLike } from "../../internals
 import { ChoiceModal, type Choice } from "../../ui/choice-modal";
 import { showPicker } from "../../ui/picker";
 import { common, mutate, nodeType, selectedNodes, textCardsIn } from "../shared";
-import { headingMarks, withoutMarks } from "./headers";
+import { autoHeadersHost, headingMarks, NOT_HEADER, withoutMarks } from "./headers";
 
 const LEVELS = [1, 2, 3, 4, 5, 6];
 
 export function enableHeaderCards(ctx: ModuleContext<object>): void {
 	const t = ctx.t;
 	const textOf = (n: CanvasNodeLike) => (nodeType(n) === "text" ? (n.text ?? "") : "");
-	/** 0: automatic, 1–6: its level, undefined: not a header. */
+	/** 0: automatic, 1–6: its level, undefined: not a header (of its own). */
 	const stateOf = (n: CanvasNodeLike): number | undefined => {
 		const own = ctx.data.node(n).get().header;
+		if (own === NOT_HEADER) return undefined;
 		if (own !== undefined) return own;
 		return headingMarks(textOf(n)) || undefined;
 	};
@@ -31,7 +32,9 @@ export function enableHeaderCards(ctx: ModuleContext<object>): void {
 			for (const n of nodes) {
 				// Marks in the text make a header too: "not a header" takes them away.
 				if (choice === "none" && headingMarks(textOf(n))) n.setData({ ...n.getData(), text: withoutMarks(textOf(n)) });
-				ctx.data.node(n).set({ header: choice === "none" ? undefined : choice === "auto" ? 0 : Number(choice) });
+				// With automatic header rules on, "not a header" is a choice of the card's own that wins over them.
+				const none = autoHeadersHost.rules ? NOT_HEADER : undefined;
+				ctx.data.node(n).set({ header: choice === "none" ? none : choice === "auto" ? 0 : Number(choice) });
 			}
 		});
 	const choices = (nodes: CanvasNodeLike[]): Choice[] => {
@@ -46,7 +49,7 @@ export function enableHeaderCards(ctx: ModuleContext<object>): void {
 
 	ctx.decorateNodes({
 		apply: (node, extra) => {
-			const own = extra.header;
+			const own = extra.header === NOT_HEADER ? undefined : extra.header;
 			const marks = headingMarks(textOf(node));
 			const level = own !== undefined ? own : marks || undefined;
 			if (level === undefined || nodeType(node) !== "text") node.nodeEl.removeAttribute("data-opc-header");

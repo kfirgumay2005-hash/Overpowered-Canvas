@@ -238,7 +238,8 @@ export const NODE_SHAPE: Shape<OpcNode> = {
 	},
 	header: (raw) => {
 		const n = finite(raw);
-		return n !== undefined && Number.isInteger(n) && n >= 0 && n <= 6 ? n : undefined;
+		// -1: never a header (wins over the automatic header rules).
+		return n !== undefined && Number.isInteger(n) && n >= -1 && n <= 6 ? n : undefined;
 	},
 	dir: oneOf(DIRECTIONS),
 	autoResize: bool,

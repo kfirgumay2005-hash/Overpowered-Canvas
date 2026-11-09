@@ -73,6 +73,7 @@ interface OpcNode {
   valign?: "top" | "middle" | "bottom";   // absent = top (stickies: middle)
   fontSize?: number;                      // text size in px (6–200); absent = the canvas's size
   header?: number;                        // header card: a heading in the Markdown note; 0 = automatic level,
+                                          // -1 = never a header (wins over the automatic header rules),
                                           // 1–6 = its own (only deeper than automatic). Text starting with
                                           // "## " counts as a header too, at that level.
   dir?: "ltr" | "rtl" | "auto";

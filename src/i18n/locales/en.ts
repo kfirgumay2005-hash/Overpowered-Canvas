@@ -1525,6 +1525,19 @@ export const en = {
 	"presentation.tocMode.optSimple": "Simple grid",
 	"presentation.tocMode.optFree": "Free arrangement",
 	"presentation.tocMode.simple": "Simple grid or free arrangement.",
+	"canvasMarkdown.autoHeaders.name": "Automatic headers",
+	"canvasMarkdown.autoHeaders.desc": "Makes more cards headings in Markdown notes made from a canvas (also notes with pages, copied outlines and text pages), together with the cards set as headers by hand and those whose text starts with heading marks. By number of children: a card with at least the number set below becomes a heading. By depth: the first levels of each map down to the depth set below become headings (H1 … HN), deeper levels stay an outline. Levels follow the usual rules: one below the nearest heading above, up to H6. A card's own setting wins: \"Not a header\" keeps it a plain line.",
+	"canvasMarkdown.autoHeaders.simple": "Turns big branches or the top levels into headings by themselves.",
+	"canvasMarkdown.autoHeaders.off": "Off",
+	"canvasMarkdown.autoHeaders.children": "By number of children",
+	"canvasMarkdown.autoHeaders.depth": "By depth",
+	"canvasMarkdown.autoHeaderChildren.name": "Automatic headers: children",
+	"canvasMarkdown.autoHeaderChildren.desc": "By number of children: a card with at least this many children becomes a heading.",
+	"canvasMarkdown.autoHeaderChildren.simple": "How many children make a heading.",
+	"canvasMarkdown.autoHeaderDepth.name": "Automatic headers: depth",
+	"canvasMarkdown.autoHeaderDepth.desc": "By depth: the levels of a map down to this one are headings (its first card is level 1, H1); deeper levels stay an outline.",
+	"canvasMarkdown.autoHeaderDepth.simple": "How deep headings go.",
+	"canvasMarkdown.autoHeaders.pick": "Automatic headers: choose the rule",
 } as const;
 
 export type I18nKey = keyof typeof en;
