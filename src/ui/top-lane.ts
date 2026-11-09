@@ -3,8 +3,10 @@
  * the minimap in a top corner and the tool palettes (drawing, highlighter, text color) — never
  * overlap, on any screen size or orientation.
  *
- * Each bar joins the lane of the element it floats in (its host: the canvas wrapper, or the
- * column view) with a rank. Lower ranks keep their place; a bar that would cover a bar of a lower
+ * Each bar joins the lane of its board with a rank. The lane belongs to the board's canvas
+ * wrapper even when a bar floats in a view on top of the board (the column view): the pages bar
+ * lives in the wrapper and the column view's palettes in the column view, and they must still
+ * make room for each other, so every mode shares this one layout. Lower ranks keep their place; a bar that would cover a bar of a lower
  * rank moves down, just below it (`--opc-lane-offset`, added to the bar's own `top` in CSS). One
  * controller per host re-places the bars whenever one of them or the host changes size, or a bar
  * comes or goes. The host also gets `--opc-lane-side`: the width the side controls take, so a
@@ -30,15 +32,24 @@ class Lane {
 		this.resize = new ResizeObserver(() => this.schedule());
 		this.resize.observe(host);
 		// A bar removed by its owner (or a reload) leaves the lane; one shown or hidden is caught by
-		// the ResizeObserver (its size goes to and from zero).
+		// the ResizeObserver (its size goes to and from zero). Bars may sit in a view inside the
+		// host (the column view), so each bar's own parent is watched too, and the host's children
+		// (a whole view going away takes its bars with it).
 		this.mutations = new MutationObserver(() => {
-			for (const el of [...this.members.keys()]) if (el.parentElement !== this.host) this.drop(el);
+			for (const [el] of [...this.members]) if (!el.isConnected || !this.host.contains(el)) this.drop(el);
 			this.schedule();
 		});
 		this.mutations.observe(host, { childList: true });
 	}
 
+	private readonly watched = new Set<Node>([]);
+
 	add(el: HTMLElement, rank: number): void {
+		const parent = el.parentElement;
+		if (parent && parent !== this.host && !this.watched.has(parent)) {
+			this.watched.add(parent);
+			this.mutations.observe(parent, { childList: true });
+		}
 		this.members.set(el, rank);
 		el.addClass(MEMBER);
 		this.resize.observe(el);
@@ -98,23 +109,30 @@ class Lane {
 
 const lanes = new WeakMap<HTMLElement, Lane>();
 
+/** The element whose lane a bar floating in `host` joins: the board's wrapper, if it is in one. */
+function laneRoot(host: HTMLElement): HTMLElement {
+	return host.closest<HTMLElement>(".canvas-wrapper") ?? host;
+}
+
 /**
- * Adds `el` (a child of `host`) to the host's top lane. Returns a function that takes it out;
- * removing the element from the page takes it out too.
+ * Adds `el` (a child of `host`) to the top lane of the board `host` is part of. Returns a
+ * function that takes it out; removing the element from the page takes it out too.
  */
 export function joinTopLane(host: HTMLElement, el: HTMLElement, rank: number): () => void {
+	host = laneRoot(host);
 	let lane = lanes.get(host);
 	if (!lane) {
 		lane = new Lane(host, () => lanes.delete(host));
 		lanes.set(host, lane);
 	}
 	lane.add(el, rank);
-	return () => lanes.get(host)?.drop(el);
+	const root = host;
+	return () => lanes.get(root)?.drop(el);
 }
 
 /** Places the bars of a host right away (they are otherwise placed on the next frame). */
 export function layoutTopLane(host: HTMLElement): void {
-	lanes.get(host)?.layout();
+	lanes.get(laneRoot(host))?.layout();
 }
 
 /**

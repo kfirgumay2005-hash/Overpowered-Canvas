@@ -7,7 +7,7 @@ When resuming: read this file and `git log`, then continue with the first item t
 | # | Item | Class | Status |
 |---|------|-------|--------|
 | A1 | Ghost marks after moving a branch / folding | IMPROVEMENT (bug) | done |
-| A2 | Column mode: drawing bar over the breadcrumb | IMPROVEMENT (bug) | todo |
+| A2 | Column mode: drawing bar over the breadcrumb | IMPROVEMENT (bug) | done |
 | A3 | Live stroke under the card (regression) | IMPROVEMENT (bug) | todo |
 | A4 | Column mode: stroke flicker on pen-up | IMPROVEMENT (bug) | todo |
 | A5 | Column mode: no vertical finger scroll with a pen tool | IMPROVEMENT (bug) | todo |
@@ -45,3 +45,20 @@ Tested (harness, real 159-card map copy, far-zoom renderer forced on):
 - context 2: fold the root, move it 3000 px right, zoom out to -4: painted pixels 58435 (the
   whole folded map + lines back in the minimap) → 360 (only the folded card).
 Unit tests 773/773. No tutorial text changes (behavior is what the user expected all along).
+
+## A2. Column mode: tool bars over the breadcrumb (done)
+
+Root cause. Round 12's `src/ui/top-lane.ts` keeps top bars apart per host element. The pages
+bar lives in the canvas wrapper, but in column mode the pen rack, highlighter and text color
+palettes live in the column view (`.opc-columns`, a child of the wrapper): two hosts, two lanes,
+so they never saw each other.
+
+Fix: a lane now belongs to the board. `joinTopLane` resolves the host to its `.canvas-wrapper`
+(`laneRoot`), so bars of any view inside the board share one layout; the lane also watches each
+bar's own parent so a bar leaving a nested view leaves the lane. Same mechanism for both modes,
+so they can't drift apart again.
+
+Tested (harness, 820 px window = iPad portrait, 5 nested pages with long titles, column view on
+the deepest page): pen rack before: same row as the breadcrumb (overlap); after: moved below it
+(breadcrumb 125-154, rack 161-222). Highlighter palette in columns: below the breadcrumb.
+Canvas mode drawing bar: still below the breadcrumb (regression check).
