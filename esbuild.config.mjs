@@ -49,6 +49,9 @@ const jsContext = await esbuild.context({
 	sourcemap: production ? false : "inline",
 	treeShaking: true,
 	minify: production,
+	// Translations and emoji names as real UTF-8: by default each non-Latin character is written
+	// as an escape (6 bytes instead of 2–3), which made main.js over a megabyte larger.
+	charset: "utf8",
 	outfile: "main.js",
 });
 
