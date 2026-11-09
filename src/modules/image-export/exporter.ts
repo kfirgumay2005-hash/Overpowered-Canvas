@@ -15,6 +15,8 @@ export interface ExportOptions {
 	/** Pixel ratio for PNG. */
 	scale: number;
 	padding: number;
+	/** Exactly this part of the board (a sheet of paper): what lies on it, cut at its edges. */
+	region?: { minX: number; minY: number; maxX: number; maxY: number };
 }
 
 export interface ExportResult {
@@ -173,8 +175,13 @@ async function privacyFontCss(doc: Document): Promise<string> {
 const escapeXml = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
 export async function exportCanvasSvg(canvas: CanvasLike, opts: ExportOptions, watermarkText: string): Promise<ExportResult | null> {
-	const { nodes, edges } = itemsInScope(canvas, opts.scope);
-	if (nodes.length === 0) return null;
+	const region = opts.region;
+	const scoped = itemsInScope(canvas, opts.scope);
+	const overlaps = (b: { minX: number; minY: number; maxX: number; maxY: number }) => !!region && b.minX < region.maxX && b.maxX > region.minX && b.minY < region.maxY && b.maxY > region.minY;
+	const nodes = region ? scoped.nodes.filter((n) => overlaps({ minX: n.x, minY: n.y, maxX: n.x + n.width, maxY: n.y + n.height })) : scoped.nodes;
+	const edges = region ? scoped.edges.filter((e) => overlaps(e.getBBox())) : scoped.edges;
+	// A region is exported even when nothing lies on it (an empty sheet).
+	if (nodes.length === 0 && !region) return null;
 	const doc = canvas.wrapperEl.doc;
 	let minX = Infinity;
 	let minY = Infinity;
@@ -193,10 +200,17 @@ export async function exportCanvasSvg(canvas: CanvasLike, opts: ExportOptions, w
 		maxX = Math.max(maxX, b.maxX);
 		maxY = Math.max(maxY, b.maxY);
 	}
-	minX -= opts.padding;
-	minY -= opts.padding;
-	maxX += opts.padding;
-	maxY += opts.padding + (opts.watermark ? 40 : 0);
+	if (region) {
+		minX = region.minX;
+		minY = region.minY;
+		maxX = region.maxX;
+		maxY = region.maxY;
+	} else {
+		minX -= opts.padding;
+		minY -= opts.padding;
+		maxX += opts.padding;
+		maxY += opts.padding + (opts.watermark ? 40 : 0);
+	}
 	const width = Math.ceil(maxX - minX);
 	const height = Math.ceil(maxY - minY);
 

@@ -193,6 +193,22 @@ export interface OpcRoot {
 	tocLayouts?: Record<string, TocArrangement>;
 	/** Drawing embeds: SVG file path (in the vault) → the drawings it shows; written again when they change. */
 	inkEmbeds?: Record<string, string[]>;
+	/** Page format: the board shows sheets of this paper size (absent: the infinite canvas). */
+	paper?: PaperSpec;
+}
+
+export const PAPER_FORMAT_IDS = ["A3", "A4", "A5", "Letter", "Legal", "custom"] as const;
+export type PaperFormatId = (typeof PAPER_FORMAT_IDS)[number];
+
+/** A page format and where its sheets are. */
+export interface PaperSpec {
+	format: PaperFormatId;
+	landscape?: boolean;
+	/** Custom size in millimetres. */
+	width?: number;
+	height?: number;
+	/** Each page of the canvas ("" = the main page) → its stack of sheets: top-left and sheets added by hand. */
+	stacks?: Record<string, { x: number; y: number; count?: number }>;
 }
 
 /** A cell (the card id), or cells side by side ("row") or one under another ("col"). */

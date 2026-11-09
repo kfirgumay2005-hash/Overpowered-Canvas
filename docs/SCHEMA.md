@@ -60,6 +60,14 @@ interface OpcRoot {                       // file root "x-opc"
                                           // items: TocTree[] } (cells beside / below each other).
   inkEmbeds?: Record<string, string[]>;   // drawing embeds: SVG file path → the drawing cards it shows; the
                                           // file is written again when one of them changes (drawing module)
+  paper?: {                               // page format (paper module); absent = the infinite canvas
+    format: "A3" | "A4" | "A5" | "Letter" | "Legal" | "custom";
+    landscape?: boolean;
+    width?: number; height?: number;      // custom size, millimetres (50–2000)
+    stacks?: Record<string, { x: number; y: number; count?: number }>;
+                                          // page of the canvas ("" = main) → top-left of its stack of sheets
+                                          // (board px, 1 mm = 96/25.4 px) and sheets added by hand
+  };
 }
 
 // "right" | "left" | "down" | "up" | "balanced" | "radial" | "layered-right" | "layered-left" |

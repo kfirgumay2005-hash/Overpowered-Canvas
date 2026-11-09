@@ -17,7 +17,7 @@ When resuming: read this file and `git log`, then continue with the first item t
 | C2 | Table of Contents mode | NEW | done |
 | D1 | Automatic header rules | IMPROVEMENT (headers) | done |
 | E1 | Handwriting performance + Ink-style features | IMPROVEMENT + NEW | done |
-| E2 | Page format mode | NEW | todo |
+| E2 | Page format mode | NEW | IN PROGRESS (PDF blank, no tutorial yet) |
 
 ## A1. Ghost marks (done)
 
@@ -249,3 +249,22 @@ Tested: unit (SVG output, reading order, fake recognizer); harness: font applied
 family = the handwriting stack), writing box → card, embed written and rewritten after the
 drawing changed (1 → 2 paths). New tutorial "Handwriting tools" (3 tasks, touch lines,
 command alternatives; 5 locales) 3/3 with no leaked files; "Drawing" (pointer added) 10/10.
+
+## E2. Page format (IN PROGRESS — resume here)
+
+Done (module `src/modules/paper/`, registered, i18n in 5 locales, schema `paper` + validator +
+SCHEMA.md, events `paper-changed` / `paper-exported`, layout.ts with 6 unit tests):
+- "Page format…" dialog (A3/A4/A5/Letter/Legal/custom mm, landscape, "Endless board" = off).
+- Sheet layer under everything (z below groups), 1 mm = 96/25.4 px, one stack per Pages page
+  (placed around that page's content on first show, stored in `paper.stacks`), grows with content,
+  "+ Add a page" button, commands add/remove page. Harness: A4 sheets 793.7 × 1122.5 px, add page 2 → 3.
+- Exporter got a `region` option (exactly one sheet).
+NOT working yet: "Export the pages as PDF" writes a PDF with the right page size (A4 MediaBox)
+but blank pages (6 pages for 3 sheets, no fonts), and identical output whatever the print DOM
+holds — printToPDF is not printing the `.print.opc-paper-print` container. Next step: compare with
+text-pages/view.ts exportPdf (same mechanism, believed to work) — e.g. run its export in the
+harness, check whether `.print` must contain `.markdown-preview-view`, whether the core print CSS
+needs `body.is-printing`/other class, or fall back to PNG per sheet (`svgToPng`) as <img>.
+Mobile path (pictures per sheet) untested.
+Still to do: page-format tutorial (set format, add page, landscape; PDF mention), README line,
+lint, harness check of a sub-page with its own stack, then the FINAL REPORT for round 13.

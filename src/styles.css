@@ -20,6 +20,7 @@
 @import "./modules/edge-styles/styles.css";
 @import "./modules/auto-link/styles.css";
 @import "./modules/text-pages/styles.css";
+@import "./modules/paper/styles.css";
 @import "./modules/floating-edges/styles.css";
 @import "./modules/edge-tools/styles.css";
 @import "./modules/readonly-plus/styles.css";

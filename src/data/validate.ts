@@ -33,6 +33,8 @@ import {
 	type StickyData,
 	type Stroke,
 	type TocArrangement,
+	type PaperSpec,
+	PAPER_FORMAT_IDS,
 	type TocBlock,
 	type TocTree,
 } from "./schema";
@@ -210,6 +212,12 @@ const tocColor: Sanitizer<string> = (raw) => (typeof raw === "string" && /^(?:[1
 const tocBlock = objectOf<TocBlock>({ id: nonEmptyStr, tree: (raw) => tocTree(raw), color: tocColor }, { required: ["id", "tree"] });
 const tocArrangement = objectOf<TocArrangement>({ rows: arrayOf(arrayOf(tocBlock, { min: 1 })) }, { required: ["rows"] });
 
+const paperStack = objectOf<{ x: number; y: number; count?: number }>({ x: finite, y: finite, count: inRange(1, 999) }, { required: ["x", "y"] });
+const paperSpec = objectOf<PaperSpec>(
+	{ format: oneOf(PAPER_FORMAT_IDS), landscape: bool, width: inRange(50, 2000), height: inRange(50, 2000), stacks: recordOf(paperStack) },
+	{ required: ["format"] },
+);
+
 export const ROOT_SHAPE: Shape<OpcRoot> = {
 	v: (raw) => {
 		const n = finite(raw);
@@ -226,6 +234,7 @@ export const ROOT_SHAPE: Shape<OpcRoot> = {
 	childOrder: recordOf(arrayOf(nonEmptyStr)),
 	tocLayouts: recordOf(tocArrangement),
 	inkEmbeds: recordOf(arrayOf(nonEmptyStr, { min: 1 })),
+	paper: paperSpec,
 };
 
 export const NODE_SHAPE: Shape<OpcNode> = {
