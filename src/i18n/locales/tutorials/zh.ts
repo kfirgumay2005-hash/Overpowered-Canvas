@@ -835,7 +835,7 @@ export const tutorialsZh: Record<keyof typeof tutorialsEn, string> = {
 	"tut.columns.add.task": "给你所在的卡片添加一张子卡片并输入文字。",
 	"tut.columns.add.touch": "点按你所在卡片右侧的 **+**，然后输入文字。",
 	"tut.columns.ink.title": "在卡片上书写",
-	"tut.columns.ink.body": "左下角的工具在这里就能使用。**笔**写入的墨迹与画板上的相同。笔打开时，卡片以实际大小显示，因此无论缩放多少，每一笔都会落在画板上完全相同的文字上。直线、箭头和形状要在画板上绘制。",
+	"tut.columns.ink.body": "左下角的工具在这里就能使用。**笔**写入的墨迹与画板上的相同。笔打开时，卡片以实际大小显示，因此无论缩放多少，每一笔都会落在画板上完全相同的文字上。直线、箭头和形状要在画板上绘制。\n\n打开**手掌导航**（绘图栏上的手形按钮）后，笔用来书写，手指用来移动视图：上下拖动会移动手指下的那一列，左右拖动会移动所有列，双指可以缩放。",
 	"tut.columns.ink.task": "打开笔，在 **番茄** 上写字。",
 	"tut.columns.ink.touch": "点按左下角的笔，然后用触控笔或手指书写。",
 	"tut.columns.mark.title": "高亮和着色文字",

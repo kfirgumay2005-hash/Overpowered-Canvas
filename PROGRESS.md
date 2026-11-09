@@ -10,7 +10,7 @@ When resuming: read this file and `git log`, then continue with the first item t
 | A2 | Column mode: drawing bar over the breadcrumb | IMPROVEMENT (bug) | done |
 | A3 | Live stroke under the card (regression) | IMPROVEMENT (bug) | done (with A4) |
 | A4 | Column mode: stroke flicker on pen-up | IMPROVEMENT (bug) | done (with A3) |
-| A5 | Column mode: no vertical finger scroll with a pen tool | IMPROVEMENT (bug) | todo |
+| A5 | Column mode: no vertical finger scroll with a pen tool | IMPROVEMENT (bug) | done |
 | A6 | Column mode: wide cards run into the next column | IMPROVEMENT (bug) | todo |
 | B1 | Resize cards in column mode | NEW | todo |
 | C1 | Vertical column mode | NEW (orientation of the column view) | todo |
@@ -88,3 +88,15 @@ Tested (harness): column view, pen stroke on a card, every frame recorded from p
 700 ms after pen-up: blank frames after the stroke started 3 (old) → 0 (new, three runs); the copy
 is gone afterwards (one path left). Board: no blank frames, live layer covers the whole view,
 strokes land on the same words as drawn.
+
+## A5. Column mode: fingers scroll in every direction with a pen tool on (done)
+
+Root cause. With a tool on, its overlay covers the column view and receives every press. The
+column view chose the column to drag up/down from the element pressed (`closest(column)`), which
+is the overlay, so no column moved; only the sideways part (all columns) worked.
+Fix: `columnAtPoint` finds the column under the finger by position when the press is not on a
+column element; a vertical drag between columns moves the whole view. Pen/stylus input still
+draws (the drawing module keeps it); touches pan as before when palm navigation is on.
+Tested (harness, CDP touch with the pen tool on, palm navigation on): finger drag down 150 px on
+the children's column: before 0 px, after the column moved 150 px; no ink created by the finger.
+Tutorial "Column view" → "Write on the cards" gained a paragraph about palm navigation (5 locales).

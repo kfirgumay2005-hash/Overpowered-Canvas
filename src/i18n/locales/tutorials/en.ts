@@ -836,7 +836,7 @@ export const tutorialsEn = {
 	"tut.columns.add.task": "Add a child to the card you are on and type its text.",
 	"tut.columns.add.touch": "Tap the **+** at the right side of the card you are on, then type.",
 	"tut.columns.ink.title": "Write on the cards",
-	"tut.columns.ink.body": "The tools in the bottom-left corner work right here. The **pen** writes into the same ink as on the board. While it is on, the cards show at their real size, so every stroke lands on exactly the same words on the board, at any zoom. Lines, arrows and shapes are drawn on the board.",
+	"tut.columns.ink.body": "The tools in the bottom-left corner work right here. The **pen** writes into the same ink as on the board. While it is on, the cards show at their real size, so every stroke lands on exactly the same words on the board, at any zoom. Lines, arrows and shapes are drawn on the board.\n\nWith **palm navigation** on (the hand button of the drawing bar), the pen writes and a finger moves the view: up and down drags the column under it, sideways moves all the columns, two fingers zoom.",
 	"tut.columns.ink.task": "Turn on the pen and write on **Tomatoes**.",
 	"tut.columns.ink.touch": "Tap the pen in the bottom-left corner, then write with your pen or finger.",
 	"tut.columns.mark.title": "Highlight and color words",

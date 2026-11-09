@@ -576,6 +576,17 @@ export class ColumnView {
 		return el ? this.placed.findIndex((p) => p.column === el) : -1;
 	}
 
+	/**
+	 * The column under a screen point, by where the columns are (not by the element hit: with a
+	 * tool on, its overlay lies over the columns and gets every press).
+	 */
+	private columnAtPoint(x: number, y: number): number {
+		return this.placed.findIndex((p) => {
+			const r = p.column.getBoundingClientRect();
+			return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
+		});
+	}
+
 	private onDown = (evt: PointerEvent) => {
 		evt.stopPropagation();
 		if (this.editing && (evt.target as HTMLElement).closest(".opc-columns-editor")) return;
@@ -591,7 +602,8 @@ export class ColumnView {
 		}
 		if (this.pointers.size > 2) return;
 		if (evt.pointerType === "mouse" && evt.button !== 0) return;
-		this.press = { id: evt.pointerId, x: evt.clientX, y: evt.clientY, column: this.columnAt(evt.target), moved: false, pinch: false };
+		const inColumn = this.columnAt(evt.target);
+		this.press = { id: evt.pointerId, x: evt.clientX, y: evt.clientY, column: inColumn >= 0 ? inColumn : this.columnAtPoint(evt.clientX, evt.clientY), moved: false, pinch: false };
 	};
 
 	private onMove = (evt: PointerEvent) => {
@@ -621,11 +633,12 @@ export class ColumnView {
 			}
 		}
 		evt.preventDefault();
-		// Up and down: that column only (to reach what a big card hides); sideways: all columns.
+		// Up and down: that column only (to reach what a big card hides), or the whole view between
+		// columns; sideways: all columns.
 		const dy = (now.y - prev.y) / this.view.zoom;
 		if (press.column >= 0) this.shifts[press.column] = (this.shifts[press.column] ?? 0) + dy;
 		this.el.addClass("is-moved");
-		this.view = { ...this.view, x: this.view.x + (now.x - prev.x) };
+		this.view = { ...this.view, x: this.view.x + (now.x - prev.x), y: this.view.y + (press.column >= 0 ? 0 : now.y - prev.y) };
 		this.layout(false);
 	};
 
