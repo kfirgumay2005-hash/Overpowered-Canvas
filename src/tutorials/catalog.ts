@@ -1306,9 +1306,9 @@ const columns: TutorialDefinition = {
 			task: "tut.columns.resize.task",
 			touch: "tut.columns.resize.touch",
 			target: (rt) => columnsEl(rt)?.querySelector<HTMLElement>(".opc-columns-card.is-current .opc-columns-resize") ?? null,
-			enter: async (rt) => {
+			enter: (rt) => {
 				if (rt.setting("presentation", "columnActualSize") !== true) rt.setSetting("presentation", "columnActualSize", true);
-				await ensureColumns(rt, "c-veg");
+				void ensureColumns(rt, "c-veg");
 			},
 			check: (rt) => rt.seen("column-card-resized"),
 			demo: async (rt) => {
@@ -1449,6 +1449,222 @@ const columnsDown: TutorialDefinition = {
 			},
 		},
 		{ title: "tut.columnsDown.end.title", body: "tut.columnsDown.end.body" },
+	],
+};
+
+// ---------- 26. The table of contents ----------
+
+const tocEl = (rt: TutorialRuntime) => rt.canvas.wrapperEl.querySelector<HTMLElement>(".opc-toc");
+const tocCell = (rt: TutorialRuntime, id: string) => tocEl(rt)?.querySelector<HTMLElement>(`.opc-toc-cell[data-id="${id}"]`) ?? null;
+/** The stored arrangement of a level, as text (to see that it changed). */
+const tocStored = (rt: TutorialRuntime, parent: string) => JSON.stringify((rt.now()[SCHEMA_KEY] as { tocLayouts?: Record<string, unknown> } | undefined)?.tocLayouts?.[parent] ?? null);
+let tocBefore = "";
+/** The back step went into a cell first (so seeing the top level again means "back" worked). */
+let tocWentIn = false;
+
+/** Opens the table of contents on `from`'s children, unless it is open. */
+async function ensureToc(rt: TutorialRuntime, from = "t-root"): Promise<void> {
+	if (tocEl(rt)) return;
+	rt.command("presentation:walk-end");
+	rt.select([from]);
+	rt.command("presentation:toc");
+	await rt.wait(900);
+}
+
+/** Into a cell's own grid, by its arrow. */
+async function tocEnter(rt: TutorialRuntime, id: string): Promise<void> {
+	tocEl(rt)?.querySelector<HTMLElement>(`.opc-toc-open[data-id="${id}"]`)?.click();
+	await rt.wait(500);
+}
+
+/** A finger dragging `el` from its middle to (x, y). */
+async function tocDragTo(rt: TutorialRuntime, el: HTMLElement, x: number, y: number): Promise<void> {
+	const r = el.getBoundingClientRect();
+	const sx = r.left + Math.min(r.width / 2, 20);
+	const sy = r.top + Math.min(r.height / 2, 12);
+	const fire = (type: string, px: number, py: number) =>
+		el.dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true, pointerId: 11, pointerType: "touch", isPrimary: true, clientX: px, clientY: py, button: 0, buttons: type === "pointerup" ? 0 : 1 }));
+	fire("pointerdown", sx, sy);
+	for (let i = 1; i <= 16; i++) {
+		fire("pointermove", sx + ((x - sx) * i) / 16, sy + ((y - sy) * i) / 16);
+		await rt.wait(20);
+	}
+	fire("pointerup", x, y);
+	await rt.wait(500);
+}
+
+const toc: TutorialDefinition = {
+	id: "toc",
+	icon: "layout-grid",
+	title: "tut.toc.title",
+	summary: "tut.toc.summary",
+	modules: ["presentation"],
+	restoreSettings: [
+		{ module: "presentation", key: "tocMode" },
+		{ module: "presentation", key: "tocPerRow" },
+		{ module: "presentation", key: "tocActualSize" },
+	],
+	board: (t) => ({
+		nodes: [
+			card("t-root", t("tut.toc.board.root"), 0, 300, 220, 70, { color: "6" }),
+			card("t-cells", t("tut.toc.board.cells"), 340, 60, 200, 60, { color: "1" }),
+			card("t-gen", t("tut.toc.board.genetics"), 340, 300, 200, 60, { color: "3" }),
+			card("t-eco", t("tut.toc.board.ecology"), 340, 420, 200, 60, { color: "4" }),
+			card("t-evo", t("tut.toc.board.evolution"), 340, 540, 200, 60, { color: "5" }),
+			card("t-nuc", t("tut.toc.board.nucleus"), 660, -200, 300, 160),
+			card("t-mem", t("tut.toc.board.membrane"), 660, 0, 200, 60),
+			card("t-mit", t("tut.toc.board.mito"), 660, 100, 200, 60),
+			card("t-rib", t("tut.toc.board.ribosomes"), 660, 200, 200, 60),
+			card("t-cyc", t("tut.toc.board.cycle"), 660, 300, 220, 140),
+		],
+		edges: [
+			edge("t-e1", "t-root", "right", "t-cells", "left"),
+			edge("t-e2", "t-root", "right", "t-gen", "left"),
+			edge("t-e3", "t-root", "right", "t-eco", "left"),
+			edge("t-e4", "t-root", "right", "t-evo", "left"),
+			edge("t-e5", "t-cells", "right", "t-nuc", "left"),
+			edge("t-e6", "t-cells", "right", "t-mem", "left"),
+			edge("t-e7", "t-cells", "right", "t-mit", "left"),
+			edge("t-e8", "t-cells", "right", "t-rib", "left"),
+			edge("t-e9", "t-cells", "right", "t-cyc", "left"),
+		],
+	}),
+	steps: [
+		{
+			title: "tut.toc.open.title",
+			body: "tut.toc.open.body",
+			task: "tut.toc.open.task",
+			target: ".opc-toc-control",
+			enter: (rt) => {
+				rt.setSetting("presentation", "tocMode", "free");
+				rt.setSetting("presentation", "tocPerRow", 3);
+				rt.setSetting("presentation", "tocActualSize", false);
+				rt.select(["t-root"]);
+			},
+			check: (rt) => !!tocEl(rt),
+			demo: (rt) => ensureToc(rt),
+		},
+		{
+			title: "tut.toc.enter.title",
+			body: "tut.toc.enter.body",
+			task: "tut.toc.enter.task",
+			touch: "tut.toc.enter.touch",
+			target: (rt) => tocEl(rt)?.querySelector<HTMLElement>('.opc-toc-open[data-id="t-cells"]') ?? null,
+			enter: (rt) => void ensureToc(rt),
+			check: (rt) => rt.seen("toc-shown", (_c, parent) => parent === "t-cells"),
+			demo: async (rt) => {
+				await ensureToc(rt);
+				await tocEnter(rt, "t-cells");
+			},
+		},
+		{
+			title: "tut.toc.back.title",
+			body: "tut.toc.back.body",
+			task: "tut.toc.back.task",
+			touch: "tut.toc.back.touch",
+			target: (rt) => tocEl(rt)?.querySelector<HTMLElement>(".opc-toc-back.is-fixed") ?? null,
+			enter: (rt) => {
+				tocWentIn = false;
+				void (async () => {
+					await ensureToc(rt);
+					if (!tocCell(rt, "t-nuc")) await tocEnter(rt, "t-cells");
+					tocWentIn = !!tocCell(rt, "t-nuc");
+				})();
+			},
+			check: (rt) => tocWentIn && !!tocEl(rt) && !!tocCell(rt, "t-cells"),
+			demo: async (rt) => {
+				tocEl(rt)?.querySelector<HTMLElement>(".opc-toc-back.is-fixed")?.click();
+				await rt.wait(500);
+			},
+		},
+		{
+			title: "tut.toc.simple.title",
+			body: "tut.toc.simple.body",
+			task: "tut.toc.simple.task",
+			touch: "tut.toc.simple.touch",
+			target: (rt) => tocEl(rt)?.querySelector<HTMLElement>(".opc-toc-mode") ?? null,
+			enter: (rt) => void ensureToc(rt),
+			check: (rt) => rt.setting("presentation", "tocMode") === "simple",
+			demo: async (rt) => {
+				await ensureToc(rt);
+				if (rt.setting("presentation", "tocMode") !== "simple") tocEl(rt)?.querySelector<HTMLElement>(".opc-toc-mode")?.click();
+				await rt.wait(500);
+			},
+		},
+		{
+			title: "tut.toc.group.title",
+			body: "tut.toc.group.body",
+			task: "tut.toc.group.task",
+			touch: "tut.toc.group.touch",
+			enter: (rt) => {
+				rt.setSetting("presentation", "tocMode", "free");
+				void (async () => {
+					await ensureToc(rt);
+					if (!tocCell(rt, "t-nuc")) await tocEnter(rt, "t-cells");
+				})();
+			},
+			check: (rt) => /"dir"/.test(tocStored(rt, "t-cells")),
+			demo: async (rt) => {
+				await ensureToc(rt);
+				if (!tocCell(rt, "t-nuc")) await tocEnter(rt, "t-cells");
+				const mem = tocCell(rt, "t-mem");
+				const nuc = tocCell(rt, "t-nuc")?.getBoundingClientRect();
+				if (mem && nuc) await tocDragTo(rt, mem, nuc.right - 4, nuc.top + nuc.height / 2);
+			},
+		},
+		{
+			title: "tut.toc.color.title",
+			body: "tut.toc.color.body",
+			task: "tut.toc.color.task",
+			touch: "tut.toc.color.touch",
+			target: (rt) => tocEl(rt)?.querySelector<HTMLElement>(".opc-toc-grip") ?? null,
+			enter: (rt) => {
+				tocBefore = tocStored(rt, "t-cells");
+			},
+			check: (rt) => tocStored(rt, "t-cells") !== tocBefore && /"color"/.test(tocStored(rt, "t-cells")),
+			demo: async (rt) => {
+				const grip = tocEl(rt)?.querySelector<HTMLElement>(".opc-toc-grip");
+				if (!grip) return;
+				const r = grip.getBoundingClientRect();
+				const fire = (type: string) => grip.dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true, pointerId: 12, pointerType: "touch", isPrimary: true, clientX: r.left + 6, clientY: r.top + 6, button: 0, buttons: type === "pointerup" ? 0 : 1 }));
+				fire("pointerdown");
+				fire("pointerup");
+				await rt.wait(400);
+				const items = Array.from(rt.canvas.wrapperEl.doc.querySelectorAll<HTMLElement>(".menu .menu-item"));
+				(items.find((i) => !i.querySelector(".menu-item-icon .lucide-check") && !i.hasClass("is-disabled")) ?? items[0])?.click();
+				await rt.wait(400);
+			},
+		},
+		{
+			title: "tut.toc.move.title",
+			body: "tut.toc.move.body",
+			task: "tut.toc.move.task",
+			touch: "tut.toc.move.touch",
+			enter: (rt) => {
+				tocBefore = tocStored(rt, "t-cells");
+			},
+			check: (rt) => tocStored(rt, "t-cells") !== tocBefore,
+			demo: async (rt) => {
+				const cyc = tocCell(rt, "t-cyc");
+				const grid = tocEl(rt)?.querySelector<HTMLElement>(".opc-toc-grid")?.getBoundingClientRect();
+				if (cyc && grid) await tocDragTo(rt, cyc, grid.left + 30, grid.bottom - 2);
+			},
+		},
+		{
+			title: "tut.toc.actual.title",
+			body: "tut.toc.actual.body",
+			task: "tut.toc.actual.task",
+			touch: "tut.toc.actual.touch",
+			target: (rt) => tocEl(rt)?.querySelector<HTMLElement>(".opc-toc-actual") ?? null,
+			enter: (rt) => void ensureToc(rt),
+			check: (rt) => rt.setting("presentation", "tocActualSize") === true && !!tocEl(rt)?.hasClass("is-actual-size"),
+			demo: async (rt) => {
+				await ensureToc(rt);
+				if (rt.setting("presentation", "tocActualSize") !== true) tocEl(rt)?.querySelector<HTMLElement>(".opc-toc-actual")?.click();
+				await rt.wait(500);
+			},
+		},
+		{ title: "tut.toc.end.title", body: "tut.toc.end.body" },
 	],
 };
 
@@ -3806,4 +4022,4 @@ const shortcuts: TutorialDefinition = {
 	],
 };
 
-export const TUTORIALS: readonly TutorialDefinition[] = [basics, notes, shapes, edges, drawing, layers, present, mindmap, navigate, organize, markdown, select, blocks, vault, style, big, direction, pdf, pages, arrows, bars, images, file, columns, columnsDown, smartGroups, indent, fontSize, shortcuts];
+export const TUTORIALS: readonly TutorialDefinition[] = [basics, notes, shapes, edges, drawing, layers, present, mindmap, navigate, organize, markdown, select, blocks, vault, style, big, direction, pdf, pages, arrows, bars, images, file, columns, columnsDown, toc, smartGroups, indent, fontSize, shortcuts];

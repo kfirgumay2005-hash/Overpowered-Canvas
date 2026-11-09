@@ -186,6 +186,27 @@ export interface OpcRoot {
 	pages?: PageInfo[];
 	/** Parent card id → its children's ids in outline order (sibling order kept by every layout). */
 	childOrder?: Record<string, string[]>;
+	/**
+	 * Table of contents, free arrangement: parent card id (or "page:<page id>", "page:" for the
+	 * main page's top level) → how its children's cells are arranged and grouped.
+	 */
+	tocLayouts?: Record<string, TocArrangement>;
+}
+
+/** A cell (the card id), or cells side by side ("row") or one under another ("col"). */
+export type TocTree = string | { dir: "row" | "col"; items: TocTree[] };
+
+/** A cell of the table of contents' grid: one card, or a cell group (with its outline color). */
+export interface TocBlock {
+	id: string;
+	tree: TocTree;
+	/** A canvas color "1"–"6" or "#rrggbb"; groups only. */
+	color?: string;
+}
+
+/** The rows of the table of contents' grid, each a list of cells and cell groups. */
+export interface TocArrangement {
+	rows: TocBlock[][];
 }
 
 /** A page made from a branch: `anchor` stays in the parent page and leads to `root`. */

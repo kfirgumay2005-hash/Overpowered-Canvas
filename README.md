@@ -101,7 +101,10 @@ siblings in the middle, its children on the right; groups are cards whose childr
 hold. Add children and siblings there (+ buttons, Tab, Enter), edit cards, highlight or color words
 and write on cards shown at their exact board layout, resizing a card right there to make room
 for handwriting. The same view also runs top to bottom (the root on top, each level a row below
-it), and cards wider than the way down are cut where the next level starts. Also
+it), and cards wider than the way down are cut where the next level starts. The table of contents
+shows a card's children together as cells of a grid (arrows go into a cell's own grid, a back
+button goes up): a simple grid of N cells per row, or a free arrangement where cells dragged
+beside or below each other form colored cell groups, saved with the canvas. Also
 collapsible branches with child counts, and automatic layout that keeps the order the cards show
 on the board (mind map in any direction,
 collision-free radial that respects every card's size, balanced, layered flowchart, grid) as one

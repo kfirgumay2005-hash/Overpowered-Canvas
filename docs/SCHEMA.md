@@ -53,6 +53,11 @@ interface OpcRoot {                       // file root "x-opc"
                                           // note's outline; read by every layout, the walk, the column view and
                                           // the Markdown export. Children it doesn't name keep their board place.
                                           // Not copied into a note's data block (the outline is the order).
+  tocLayouts?: Record<string, {           // Table of contents, free arrangement: parent card id (or
+    rows: { id: string; tree: TocTree; color?: string }[][];  // "page:<id>", "page:" = main page's top level)
+  }>;                                     // → rows of cells; a block is one cell or a cell group (outline color
+                                          // "1"–"6" or "#rrggbb"). TocTree = card id | { dir: "row" | "col";
+                                          // items: TocTree[] } (cells beside / below each other).
 }
 
 // "right" | "left" | "down" | "up" | "balanced" | "radial" | "layered-right" | "layered-left" |

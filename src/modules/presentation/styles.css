@@ -455,3 +455,219 @@ body.opc-mod-presentation .opc-columns.is-marking .opc-columns-card * {
 body.theme-dark.opc-mod-presentation .opc-columns-ink path[fill="#1e1e1e"] {
 	fill: #e8e8e8;
 }
+
+/* ---------- Table of contents (toc.ts) ---------- */
+body.opc-mod-presentation .canvas-wrapper.opc-in-toc :is(.canvas-controls, .canvas-card-menu, .canvas-menu-container) {
+	display: none;
+}
+body.opc-mod-presentation .opc-toc {
+	position: absolute;
+	inset: 0;
+	z-index: calc(var(--layer-popover) - 2);
+	overflow: hidden;
+	background-color: var(--background-primary);
+	touch-action: none;
+	user-select: none;
+}
+body.opc-mod-presentation .opc-toc.is-panning {
+	cursor: grabbing;
+}
+body.opc-mod-presentation .opc-toc-zoom {
+	position: absolute;
+	left: 0;
+	top: 0;
+	transform-origin: 0 0;
+}
+/* The box named after the parent card, holding the grid of its children. */
+body.opc-mod-presentation .opc-toc-sheet {
+	display: inline-flex;
+	flex-direction: column;
+	min-width: 240px;
+	border: 2px solid var(--background-modifier-border);
+	border-radius: var(--radius-l);
+	background-color: var(--background-secondary);
+}
+body.opc-mod-presentation .opc-toc-head {
+	display: flex;
+	align-items: center;
+	gap: var(--size-4-2);
+	padding: var(--size-4-2) var(--size-4-3);
+	border-bottom: 1px solid var(--background-modifier-border);
+	font-size: calc(var(--opc-columns-font-size, var(--font-text-size)) * 1.4);
+	font-weight: var(--font-semibold);
+}
+body.opc-mod-presentation .opc-toc-title {
+	flex: 1 1 auto;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+body.opc-mod-presentation .opc-toc-grid {
+	position: relative;
+	display: flex;
+	flex-direction: column;
+	gap: var(--size-4-3);
+	padding: var(--size-4-3);
+}
+body.opc-mod-presentation .opc-toc-row {
+	display: flex;
+	align-items: flex-start;
+	gap: var(--size-4-3);
+}
+body.opc-mod-presentation .opc-toc-empty {
+	color: var(--text-muted);
+	padding: var(--size-4-2);
+}
+body.opc-mod-presentation .opc-toc-block {
+	position: relative;
+	flex: 0 0 auto;
+}
+/* A cell group: its cells inside a colored outline, a handle on its top edge. */
+body.opc-mod-presentation .opc-toc-block.is-group {
+	padding: var(--size-4-3);
+	padding-top: calc(var(--size-4-3) + 10px);
+	border: 2px solid var(--opc-toc-group, var(--color-accent));
+	border-radius: var(--radius-l);
+}
+body.opc-mod-presentation .opc-toc.is-free .opc-toc-block.is-group {
+	cursor: grab;
+}
+body.opc-mod-presentation .opc-toc-grip {
+	position: absolute;
+	top: -12px;
+	left: var(--size-4-3);
+	width: 36px;
+	height: 22px;
+	padding: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: var(--radius-s);
+	color: var(--background-primary);
+	background-color: var(--opc-toc-group, var(--color-accent));
+	cursor: grab;
+	touch-action: none;
+}
+body.opc-mod-presentation .opc-toc-split {
+	display: flex;
+	align-items: flex-start;
+	gap: var(--size-4-2);
+}
+body.opc-mod-presentation .opc-toc-split.is-row {
+	flex-direction: row;
+}
+body.opc-mod-presentation .opc-toc-split.is-col {
+	flex-direction: column;
+}
+body.opc-mod-presentation .opc-toc-cell {
+	position: relative;
+}
+body.opc-mod-presentation .opc-toc.is-free .opc-toc-cell {
+	cursor: grab;
+}
+body.opc-mod-presentation .opc-toc .opc-toc-card {
+	opacity: 1;
+	cursor: inherit;
+	background-color: var(--background-primary);
+}
+body.opc-mod-presentation .opc-toc .opc-toc-card:not(.is-actual) {
+	width: var(--opc-columns-width, 240px);
+}
+body.opc-mod-presentation .opc-toc-cell.has-children .opc-toc-card:not(.is-actual) {
+	padding-inline-start: calc(var(--size-4-3) + 22px);
+}
+/* The arrow into a cell's own children. */
+body.opc-mod-presentation .opc-toc-open {
+	position: absolute;
+	z-index: 2;
+	top: 4px;
+	left: 4px;
+	width: 28px;
+	height: 28px;
+	padding: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: var(--radius-s);
+	color: var(--text-on-accent);
+	background-color: var(--interactive-accent);
+	box-shadow: var(--shadow-s);
+}
+body.opc-mod-presentation .opc-toc-back {
+	width: 36px;
+	height: 36px;
+	padding: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-m);
+	background-color: var(--background-primary);
+}
+/* Also fixed at the top right of the view, whatever the zoom (below the pages bar). */
+body.opc-mod-presentation .opc-toc-back.is-fixed {
+	position: absolute;
+	z-index: 3;
+	top: calc(var(--size-4-3) + var(--opc-lane-offset, 0px));
+	right: var(--size-4-4);
+	width: 44px;
+	height: 44px;
+	box-shadow: var(--shadow-s);
+}
+body.opc-mod-presentation .opc-toc-controls {
+	position: absolute;
+	z-index: 3;
+	bottom: var(--size-4-4);
+	right: var(--size-4-4);
+	display: flex;
+	gap: var(--size-2-2);
+	padding: var(--size-2-3);
+	background-color: var(--background-primary);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-l);
+	box-shadow: var(--shadow-s);
+}
+body.opc-mod-presentation .opc-toc-controls button {
+	width: 40px;
+	height: 40px;
+	padding: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+body.opc-mod-presentation .opc-toc-controls button.is-active {
+	color: var(--text-on-accent);
+	background-color: var(--interactive-accent);
+}
+/* Dragging a cell or a group: a copy follows the pointer, the original fades, a line shows where it lands. */
+body.opc-mod-presentation .opc-toc .is-dragged {
+	opacity: 0.35;
+}
+body.opc-mod-presentation .opc-toc-ghost {
+	position: absolute;
+	z-index: 4;
+	left: var(--opc-ghost-x);
+	top: var(--opc-ghost-y);
+	width: var(--opc-ghost-w);
+	transform: scale(var(--opc-ghost-scale, 1));
+	transform-origin: 0 0;
+	opacity: 0.8;
+	pointer-events: none;
+	box-shadow: var(--shadow-l);
+}
+body.opc-mod-presentation .opc-toc-guide {
+	position: absolute;
+	z-index: 4;
+	left: var(--opc-guide-x);
+	top: var(--opc-guide-y);
+	width: var(--opc-guide-w);
+	height: var(--opc-guide-h);
+	border-radius: 2px;
+	background-color: var(--text-muted);
+	pointer-events: none;
+}
+body.opc-mod-presentation .opc-toc-guide.is-join {
+	background-color: var(--color-accent);
+	box-shadow: 0 0 0 2px var(--background-primary);
+}

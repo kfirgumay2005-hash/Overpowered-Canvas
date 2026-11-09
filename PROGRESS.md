@@ -14,7 +14,7 @@ When resuming: read this file and `git log`, then continue with the first item t
 | A6 | Column mode: wide cards run into the next column | IMPROVEMENT (bug) | done |
 | B1 | Resize cards in column mode | NEW | done |
 | C1 | Vertical column mode | NEW (orientation of the column view) | done |
-| C2 | Table of Contents mode | NEW | todo |
+| C2 | Table of Contents mode | NEW | done |
 | D1 | Automatic header rules | IMPROVEMENT (headers) | todo |
 | E1 | Handwriting performance + Ink-style features | IMPROVEMENT + NEW | todo |
 | E2 | Page format mode | NEW | todo |
@@ -150,3 +150,32 @@ Tested (harness): flip → rows stacked top to bottom, children centered under t
 wide sibling cut at the next row; keys ↓ inc, → gen, ↑ epi, → cls. New tutorial "Column view,
 top to bottom" (4 tasks, touch lines, command alternatives; 5 locales): Show me in English 4/4;
 "Column view" 12/12 again. Unit tests 780/780. README updated.
+
+## C2. Table of contents (done)
+
+Classification: NEW (no grid view existed; it reuses the column view's card rendering and the
+walk's map model instead of duplicating them).
+Where: `presentation/toc.ts` (TocView + enableToc), `toc-layout.ts` (pure arrangement model,
+8 unit tests), `card-face.ts` (card rendering extracted from the column view: replica text,
+images, crops, ink, colors; the column view uses it too), `map-model.ts` (the walk's model:
+groups as cards, sibling order, one page). Root data `tocLayouts` (schema + validator +
+SCHEMA.md); events `toc-shown`, `toc-arranged`, `toc-closed`.
+What: command "Table of contents view", a grid button in the side controls. A box named after
+the parent card holds its children as cells; a cell with children has an arrow (top-left) into
+its own grid; back buttons (fixed top right, joined to the top lane so it stays clear of the
+pages bar, and in the box's title) go up; Backspace too, Esc closes. Pinch / Ctrl+wheel / buttons
+zoom, drag or wheel pans. Uniform cells (width setting) or real size with ink (button + setting).
+Simple grid: N per row (setting). Free arrangement: drag a cell beside/below another to form a
+cell group (split tree of rows/columns, so cells of different sizes stay tidy), guide lines show
+the landing place, groups move by handle or outline, cells/groups can go between cells or into a
+new row, tap the handle for colors / ungroup. Each change is one undo step, stored in the canvas,
+restored after reopening and when switching modes. Pages: only the page shown; a page anchor's
+arrow opens that page (breadcrumb follows), back returns. Double tap edits a text cell.
+Exclusive with the walk/column view.
+Tested (harness): board like the drawings (DIA → A, G, H, I; A → B…F): DIA grid rows [A*, G, H]
+[I]; into A; C right of B, D below B, E right of D, F to a new row → group col[B, row[D,E]] beside
+C + F below (as in "RESULTS"), 4 undo steps, saved to disk, same after closing and reopening;
+real size: cells 260/100 px wide like the cards; group menu recolor; group moved after F; back
+→ DIA; pages: anchor arrow opens the sub-page and back returns; simple/free switch; lint clean.
+New tutorial "Table of contents" (8 tasks, touch lines; 5 locales): Show me 8/8; "Column view"
+12/12 and "Column view, top to bottom" 4/4 re-run after the rendering refactor. Tests 794/794.

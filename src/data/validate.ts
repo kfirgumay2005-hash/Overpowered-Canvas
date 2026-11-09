@@ -31,6 +31,9 @@ import {
 	type QuerySpec,
 	type StickyData,
 	type Stroke,
+	type TocArrangement,
+	type TocBlock,
+	type TocTree,
 } from "./schema";
 
 /** Returns the cleaned value, or undefined when the input is unusable. */
@@ -195,6 +198,17 @@ const stroke: Sanitizer<Stroke> = (raw) => {
 	return s;
 };
 
+/** A cell tree of the table of contents (at most 12 levels deep, 200 cells a level). */
+function tocTree(raw: unknown, depth = 12): TocTree | undefined {
+	if (typeof raw === "string") return raw.length > 0 ? raw : undefined;
+	if (depth <= 0 || !isPlainObject(raw) || (raw.dir !== "row" && raw.dir !== "col") || !Array.isArray(raw.items) || raw.items.length > 200) return undefined;
+	const items = raw.items.map((item) => tocTree(item, depth - 1)).filter((item): item is TocTree => item !== undefined);
+	return items.length ? { dir: raw.dir, items } : undefined;
+}
+const tocColor: Sanitizer<string> = (raw) => (typeof raw === "string" && /^(?:[1-6]|#[0-9a-fA-F]{6})$/.test(raw) ? raw : undefined);
+const tocBlock = objectOf<TocBlock>({ id: nonEmptyStr, tree: (raw) => tocTree(raw), color: tocColor }, { required: ["id", "tree"] });
+const tocArrangement = objectOf<TocArrangement>({ rows: arrayOf(arrayOf(tocBlock, { min: 1 })) }, { required: ["rows"] });
+
 export const ROOT_SHAPE: Shape<OpcRoot> = {
 	v: (raw) => {
 		const n = finite(raw);
@@ -209,6 +223,7 @@ export const ROOT_SHAPE: Shape<OpcRoot> = {
 	mapLayouts: recordOf(oneOf(MAP_LAYOUTS)),
 	pages: arrayOf(objectOf<PageInfo>({ id: nonEmptyStr, anchor: nonEmptyStr, root: nonEmptyStr, parent: nonEmptyStr }, { required: ["id", "anchor", "root"] })),
 	childOrder: recordOf(arrayOf(nonEmptyStr)),
+	tocLayouts: recordOf(tocArrangement),
 };
 
 export const NODE_SHAPE: Shape<OpcNode> = {

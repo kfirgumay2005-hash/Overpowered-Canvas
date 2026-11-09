@@ -65,7 +65,7 @@ export function largestRoot(nodes: Map<string, TNode>, edges: TEdge[]): string |
 }
 
 /** The parent a step back leads to: the one we came down from, else the first. */
-function treeParent(nodes: Map<string, TNode>, edges: TEdge[], id: string, visited: ReadonlyMap<string, string>): string | null {
+export function treeParent(nodes: Map<string, TNode>, edges: TEdge[], id: string, visited: ReadonlyMap<string, string>): string | null {
 	const parents = edges.filter((e) => e.to === id && e.from !== id && nodes.has(e.from)).map((e) => e.from);
 	return parents.find((p) => visited.get(p) === id) ?? parents[0] ?? null;
 }
