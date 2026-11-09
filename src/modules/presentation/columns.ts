@@ -112,6 +112,8 @@ export class ColumnView {
 	private forcedActual = false;
 	/** The card a pen gesture draws on (from its press to its release). */
 	private inkCard: string | null = null;
+	/** Waiting for committed ink to show (see InkSurface.settled). */
+	private settleWaiters: (() => void)[] = [];
 
 	constructor(
 		private readonly app: App,
@@ -231,6 +233,7 @@ export class ColumnView {
 			this.view = keepZoom(this.view.zoom, this.size());
 		}
 		this.layout(!keep);
+		this.settle();
 		// Rendered text and images change the heights the columns are centered by.
 		Promise.all(pending).then(
 			() => this.layout(!keep),
@@ -262,6 +265,16 @@ export class ColumnView {
 			const preview = card.querySelector(":scope > svg.opc-ink-preview");
 			if (preview) card.appendChild(preview);
 		}
+		this.settle();
+	}
+
+	/** Committed ink is in the DOM now: resolve those waiting once it is painted. */
+	private settle(): void {
+		if (!this.settleWaiters.length) return;
+		const waiting = this.settleWaiters;
+		this.settleWaiters = [];
+		const win = this.el.win;
+		win.requestAnimationFrame(() => win.requestAnimationFrame(() => waiting.forEach((f) => f())));
 	}
 
 	// ---------- tools and new cards ----------
@@ -365,7 +378,9 @@ export class ColumnView {
 				if (!card || !node) return;
 				if (svg.parentElement !== card) card.appendChild(svg);
 				layer.setAttribute("transform", `translate(${-node.x} ${-node.y})`);
+				this.raiseInked(card);
 			},
+			settled: () => new Promise<void>((resolve) => this.settleWaiters.push(resolve)),
 			pan: (dx, dy) => {
 				this.el.addClass("is-moved");
 				this.view = { ...this.view, x: this.view.x + dx, y: this.view.y + dy };
@@ -386,6 +401,17 @@ export class ColumnView {
 				return root ? { node, root } : null;
 			},
 		};
+	}
+
+	/**
+	 * The card drawn on (and its column) above the others: the stroke being drawn lies in that
+	 * card, and cards are stacking contexts of their own (faded ones have an opacity), so without
+	 * this a stroke running onto the next card or column would go under it.
+	 */
+	private raiseInked(card: HTMLElement): void {
+		for (const el of Array.from(this.track.querySelectorAll(".is-inking"))) if (el !== card && el !== card.parentElement) el.removeClass("is-inking");
+		card.addClass("is-inking");
+		card.parentElement?.addClass("is-inking");
 	}
 
 	private size(): { width: number; height: number } {

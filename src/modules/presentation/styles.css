@@ -236,6 +236,11 @@ body.opc-mod-presentation .opc-columns-card.is-actual > .opc-columns-body {
 	padding: 0 var(--size-4-4);
 	border-radius: inherit;
 }
+/* The card drawn on, and its column, lie above the others (see raiseInked in columns.ts). */
+body.opc-mod-presentation .opc-columns-column.is-inking,
+body.opc-mod-presentation .opc-columns-card.is-inking {
+	z-index: 3;
+}
 body.opc-mod-presentation .opc-columns-ink {
 	position: absolute;
 	left: var(--opc-ink-left);

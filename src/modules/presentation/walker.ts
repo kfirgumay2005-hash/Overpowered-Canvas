@@ -56,6 +56,8 @@ const TAP_MOVE = 6;
 const ZOOM_STEP = 0.5;
 /** Board changes are shown in the column view this long after the last one. */
 const REFRESH_MS = 80;
+/** Ink alone is drawn again sooner: the pen's stroke waits for it (no blink after pen-up). */
+const INK_REFRESH_MS = 16;
 /** Room around a card added inside a group. */
 const GROUP_PAD = 20;
 /** Controls drawn by the walk: a tap on them is not a tap on the board. */
@@ -355,7 +357,7 @@ export function enableWalk(ctx: ModuleContext<object>, presenting: (canvas: Canv
 		if (ink) walk.pending.ink = true;
 		else walk.pending.all = true;
 		canvas.wrapperEl.win.clearTimeout(walk.pending.timer);
-		walk.pending.timer = canvas.wrapperEl.win.setTimeout(() => flush(canvas), REFRESH_MS);
+		walk.pending.timer = canvas.wrapperEl.win.setTimeout(() => flush(canvas), walk.pending.all ? REFRESH_MS : INK_REFRESH_MS);
 	};
 	const flush = (canvas: CanvasLike) => {
 		const walk = walks.get(canvas);

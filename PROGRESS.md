@@ -8,8 +8,8 @@ When resuming: read this file and `git log`, then continue with the first item t
 |---|------|-------|--------|
 | A1 | Ghost marks after moving a branch / folding | IMPROVEMENT (bug) | done |
 | A2 | Column mode: drawing bar over the breadcrumb | IMPROVEMENT (bug) | done |
-| A3 | Live stroke under the card (regression) | IMPROVEMENT (bug) | todo |
-| A4 | Column mode: stroke flicker on pen-up | IMPROVEMENT (bug) | todo |
+| A3 | Live stroke under the card (regression) | IMPROVEMENT (bug) | done (with A4) |
+| A4 | Column mode: stroke flicker on pen-up | IMPROVEMENT (bug) | done (with A3) |
 | A5 | Column mode: no vertical finger scroll with a pen tool | IMPROVEMENT (bug) | todo |
 | A6 | Column mode: wide cards run into the next column | IMPROVEMENT (bug) | todo |
 | B1 | Resize cards in column mode | NEW | todo |
@@ -62,3 +62,29 @@ Tested (harness, 820 px window = iPad portrait, 5 nested pages with long titles,
 the deepest page): pen rack before: same row as the breadcrumb (overlap); after: moved below it
 (breadcrumb 125-154, rack 161-222). Highlighter palette in columns: below the breadcrumb.
 Canvas mode drawing bar: still below the breadcrumb (regression check).
+
+## A3 + A4. Live stroke under cards / flicker on pen-up (done, one commit: same code path)
+
+A3 root causes (two paths left after the earlier max z-index fix):
+- Board: the live stroke's layer was a 1x1 px SVG at the board origin with `overflow: visible`.
+  On iPad (WebKit) a card whose text scrolls has a compositing layer of its own; WebKit decides
+  whether a later element must be layered above it by the element's box, and a 1x1 box at (0,0)
+  "covers" nothing, so the stroke was painted into the board's layer, beneath those cards. Only
+  some cards (long text, scrolling content) and only on iPad, hence "rare but real".
+- Column view: the live layer sits inside the card drawn on; every column card has an opacity
+  (a stacking context), so a stroke running onto the next card or column went under it.
+Fix: the board's live layer now has its real size (`coverView`: twice the visible board, viewBox
+in board coordinates, re-placed on every press/hover; last child of the board). The column card
+drawn on and its column get `is-inking` (z-index above the others).
+A4 root cause: on pen-up the live path was removed at once, and the column view redrew ink 80 ms
+later (debounce), so the stroke vanished for a few frames. Fix: `InkSession.holdUntilSettled`
+moves the finished stroke's preview into a copy of the layer that stays until the surface
+reports the committed ink is painted (`InkSurface.settled`: the board after two frames, the
+column view after its ink refresh + two frames; 1.5 s fallback). The copy does not follow the
+preview, so writing fast (next stroke on another card) is fine. Ink-only refreshes in the column
+view now run after 16 ms instead of 80.
+
+Tested (harness): column view, pen stroke on a card, every frame recorded from pen-down to
+700 ms after pen-up: blank frames after the stroke started 3 (old) → 0 (new, three runs); the copy
+is gone afterwards (one path left). Board: no blank frames, live layer covers the whole view,
+strokes land on the same words as drawn.

@@ -92,6 +92,15 @@ body.opc-mod-drawing svg.opc-ink-preview {
 	/* Above every card, whatever its layer: the stroke being drawn is never covered. */
 	z-index: 2147483647;
 }
+/* On the board the layer covers the visible board (see coverView in index.ts): with its real
+   size, the browser sees it covers cards that have a compositing layer of their own and stacks
+   it above them too. */
+body.opc-mod-drawing .canvas > svg.opc-ink-preview[data-cover] {
+	left: var(--opc-preview-x);
+	top: var(--opc-preview-y);
+	width: var(--opc-preview-w);
+	height: var(--opc-preview-h);
+}
 body.opc-mod-drawing svg.opc-ink-preview .is-highlighter {
 	mix-blend-mode: multiply;
 }

@@ -58,6 +58,11 @@ function eraserInput(evt: PointerEvent): boolean {
 	return evt.pointerType === "pen" && ((evt.buttons & 32) !== 0 || evt.button === 5 || (evt.buttons & 2) !== 0);
 }
 
+/** Two frames: what was rendered now is on screen. */
+function nextPaint(win: Window): Promise<void> {
+	return new Promise((resolve) => win.requestAnimationFrame(() => win.requestAnimationFrame(() => resolve())));
+}
+
 /** The board as a surface to draw on. */
 function boardSurface(canvas: CanvasLike): InkSurface {
 	return {
@@ -65,10 +70,35 @@ function boardSurface(canvas: CanvasLike): InkSurface {
 		toCanvas: (x, y) => canvas.posFromEvt({ clientX: x, clientY: y } as MouseEvent),
 		scale: () => canvas.scale,
 		placePreview: (svg) => {
-			if (svg.parentElement !== canvas.canvasEl) canvas.canvasEl.appendChild(svg);
+			// Last in the board, above every card (see styles.css), and as big as the part of the
+			// board on screen (and around it): a tiny layer with overflowing content is not seen as
+			// covering cards that have a compositing layer of their own (iPad: cards whose text
+			// scrolls), and the stroke would be painted under them.
+			if (svg.parentElement !== canvas.canvasEl || svg.nextElementSibling) canvas.canvasEl.appendChild(svg);
+			coverView(canvas, svg);
 		},
 		pan: (dx, dy) => canvas.setViewport(canvas.x - dx / canvas.scale, canvas.y - dy / canvas.scale, canvas.zoom),
+		settled: () => nextPaint(canvas.wrapperEl.win),
 	};
+}
+
+/**
+ * Sizes the preview layer to the board area on screen, twice as wide and high around it (the
+ * view may move while drawing), in board units; its viewBox keeps board coordinates.
+ */
+function coverView(canvas: CanvasLike, svg: SVGSVGElement): void {
+	const w = canvas.wrapperEl.clientWidth || 1000;
+	const h = canvas.wrapperEl.clientHeight || 1000;
+	const scale = canvas.scale || 1;
+	const bw = (w / scale) * 2;
+	const bh = (h / scale) * 2;
+	const x = Math.floor(canvas.x - bw / 2);
+	const y = Math.floor(canvas.y - bh / 2);
+	const key = `${x},${y},${Math.ceil(bw)},${Math.ceil(bh)}`;
+	if (svg.dataset.cover === key) return;
+	svg.dataset.cover = key;
+	svg.setAttribute("viewBox", `${x} ${y} ${Math.ceil(bw)} ${Math.ceil(bh)}`);
+	svg.setCssProps({ "--opc-preview-x": `${x}px`, "--opc-preview-y": `${y}px`, "--opc-preview-w": `${Math.ceil(bw)}px`, "--opc-preview-h": `${Math.ceil(bh)}px` });
 }
 
 class InkSession {
@@ -273,6 +303,8 @@ class InkSession {
 		if (!cur || evt.pointerId !== cur.pointerId) return;
 		this.current = null;
 		window.clearTimeout(cur.holdTimer);
+		// A drawn stroke's preview stays until the surface shows the committed stroke (no blink).
+		if (cur.mode === "draw" && !cur.recognized) this.holdUntilSettled();
 		this.layer.querySelectorAll(".opc-ink-live").forEach((el) => el.remove());
 		try {
 			if (cur.mode === "draw") this.commitStroke(cur.points, cur.recognized);
@@ -288,6 +320,34 @@ class InkSession {
 		}
 		this.renderSelection();
 	};
+
+	/**
+	 * Moves the live stroke into a copy of the preview layer that stays where it is until the
+	 * surface has drawn the committed stroke (the next stroke may start meanwhile, even on
+	 * another card of another view: the copy doesn't follow the preview).
+	 */
+	private holdUntilSettled(): void {
+		const live = Array.from(this.layer.querySelectorAll(".opc-ink-live"));
+		const parent = this.preview.parentElement;
+		if (!live.length || !parent) return;
+		const ghost = this.preview.cloneNode(false) as SVGSVGElement;
+		ghost.addClass("opc-ink-settling");
+		const layer = this.layer.cloneNode(false) as SVGGElement;
+		ghost.appendChild(layer);
+		for (const el of live) {
+			el.removeClass("opc-ink-live");
+			layer.appendChild(el);
+		}
+		parent.insertBefore(ghost, this.preview);
+		const done = () => ghost.remove();
+		const win = this.surface.host.win;
+		const fallback = win.setTimeout(done, 1500);
+		const settled = this.surface.settled?.() ?? nextPaint(win);
+		void settled.then(() => {
+			win.clearTimeout(fallback);
+			done();
+		}, done);
+	}
 
 	private onKey = (evt: KeyboardEvent) => {
 		if ((evt.target as HTMLElement | null)?.closest?.("input, textarea, [contenteditable=true]")) return;
