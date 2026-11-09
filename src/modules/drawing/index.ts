@@ -58,6 +58,23 @@ function eraserInput(evt: PointerEvent): boolean {
 	return evt.pointerType === "pen" && ((evt.buttons & 32) !== 0 || evt.button === 5 || (evt.buttons & 2) !== 0);
 }
 
+/** Pen samples closer than this (screen px) to the previous one replace it instead of adding a point. */
+const MERGE_PX = 0.5;
+
+/**
+ * Adds a pen sample to a stroke. Pens report 120–240 samples a second, many of them less than a
+ * pixel apart. The last point is provisional: while the pen stays within `merge` of the point
+ * before it, each new sample replaces it (the stroke still ends exactly under the pen); once it
+ * gets farther, the sample is added. Kept points are thus at least `merge` apart, slow strokes
+ * keep their shape, and the live preview and the stored stroke use the same points, so what is
+ * drawn on pen-up is exactly what was shown. The first point always stays.
+ */
+export function addPoint(points: InkPoint[], next: InkPoint, merge: number): void {
+	const kept = points[points.length - 2];
+	if (kept && merge > 0 && Math.hypot(next.x - kept.x, next.y - kept.y) < merge) points[points.length - 1] = next;
+	else points.push(next);
+}
+
 /** Two frames: what was rendered now is on screen. */
 function nextPaint(win: Window): Promise<void> {
 	return new Promise((resolve) => win.requestAnimationFrame(() => win.requestAnimationFrame(() => resolve())));
@@ -87,8 +104,10 @@ function boardSurface(canvas: CanvasLike): InkSurface {
  * view may move while drawing), in board units; its viewBox keeps board coordinates.
  */
 function coverView(canvas: CanvasLike, svg: SVGSVGElement): void {
-	const w = canvas.wrapperEl.clientWidth || 1000;
-	const h = canvas.wrapperEl.clientHeight || 1000;
+	// The core's own measure of the view: reading the wrapper's size here would force a layout
+	// on every pen move and press.
+	const w = canvas.canvasRect?.width || 1000;
+	const h = canvas.canvasRect?.height || 1000;
 	const scale = canvas.scale || 1;
 	const bw = (w / scale) * 2;
 	const bh = (h / scale) * 2;
@@ -122,6 +141,8 @@ class InkSession {
 		box?: { minX: number; minY: number; maxX: number; maxY: number };
 		/** Line tool: Shift held, draw a straight line. */
 		straight?: boolean;
+		/** Pen strokes: board distance under which a new sample replaces the last one. */
+		merge?: number;
 	} | null = null;
 	private penUntil = 0;
 	/** The drag button: until it is pressed again or a tool is picked, input moves the view. */
@@ -257,7 +278,8 @@ class InkSession {
 			this.drawPreview();
 			return;
 		}
-		this.current = { ...base, mode: "draw", points: [this.point(evt)] };
+		// Samples closer than about half a screen pixel to the last one replace it (see addPoint).
+		this.current = { ...base, mode: "draw", points: [this.point(evt)], merge: MERGE_PX / Math.max(1e-6, this.surface.scale()) };
 		this.armHold(evt);
 		this.drawPreview();
 	};
@@ -290,7 +312,8 @@ class InkSession {
 			this.drawPreview();
 			return;
 		}
-		for (const e of events.length ? events : [evt]) cur.points.push(cur.mode === "lasso" ? { ...this.pos(e), p: 0.5 } : this.point(e));
+		if (cur.mode === "lasso") for (const e of events.length ? events : [evt]) cur.points.push({ ...this.pos(e), p: 0.5 });
+		else for (const e of events.length ? events : [evt]) addPoint(cur.points, this.point(e), cur.merge ?? 0);
 		if (cur.mode === "draw" && Math.hypot(evt.clientX - cur.lastHold.x, evt.clientY - cur.lastHold.y) > 4) {
 			cur.recognized = null;
 			this.armHold(evt);
@@ -694,8 +717,45 @@ export const drawingModule = defineModule<DrawingSettings>({
 		/** Clicking ink selects / drags its carrier like a card (the card box itself is click-through). */
 		const forward = (node: CanvasNodeLike) => (evt: PointerEvent) => (node as unknown as { onPointerdown(e: PointerEvent): void }).onPointerdown(evt);
 
+		/**
+		 * Performance with a lot of handwriting: each stroke is a card of its own, and while the
+		 * view zooms or pans the core detaches every card that leaves the view. Before detaching,
+		 * `preDetach()` saves the scroll and focus state of the card's content, which reads layout
+		 * (`offsetParent`, `scrollTop`) in between the DOM changes of the same frame: one forced
+		 * layout per card. Drawings have no content to save (their text is empty), so they skip it.
+		 */
+		const patchedProtos = new WeakSet<object>();
+		const patchedBreakpoints = new WeakSet<object>();
+		const isInkEl = (n: CanvasNodeLike) => n.nodeEl.getAttribute("data-opc-kind") === "ink";
+		const patchDetach = (node: CanvasNodeLike) => {
+			for (let proto = Object.getPrototypeOf(node) as object | null; proto && proto !== Object.prototype; proto = Object.getPrototypeOf(proto) as object | null) {
+				if (Object.prototype.hasOwnProperty.call(proto, "preDetach") && !patchedProtos.has(proto)) {
+					patchedProtos.add(proto);
+					ctx.patch("node.preDetach (drawing)", proto as CanvasNodeLike & { preDetach(): void }, {
+						preDetach: (next) =>
+							function (this: CanvasNodeLike) {
+								if (isInkEl(this)) return;
+								return next.call(this);
+							},
+					});
+				}
+				// A drawing's card never shows its (empty) text: its content stays unmounted at every
+				// zoom, so zooming past the content breakpoint mounts and lays out nothing for it.
+				if (Object.prototype.hasOwnProperty.call(proto, "updateBreakpoint") && !patchedBreakpoints.has(proto)) {
+					patchedBreakpoints.add(proto);
+					ctx.patch("node.updateBreakpoint (drawing)", proto as CanvasNodeLike & { updateBreakpoint(show: boolean): void }, {
+						updateBreakpoint: (next) =>
+							function (this: CanvasNodeLike, show: boolean) {
+								return next.call(this, isInkEl(this) ? false : show);
+							},
+					});
+				}
+			}
+		};
+
 		ctx.decorateNodes({
 			apply: (node, extra) => {
+				patchDetach(node);
 				if (extra.kind === "ink" && nodeType(node) === "text") renderInk(node, extra.strokes ?? [], sessions.get(node.canvas)?.selectedOf(node) ?? new Set(), forward(node), resizing.get(node));
 				else if (node.nodeEl.getAttribute("data-opc-kind") === "ink") renderInk(node, undefined, new Set(), forward(node));
 			},

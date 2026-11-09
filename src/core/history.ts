@@ -72,11 +72,42 @@ function rollback(canvas: CanvasLike, before: CanvasFileData): void {
 	canvas.requestFrame();
 }
 
-function sameSnapshot(a: CanvasFileData, b: CanvasFileData): boolean {
+/**
+ * Whether two snapshots hold the same board. Card by card, field by field: a snapshot shares the
+ * live items' unchanged values (our `x-opc` objects are replaced, never changed in place), so
+ * equal references settle almost everything and only objects that differ are compared as text.
+ * Comparing the whole board as text cost two serializations of it per undo step (tens of
+ * milliseconds on every pen stroke with thousands of strokes on the board).
+ */
+export function sameSnapshot(a: CanvasFileData, b: CanvasFileData): boolean {
 	if (a === b) return true;
 	try {
-		return JSON.stringify(a) === JSON.stringify(b);
+		const an = a.nodes ?? [];
+		const bn = b.nodes ?? [];
+		const ae = a.edges ?? [];
+		const be = b.edges ?? [];
+		if (an.length !== bn.length || ae.length !== be.length) return false;
+		for (let i = 0; i < an.length; i++) if (!sameRecord(an[i], bn[i])) return false;
+		for (let i = 0; i < ae.length; i++) if (!sameRecord(ae[i], be[i])) return false;
+		return sameRecord({ ...a, nodes: undefined, edges: undefined }, { ...b, nodes: undefined, edges: undefined });
 	} catch {
 		return false;
 	}
+}
+
+function sameRecord(x: unknown, y: unknown): boolean {
+	if (x === y) return true;
+	if (!x || !y || typeof x !== "object" || typeof y !== "object") return false;
+	const ox = x as Record<string, unknown>;
+	const oy = y as Record<string, unknown>;
+	const keys = Object.keys(ox).filter((k) => ox[k] !== undefined);
+	if (keys.length !== Object.keys(oy).filter((k) => oy[k] !== undefined).length) return false;
+	for (const k of keys) {
+		const vx = ox[k];
+		const vy = oy[k];
+		if (vx === vy) continue;
+		if (!vx || !vy || typeof vx !== "object" || typeof vy !== "object") return false;
+		if (JSON.stringify(vx) !== JSON.stringify(vy)) return false;
+	}
+	return true;
 }

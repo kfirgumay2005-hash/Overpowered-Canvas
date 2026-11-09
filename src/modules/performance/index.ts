@@ -447,6 +447,54 @@ class LodLayer {
 	}
 }
 
+type CssPropsHost = HTMLElement & { setCssProps(props: Record<string, string>): void };
+
+/**
+ * The core writes `--zoom-multiplier` on the board's wrapper whenever a viewport change completes,
+ * which with pinch-zoom (and any view moved frame by frame) is every frame. A custom property is
+ * inherited: each write makes the browser recompute the style of every element of every card
+ * (measured: 84 % of the frame time on a board with 3,000 handwritten words). Writes that come in
+ * a stream wait until the view settles; a single change (zoom buttons, the end of a wheel zoom)
+ * applies at once. Line widths scaled by the multiplier catch up when the gesture ends.
+ * Returns what undoes it.
+ */
+function coalesceZoomMultiplier(canvas: CanvasLike): () => void {
+	const el = canvas.wrapperEl as CssPropsHost;
+	const win = el.win;
+	const proto = Object.getPrototypeOf(el) as Partial<CssPropsHost>;
+	const original = proto.setCssProps;
+	if (typeof original !== "function") return () => {};
+	let pending: string | null = null;
+	let timer = 0;
+	let last = 0;
+	const flush = () => {
+		win.clearTimeout(timer);
+		timer = 0;
+		if (pending === null) return;
+		const value = pending;
+		pending = null;
+		original.call(el, { "--zoom-multiplier": value });
+	};
+	const wrapped = function (this: CssPropsHost, props: Record<string, string>) {
+		if (!props || !("--zoom-multiplier" in props)) return original.call(this, props);
+		const { "--zoom-multiplier": raw, ...rest } = props;
+		const value = raw ?? "";
+		if (Object.keys(rest).length) original.call(this, rest);
+		const now = performance.now();
+		const streaming = now - last < SETTLE_MS || timer !== 0;
+		last = now;
+		if (!streaming) return original.call(this, { "--zoom-multiplier": value });
+		pending = value;
+		win.clearTimeout(timer);
+		timer = win.setTimeout(flush, SETTLE_MS);
+	};
+	Object.defineProperty(el, "setCssProps", { value: wrapped, configurable: true, writable: true });
+	return () => {
+		flush();
+		delete (el as unknown as Record<string, unknown>).setCssProps;
+	};
+}
+
 /**
  * Performance: a level-of-detail renderer for large canvases zoomed far out (see LodLayer).
  * Measured numbers are in docs/BENCHMARKS.md.
@@ -471,7 +519,9 @@ export const performanceModule = defineModule<PerformanceSettings>({
 
 		ctx.onCanvas((canvas) => {
 			layers.set(canvas, new LodLayer(ctx, canvas));
+			const restore = coalesceZoomMultiplier(canvas);
 			return () => {
+				restore();
 				layers.get(canvas)?.destroy();
 				layers.delete(canvas);
 			};

@@ -10,6 +10,11 @@ body.opc-mod-drawing .canvas-node[data-opc-kind="ink"] > .canvas-node-container 
 body.opc-mod-drawing .canvas-node[data-opc-kind="ink"] > .canvas-node-container > .canvas-node-content {
 	visibility: hidden;
 }
+/* A drawing's card never mounts its (empty) text, so the core shows its placeholder icon there:
+   out of the page entirely, so style passes (every zoom step) skip it. */
+body.opc-mod-drawing .canvas-node[data-opc-kind="ink"] > .canvas-node-container > .canvas-node-placeholder {
+	display: none;
+}
 body.opc-mod-drawing .canvas-node[data-opc-kind="ink"].is-selected > .canvas-node-container,
 body.opc-mod-drawing .canvas-node[data-opc-kind="ink"].is-focused > .canvas-node-container {
 	border: 1px dashed var(--color-accent);

@@ -16,7 +16,7 @@ When resuming: read this file and `git log`, then continue with the first item t
 | C1 | Vertical column mode | NEW (orientation of the column view) | done |
 | C2 | Table of Contents mode | NEW | done |
 | D1 | Automatic header rules | IMPROVEMENT (headers) | done |
-| E1 | Handwriting performance + Ink-style features | IMPROVEMENT + NEW | todo |
+| E1 | Handwriting performance + Ink-style features | IMPROVEMENT + NEW | perf done; features todo |
 | E2 | Page format mode | NEW | todo |
 
 ## A1. Ghost marks (done)
@@ -203,3 +203,24 @@ DIA board with off / children 4 / depth 2 gave the expected headings; "Not a hea
 and kept A a plain line under the depth rule. New tutorial "Automatic headers" (4 tasks, command
 alternative, touch line; 5 locales) 4/4; "Canvas ⇄ Markdown" (header step got a pointer) 7/7.
 Tests 807/807, lint clean.
+
+## E1 (part 1). Handwriting performance at scale (done)
+
+Measured first (docs/BENCHMARKS.md, "Handwriting at scale"): a board with 3,024 handwritten
+words (each stroke its own drawing card, as the pen makes them). Profiler + timeline trace showed
+the cost was not painting ink but per-frame style and layout work over every card:
+1. `--zoom-multiplier` written on the wrapper every pinch frame → every element of every card
+   restyled (84 % of main-thread time). Fixed in the performance module (`coalesceZoomMultiplier`).
+2. Drawing cards mounted Markdown views for their empty text (re-mounted at the zoom breakpoint,
+   `onRender` forcing layout) → content never mounted for drawings, placeholder `display: none`.
+3. `preDetach()` forced a layout per card leaving the view → skipped for drawings.
+4. Pen-up: `sameSnapshot` stringified the whole board twice → structural comparison; validated
+   reads cached per stored object; live layer size from the core's cached rect.
+5. Pen input: sub-pixel samples replace the provisional last point (`addPoint`, WYSIWYG).
+Results (alternated builds, same board): zoom 15.5 → 52.5 fps (p95 140 → 18–35 ms), pan 33.5 →
+57 fps, wheel zoom 49 → 57 fps, pen-up 38 → 5 ms. Stored format unchanged (no migration needed;
+existing handwriting works as is). Viewport culling = the core's virtualize (already there);
+far-zoom bitmap = the performance module's LOD layer (A1 fixed its ghosts). Tests 813/813 (new:
+same-snapshot, pen merge). Drawing tutorial 10/10; column flicker test still 0 blank frames.
+Ink plugin studied (CC BY-NC-ND: ideas only, no code): its geometry caches, culling, ~1 px point
+merge and quiet-period saves match what was measured here.

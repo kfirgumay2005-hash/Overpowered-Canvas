@@ -289,8 +289,30 @@ export const EDGE_SHAPE: Shape<OpcEdge> = {
 };
 
 export const readRoot: Sanitizer<OpcRoot> = objectOf(ROOT_SHAPE, { required: ["v"] });
-export const readNode = (raw: unknown): OpcNode => objectOf(NODE_SHAPE)(raw) ?? {};
-export const readEdge = (raw: unknown): OpcEdge => objectOf(EDGE_SHAPE)(raw) ?? {};
+/**
+ * Reads are cached per stored object: stored extra data is replaced on every write, never changed
+ * in place (see access.ts), so the same object always cleans to the same result. Checking every
+ * stroke point again on each read made modules that look at all cards (several times per pen
+ * stroke) scale with the amount of handwriting on the board. A cheap signature (each key and its
+ * value or reference) still notices an object changed in place. Callers get a shallow copy.
+ */
+function cachedReader<T extends object>(shape: Shape<T>): (raw: unknown) => T {
+	const cache = new WeakMap<object, { sig: unknown[]; clean: T }>();
+	const read = objectOf(shape);
+	return (raw) => {
+		if (!isPlainObject(raw)) return read(raw) ?? ({} as T);
+		const sig: unknown[] = [];
+		for (const key of Object.keys(raw)) sig.push(key, raw[key]);
+		const hit = cache.get(raw);
+		if (hit && hit.sig.length === sig.length && hit.sig.every((v, i) => v === sig[i])) return { ...hit.clean };
+		const clean = read(raw) ?? ({} as T);
+		cache.set(raw, { sig, clean });
+		return { ...clean };
+	};
+}
+
+export const readNode: (raw: unknown) => OpcNode = cachedReader(NODE_SHAPE);
+export const readEdge: (raw: unknown) => OpcEdge = cachedReader(EDGE_SHAPE);
 
 export class InvalidExtraDataError extends Error {
 	constructor(message: string) {
