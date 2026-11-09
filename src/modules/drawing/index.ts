@@ -16,6 +16,7 @@ import { renderInk } from "./render";
 import { DRAWING_DEFAULTS, INK_DEFAULT, InkToolbar, PEN_TOOLS, sanitizePens, type DrawingSettings, type InkTool, type PenTool } from "./toolbar";
 import { logError } from "../../core/log";
 import { inkHost, type InkSurface } from "./api";
+import { enableInkTools } from "./ink-tools";
 
 type Ctx = ModuleContext<DrawingSettings>;
 
@@ -148,6 +149,8 @@ class InkSession {
 	/** The drag button: until it is pressed again or a tool is picked, input moves the view. */
 	private panning = false;
 	private lastCarrier: CanvasNodeLike | null = null;
+	/** Where the pen last pressed on the board (a card made from handwriting goes there). */
+	lastPress: { x: number; y: number } | null = null;
 	/** Lasso selection: carrier → stroke ids. */
 	readonly selection = new Map<CanvasNodeLike, Set<string>>();
 
@@ -157,6 +160,7 @@ class InkSession {
 		private readonly surface: InkSurface,
 		private readonly onClose: () => void,
 		private readonly rerender: (node: CanvasNodeLike) => void,
+		private readonly onHandwrite: () => void = () => {},
 	) {
 		const host = surface.host;
 		// A hovering pen shows its brush before any press.
@@ -188,6 +192,8 @@ class InkSession {
 			close: () => this.onClose(),
 			colorName: (color) => colorName(ctx.t, color),
 			hiddenTools: surface.inkOnly ? ["line", "arrow"] : [],
+			// Handwriting → text makes a card on the board: not offered in other views.
+			...(surface.inkOnly ? {} : { handwrite: () => this.onHandwrite() }),
 		});
 		host.addClass("opc-drawing");
 		this.overlay.addEventListener("pointerdown", this.onDown);
@@ -250,6 +256,7 @@ class InkSession {
 		// Pressing where nothing can be drawn (between the cards of another view): left to it.
 		const p = this.panning ? { x: 0, y: 0 } : this.surface.toCanvas(evt.clientX, evt.clientY, true);
 		if (!p) return;
+		if (!this.panning && !this.surface.inkOnly) this.lastPress = { x: p.x, y: p.y };
 		evt.preventDefault();
 		evt.stopPropagation();
 		capturePointer(this.overlay, evt.pointerId);
@@ -764,6 +771,8 @@ export const drawingModule = defineModule<DrawingSettings>({
 			},
 		});
 		enableAnchors(ctx);
+		// Handwriting → text and drawing embeds (the drawings meant: the lasso's, else the selection).
+		const tools = enableInkTools(ctx, (canvas) => sessions.get(canvas)?.lastPress ?? null, (canvas) => [...(sessions.get(canvas)?.selection.keys() ?? [])]);
 
 		// Resizing a drawing's card stretches the strokes with it: live while dragging (the
 		// drawing is scaled to the box), written into the strokes when the handle is let go.
@@ -872,7 +881,7 @@ export const drawingModule = defineModule<DrawingSettings>({
 			// The lasso or the highlighter ends first.
 			claimTool(canvas, "drawing", () => stop(canvas));
 			canvas.deselectAll();
-			sessions.set(canvas, new InkSession(ctx, canvas, surface, () => stop(canvas), rerender));
+			sessions.set(canvas, new InkSession(ctx, canvas, surface, () => stop(canvas), rerender, () => tools.handwrite(canvas)));
 			if (onEnd) ended.set(canvas, onEnd);
 			ctx.events.emit("drawing-mode-changed", canvas, ctx.settings.tool);
 		};

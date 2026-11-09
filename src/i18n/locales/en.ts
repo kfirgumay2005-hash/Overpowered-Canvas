@@ -1538,6 +1538,23 @@ export const en = {
 	"canvasMarkdown.autoHeaderDepth.desc": "By depth: the levels of a map down to this one are headings (its first card is level 1, H1); deeper levels stay an outline.",
 	"canvasMarkdown.autoHeaderDepth.simple": "How deep headings go.",
 	"canvasMarkdown.autoHeaders.pick": "Automatic headers: choose the rule",
+	"drawing.handwrite.title": "Handwriting to text",
+	"drawing.handwrite.button": "Handwriting to text",
+	"drawing.handwrite.command": "Handwriting to text: write with the pen, insert as a card",
+	"drawing.handwrite.help": "Write in the box with your pen: your device turns the handwriting into text as you write (Scribble on iPad, pen input on Windows). You can also type. The text becomes a card where you last wrote on the board.",
+	"drawing.handwrite.placeholder": "Write here with your pen…",
+	"drawing.handwrite.insert": "Insert as a card",
+	"drawing.recognize.command": "Read handwriting into a text card",
+	"drawing.recognize.empty": "No text could be read from this drawing.",
+	"drawing.recognize.failed": "Handwriting recognition did not work here.",
+	"drawing.embed.command": "Embed the drawing in a note",
+	"drawing.embed.nothing": "Select a drawing first (or a card with handwriting on it).",
+	"drawing.embed.done": "Copied {link}: paste it into a note. The picture follows the drawing when it changes.",
+	"drawing.embed.failed": "The drawing could not be saved as a picture.",
+	"textAlign.font.title": "Font",
+	"textAlign.font.normal": "Normal",
+	"textAlign.font.hand": "Handwriting",
+	"textAlign.font.toggle": "Handwriting font: on / off",
 } as const;
 
 export type I18nKey = keyof typeof en;

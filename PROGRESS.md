@@ -16,7 +16,7 @@ When resuming: read this file and `git log`, then continue with the first item t
 | C1 | Vertical column mode | NEW (orientation of the column view) | done |
 | C2 | Table of Contents mode | NEW | done |
 | D1 | Automatic header rules | IMPROVEMENT (headers) | done |
-| E1 | Handwriting performance + Ink-style features | IMPROVEMENT + NEW | perf done; features todo |
+| E1 | Handwriting performance + Ink-style features | IMPROVEMENT + NEW | done |
 | E2 | Page format mode | NEW | todo |
 
 ## A1. Ghost marks (done)
@@ -224,3 +224,28 @@ far-zoom bitmap = the performance module's LOD layer (A1 fixed its ghosts). Test
 same-snapshot, pen merge). Drawing tutorial 10/10; column flicker test still 0 blank frames.
 Ink plugin studied (CC BY-NC-ND: ideas only, no code): its geometry caches, culling, ~1 px point
 merge and quiet-period saves match what was measured here.
+
+## E1 (part 2). Ink-inspired features (done)
+
+Classification: NEW (none existed; the font option extends the existing card text style picker).
+- Handwriting → text (`drawing/ink-tools.ts`): a button in the drawing bar and the command
+  "Handwriting to text…" open a large writing box; the device's own recognition (Scribble on
+  iPad, Windows pen input) turns pen writing into text as it is written, "Insert as a card" puts it
+  where the pen last pressed on the board (one undo step, event `handwriting-to-text`). Reading
+  strokes already on the board needs a recognizer the device offers to apps: the Handwriting
+  Recognition API is feature-detected ("Read handwriting into a text card" in the command palette
+  and the drawing's menu appear only there). Neither this Windows Electron nor iPad WebKit has it,
+  so that path is unit-tested against a fake recognizer only; no recognizer is bundled.
+- Text in a handwriting style (text-align module): x-opc `font: "hand"` (schema + validator),
+  the text size picker got a Font row (Normal / Handwriting), command "Handwriting font: on /
+  off"; system handwriting fonts with fallback (letters a font lacks use a regular font); shows on
+  the board, in its editor (mirrored attribute) and wherever cards are built like the board.
+- Embedding: "Embed the drawing in a note" (command + drawing context menu) saves the selected
+  drawings (the lasso's in drawing mode, or those stuck to selected cards) as an SVG file
+  (`<files folder>/Drawings/…`; a tutorial board's own folder), copies `![[…svg]]`, records it in
+  root `inkEmbeds` (schema + validator + SCHEMA.md) and writes the file again 1 s after any of
+  those drawings changes (event `drawing-embedded`). Dark mode keeps the default ink light.
+Tested: unit (SVG output, reading order, fake recognizer); harness: font applied (computed font
+family = the handwriting stack), writing box → card, embed written and rewritten after the
+drawing changed (1 → 2 paths). New tutorial "Handwriting tools" (3 tasks, touch lines,
+command alternatives; 5 locales) 3/3 with no leaked files; "Drawing" (pointer added) 10/10.

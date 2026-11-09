@@ -5,6 +5,7 @@
  */
 import {
 	ARROW_STYLES,
+	CARD_FONTS,
 	CARD_FONT_MAX,
 	CARD_FONT_MIN,
 	BORDER_STYLES,
@@ -224,6 +225,7 @@ export const ROOT_SHAPE: Shape<OpcRoot> = {
 	pages: arrayOf(objectOf<PageInfo>({ id: nonEmptyStr, anchor: nonEmptyStr, root: nonEmptyStr, parent: nonEmptyStr }, { required: ["id", "anchor", "root"] })),
 	childOrder: recordOf(arrayOf(nonEmptyStr)),
 	tocLayouts: recordOf(tocArrangement),
+	inkEmbeds: recordOf(arrayOf(nonEmptyStr, { min: 1 })),
 };
 
 export const NODE_SHAPE: Shape<OpcNode> = {
@@ -236,6 +238,7 @@ export const NODE_SHAPE: Shape<OpcNode> = {
 		const n = finite(raw);
 		return n !== undefined && n >= CARD_FONT_MIN && n <= CARD_FONT_MAX ? n : undefined;
 	},
+	font: oneOf(CARD_FONTS),
 	header: (raw) => {
 		const n = finite(raw);
 		// -1: never a header (wins over the automatic header rules).

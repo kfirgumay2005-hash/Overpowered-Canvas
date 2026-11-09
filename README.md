@@ -104,7 +104,10 @@ for handwriting. The same view also runs top to bottom (the root on top, each le
 it), and cards wider than the way down are cut where the next level starts. The table of contents
 shows a card's children together as cells of a grid (arrows go into a cell's own grid, a back
 button goes up): a simple grid of N cells per row, or a free arrangement where cells dragged
-beside or below each other form colored cell groups, saved with the canvas. Also
+beside or below each other form colored cell groups, saved with the canvas. Handwriting stays smooth on boards with thousands of strokes; the drawing
+bar turns pen writing into text cards (the device's own handwriting recognition), cards can show
+their text in a handwriting font, and a drawing can be embedded in a note as a picture that follows
+it when it changes. Also
 collapsible branches with child counts, and automatic layout that keeps the order the cards show
 on the board (mind map in any direction,
 collision-free radial that respects every card's size, balanced, layered flowchart, grid) as one

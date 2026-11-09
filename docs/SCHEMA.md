@@ -58,6 +58,8 @@ interface OpcRoot {                       // file root "x-opc"
   }>;                                     // → rows of cells; a block is one cell or a cell group (outline color
                                           // "1"–"6" or "#rrggbb"). TocTree = card id | { dir: "row" | "col";
                                           // items: TocTree[] } (cells beside / below each other).
+  inkEmbeds?: Record<string, string[]>;   // drawing embeds: SVG file path → the drawing cards it shows; the
+                                          // file is written again when one of them changes (drawing module)
 }
 
 // "right" | "left" | "down" | "up" | "balanced" | "radial" | "layered-right" | "layered-left" |

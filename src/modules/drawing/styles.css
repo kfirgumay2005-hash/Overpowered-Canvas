@@ -269,3 +269,13 @@ body.theme-dark.opc-mod-drawing .opc-ink-pen[style*="#1e1e1e"] {
 body.theme-dark.opc-mod-drawing .opc-ink-pen[style*="#1e1e1e"] .opc-ink-pen-dot {
 	background: #e8e8e8;
 }
+
+/* Handwriting → text: a big box to write in with the pen (the system turns it into text). */
+.opc-handwrite-modal .opc-handwrite-area {
+	display: block;
+	width: 100%;
+	min-height: min(40vh, 320px);
+	font-size: 1.4em;
+	line-height: 1.5;
+	resize: vertical;
+}

@@ -1761,6 +1761,74 @@ const autoHeaders: TutorialDefinition = {
 	],
 };
 
+// ---------- 28. Handwriting tools ----------
+
+const handwriting: TutorialDefinition = {
+	id: "handwriting",
+	icon: "signature",
+	title: "tut.hand.title",
+	summary: "tut.hand.summary",
+	modules: ["drawing", "text-align"],
+	board: (t) => {
+		const mark = ink("h-ink", [{ x: 30, y: 78 }, { x: 120, y: 82 }, { x: 260, y: 76 }], "#e03131", 4);
+		(mark[SCHEMA_KEY] as Record<string, unknown>).anchor = "h-card";
+		return {
+			nodes: [card("h-card", t("tut.hand.board.card"), 0, 0, 300, 100, { color: "4" }), mark],
+			edges: [],
+		};
+	},
+	steps: [
+		{
+			title: "tut.hand.write.title",
+			body: "tut.hand.write.body",
+			task: "tut.hand.write.task",
+			touch: "tut.hand.write.touch",
+			target: (rt) => Array.from(rt.canvas.wrapperEl.querySelectorAll<HTMLElement>(".opc-ink-toolbar .opc-ink-button")).find((b) => b.querySelector(".lucide-text-cursor-input")) ?? null,
+			check: (rt) => rt.seen("handwriting-to-text"),
+			demo: async (rt) => {
+				rt.command("drawing:handwrite-text");
+				await rt.wait(500);
+				const area = rt.canvas.wrapperEl.doc.querySelector<HTMLTextAreaElement>(".opc-handwrite-area");
+				if (!area) return;
+				area.value = rt.t("tut.hand.demoText");
+				await rt.wait(400);
+				rt.canvas.wrapperEl.doc.querySelector<HTMLElement>(".opc-handwrite-modal .mod-cta")?.click();
+				await rt.wait(400);
+			},
+		},
+		{
+			title: "tut.hand.font.title",
+			body: "tut.hand.font.body",
+			task: "tut.hand.font.task",
+			touch: "tut.hand.font.touch",
+			enter: (rt) => {
+				if (rt.canvas.wrapperEl.querySelector(".opc-ink-overlay")) rt.command("drawing:toggle-drawing");
+				rt.select(["h-card"]);
+			},
+			target: () => document.querySelector<HTMLElement>(".canvas-menu .opc-menu-font-size"),
+			check: (rt) => rt.extra("h-card").font === "hand",
+			demo: (rt) => {
+				const node = rt.node("h-card");
+				if (node) rt.change(() => rt.data.node(node).set({ font: "hand" }));
+			},
+		},
+		{
+			title: "tut.hand.embed.title",
+			body: "tut.hand.embed.body",
+			task: "tut.hand.embed.task",
+			touch: "tut.hand.embed.touch",
+			enter: (rt) => rt.select(["h-card"]),
+			check: (rt) => rt.seen("drawing-embedded"),
+			demo: async (rt) => {
+				rt.select(["h-card"]);
+				rt.command("drawing:embed-drawing");
+				await rt.wait(1200);
+			},
+		},
+		{ title: "tut.hand.end.title", body: "tut.hand.end.body" },
+	],
+};
+
 // ---------- 9. Finding your way ----------
 
 const CAMP = { w: 900, h: 560 };
@@ -4115,4 +4183,4 @@ const shortcuts: TutorialDefinition = {
 	],
 };
 
-export const TUTORIALS: readonly TutorialDefinition[] = [basics, notes, shapes, edges, drawing, layers, present, mindmap, navigate, organize, markdown, select, blocks, vault, style, big, direction, pdf, pages, arrows, bars, images, file, columns, columnsDown, toc, autoHeaders, smartGroups, indent, fontSize, shortcuts];
+export const TUTORIALS: readonly TutorialDefinition[] = [basics, notes, shapes, edges, drawing, layers, present, mindmap, navigate, organize, markdown, select, blocks, vault, style, big, direction, pdf, pages, arrows, bars, images, file, columns, columnsDown, toc, autoHeaders, handwriting, smartGroups, indent, fontSize, shortcuts];

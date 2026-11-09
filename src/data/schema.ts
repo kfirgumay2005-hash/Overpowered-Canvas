@@ -191,6 +191,8 @@ export interface OpcRoot {
 	 * main page's top level) → how its children's cells are arranged and grouped.
 	 */
 	tocLayouts?: Record<string, TocArrangement>;
+	/** Drawing embeds: SVG file path (in the vault) → the drawings it shows; written again when they change. */
+	inkEmbeds?: Record<string, string[]>;
 }
 
 /** A cell (the card id), or cells side by side ("row") or one under another ("col"). */
@@ -227,6 +229,10 @@ export interface LayerInfo {
 	locked?: boolean;
 }
 
+/** Fonts a card's text can take besides the canvas's own. */
+export const CARD_FONTS = ["hand"] as const;
+export type CardFont = (typeof CARD_FONTS)[number];
+
 export interface OpcNode {
 	kind?: NodeKind;
 	shape?: ShapeName;
@@ -236,6 +242,8 @@ export interface OpcNode {
 	valign?: VerticalAlign;
 	/** Text size of the card in pixels; without it the canvas's own size. */
 	fontSize?: number;
+	/** The card's text in a handwriting style ("hand"); without it the canvas's own font. */
+	font?: CardFont;
 	/** A header card: a heading in the Markdown note. 0 = automatic level, 1–6 = its own level, -1 = never (wins over the automatic header rules). */
 	header?: number;
 	dir?: Direction;

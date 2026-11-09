@@ -109,6 +109,8 @@ export interface ToolbarHost {
 	colorName(color: string): string;
 	/** Tools this surface doesn't offer (a picked one of them counts as the pen). */
 	hiddenTools?: InkTool[];
+	/** Handwriting → text (the system turns pen writing into text), where offered. */
+	handwrite?(): void;
 }
 
 export class InkToolbar {
@@ -219,6 +221,7 @@ export class InkToolbar {
 			}
 		});
 		if (this.host.hasSelection()) button("lock", t("drawing.lockSelection"), () => this.host.lockSelection());
+		if (this.host.handwrite) button("text-cursor-input", t("drawing.handwrite.button"), () => this.host.handwrite?.());
 		button("sliders-horizontal", t("drawing.more"), () => this.toggleMore());
 		button("x", t("drawing.exit"), () => this.host.close(), false, "mod-close");
 	}

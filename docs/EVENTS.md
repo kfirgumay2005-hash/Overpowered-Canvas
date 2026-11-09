@@ -77,6 +77,8 @@ read-only unless you know the internals. Payloads are listed below; types are in
 | `toc-shown` | canvas, parentId (the table of contents shows this card's children; `""` = a page's top cards) |
 | `toc-arranged` | canvas, parentId (cells of that level were moved, grouped, recolored or ungrouped) |
 | `toc-closed` | canvas |
+| `handwriting-to-text` | canvas, node (a text card made from handwriting: the writing box, or reading drawings) |
+| `drawing-embedded` | canvas, path (a drawing put into an SVG file for notes; the file follows the drawing) |
 | `lasso-selected` | canvas, items (what the lasso selected) |
 | `selection-cut` | canvas, count |
 | `smart-group-changed` | canvas, change (`"group"` or `"ungroup"`), cards (how many cards were grouped or ungrouped) |

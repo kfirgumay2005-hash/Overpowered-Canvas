@@ -81,6 +81,8 @@ export interface PublicEventMap {
 	"toc-shown": [canvas: CanvasLike, parentId: string];
 	"toc-arranged": [canvas: CanvasLike, parentId: string];
 	"toc-closed": [canvas: CanvasLike];
+	"handwriting-to-text": [canvas: CanvasLike, node: CanvasNodeLike];
+	"drawing-embedded": [canvas: CanvasLike, path: string];
 	"lasso-selected": [canvas: CanvasLike, items: CanvasItemLike[]];
 	"selection-cut": [canvas: CanvasLike, count: number];
 	"smart-group-changed": [canvas: CanvasLike, change: "group" | "ungroup", cards: number];
