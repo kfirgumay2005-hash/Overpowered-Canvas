@@ -5,7 +5,7 @@
  */
 import { arrayBufferToBase64, requestUrl } from "obsidian";
 import type { CanvasEdgeLike, CanvasLike, CanvasNodeLike } from "../../internals/types";
-import { isHiddenNode, renderedZ } from "../shared";
+import { isEdgeOffBoard, isOffBoard, renderedZ } from "../shared";
 
 export interface ExportOptions {
 	scope: "all" | "selection";
@@ -27,12 +27,12 @@ const XHTML = "http://www.w3.org/1999/xhtml";
 const MAX_SIDE = 16_000;
 
 function itemsInScope(canvas: CanvasLike, scope: ExportOptions["scope"]): { nodes: CanvasNodeLike[]; edges: CanvasEdgeLike[] } {
-	const all = [...canvas.nodes.values()].filter((n) => !isHiddenNode(n)).sort((a, b) => renderedZ(a) - renderedZ(b));
+	const all = [...canvas.nodes.values()].filter((n) => !isOffBoard(n)).sort((a, b) => renderedZ(a) - renderedZ(b));
 	const nodes = scope === "selection" ? all.filter((n) => canvas.selection.has(n)) : all;
 	const set = new Set(nodes);
 	const shown = new Set(all);
 	const edges = [...canvas.edges.values()].filter(
-		(e) => shown.has(e.from.node) && shown.has(e.to.node) && (scope === "all" || canvas.selection.has(e) || (set.has(e.from.node) && set.has(e.to.node))),
+		(e) => !isEdgeOffBoard(e) && shown.has(e.from.node) && shown.has(e.to.node) && (scope === "all" || canvas.selection.has(e) || (set.has(e.from.node) && set.has(e.to.node))),
 	);
 	return { nodes, edges };
 }

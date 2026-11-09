@@ -1,11 +1,11 @@
-import { Setting } from "obsidian";
+import { Setting, type EventRef } from "obsidian";
 import { defineModule, type ModuleContext } from "../../core/module";
 import { SCHEMA_KEY, type OpcNode, type Stroke } from "../../data/schema";
 import { unpack } from "../../geometry/ink";
 import type { CanvasEdgeLike, CanvasLike } from "../../internals/types";
 import { mergeWithDefaults } from "../../settings/settings";
 import { cssColor } from "../minimap/logic";
-import { nodeType, isHiddenNode, renderedZ } from "../shared";
+import { nodeType, isEdgeOffBoard, isOffBoard, renderedZ } from "../shared";
 
 interface PerformanceSettings {
 	/** Below this zoom level (0 = 100%, -1 = 50%, …) large canvases switch to the fast renderer. */
@@ -77,7 +77,7 @@ class LodLayer {
 	private size = { w: 0, h: 0 };
 	private readonly resize: ResizeObserver;
 	/** Bitmap of the whole scene at `scale`, reused while panning and zooming. */
-	private cache: { cv: HTMLCanvasElement; scale: number; minX: number; minY: number; version: number } | null = null;
+	private cache: { cv: HTMLCanvasElement; scale: number; minX: number; minY: number; version: number; hidden: string } | null = null;
 	private version = 0;
 	private bounds: Box | null = null;
 	private settle = 0;
@@ -249,7 +249,7 @@ class LodLayer {
 		if (bounds && fits) {
 			// Pan and zoom reuse one bitmap of the whole scene; it is redrawn sharp once the view settles.
 			const c = this.cache;
-			const stale = !c || c.version !== this.version || c.scale > scale * 2 || c.scale < scale / 2;
+			const stale = !c || c.version !== this.version || c.hidden !== this.hiddenKey() || c.scale > scale * 2 || c.scale < scale / 2;
 			if (stale) this.renderCache(bounds, scale, dpr);
 			else if (Math.abs(c.scale - scale) > 1e-9) {
 				wrapper.win.clearTimeout(this.settle);
@@ -274,10 +274,33 @@ class LodLayer {
 		this.overlay(g, scale, ox, oy, dpr);
 	}
 
+	/**
+	 * Which cards are off the board (other pages, hidden layers, folded groups and branches).
+	 * Switching pages or folding a branch changes no card data, so the cached scene must also
+	 * be keyed by this, or it keeps showing cards and arrows the DOM no longer shows.
+	 */
+	private hiddenKey(): string {
+		let hash = 0;
+		let count = 0;
+		for (const n of this.canvas.nodes.values()) {
+			if (!isOffBoard(n)) continue;
+			count++;
+			for (let i = 0; i < n.id.length; i++) hash = (hash * 31 + n.id.charCodeAt(i)) | 0;
+		}
+		if (hash !== this.lastHidden) {
+			this.lastHidden = hash;
+			this.bounds = null;
+		}
+		return `${count}:${hash}`;
+	}
+
+	private lastHidden = 0;
+
 	private contentBounds(): Box | null {
 		if (this.bounds) return this.bounds;
 		let b: Box | null = null;
 		for (const n of this.canvas.nodes.values()) {
+			if (isOffBoard(n)) continue;
 			if (!b) b = { minX: n.x, minY: n.y, maxX: n.x + n.width, maxY: n.y + n.height };
 			else {
 				b.minX = Math.min(b.minX, n.x);
@@ -300,7 +323,7 @@ class LodLayer {
 		const g = cv.getContext("2d")!;
 		g.setTransform(dpr * scale, 0, 0, dpr * scale, -bounds.minX * scale * dpr, -bounds.minY * scale * dpr);
 		this.paint(g, bounds, 1 / scale);
-		this.cache = { cv, scale, minX: bounds.minX, minY: bounds.minY, version: this.version };
+		this.cache = { cv, scale, minX: bounds.minX, minY: bounds.minY, version: this.version, hidden: this.hiddenKey() };
 	}
 
 	/** Draws the scene in world coordinates (the transform is already set). */
@@ -309,7 +332,7 @@ class LodLayer {
 		const visible = (x: number, y: number, ww: number, hh: number) => x < view.maxX && x + ww > view.minX && y < view.maxY && y + hh > view.minY;
 		const { presets, bg, border, text, faint, dark } = this.colors();
 		const ink = (c: string) => (dark && c.toLowerCase() === "#1e1e1e" ? "#e8e8e8" : c);
-		const nodes = [...canvas.nodes.values()].filter((n) => !isHiddenNode(n) && visible(n.x, n.y, n.width, n.height)).sort((a, b) => renderedZ(a) - renderedZ(b));
+		const nodes = [...canvas.nodes.values()].filter((n) => !isOffBoard(n) && visible(n.x, n.y, n.width, n.height)).sort((a, b) => renderedZ(a) - renderedZ(b));
 
 		// Groups.
 		for (const n of nodes) {
@@ -328,9 +351,10 @@ class LodLayer {
 		// Edges, batched by color.
 		const byColor = new Map<string, Path2D>();
 		for (const e of canvas.edges.values()) {
-			const a = e.from?.node;
-			const b = e.to?.node;
-			if (!a || !b) continue;
+			// Arrows of other pages, hidden layers and folded branches are not drawn by the DOM either.
+			if (isEdgeOffBoard(e)) continue;
+			const a = e.from.node;
+			const b = e.to.node;
 			const minX = Math.min(a.x, b.x);
 			const minY = Math.min(a.y, b.y);
 			if (!visible(minX, minY, Math.max(a.x + a.width, b.x + b.width) - minX, Math.max(a.y + a.height, b.y + b.height) - minY)) continue;
@@ -414,7 +438,7 @@ class LodLayer {
 			this.fontSet = wanted;
 		}
 		for (const n of this.canvas.nodes.values()) {
-			if (!n.label || n.width * scale < 60 || nodeType(n) !== "group") continue;
+			if (!n.label || n.width * scale < 60 || nodeType(n) !== "group" || isOffBoard(n)) continue;
 			const x = n.x * scale + ox;
 			const y = n.y * scale + oy;
 			if (x > this.size.w || y > this.size.h + 20 || x + n.width * scale < 0 || y < 0) continue;
@@ -465,6 +489,19 @@ export const performanceModule = defineModule<PerformanceSettings>({
 		ctx.on("edge-added", (e) => changed(e.canvas));
 		ctx.on("edge-removed", (e) => changed(e.canvas));
 		ctx.on("data-load", changed);
+		// Showing another page or folding something changes what is on the board without
+		// touching any card's data: redraw (the cache is keyed by the hidden set, see hiddenKey).
+		const ws = ctx.app.workspace as unknown as { on(name: string, cb: (...args: unknown[]) => void): EventRef };
+		const canvasOf = (x: unknown): CanvasLike | undefined => {
+			const v = x as { canvas?: CanvasLike; nodes?: unknown } | undefined;
+			return v?.nodes ? (v as CanvasLike) : v?.canvas;
+		};
+		for (const name of ["page-shown", "branch-moved", "page-merged", "branch-collapsed", "branch-expanded", "group-collapsed", "group-expanded"]) {
+			ctx.registerEvent(ws.on(`overpowered-canvas:${name}`, (first: unknown) => {
+				const canvas = canvasOf(first);
+				if (canvas) changed(canvas);
+			}));
+		}
 		ctx.on("history-apply", changed);
 		// Selection is drawn live on top of the cached scene.
 		ctx.on("selection-change", (canvas) => layers.get(canvas)?.schedule());
