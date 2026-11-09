@@ -24,6 +24,11 @@ export interface ColumnOptions {
 	width: number;
 	/** Cards at their size on the board, with the ink drawn on them. */
 	actualSize: boolean;
+	/**
+	 * Top to bottom: the root on top, each level a row of cards below the one before (read like
+	 * a text). Otherwise left to right, each level a column.
+	 */
+	vertical: boolean;
 }
 
 /** A tool of the column view: drawing, the highlighter, the text color tool. */
@@ -49,6 +54,8 @@ export interface ColumnHost {
 	useTool(tool: ColumnTool): void;
 	/** A card was resized here (actual size): write its new size to the canvas. */
 	resize(id: string, size: { width: number; height: number }): boolean;
+	/** The orientation button: left to right ⇄ top to bottom. */
+	flip(): void;
 }
 
 const TOOL_ICONS: Record<ColumnTool, string> = { ink: "pen-tool", highlight: "highlighter", color: "baseline" };
@@ -81,6 +88,11 @@ interface Placed {
 	reach: number;
 	width: number;
 }
+
+/**
+ * The map as levels: left to right (each level a column, siblings stacked down it) or top to
+ * bottom (each level a row, siblings side by side). One view, one layout: only the axes swap.
+ */
 
 /**
  * The map as columns: each ancestor's level to the left, the current card's siblings stacked in
@@ -120,6 +132,10 @@ export class ColumnView {
 	private inkCard: string | null = null;
 	/** Waiting for committed ink to show (see InkSurface.settled). */
 	private settleWaiters: (() => void)[] = [];
+	/** Levels run top to bottom (rows) instead of left to right (columns). */
+	private vertical = false;
+	/** Size of each level along the way down, as last measured (top to bottom only). */
+	private actualLevels = false;
 
 	constructor(
 		private readonly app: App,
@@ -165,6 +181,9 @@ export class ColumnView {
 		// A column never takes more than about three quarters of the view (phones), so the next shows.
 		const room = this.el.clientWidth ? Math.max(160, Math.round(this.el.clientWidth * 0.72)) : asked.width;
 		const opts = { ...asked, width: Math.min(asked.width, room) };
+		this.vertical = opts.vertical;
+		this.actualLevels = opts.actualSize;
+		this.el.toggleClass("is-vertical", opts.vertical);
 		this.el.toggleClass("is-actual-size", opts.actualSize);
 		const canvasFont = this.canvasFontSize();
 		const columnFont = opts.fontSize > 0 ? opts.fontSize : canvasFont;
@@ -290,7 +309,15 @@ export class ColumnView {
 	private renderTools(): void {
 		this.toolsEl.empty();
 		const tools = this.host.tools();
-		this.toolsEl.toggle(tools.length > 0);
+		// Left to right ⇄ top to bottom: always offered.
+		const flip = this.toolsEl.createEl("button", { cls: "clickable-icon opc-columns-tool opc-columns-flip", attr: { "aria-label": this.ctx.t(this.vertical ? "presentation.columns.toAcross" : "presentation.columns.toDown") } });
+		setIcon(flip, this.vertical ? "columns-3" : "rows-3");
+		flip.addEventListener("pointerdown", (e) => e.stopPropagation());
+		flip.addEventListener("click", (e) => {
+			e.preventDefault();
+			e.stopPropagation();
+			this.host.flip();
+		});
 		for (const tool of tools) {
 			const b = this.toolsEl.createEl("button", { cls: "clickable-icon opc-columns-tool", attr: { "aria-label": this.ctx.t(TOOL_LABELS[tool]), "data-tool": tool } });
 			setIcon(b, TOOL_ICONS[tool]);
@@ -351,7 +378,7 @@ export class ColumnView {
 			card.setCssProps({ "--opc-card-width": `${size.width}px`, "--opc-card-height": `${size.height}px` });
 			card.querySelector<HTMLElement>(":scope > .opc-columns-replica")?.setCssProps({ "--canvas-node-width": `${size.width}px`, "--canvas-node-height": `${size.height}px` });
 			const placed = this.placed[this.middle];
-			if (placed && placed.card === card) {
+			if (placed && placed.card === card && !this.vertical) {
 				placed.reach = size.width;
 				placed.width = Math.max(placed.width, size.width);
 				placed.column.setCssProps({ "--opc-column-width": `${placed.width}px` });
@@ -514,6 +541,7 @@ export class ColumnView {
 		// Hidden (a background tab, a minimized window): placed when it shows again.
 		if (width === 0 || height === 0) return;
 		this.el.toggleClass("is-settling", animate);
+		if (this.vertical) return this.layoutRows(width, height);
 		const xs = columnPositions(this.placed.map((p) => p.reach), GAP);
 		const mid = this.placed[this.middle];
 		const cur = mid?.column.querySelector<HTMLElement>(".opc-columns-card.is-current");
@@ -532,6 +560,38 @@ export class ColumnView {
 			// The children's block: its middle, so it sits level with its parent.
 			const anchor = p.card ? p.card.offsetTop + p.card.offsetHeight / 2 : first && lastCard ? (first.offsetTop + lastCard.offsetTop + lastCard.offsetHeight) / 2 : 0;
 			p.column.style.transform = `translateY(${Math.round(height / 2 - anchor + (this.shifts[i] ?? 0))}px)`;
+		});
+		this.applyView();
+	}
+
+	/**
+	 * Top to bottom: each level a row, the next row right below the card it continues from (its
+	 * height at actual size, else the tallest card of the row: heights are only known once the
+	 * text is laid out, so they are measured here); the current card's row in the middle of the
+	 * screen; each row's card on the way at mid-width and the children's row centered under it.
+	 */
+	private layoutRows(width: number, height: number): void {
+		const reach = this.placed.map((p) => {
+			const cards = Array.from(p.column.children).filter((c): c is HTMLElement => c instanceof HTMLElement && c.hasClass("opc-columns-card"));
+			const tallest = Math.max(0, ...cards.map((c) => c.offsetHeight));
+			return this.actualLevels && p.card ? p.card.offsetHeight : tallest;
+		});
+		const ys = columnPositions(reach, GAP);
+		const clips = columnClips(ys);
+		const mid = this.placed[this.middle];
+		const cur = mid?.column.querySelector<HTMLElement>(".opc-columns-card.is-current");
+		const centerY = mid ? ys[this.middle]! + (cur ? cur.offsetHeight : reach[this.middle]!) / 2 : 0;
+		this.track.style.transform = `translateY(${Math.round(height / 2 - centerY)}px)`;
+		this.placed.forEach((p, i) => {
+			p.column.style.top = `${ys[i]}px`;
+			const clip = clips[i];
+			p.column.toggleClass("is-clipped", clip !== null);
+			p.column.setCssProps({ "--opc-column-clip": clip === null ? "" : `${clip}px` });
+			const cards = p.column.children;
+			const first = cards[0] as HTMLElement | undefined;
+			const lastCard = cards[cards.length - 1] as HTMLElement | undefined;
+			const anchor = p.card ? p.card.offsetLeft + p.card.offsetWidth / 2 : first && lastCard ? (first.offsetLeft + lastCard.offsetLeft + lastCard.offsetWidth) / 2 : 0;
+			p.column.style.transform = `translateX(${Math.round(width / 2 - anchor + (this.shifts[i] ?? 0))}px)`;
 		});
 		this.applyView();
 	}
@@ -724,12 +784,14 @@ export class ColumnView {
 			}
 		}
 		evt.preventDefault();
-		// Up and down: that column only (to reach what a big card hides), or the whole view between
-		// columns; sideways: all columns.
-		const dy = (now.y - prev.y) / this.view.zoom;
-		if (press.column >= 0) this.shifts[press.column] = (this.shifts[press.column] ?? 0) + dy;
+		// Along a level (up and down a column, sideways along a row): that level only (to reach what
+		// a big card hides), or the whole view between levels; across the levels: all of them.
+		const along = this.vertical ? now.x - prev.x : now.y - prev.y;
+		const across = this.vertical ? now.y - prev.y : now.x - prev.x;
+		if (press.column >= 0) this.shifts[press.column] = (this.shifts[press.column] ?? 0) + along / this.view.zoom;
 		this.el.addClass("is-moved");
-		this.view = { ...this.view, x: this.view.x + (now.x - prev.x), y: this.view.y + (press.column >= 0 ? 0 : now.y - prev.y) };
+		const free = press.column >= 0 ? 0 : along;
+		this.view = this.vertical ? { ...this.view, x: this.view.x + free, y: this.view.y + across } : { ...this.view, x: this.view.x + across, y: this.view.y + free };
 		this.layout(false);
 	};
 

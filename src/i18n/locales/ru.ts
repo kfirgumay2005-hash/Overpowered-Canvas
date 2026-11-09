@@ -1494,4 +1494,10 @@ export const ru: Record<I18nKey, string> = {
 	"barButtons.search": "Поиск кнопок и пунктов меню…",
 	"barButtons.noMatch": "Ничего не найдено.",
 	"presentation.columns.resize": "Изменить размер карточки (перетащите или стрелки)",
+	"presentation.columns.toDown": "Показать уровни сверху вниз",
+	"presentation.columns.toAcross": "Показать уровни слева направо",
+	"presentation.columnVertical.toggle": "Вид колонками: переключить сверху вниз",
+	"presentation.columnVertical.name": "Вид колонками: сверху вниз",
+	"presentation.columnVertical.desc": "Корень сверху, каждый уровень — ряд карточек под предыдущим, читается как текст. Правила те же, что слева направо: ряд дочерних карточек по центру под текущей карточкой, ряд можно сдвигать в сторону, стрелка вниз ведёт к дочерним. Переключает и кнопка со значком рядов в виде колонками.",
+	"presentation.columnVertical.simple": "Уровни рядами, сверху вниз.",
 };

@@ -77,7 +77,10 @@ function shown(node: CanvasNodeLike): boolean {
  * map's links at the current zoom. Read-only on the board; Esc ends it. The column view shows the
  * map as columns, one page at a time, and lets cards be added, edited, marked and drawn on.
  */
-export function enableWalk(ctx: ModuleContext<object>, presenting: (canvas: CanvasLike) => boolean, options: () => WalkOptions) {
+/** Top to bottom columns: down goes to the children, up to the parent, left and right along the siblings. */
+const DOWNWARD: Record<Dir, Dir> = { up: "left", down: "right", left: "up", right: "down" };
+
+export function enableWalk(ctx: ModuleContext<object>, presenting: (canvas: CanvasLike) => boolean, options: () => WalkOptions, flipColumns: () => void) {
 	const walks = new Map<CanvasLike, Walk>();
 
 	const pageOf = (node: CanvasNodeLike | undefined) => (node && pagesHost.api ? pagesHost.api.pageOf(node) : "");
@@ -180,6 +183,8 @@ export function enableWalk(ctx: ModuleContext<object>, presenting: (canvas: Canv
 	const step = (canvas: CanvasLike, dir: Dir, how?: "tap") => {
 		const walk = walks.get(canvas);
 		if (!walk) return;
+		// The keys and the pad's arrows go the way the levels run on screen.
+		if (walk.columns && options().columns.vertical) dir = DOWNWARD[dir];
 		const { next, edges } = nextFrom(canvas, walk, dir);
 		if (!next) return;
 		// Each parent remembers the child visited last (going down, or along the siblings), so
@@ -473,6 +478,7 @@ export function enableWalk(ctx: ModuleContext<object>, presenting: (canvas: Canv
 				},
 				useTool: (tool) => useTool(canvas, tool),
 				resize: (id, size) => resizeCard(canvas, id, size),
+				flip: flipColumns,
 			});
 		}
 		go(canvas, walk, walk.current);

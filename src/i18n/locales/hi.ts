@@ -1494,4 +1494,10 @@ export const hi: Record<I18nKey, string> = {
 	"barButtons.search": "बटन और मेनू आइटम खोजें…",
 	"barButtons.noMatch": "खोज से कुछ मेल नहीं खाता।",
 	"presentation.columns.resize": "कार्ड का आकार बदलें (खींचें, या तीर कुंजियाँ)",
+	"presentation.columns.toDown": "स्तरों को ऊपर से नीचे दिखाएँ",
+	"presentation.columns.toAcross": "स्तरों को बाएँ से दाएँ दिखाएँ",
+	"presentation.columnVertical.toggle": "कॉलम दृश्य: ऊपर से नीचे टॉगल करें",
+	"presentation.columnVertical.name": "कॉलम दृश्य: ऊपर से नीचे",
+	"presentation.columnVertical.desc": "रूट सबसे ऊपर और हर स्तर पिछले के नीचे कार्डों की एक पंक्ति, किसी पाठ की तरह पढ़ें। बाएँ से दाएँ वाले ही नियम: बच्चों की पंक्ति आपके कार्ड के ठीक नीचे बीच में होती है, किसी पंक्ति को बगल में खींचा जा सकता है, और नीचे का तीर बच्चों पर जाता है। कॉलम दृश्य में पंक्तियों वाले आइकन का बटन भी बदलता है।",
+	"presentation.columnVertical.simple": "स्तर पंक्तियों के रूप में, ऊपर से नीचे।",
 };

@@ -13,7 +13,7 @@ When resuming: read this file and `git log`, then continue with the first item t
 | A5 | Column mode: no vertical finger scroll with a pen tool | IMPROVEMENT (bug) | done |
 | A6 | Column mode: wide cards run into the next column | IMPROVEMENT (bug) | done |
 | B1 | Resize cards in column mode | NEW | done |
-| C1 | Vertical column mode | NEW (orientation of the column view) | todo |
+| C1 | Vertical column mode | NEW (orientation of the column view) | done |
 | C2 | Table of Contents mode | NEW | todo |
 | D1 | Automatic header rules | IMPROVEMENT (headers) | todo |
 | E1 | Handwriting performance + Ink-style features | IMPROVEMENT + NEW | todo |
@@ -134,3 +134,19 @@ Tested (harness): drag +120/+90 px on a 250x60 card → 370x150, x/y unchanged, 
 unchanged, children's column 32 px after the new right edge, one undo step. Tutorial "Column
 view": new step "Make a card bigger to write on it" (touch line + keyboard alternative, 5
 locales); Show me in English: 12/12 tasks.
+
+## C1. Column view top to bottom (done)
+
+Classification: NEW, built as an orientation of the existing column view (no second view).
+`ColumnOptions.vertical` (setting `presentation.columnVertical`, command "Column view: toggle top
+to bottom", a rows/columns button in the column view's tool bar, settings toggle). The same
+`ColumnView` lays out levels as rows: `layoutRows` measures row heights (only known after the
+text is laid out), places each row after the card it continues from, centers the children's row
+under the current card, cuts each row where the next starts (A6 rule on the other axis). Drags
+swap axes (along a row: that row; across: all rows). The walker remaps keys and pad arrows
+(`DOWNWARD`: ↓ child, ↑ parent, ←/→ siblings). "+" buttons swap sides (child below, sibling
+beside); resize handle, pen, highlighter, text color, editing all shared.
+Tested (harness): flip → rows stacked top to bottom, children centered under the focused card,
+wide sibling cut at the next row; keys ↓ inc, → gen, ↑ epi, → cls. New tutorial "Column view,
+top to bottom" (4 tasks, touch lines, command alternatives; 5 locales): Show me in English 4/4;
+"Column view" 12/12 again. Unit tests 780/780. README updated.

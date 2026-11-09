@@ -1494,4 +1494,10 @@ export const ja: Record<I18nKey, string> = {
 	"barButtons.search": "ボタンとメニュー項目を検索…",
 	"barButtons.noMatch": "検索に一致するものはありません。",
 	"presentation.columns.resize": "カードのサイズを変更（ドラッグ、または矢印キー）",
+	"presentation.columns.toDown": "階層を上から下へ表示",
+	"presentation.columns.toAcross": "階層を左から右へ表示",
+	"presentation.columnVertical.toggle": "列ビュー: 上から下を切り替え",
+	"presentation.columnVertical.name": "列ビュー: 上から下",
+	"presentation.columnVertical.desc": "ルートを一番上に置き、各階層を前の階層の下にカードの行として並べ、文章のように読めます。左から右と同じルールです。子の行は今いるカードの真下の中央に置かれ、行は横にドラッグでき、下矢印で子へ移動します。列ビューの行アイコンのボタンでも切り替えられます。",
+	"presentation.columnVertical.simple": "階層を行として上から下へ。",
 };

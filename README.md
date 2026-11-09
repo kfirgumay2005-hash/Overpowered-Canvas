@@ -99,7 +99,9 @@ tap the empty board around the card, or the small arrows beside it, to move that
 view shows the same walk as columns, one page at a time: the parents on the left, the card and its
 siblings in the middle, its children on the right; groups are cards whose children are what they
 hold. Add children and siblings there (+ buttons, Tab, Enter), edit cards, highlight or color words
-and write on cards shown at their exact board layout. Also
+and write on cards shown at their exact board layout, resizing a card right there to make room
+for handwriting. The same view also runs top to bottom (the root on top, each level a row below
+it), and cards wider than the way down are cut where the next level starts. Also
 collapsible branches with child counts, and automatic layout that keeps the order the cards show
 on the board (mind map in any direction,
 collision-free radial that respects every card's size, balanced, layered flowchart, grid) as one

@@ -26,6 +26,8 @@ interface PresentationSettings {
 	columnWidth: number;
 	/** The column view shows cards at their size on the board, with their ink. */
 	columnActualSize: boolean;
+	/** The column view runs top to bottom (levels as rows) instead of left to right. */
+	columnVertical: boolean;
 }
 
 interface Session {
@@ -68,7 +70,7 @@ export const presentationModule = defineModule<PresentationSettings>({
 	description: "presentation.desc",
 	group: "interaction",
 	defaultEnabled: true,
-	defaultSettings: { slideWidth: 1200, slideHeight: 675, fullscreen: true, walkKeys: "tree", walkTapZones: true, walkHints: true, columnFontSize: 0, columnWidth: 340, columnActualSize: false },
+	defaultSettings: { slideWidth: 1200, slideHeight: 675, fullscreen: true, walkKeys: "tree", walkTapZones: true, walkHints: true, columnFontSize: 0, columnWidth: 340, columnActualSize: false, columnVertical: false },
 	sanitizeSettings: (raw, defaults) => {
 		const s = mergeWithDefaults(raw, defaults);
 		const num = (v: unknown, min: number, max: number, fallback: number) => (typeof v === "number" && Number.isFinite(v) && v >= min && v <= max ? Math.round(v) : fallback);
@@ -78,6 +80,7 @@ export const presentationModule = defineModule<PresentationSettings>({
 			columnFontSize: s.columnFontSize === 0 ? 0 : num(s.columnFontSize, 8, 48, defaults.columnFontSize),
 			columnWidth: num(s.columnWidth, 160, 1200, defaults.columnWidth),
 			columnActualSize: typeof s.columnActualSize === "boolean" ? s.columnActualSize : defaults.columnActualSize,
+			columnVertical: typeof s.columnVertical === "boolean" ? s.columnVertical : defaults.columnVertical,
 		};
 	},
 	overlapsWith: ["advanced-canvas"],
@@ -88,10 +91,10 @@ export const presentationModule = defineModule<PresentationSettings>({
 			keys: ctx.settings.walkKeys,
 			tapZones: ctx.settings.walkTapZones,
 			hints: ctx.settings.walkHints,
-			columns: { fontSize: ctx.settings.columnFontSize, width: ctx.settings.columnWidth, actualSize: ctx.settings.columnActualSize },
-		}));
+			columns: { fontSize: ctx.settings.columnFontSize, width: ctx.settings.columnWidth, actualSize: ctx.settings.columnActualSize, vertical: ctx.settings.columnVertical },
+		}), () => void ctx.updateSettings({ columnVertical: !ctx.settings.columnVertical }));
 		ctx.onSettingsChange((next, prev) => {
-			if (next.columnFontSize !== prev.columnFontSize || next.columnWidth !== prev.columnWidth || next.columnActualSize !== prev.columnActualSize) walker.refresh();
+			if (next.columnFontSize !== prev.columnFontSize || next.columnWidth !== prev.columnWidth || next.columnActualSize !== prev.columnActualSize || next.columnVertical !== prev.columnVertical) walker.refresh();
 		});
 
 		const show = (canvas: CanvasLike, session: Session) => {
@@ -341,6 +344,12 @@ export const presentationModule = defineModule<PresentationSettings>({
 			icon: "scan",
 			callback: () => void ctx.updateSettings({ columnActualSize: !ctx.settings.columnActualSize }),
 		});
+		ctx.addCommand({
+			id: "columns-vertical",
+			name: ctx.t("presentation.columnVertical.toggle"),
+			icon: "rows-3",
+			callback: () => void ctx.updateSettings({ columnVertical: !ctx.settings.columnVertical }),
+		});
 		ctx.addCardMenuButton({
 			id: "walk",
 			icon: "route",
@@ -417,5 +426,9 @@ export const presentationModule = defineModule<PresentationSettings>({
 			.setName(ctx.t("presentation.columnActualSize.name"))
 			.setDesc(ctx.t("presentation.columnActualSize.desc"))
 			.addToggle((t) => t.setValue(ctx.settings.columnActualSize).onChange((v) => ctx.updateSettings({ columnActualSize: v })));
+		new Setting(el)
+			.setName(ctx.t("presentation.columnVertical.name"))
+			.setDesc(ctx.t("presentation.columnVertical.desc"))
+			.addToggle((t) => t.setValue(ctx.settings.columnVertical).onChange((v) => ctx.updateSettings({ columnVertical: v })));
 	},
 });

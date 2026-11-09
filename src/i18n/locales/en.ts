@@ -1496,6 +1496,12 @@ export const en = {
 	"barButtons.search": "Search buttons and menu items…",
 	"barButtons.noMatch": "Nothing matches the search.",
 	"presentation.columns.resize": "Resize the card (drag, or arrow keys)",
+	"presentation.columns.toDown": "Show the levels top to bottom",
+	"presentation.columns.toAcross": "Show the levels left to right",
+	"presentation.columnVertical.toggle": "Column view: toggle top to bottom",
+	"presentation.columnVertical.name": "Column view: top to bottom",
+	"presentation.columnVertical.desc": "The root on top and each level as a row of cards below the one before, read like a text. The same rules as left to right: the children's row is centered under the card you are on, a row can be dragged sideways, and the down arrow goes to the children. The button with the rows icon in the column view switches too.",
+	"presentation.columnVertical.simple": "Levels as rows, top to bottom.",
 } as const;
 
 export type I18nKey = keyof typeof en;

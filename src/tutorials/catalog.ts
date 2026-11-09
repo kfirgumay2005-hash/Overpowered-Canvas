@@ -1111,20 +1111,21 @@ async function walkToColumn(rt: TutorialRuntime, ...ids: string[]): Promise<void
 	for (const id of ids) if (columnCurrent(rt) !== id && columnCard(rt, id)) await tapColumnCard(rt, id);
 }
 
-/** A press-and-drag on a column, as a finger moving it by `dy` pixels. */
-async function dragColumn(rt: TutorialRuntime, card: HTMLElement, dy: number): Promise<void> {
+/** A press-and-drag on a column, as a finger moving it by `dy` pixels (and `dx` sideways). */
+async function dragColumn(rt: TutorialRuntime, card: HTMLElement, dy: number, dx = 0): Promise<void> {
 	const r = card.getBoundingClientRect();
-	const x = r.left + r.width / 2;
+	let x = r.left + Math.min(r.width / 2, 60);
 	let y = r.top + Math.min(r.height / 2, 40);
-	const fire = (type: string, py: number) =>
-		card.dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true, pointerId: 7, pointerType: "touch", isPrimary: true, clientX: x, clientY: py, button: 0, buttons: type === "pointerup" ? 0 : 1 }));
-	fire("pointerdown", y);
+	const fire = (type: string) =>
+		card.dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true, pointerId: 7, pointerType: "touch", isPrimary: true, clientX: x, clientY: y, button: 0, buttons: type === "pointerup" ? 0 : 1 }));
+	fire("pointerdown");
 	for (let i = 1; i <= 20; i++) {
 		y += dy / 20;
-		fire("pointermove", y);
+		x += dx / 20;
+		fire("pointermove");
 		await rt.wait(16);
 	}
-	fire("pointerup", y);
+	fire("pointerup");
 	await rt.wait(200);
 }
 
@@ -1375,6 +1376,79 @@ const columns: TutorialDefinition = {
 			},
 		},
 		{ title: "tut.columns.end.title", body: "tut.columns.end.body" },
+	],
+};
+
+// ---------- 25. The column view, top to bottom ----------
+
+const columnsDown: TutorialDefinition = {
+	id: "columns-down",
+	icon: "rows-3",
+	title: "tut.columnsDown.title",
+	summary: "tut.columnsDown.summary",
+	modules: ["presentation"],
+	restoreSettings: [
+		{ module: "presentation", key: "columnVertical" },
+		{ module: "presentation", key: "columnActualSize" },
+	],
+	board: (t, folder) => columns.board(t, folder),
+	steps: [
+		{
+			title: "tut.columnsDown.open.title",
+			body: "tut.columnsDown.open.body",
+			task: "tut.columnsDown.open.task",
+			target: ".opc-columns-control",
+			enter: (rt) => {
+				rt.setSetting("presentation", "columnVertical", false);
+				rt.setSetting("presentation", "columnActualSize", false);
+				rt.select(["c-root"]);
+			},
+			check: (rt) => !!columnsEl(rt),
+			demo: (rt) => ensureColumns(rt),
+		},
+		{
+			title: "tut.columnsDown.flip.title",
+			body: "tut.columnsDown.flip.body",
+			task: "tut.columnsDown.flip.task",
+			touch: "tut.columnsDown.flip.touch",
+			target: (rt) => columnsEl(rt)?.querySelector<HTMLElement>(".opc-columns-flip") ?? null,
+			enter: (rt) => void ensureColumns(rt),
+			check: (rt) => rt.setting("presentation", "columnVertical") === true && !!columnsEl(rt)?.hasClass("is-vertical"),
+			demo: async (rt) => {
+				await ensureColumns(rt);
+				if (rt.setting("presentation", "columnVertical") !== true) columnsEl(rt)?.querySelector<HTMLElement>(".opc-columns-flip")?.click();
+				await rt.wait(700);
+			},
+		},
+		{
+			title: "tut.columnsDown.down.title",
+			body: "tut.columnsDown.down.body",
+			task: "tut.columnsDown.down.task",
+			touch: "tut.columnsDown.down.touch",
+			target: ".opc-walk-down",
+			enter: (rt) => void ensureColumns(rt),
+			check: (rt) => !!columnsEl(rt)?.hasClass("is-vertical") && ["c-veg", "c-cal", "c-herbs"].includes(columnCurrent(rt)),
+			demo: async (rt) => {
+				await ensureColumns(rt);
+				await walkToColumn(rt, "c-root");
+				rt.canvas.wrapperEl.querySelector<HTMLElement>(".opc-walk-down")?.click();
+				await rt.wait(500);
+			},
+		},
+		{
+			title: "tut.columnsDown.row.title",
+			body: "tut.columnsDown.row.body",
+			task: "tut.columnsDown.row.task",
+			touch: "tut.columnsDown.row.touch",
+			enter: (rt) => void ensureColumns(rt),
+			check: (rt) => !!columnsEl(rt)?.hasClass("is-vertical") && !!columnsEl(rt)?.hasClass("is-moved"),
+			demo: async (rt) => {
+				await ensureColumns(rt);
+				const card = columnsEl(rt)?.querySelector<HTMLElement>(".opc-columns-card.is-current");
+				if (card) await dragColumn(rt, card, 0, -240);
+			},
+		},
+		{ title: "tut.columnsDown.end.title", body: "tut.columnsDown.end.body" },
 	],
 };
 
@@ -3732,4 +3806,4 @@ const shortcuts: TutorialDefinition = {
 	],
 };
 
-export const TUTORIALS: readonly TutorialDefinition[] = [basics, notes, shapes, edges, drawing, layers, present, mindmap, navigate, organize, markdown, select, blocks, vault, style, big, direction, pdf, pages, arrows, bars, images, file, columns, smartGroups, indent, fontSize, shortcuts];
+export const TUTORIALS: readonly TutorialDefinition[] = [basics, notes, shapes, edges, drawing, layers, present, mindmap, navigate, organize, markdown, select, blocks, vault, style, big, direction, pdf, pages, arrows, bars, images, file, columns, columnsDown, smartGroups, indent, fontSize, shortcuts];

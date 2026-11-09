@@ -1494,4 +1494,10 @@ export const zh: Record<I18nKey, string> = {
 	"barButtons.search": "搜索按钮和菜单项…",
 	"barButtons.noMatch": "没有与搜索匹配的内容。",
 	"presentation.columns.resize": "调整卡片大小（拖动，或方向键）",
+	"presentation.columns.toDown": "从上到下显示各层级",
+	"presentation.columns.toAcross": "从左到右显示各层级",
+	"presentation.columnVertical.toggle": "列视图:切换从上到下",
+	"presentation.columnVertical.name": "列视图:从上到下",
+	"presentation.columnVertical.desc": "根节点在最上方，每一层级是位于上一层下方的一行卡片，像阅读文字一样。规则与从左到右相同：子卡片所在的行居中位于当前卡片下方，可以横向拖动某一行，向下箭头进入子卡片。列视图中带行图标的按钮也可以切换。",
+	"presentation.columnVertical.simple": "层级按行从上到下排列。",
 };

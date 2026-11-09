@@ -173,6 +173,38 @@ body.opc-mod-presentation .opc-columns-column {
 body.opc-mod-presentation .opc-columns-column.is-clipped {
 	clip-path: polygon(-100000px -100000px, var(--opc-column-clip) -100000px, var(--opc-column-clip) 100000px, -100000px 100000px);
 }
+/* Top to bottom: each level is a row of cards side by side, cut where the next row starts. */
+body.opc-mod-presentation .opc-columns.is-vertical .opc-columns-column {
+	left: 0;
+	width: max-content;
+	flex-direction: row;
+	align-items: flex-start;
+}
+body.opc-mod-presentation .opc-columns.is-vertical .opc-columns-card:not(.is-actual) {
+	width: var(--opc-columns-width, 340px);
+	flex-shrink: 0;
+}
+body.opc-mod-presentation .opc-columns.is-vertical .opc-columns-column.is-clipped {
+	clip-path: polygon(-100000px -100000px, 100000px -100000px, 100000px var(--opc-column-clip), -100000px var(--opc-column-clip));
+}
+body.opc-mod-presentation .opc-columns.is-vertical .opc-columns-add.is-child {
+	top: auto;
+	right: auto;
+	left: 50%;
+	bottom: -14px;
+	transform: translateX(-50%);
+}
+body.opc-mod-presentation .opc-columns.is-vertical .opc-columns-add.is-sibling {
+	left: auto;
+	bottom: auto;
+	top: 50%;
+	right: -14px;
+	transform: translateY(-50%);
+}
+body.opc-mod-presentation .opc-columns.is-vertical .opc-columns-resize {
+	right: -14px;
+	bottom: -14px;
+}
 body.opc-mod-presentation .opc-columns.is-settling .opc-columns-track,
 body.opc-mod-presentation .opc-columns.is-settling .opc-columns-column,
 body.opc-mod-presentation .opc-columns.is-settling .opc-columns-zoom {
