@@ -1,10 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { columnPositions, keepZoom, zoomAround } from "./column-layout";
+import { columnClips, columnPositions, keepZoom, zoomAround } from "./column-layout";
 
 describe("column layout", () => {
 	it("starts each column after the card it continues from", () => {
 		expect(columnPositions([300, 120, 500], 30)).toEqual([0, 330, 480]);
 		expect(columnPositions([], 30)).toEqual([]);
+	});
+	it("cuts each column where the next one starts, never the last", () => {
+		expect(columnClips(columnPositions([300, 120, 500], 30))).toEqual([330, 150, null]);
+		expect(columnClips([0])).toEqual([null]);
+		expect(columnClips([])).toEqual([]);
 	});
 	it("keeps the middle of the layout in the middle of the screen at any zoom", () => {
 		const v = keepZoom(2, { width: 800, height: 600 });

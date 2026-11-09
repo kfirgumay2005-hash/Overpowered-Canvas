@@ -11,7 +11,7 @@ When resuming: read this file and `git log`, then continue with the first item t
 | A3 | Live stroke under the card (regression) | IMPROVEMENT (bug) | done (with A4) |
 | A4 | Column mode: stroke flicker on pen-up | IMPROVEMENT (bug) | done (with A3) |
 | A5 | Column mode: no vertical finger scroll with a pen tool | IMPROVEMENT (bug) | done |
-| A6 | Column mode: wide cards run into the next column | IMPROVEMENT (bug) | todo |
+| A6 | Column mode: wide cards run into the next column | IMPROVEMENT (bug) | done |
 | B1 | Resize cards in column mode | NEW | todo |
 | C1 | Vertical column mode | NEW (orientation of the column view) | todo |
 | C2 | Table of Contents mode | NEW | todo |
@@ -100,3 +100,19 @@ draws (the drawing module keeps it); touches pan as before when palm navigation 
 Tested (harness, CDP touch with the pen tool on, palm navigation on): finger drag down 150 px on
 the children's column: before 0 px, after the column moved 150 px; no ink created by the finger.
 Tutorial "Column view" → "Write on the cards" gained a paragraph about palm navigation (5 locales).
+
+## A6. Column mode: wide cards run into the next column (done)
+
+Root cause. Each column starts after the card the next column continues from (`reach`: the
+focused card's width at actual size), but the column itself is as wide as its widest card, and
+nothing limited what it drew: a sibling (or a big image) wider than the focused card lay under
+the next column, and faded cards are semi-transparent, so it showed through the children.
+Fix (the proposed clip line, applied to every column): `columnClips` (pure, tested) gives each
+column the distance to the next column's start; the column gets `clip-path` up to there
+(`is-clipped`, `--opc-column-clip`). Siblings stay faded as before; the part past the line is
+not drawn and not hit by taps. The children's column (last) is never cut, so children always
+show whole. The "+" buttons of the focused card stay inside the gap before the line.
+Tested (harness, actual size, focused card 250 px with a 700 px sibling): a point past the
+children's column start inside the sibling's box hit `[eta, cls]` before, `[eta]` after;
+screenshot shows the sibling cut at the line, children whole. Unit tests: column-layout 4/4.
+Tutorial "Column view" → "Cards at their real size": one sentence added (5 locales).

@@ -9,7 +9,7 @@ import { IMAGE_EXTENSIONS, nodeType } from "../shared";
 import { clampRect, isFull } from "../image-crop/crop";
 import type { CropRect } from "../../data/schema";
 import type { MarkSurface } from "../text-highlight/api";
-import { columnPositions, keepZoom, zoomAround, type View } from "./column-layout";
+import { columnClips, columnPositions, keepZoom, zoomAround, type View } from "./column-layout";
 
 export interface Column {
 	ids: string[];
@@ -433,8 +433,13 @@ export class ColumnView {
 		const cur = mid?.column.querySelector<HTMLElement>(".opc-columns-card.is-current");
 		const centerX = mid ? xs[this.middle]! + (cur ? cur.offsetWidth : mid.width) / 2 : 0;
 		this.track.style.transform = `translateX(${Math.round(width / 2 - centerX)}px)`;
+		const clips = columnClips(xs);
 		this.placed.forEach((p, i) => {
 			p.column.style.left = `${xs[i]}px`;
+			// Nothing of this column shows past the start of the next one (wide siblings, big images).
+			const clip = clips[i];
+			p.column.toggleClass("is-clipped", clip !== null);
+			p.column.setCssProps({ "--opc-column-clip": clip === null ? "" : `${clip}px` });
 			const cards = p.column.children;
 			const first = cards[0] as HTMLElement | undefined;
 			const lastCard = cards[cards.length - 1] as HTMLElement | undefined;

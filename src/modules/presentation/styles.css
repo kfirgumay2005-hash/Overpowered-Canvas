@@ -168,6 +168,11 @@ body.opc-mod-presentation .opc-columns-column {
 	align-items: flex-start;
 	gap: var(--opc-columns-gap);
 }
+/* A column ends where the next one starts (see columnClips): cards wider than the card the next
+   column continues from are cut there instead of showing behind the next column. */
+body.opc-mod-presentation .opc-columns-column.is-clipped {
+	clip-path: polygon(-100000px -100000px, var(--opc-column-clip) -100000px, var(--opc-column-clip) 100000px, -100000px 100000px);
+}
 body.opc-mod-presentation .opc-columns.is-settling .opc-columns-track,
 body.opc-mod-presentation .opc-columns.is-settling .opc-columns-column,
 body.opc-mod-presentation .opc-columns.is-settling .opc-columns-zoom {
