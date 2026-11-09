@@ -59,6 +59,7 @@ import { variableBreakpointsModule } from "./variable-breakpoints";
 import { layersModule } from "./layers";
 import { pagesModule } from "./pages";
 import { textPagesModule } from "./text-pages";
+import { paperModule } from "./paper";
 import { autoLinkModule } from "./auto-link";
 import { viewMemoryModule } from "./view-memory";
 import { smartGroupsModule } from "./smart-groups";
@@ -112,6 +113,7 @@ export const MODULES: readonly AnyModule[] = [
 	autoLayoutModule,
 	pagesModule,
 	textPagesModule,
+	paperModule,
 	viewMemoryModule,
 	drawingModule,
 	lassoModule,

@@ -5,6 +5,7 @@
  */
 import {
 	ARROW_STYLES,
+	CARD_FONTS,
 	CARD_FONT_MAX,
 	CARD_FONT_MIN,
 	BORDER_STYLES,
@@ -31,6 +32,11 @@ import {
 	type QuerySpec,
 	type StickyData,
 	type Stroke,
+	type TocArrangement,
+	type PaperSpec,
+	PAPER_FORMAT_IDS,
+	type TocBlock,
+	type TocTree,
 } from "./schema";
 
 /** Returns the cleaned value, or undefined when the input is unusable. */
@@ -195,6 +201,23 @@ const stroke: Sanitizer<Stroke> = (raw) => {
 	return s;
 };
 
+/** A cell tree of the table of contents (at most 12 levels deep, 200 cells a level). */
+function tocTree(raw: unknown, depth = 12): TocTree | undefined {
+	if (typeof raw === "string") return raw.length > 0 ? raw : undefined;
+	if (depth <= 0 || !isPlainObject(raw) || (raw.dir !== "row" && raw.dir !== "col") || !Array.isArray(raw.items) || raw.items.length > 200) return undefined;
+	const items = raw.items.map((item) => tocTree(item, depth - 1)).filter((item): item is TocTree => item !== undefined);
+	return items.length ? { dir: raw.dir, items } : undefined;
+}
+const tocColor: Sanitizer<string> = (raw) => (typeof raw === "string" && /^(?:[1-6]|#[0-9a-fA-F]{6})$/.test(raw) ? raw : undefined);
+const tocBlock = objectOf<TocBlock>({ id: nonEmptyStr, tree: (raw) => tocTree(raw), color: tocColor }, { required: ["id", "tree"] });
+const tocArrangement = objectOf<TocArrangement>({ rows: arrayOf(arrayOf(tocBlock, { min: 1 })) }, { required: ["rows"] });
+
+const paperStack = objectOf<{ x: number; y: number; count?: number }>({ x: finite, y: finite, count: inRange(1, 999) }, { required: ["x", "y"] });
+const paperSpec = objectOf<PaperSpec>(
+	{ format: oneOf(PAPER_FORMAT_IDS), landscape: bool, width: inRange(50, 2000), height: inRange(50, 2000), stacks: recordOf(paperStack) },
+	{ required: ["format"] },
+);
+
 export const ROOT_SHAPE: Shape<OpcRoot> = {
 	v: (raw) => {
 		const n = finite(raw);
@@ -209,6 +232,9 @@ export const ROOT_SHAPE: Shape<OpcRoot> = {
 	mapLayouts: recordOf(oneOf(MAP_LAYOUTS)),
 	pages: arrayOf(objectOf<PageInfo>({ id: nonEmptyStr, anchor: nonEmptyStr, root: nonEmptyStr, parent: nonEmptyStr }, { required: ["id", "anchor", "root"] })),
 	childOrder: recordOf(arrayOf(nonEmptyStr)),
+	tocLayouts: recordOf(tocArrangement),
+	inkEmbeds: recordOf(arrayOf(nonEmptyStr, { min: 1 })),
+	paper: paperSpec,
 };
 
 export const NODE_SHAPE: Shape<OpcNode> = {
@@ -221,9 +247,11 @@ export const NODE_SHAPE: Shape<OpcNode> = {
 		const n = finite(raw);
 		return n !== undefined && n >= CARD_FONT_MIN && n <= CARD_FONT_MAX ? n : undefined;
 	},
+	font: oneOf(CARD_FONTS),
 	header: (raw) => {
 		const n = finite(raw);
-		return n !== undefined && Number.isInteger(n) && n >= 0 && n <= 6 ? n : undefined;
+		// -1: never a header (wins over the automatic header rules).
+		return n !== undefined && Number.isInteger(n) && n >= -1 && n <= 6 ? n : undefined;
 	},
 	dir: oneOf(DIRECTIONS),
 	autoResize: bool,
@@ -273,8 +301,30 @@ export const EDGE_SHAPE: Shape<OpcEdge> = {
 };
 
 export const readRoot: Sanitizer<OpcRoot> = objectOf(ROOT_SHAPE, { required: ["v"] });
-export const readNode = (raw: unknown): OpcNode => objectOf(NODE_SHAPE)(raw) ?? {};
-export const readEdge = (raw: unknown): OpcEdge => objectOf(EDGE_SHAPE)(raw) ?? {};
+/**
+ * Reads are cached per stored object: stored extra data is replaced on every write, never changed
+ * in place (see access.ts), so the same object always cleans to the same result. Checking every
+ * stroke point again on each read made modules that look at all cards (several times per pen
+ * stroke) scale with the amount of handwriting on the board. A cheap signature (each key and its
+ * value or reference) still notices an object changed in place. Callers get a shallow copy.
+ */
+function cachedReader<T extends object>(shape: Shape<T>): (raw: unknown) => T {
+	const cache = new WeakMap<object, { sig: unknown[]; clean: T }>();
+	const read = objectOf(shape);
+	return (raw) => {
+		if (!isPlainObject(raw)) return read(raw) ?? ({} as T);
+		const sig: unknown[] = [];
+		for (const key of Object.keys(raw)) sig.push(key, raw[key]);
+		const hit = cache.get(raw);
+		if (hit && hit.sig.length === sig.length && hit.sig.every((v, i) => v === sig[i])) return { ...hit.clean };
+		const clean = read(raw) ?? ({} as T);
+		cache.set(raw, { sig, clean });
+		return { ...clean };
+	};
+}
+
+export const readNode: (raw: unknown) => OpcNode = cachedReader(NODE_SHAPE);
+export const readEdge: (raw: unknown) => OpcEdge = cachedReader(EDGE_SHAPE);
 
 export class InvalidExtraDataError extends Error {
 	constructor(message: string) {

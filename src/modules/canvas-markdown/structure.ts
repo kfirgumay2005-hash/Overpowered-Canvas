@@ -10,7 +10,7 @@ import type { CanvasFileData, CanvasNodeData } from "../../data/json-canvas";
 import { followStored, type ChildOrder } from "../mindmap/order";
 import type { TNode } from "../mindmap/tree";
 import type { OutlineItem } from "./outline";
-import { extractHeaders, headerOf } from "./headers";
+import { extractHeaders, headerWith, type AutoHeaders } from "./headers";
 import { inlinePageLinks, pageLinkTargets } from "./page-links";
 
 /** Node kinds that are drawings, not text: kept only in the data block. */
@@ -42,6 +42,8 @@ export interface StructureOptions {
 	 * nests under the card it comes from.
 	 */
 	paged?: boolean;
+	/** Automatic header rules (see headers.ts). */
+	autoHeaders?: AutoHeaders | null;
 }
 
 function isPlainObject(v: unknown): v is Record<string, unknown> {
@@ -274,12 +276,12 @@ export function buildStructure(data: CanvasFileData, opts: StructureOptions): St
 	const stored = childOrderOf(data);
 	const rootExtra = data["x-opc"];
 	const layouts = isPlainObject(rootExtra) && isPlainObject(rootExtra.mapLayouts) ? (rootExtra.mapLayouts as Record<string, string>) : {};
-	// `layout`: the map's recorded layout, read from its root down.
-	const bullet = (id: string, layout = layouts[id], isRoot = true): OutlineItem => {
+	// `layout`: the map's recorded layout, read from its root down; `depth`: 1 for the map's root.
+	const bullet = (id: string, layout = layouts[id], isRoot = true, depth = 1): OutlineItem => {
 		const node = byId.get(id)!;
 		const kids = orderChildren(node, (children.get(id) ?? []).map((c) => byId.get(c)!), opts.rtl, stored[id], axisOf(layout, isRoot));
-		const header = headerOf(node);
-		return { kind: "node", text: inlinePageLinks(nodeText(node), linkTargets), id: alias.get(id), ...(header !== undefined ? { header } : {}), children: kids.map((k) => bullet(k.id, layout, false)) };
+		const header = headerWith(node, opts.autoHeaders, kids.length, depth);
+		return { kind: "node", text: inlinePageLinks(nodeText(node), linkTargets), id: alias.get(id), ...(header !== undefined ? { header } : {}), children: kids.map((k) => bullet(k.id, layout, false, depth + 1)) };
 	};
 
 	const container = containers(all.filter((n) => n.type === "group" || contentIds.has(n.id)));

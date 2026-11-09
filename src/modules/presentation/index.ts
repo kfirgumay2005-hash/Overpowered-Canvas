@@ -8,6 +8,7 @@ import { mergeWithDefaults } from "../../settings/settings";
 import { mutate, nodeType, selectedEdges, selectedNodes } from "../shared";
 import { nextSlide, slideOrder, type SlideEdge } from "./path";
 import { enableWalk, type WalkKeys } from "./walker";
+import { enableToc, type TocMode } from "./toc";
 import { logError } from "../../core/log";
 
 interface PresentationSettings {
@@ -26,6 +27,16 @@ interface PresentationSettings {
 	columnWidth: number;
 	/** The column view shows cards at their size on the board, with their ink. */
 	columnActualSize: boolean;
+	/** The column view runs top to bottom (levels as rows) instead of left to right. */
+	columnVertical: boolean;
+	/** Table of contents: a simple grid, or cells arranged freely into groups. */
+	tocMode: TocMode;
+	/** Table of contents, simple grid: cells in a row. */
+	tocPerRow: number;
+	/** Table of contents: widest cell (px), unless cells keep their size on the board. */
+	tocCellWidth: number;
+	/** Table of contents: cells at their size on the board, with their handwriting. */
+	tocActualSize: boolean;
 }
 
 interface Session {
@@ -68,7 +79,7 @@ export const presentationModule = defineModule<PresentationSettings>({
 	description: "presentation.desc",
 	group: "interaction",
 	defaultEnabled: true,
-	defaultSettings: { slideWidth: 1200, slideHeight: 675, fullscreen: true, walkKeys: "tree", walkTapZones: true, walkHints: true, columnFontSize: 0, columnWidth: 340, columnActualSize: false },
+	defaultSettings: { slideWidth: 1200, slideHeight: 675, fullscreen: true, walkKeys: "tree", walkTapZones: true, walkHints: true, columnFontSize: 0, columnWidth: 340, columnActualSize: false, columnVertical: false, tocMode: "free", tocPerRow: 3, tocCellWidth: 240, tocActualSize: false },
 	sanitizeSettings: (raw, defaults) => {
 		const s = mergeWithDefaults(raw, defaults);
 		const num = (v: unknown, min: number, max: number, fallback: number) => (typeof v === "number" && Number.isFinite(v) && v >= min && v <= max ? Math.round(v) : fallback);
@@ -78,6 +89,11 @@ export const presentationModule = defineModule<PresentationSettings>({
 			columnFontSize: s.columnFontSize === 0 ? 0 : num(s.columnFontSize, 8, 48, defaults.columnFontSize),
 			columnWidth: num(s.columnWidth, 160, 1200, defaults.columnWidth),
 			columnActualSize: typeof s.columnActualSize === "boolean" ? s.columnActualSize : defaults.columnActualSize,
+			columnVertical: typeof s.columnVertical === "boolean" ? s.columnVertical : defaults.columnVertical,
+			tocMode: s.tocMode === "simple" ? "simple" : "free",
+			tocPerRow: num(s.tocPerRow, 1, 12, defaults.tocPerRow),
+			tocCellWidth: num(s.tocCellWidth, 120, 1200, defaults.tocCellWidth),
+			tocActualSize: typeof s.tocActualSize === "boolean" ? s.tocActualSize : defaults.tocActualSize,
 		};
 	},
 	overlapsWith: ["advanced-canvas"],
@@ -88,10 +104,29 @@ export const presentationModule = defineModule<PresentationSettings>({
 			keys: ctx.settings.walkKeys,
 			tapZones: ctx.settings.walkTapZones,
 			hints: ctx.settings.walkHints,
-			columns: { fontSize: ctx.settings.columnFontSize, width: ctx.settings.columnWidth, actualSize: ctx.settings.columnActualSize },
-		}));
+			columns: { fontSize: ctx.settings.columnFontSize, width: ctx.settings.columnWidth, actualSize: ctx.settings.columnActualSize, vertical: ctx.settings.columnVertical },
+		}), () => void ctx.updateSettings({ columnVertical: !ctx.settings.columnVertical }));
+		// The table of contents and the walk (with the column view) take turns on a board.
+		const toc = enableToc(
+			ctx,
+			() => ({ mode: ctx.settings.tocMode, perRow: ctx.settings.tocPerRow, cellWidth: ctx.settings.tocCellWidth, actualSize: ctx.settings.tocActualSize, fontSize: ctx.settings.columnFontSize }),
+			(patch) =>
+				void ctx.updateSettings({
+					...(patch.mode ? { tocMode: patch.mode } : {}),
+					...(patch.actualSize !== undefined ? { tocActualSize: patch.actualSize } : {}),
+					...(patch.perRow !== undefined ? { tocPerRow: patch.perRow } : {}),
+				}),
+			(canvas) => {
+				if (walker.walking(canvas)) walker.stop(canvas);
+			},
+		);
+		const startWalk = (canvas: CanvasLike, from?: CanvasNodeLike, inColumns = false) => {
+			toc.close(canvas);
+			walker.start(canvas, from, inColumns);
+		};
 		ctx.onSettingsChange((next, prev) => {
-			if (next.columnFontSize !== prev.columnFontSize || next.columnWidth !== prev.columnWidth || next.columnActualSize !== prev.columnActualSize) walker.refresh();
+			if (next.columnFontSize !== prev.columnFontSize || next.columnWidth !== prev.columnWidth || next.columnActualSize !== prev.columnActualSize || next.columnVertical !== prev.columnVertical) walker.refresh();
+			if (next.tocMode !== prev.tocMode || next.tocPerRow !== prev.tocPerRow || next.tocCellWidth !== prev.tocCellWidth || next.tocActualSize !== prev.tocActualSize || next.columnFontSize !== prev.columnFontSize) toc.refresh();
 		});
 
 		const show = (canvas: CanvasLike, session: Session) => {
@@ -238,9 +273,10 @@ export const presentationModule = defineModule<PresentationSettings>({
 		command("previous", ctx.t("presentation.previous"), "arrow-left", (c) => sessions.has(c), (c) => step(c, -1));
 		command("end", ctx.t("presentation.end"), "x", (c) => sessions.has(c), exit);
 		const idle = (c: CanvasLike) => !sessions.has(c) && !walker.walking(c);
-		command("walk", ctx.t("presentation.walk.start"), "route", idle, (c) => walker.start(c));
+		command("walk", ctx.t("presentation.walk.start"), "route", idle, (c) => startWalk(c));
 		command("walk-end", ctx.t("presentation.walk.end"), "x", walker.walking, walker.stop);
-		command("walk-columns", ctx.t("presentation.walk.columns"), "columns-3", (c) => !sessions.has(c), (c) => walker.start(c, undefined, true));
+		command("walk-columns", ctx.t("presentation.walk.columns"), "columns-3", (c) => !sessions.has(c), (c) => startWalk(c, undefined, true));
+		command("toc", ctx.t("presentation.toc.open"), "layout-grid", (c) => !sessions.has(c), (c) => toc.toggle(c));
 		// The column view from the side bar too (also in the command palette). While it is open the
 		// side bar is hidden; its own × closes it.
 		ctx.onCanvas((canvas) => {
@@ -251,7 +287,20 @@ export const presentationModule = defineModule<PresentationSettings>({
 				setIcon(item, "columns-3");
 				setTooltip(item, ctx.t("presentation.walk.columns"), { placement: "left" });
 				item.addEventListener("click", () => {
-					if (!sessions.has(canvas) && !walker.walking(canvas)) walker.start(canvas, undefined, true);
+					if (!sessions.has(canvas) && !walker.walking(canvas)) startWalk(canvas, undefined, true);
+				});
+			}
+			return () => group?.remove();
+		});
+		ctx.onCanvas((canvas) => {
+			const controls = canvas.wrapperEl.querySelector(".canvas-controls");
+			const group = controls?.createDiv({ cls: "canvas-control-group mod-raised opc-toc-control" });
+			const item = group?.createDiv({ cls: "canvas-control-item", attr: { "aria-label": ctx.t("presentation.toc.open"), "data-tooltip-position": "left" } });
+			if (item) {
+				setIcon(item, "layout-grid");
+				setTooltip(item, ctx.t("presentation.toc.open"), { placement: "left" });
+				item.addEventListener("click", () => {
+					if (!sessions.has(canvas)) toc.toggle(canvas);
 				});
 			}
 			return () => group?.remove();
@@ -265,7 +314,7 @@ export const presentationModule = defineModule<PresentationSettings>({
 			).open();
 
 		ctx.onNodeMenu((menu, node) => {
-			if (idle(node.canvas)) menu.addItem((item) => item.setSection("canvas").setTitle(ctx.t("presentation.walk.fromHere")).setIcon("route").onClick(() => walker.start(node.canvas, node)));
+			if (idle(node.canvas)) menu.addItem((item) => item.setSection("canvas").setTitle(ctx.t("presentation.walk.fromHere")).setIcon("route").onClick(() => startWalk(node.canvas, node)));
 			if (node.canvas.readonly) return;
 			const isStart = ctx.data.root(node.canvas).get().presentation?.start === node.id;
 			menu.addItem((item) => item.setSection("canvas").setTitle(ctx.t("presentation.setStart")).setIcon("flag").setChecked(isStart).onClick(() => setStart(node.canvas, node)));
@@ -341,12 +390,18 @@ export const presentationModule = defineModule<PresentationSettings>({
 			icon: "scan",
 			callback: () => void ctx.updateSettings({ columnActualSize: !ctx.settings.columnActualSize }),
 		});
+		ctx.addCommand({
+			id: "columns-vertical",
+			name: ctx.t("presentation.columnVertical.toggle"),
+			icon: "rows-3",
+			callback: () => void ctx.updateSettings({ columnVertical: !ctx.settings.columnVertical }),
+		});
 		ctx.addCardMenuButton({
 			id: "walk",
 			icon: "route",
 			tooltip: () => ctx.t("presentation.walk.start"),
 			order: 111,
-			onClick: (canvas) => walker.start(canvas),
+			onClick: (canvas) => startWalk(canvas),
 		});
 		ctx.addCardMenuButton({
 			id: "add-slide",
@@ -417,5 +472,36 @@ export const presentationModule = defineModule<PresentationSettings>({
 			.setName(ctx.t("presentation.columnActualSize.name"))
 			.setDesc(ctx.t("presentation.columnActualSize.desc"))
 			.addToggle((t) => t.setValue(ctx.settings.columnActualSize).onChange((v) => ctx.updateSettings({ columnActualSize: v })));
+		new Setting(el)
+			.setName(ctx.t("presentation.columnVertical.name"))
+			.setDesc(ctx.t("presentation.columnVertical.desc"))
+			.addToggle((t) => t.setValue(ctx.settings.columnVertical).onChange((v) => ctx.updateSettings({ columnVertical: v })));
+		new Setting(el)
+			.setName(ctx.t("presentation.tocMode.name"))
+			.setDesc(ctx.t("presentation.tocMode.desc"))
+			.addDropdown((d) =>
+				d
+					.addOption("free", ctx.t("presentation.tocMode.optFree"))
+					.addOption("simple", ctx.t("presentation.tocMode.optSimple"))
+					.setValue(ctx.settings.tocMode)
+					.onChange((v) => ctx.updateSettings({ tocMode: v === "simple" ? "simple" : "free" })),
+			);
+		new Setting(el)
+			.setName(ctx.t("presentation.tocPerRow.name"))
+			.setDesc(ctx.t("presentation.tocPerRow.desc"))
+			.addSlider((s) => s.setLimits(1, 12, 1).setValue(ctx.settings.tocPerRow).onChange((v) => ctx.updateSettings({ tocPerRow: v })));
+		new Setting(el)
+			.setName(ctx.t("presentation.tocCellWidth.name"))
+			.setDesc(ctx.t("presentation.tocCellWidth.desc"))
+			.addText((t) =>
+				t.setValue(String(ctx.settings.tocCellWidth)).onChange((v) => {
+					const n = Number(v);
+					if (n >= 120 && n <= 1200) void ctx.updateSettings({ tocCellWidth: Math.round(n) });
+				}),
+			);
+		new Setting(el)
+			.setName(ctx.t("presentation.tocActualSize.name"))
+			.setDesc(ctx.t("presentation.tocActualSize.desc"))
+			.addToggle((t) => t.setValue(ctx.settings.tocActualSize).onChange((v) => ctx.updateSettings({ tocActualSize: v })));
 	},
 });

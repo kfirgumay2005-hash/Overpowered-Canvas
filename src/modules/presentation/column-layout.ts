@@ -21,6 +21,15 @@ export function columnPositions(reaches: number[], gap: number): number[] {
 	return out;
 }
 
+/**
+ * How far each column may draw, from its own start: up to where the next column starts (cards
+ * wider than the card the next column continues from are cut there, so nothing of an earlier
+ * column shows behind a later one). The last column is never cut (null).
+ */
+export function columnClips(starts: number[]): (number | null)[] {
+	return starts.map((x, i) => (i + 1 < starts.length ? starts[i + 1]! - x : null));
+}
+
 /** The view at `zoom` with the middle of the layout in the middle of the screen. */
 export function keepZoom(zoom: number, size: { width: number; height: number }): View {
 	return { zoom, x: (size.width / 2) * (1 - zoom), y: (size.height / 2) * (1 - zoom) };

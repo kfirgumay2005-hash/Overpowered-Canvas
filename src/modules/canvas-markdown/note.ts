@@ -8,6 +8,7 @@
  * outline as written so lines can be matched back to cards, see match.ts).
  */
 import type { CanvasEdgeData, CanvasFileData, CanvasNodeData } from "../../data/json-canvas";
+import type { AutoHeaders } from "./headers";
 import { MAP_LAYOUTS, type MapLayout } from "../../data/schema";
 import { parseOutline, stripFrontmatter, writeOutline, type OutlineItem, type ParseOptions } from "./outline";
 import { buildStructure, pagesOfRoot } from "./structure";
@@ -62,6 +63,8 @@ export interface ExportOptions {
 	paged?: boolean;
 	/** The first level under each heading as plain lines, not bullets. */
 	plain?: boolean;
+	/** Automatic header rules (see headers.ts). */
+	autoHeaders?: AutoHeaders | null;
 }
 
 function isPlainObject(v: unknown): v is Record<string, unknown> {
@@ -105,7 +108,7 @@ export function dataBlock(data: NoteData): string {
 /** Canvas → outline items (with ids) and the data block. */
 function build(canvas: CanvasFileData, opts: ExportOptions): { items: OutlineItem[]; data: NoteData } {
 	const paged = !!opts.paged && pagesOfRoot(canvas).length > 0;
-	const s = buildStructure(canvas, { rtl: opts.rtl, freeLabel: opts.freeLabel, paged });
+	const s = buildStructure(canvas, { rtl: opts.rtl, freeLabel: opts.freeLabel, paged, autoHeaders: opts.autoHeaders });
 	const byId = new Map((canvas.nodes ?? []).map((n) => [n.id, n]));
 	const edgeById = new Map((canvas.edges ?? []).map((e) => [e.id, e]));
 

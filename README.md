@@ -99,7 +99,16 @@ tap the empty board around the card, or the small arrows beside it, to move that
 view shows the same walk as columns, one page at a time: the parents on the left, the card and its
 siblings in the middle, its children on the right; groups are cards whose children are what they
 hold. Add children and siblings there (+ buttons, Tab, Enter), edit cards, highlight or color words
-and write on cards shown at their exact board layout. Also
+and write on cards shown at their exact board layout, resizing a card right there to make room
+for handwriting. The same view also runs top to bottom (the root on top, each level a row below
+it), and cards wider than the way down are cut where the next level starts. The table of contents
+shows a card's children together as cells of a grid (arrows go into a cell's own grid, a back
+button goes up): a simple grid of N cells per row, or a free arrangement where cells dragged
+beside or below each other form colored cell groups, saved with the canvas. Handwriting stays smooth on boards with thousands of strokes; the drawing
+bar turns pen writing into text cards (the device's own handwriting recognition), cards can show
+their text in a handwriting font, and a drawing can be embedded in a note as a picture that follows
+it when it changes. A canvas can also switch to fixed-size pages (A3, A4, A5, Letter, Legal or a
+size of its own, portrait or landscape) that grow as you write and export to PDF, one page per sheet. Also
 collapsible branches with child counts, and automatic layout that keeps the order the cards show
 on the board (mind map in any direction,
 collision-free radial that respects every card's size, balanced, layered flowchart, grid) as one

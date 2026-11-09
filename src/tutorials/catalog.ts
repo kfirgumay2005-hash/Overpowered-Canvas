@@ -1111,20 +1111,21 @@ async function walkToColumn(rt: TutorialRuntime, ...ids: string[]): Promise<void
 	for (const id of ids) if (columnCurrent(rt) !== id && columnCard(rt, id)) await tapColumnCard(rt, id);
 }
 
-/** A press-and-drag on a column, as a finger moving it by `dy` pixels. */
-async function dragColumn(rt: TutorialRuntime, card: HTMLElement, dy: number): Promise<void> {
+/** A press-and-drag on a column, as a finger moving it by `dy` pixels (and `dx` sideways). */
+async function dragColumn(rt: TutorialRuntime, card: HTMLElement, dy: number, dx = 0): Promise<void> {
 	const r = card.getBoundingClientRect();
-	const x = r.left + r.width / 2;
+	let x = r.left + Math.min(r.width / 2, 60);
 	let y = r.top + Math.min(r.height / 2, 40);
-	const fire = (type: string, py: number) =>
-		card.dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true, pointerId: 7, pointerType: "touch", isPrimary: true, clientX: x, clientY: py, button: 0, buttons: type === "pointerup" ? 0 : 1 }));
-	fire("pointerdown", y);
+	const fire = (type: string) =>
+		card.dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true, pointerId: 7, pointerType: "touch", isPrimary: true, clientX: x, clientY: y, button: 0, buttons: type === "pointerup" ? 0 : 1 }));
+	fire("pointerdown");
 	for (let i = 1; i <= 20; i++) {
 		y += dy / 20;
-		fire("pointermove", y);
+		x += dx / 20;
+		fire("pointermove");
 		await rt.wait(16);
 	}
-	fire("pointerup", y);
+	fire("pointerup");
 	await rt.wait(200);
 }
 
@@ -1300,6 +1301,41 @@ const columns: TutorialDefinition = {
 			},
 		},
 		{
+			title: "tut.columns.resize.title",
+			body: "tut.columns.resize.body",
+			task: "tut.columns.resize.task",
+			touch: "tut.columns.resize.touch",
+			target: (rt) => columnsEl(rt)?.querySelector<HTMLElement>(".opc-columns-card.is-current .opc-columns-resize") ?? null,
+			enter: (rt) => {
+				if (rt.setting("presentation", "columnActualSize") !== true) rt.setSetting("presentation", "columnActualSize", true);
+				void ensureColumns(rt, "c-veg");
+			},
+			check: (rt) => rt.seen("column-card-resized"),
+			demo: async (rt) => {
+				await ensureColumns(rt, "c-veg");
+				if (rt.setting("presentation", "columnActualSize") !== true) rt.command("presentation:columns-actual-size");
+				await rt.wait(500);
+				await walkToColumn(rt, "c-root", "c-veg");
+				const handle = columnsEl(rt)?.querySelector<HTMLElement>(".opc-columns-card.is-current .opc-columns-resize");
+				if (!handle) return;
+				// A finger dragging the handle down and to the right.
+				const r = handle.getBoundingClientRect();
+				let x = r.left + r.width / 2;
+				let y = r.top + r.height / 2;
+				const fire = (type: string) =>
+					handle.dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true, pointerId: 9, pointerType: "touch", isPrimary: true, clientX: x, clientY: y, button: 0, buttons: type === "pointerup" ? 0 : 1 }));
+				fire("pointerdown");
+				for (let i = 1; i <= 20; i++) {
+					x += 6;
+					y += 4;
+					fire("pointermove");
+					await rt.wait(16);
+				}
+				fire("pointerup");
+				await rt.wait(500);
+			},
+		},
+		{
 			title: "tut.columns.ink.title",
 			body: "tut.columns.ink.body",
 			task: "tut.columns.ink.task",
@@ -1340,6 +1376,512 @@ const columns: TutorialDefinition = {
 			},
 		},
 		{ title: "tut.columns.end.title", body: "tut.columns.end.body" },
+	],
+};
+
+// ---------- 25. The column view, top to bottom ----------
+
+const columnsDown: TutorialDefinition = {
+	id: "columns-down",
+	icon: "rows-3",
+	title: "tut.columnsDown.title",
+	summary: "tut.columnsDown.summary",
+	modules: ["presentation"],
+	restoreSettings: [
+		{ module: "presentation", key: "columnVertical" },
+		{ module: "presentation", key: "columnActualSize" },
+	],
+	board: (t, folder) => columns.board(t, folder),
+	steps: [
+		{
+			title: "tut.columnsDown.open.title",
+			body: "tut.columnsDown.open.body",
+			task: "tut.columnsDown.open.task",
+			target: ".opc-columns-control",
+			enter: (rt) => {
+				rt.setSetting("presentation", "columnVertical", false);
+				rt.setSetting("presentation", "columnActualSize", false);
+				rt.select(["c-root"]);
+			},
+			check: (rt) => !!columnsEl(rt),
+			demo: (rt) => ensureColumns(rt),
+		},
+		{
+			title: "tut.columnsDown.flip.title",
+			body: "tut.columnsDown.flip.body",
+			task: "tut.columnsDown.flip.task",
+			touch: "tut.columnsDown.flip.touch",
+			target: (rt) => columnsEl(rt)?.querySelector<HTMLElement>(".opc-columns-flip") ?? null,
+			enter: (rt) => void ensureColumns(rt),
+			check: (rt) => rt.setting("presentation", "columnVertical") === true && !!columnsEl(rt)?.hasClass("is-vertical"),
+			demo: async (rt) => {
+				await ensureColumns(rt);
+				if (rt.setting("presentation", "columnVertical") !== true) columnsEl(rt)?.querySelector<HTMLElement>(".opc-columns-flip")?.click();
+				await rt.wait(700);
+			},
+		},
+		{
+			title: "tut.columnsDown.down.title",
+			body: "tut.columnsDown.down.body",
+			task: "tut.columnsDown.down.task",
+			touch: "tut.columnsDown.down.touch",
+			target: ".opc-walk-down",
+			enter: (rt) => void ensureColumns(rt),
+			check: (rt) => !!columnsEl(rt)?.hasClass("is-vertical") && ["c-veg", "c-cal", "c-herbs"].includes(columnCurrent(rt)),
+			demo: async (rt) => {
+				await ensureColumns(rt);
+				await walkToColumn(rt, "c-root");
+				rt.canvas.wrapperEl.querySelector<HTMLElement>(".opc-walk-down")?.click();
+				await rt.wait(500);
+			},
+		},
+		{
+			title: "tut.columnsDown.row.title",
+			body: "tut.columnsDown.row.body",
+			task: "tut.columnsDown.row.task",
+			touch: "tut.columnsDown.row.touch",
+			enter: (rt) => void ensureColumns(rt),
+			check: (rt) => !!columnsEl(rt)?.hasClass("is-vertical") && !!columnsEl(rt)?.hasClass("is-moved"),
+			demo: async (rt) => {
+				await ensureColumns(rt);
+				const card = columnsEl(rt)?.querySelector<HTMLElement>(".opc-columns-card.is-current");
+				if (card) await dragColumn(rt, card, 0, -240);
+			},
+		},
+		{ title: "tut.columnsDown.end.title", body: "tut.columnsDown.end.body" },
+	],
+};
+
+// ---------- 26. The table of contents ----------
+
+const tocEl = (rt: TutorialRuntime) => rt.canvas.wrapperEl.querySelector<HTMLElement>(".opc-toc");
+const tocCell = (rt: TutorialRuntime, id: string) => tocEl(rt)?.querySelector<HTMLElement>(`.opc-toc-cell[data-id="${id}"]`) ?? null;
+/** The stored arrangement of a level, as text (to see that it changed). */
+const tocStored = (rt: TutorialRuntime, parent: string) => JSON.stringify((rt.now()[SCHEMA_KEY] as { tocLayouts?: Record<string, unknown> } | undefined)?.tocLayouts?.[parent] ?? null);
+let tocBefore = "";
+/** The back step went into a cell first (so seeing the top level again means "back" worked). */
+let tocWentIn = false;
+
+/** Opens the table of contents on `from`'s children, unless it is open. */
+async function ensureToc(rt: TutorialRuntime, from = "t-root"): Promise<void> {
+	if (tocEl(rt)) return;
+	rt.command("presentation:walk-end");
+	rt.select([from]);
+	rt.command("presentation:toc");
+	await rt.wait(900);
+}
+
+/** Into a cell's own grid, by its arrow. */
+async function tocEnter(rt: TutorialRuntime, id: string): Promise<void> {
+	tocEl(rt)?.querySelector<HTMLElement>(`.opc-toc-open[data-id="${id}"]`)?.click();
+	await rt.wait(500);
+}
+
+/** A finger dragging `el` from its middle to (x, y). */
+async function tocDragTo(rt: TutorialRuntime, el: HTMLElement, x: number, y: number): Promise<void> {
+	const r = el.getBoundingClientRect();
+	const sx = r.left + Math.min(r.width / 2, 20);
+	const sy = r.top + Math.min(r.height / 2, 12);
+	const fire = (type: string, px: number, py: number) =>
+		el.dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true, pointerId: 11, pointerType: "touch", isPrimary: true, clientX: px, clientY: py, button: 0, buttons: type === "pointerup" ? 0 : 1 }));
+	fire("pointerdown", sx, sy);
+	for (let i = 1; i <= 16; i++) {
+		fire("pointermove", sx + ((x - sx) * i) / 16, sy + ((y - sy) * i) / 16);
+		await rt.wait(20);
+	}
+	fire("pointerup", x, y);
+	await rt.wait(500);
+}
+
+const toc: TutorialDefinition = {
+	id: "toc",
+	icon: "layout-grid",
+	title: "tut.toc.title",
+	summary: "tut.toc.summary",
+	modules: ["presentation"],
+	restoreSettings: [
+		{ module: "presentation", key: "tocMode" },
+		{ module: "presentation", key: "tocPerRow" },
+		{ module: "presentation", key: "tocActualSize" },
+	],
+	board: (t) => ({
+		nodes: [
+			card("t-root", t("tut.toc.board.root"), 0, 300, 220, 70, { color: "6" }),
+			card("t-cells", t("tut.toc.board.cells"), 340, 60, 200, 60, { color: "1" }),
+			card("t-gen", t("tut.toc.board.genetics"), 340, 300, 200, 60, { color: "3" }),
+			card("t-eco", t("tut.toc.board.ecology"), 340, 420, 200, 60, { color: "4" }),
+			card("t-evo", t("tut.toc.board.evolution"), 340, 540, 200, 60, { color: "5" }),
+			card("t-nuc", t("tut.toc.board.nucleus"), 660, -200, 300, 160),
+			card("t-mem", t("tut.toc.board.membrane"), 660, 0, 200, 60),
+			card("t-mit", t("tut.toc.board.mito"), 660, 100, 200, 60),
+			card("t-rib", t("tut.toc.board.ribosomes"), 660, 200, 200, 60),
+			card("t-cyc", t("tut.toc.board.cycle"), 660, 300, 220, 140),
+		],
+		edges: [
+			edge("t-e1", "t-root", "right", "t-cells", "left"),
+			edge("t-e2", "t-root", "right", "t-gen", "left"),
+			edge("t-e3", "t-root", "right", "t-eco", "left"),
+			edge("t-e4", "t-root", "right", "t-evo", "left"),
+			edge("t-e5", "t-cells", "right", "t-nuc", "left"),
+			edge("t-e6", "t-cells", "right", "t-mem", "left"),
+			edge("t-e7", "t-cells", "right", "t-mit", "left"),
+			edge("t-e8", "t-cells", "right", "t-rib", "left"),
+			edge("t-e9", "t-cells", "right", "t-cyc", "left"),
+		],
+	}),
+	steps: [
+		{
+			title: "tut.toc.open.title",
+			body: "tut.toc.open.body",
+			task: "tut.toc.open.task",
+			target: ".opc-toc-control",
+			enter: (rt) => {
+				rt.setSetting("presentation", "tocMode", "free");
+				rt.setSetting("presentation", "tocPerRow", 3);
+				rt.setSetting("presentation", "tocActualSize", false);
+				rt.select(["t-root"]);
+			},
+			check: (rt) => !!tocEl(rt),
+			demo: (rt) => ensureToc(rt),
+		},
+		{
+			title: "tut.toc.enter.title",
+			body: "tut.toc.enter.body",
+			task: "tut.toc.enter.task",
+			touch: "tut.toc.enter.touch",
+			target: (rt) => tocEl(rt)?.querySelector<HTMLElement>('.opc-toc-open[data-id="t-cells"]') ?? null,
+			enter: (rt) => void ensureToc(rt),
+			check: (rt) => rt.seen("toc-shown", (_c, parent) => parent === "t-cells"),
+			demo: async (rt) => {
+				await ensureToc(rt);
+				await tocEnter(rt, "t-cells");
+			},
+		},
+		{
+			title: "tut.toc.back.title",
+			body: "tut.toc.back.body",
+			task: "tut.toc.back.task",
+			touch: "tut.toc.back.touch",
+			target: (rt) => tocEl(rt)?.querySelector<HTMLElement>(".opc-toc-back.is-fixed") ?? null,
+			enter: (rt) => {
+				tocWentIn = false;
+				void (async () => {
+					await ensureToc(rt);
+					if (!tocCell(rt, "t-nuc")) await tocEnter(rt, "t-cells");
+					tocWentIn = !!tocCell(rt, "t-nuc");
+				})();
+			},
+			check: (rt) => tocWentIn && !!tocEl(rt) && !!tocCell(rt, "t-cells"),
+			demo: async (rt) => {
+				tocEl(rt)?.querySelector<HTMLElement>(".opc-toc-back.is-fixed")?.click();
+				await rt.wait(500);
+			},
+		},
+		{
+			title: "tut.toc.simple.title",
+			body: "tut.toc.simple.body",
+			task: "tut.toc.simple.task",
+			touch: "tut.toc.simple.touch",
+			target: (rt) => tocEl(rt)?.querySelector<HTMLElement>(".opc-toc-mode") ?? null,
+			enter: (rt) => void ensureToc(rt),
+			check: (rt) => rt.setting("presentation", "tocMode") === "simple",
+			demo: async (rt) => {
+				await ensureToc(rt);
+				if (rt.setting("presentation", "tocMode") !== "simple") tocEl(rt)?.querySelector<HTMLElement>(".opc-toc-mode")?.click();
+				await rt.wait(500);
+			},
+		},
+		{
+			title: "tut.toc.group.title",
+			body: "tut.toc.group.body",
+			task: "tut.toc.group.task",
+			touch: "tut.toc.group.touch",
+			enter: (rt) => {
+				rt.setSetting("presentation", "tocMode", "free");
+				void (async () => {
+					await ensureToc(rt);
+					if (!tocCell(rt, "t-nuc")) await tocEnter(rt, "t-cells");
+				})();
+			},
+			check: (rt) => /"dir"/.test(tocStored(rt, "t-cells")),
+			demo: async (rt) => {
+				await ensureToc(rt);
+				if (!tocCell(rt, "t-nuc")) await tocEnter(rt, "t-cells");
+				const mem = tocCell(rt, "t-mem");
+				const nuc = tocCell(rt, "t-nuc")?.getBoundingClientRect();
+				if (mem && nuc) await tocDragTo(rt, mem, nuc.right - 4, nuc.top + nuc.height / 2);
+			},
+		},
+		{
+			title: "tut.toc.color.title",
+			body: "tut.toc.color.body",
+			task: "tut.toc.color.task",
+			touch: "tut.toc.color.touch",
+			target: (rt) => tocEl(rt)?.querySelector<HTMLElement>(".opc-toc-grip") ?? null,
+			enter: (rt) => {
+				tocBefore = tocStored(rt, "t-cells");
+			},
+			check: (rt) => tocStored(rt, "t-cells") !== tocBefore && /"color"/.test(tocStored(rt, "t-cells")),
+			demo: async (rt) => {
+				const grip = tocEl(rt)?.querySelector<HTMLElement>(".opc-toc-grip");
+				if (!grip) return;
+				const r = grip.getBoundingClientRect();
+				const fire = (type: string) => grip.dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true, pointerId: 12, pointerType: "touch", isPrimary: true, clientX: r.left + 6, clientY: r.top + 6, button: 0, buttons: type === "pointerup" ? 0 : 1 }));
+				fire("pointerdown");
+				fire("pointerup");
+				await rt.wait(400);
+				const items = Array.from(rt.canvas.wrapperEl.doc.querySelectorAll<HTMLElement>(".menu .menu-item"));
+				(items.find((i) => !i.querySelector(".menu-item-icon .lucide-check") && !i.hasClass("is-disabled")) ?? items[0])?.click();
+				await rt.wait(400);
+			},
+		},
+		{
+			title: "tut.toc.move.title",
+			body: "tut.toc.move.body",
+			task: "tut.toc.move.task",
+			touch: "tut.toc.move.touch",
+			enter: (rt) => {
+				tocBefore = tocStored(rt, "t-cells");
+			},
+			check: (rt) => tocStored(rt, "t-cells") !== tocBefore,
+			demo: async (rt) => {
+				const cyc = tocCell(rt, "t-cyc");
+				const grid = tocEl(rt)?.querySelector<HTMLElement>(".opc-toc-grid")?.getBoundingClientRect();
+				if (cyc && grid) await tocDragTo(rt, cyc, grid.left + 30, grid.bottom - 2);
+			},
+		},
+		{
+			title: "tut.toc.actual.title",
+			body: "tut.toc.actual.body",
+			task: "tut.toc.actual.task",
+			touch: "tut.toc.actual.touch",
+			target: (rt) => tocEl(rt)?.querySelector<HTMLElement>(".opc-toc-actual") ?? null,
+			enter: (rt) => void ensureToc(rt),
+			check: (rt) => rt.setting("presentation", "tocActualSize") === true && !!tocEl(rt)?.hasClass("is-actual-size"),
+			demo: async (rt) => {
+				await ensureToc(rt);
+				if (rt.setting("presentation", "tocActualSize") !== true) tocEl(rt)?.querySelector<HTMLElement>(".opc-toc-actual")?.click();
+				await rt.wait(500);
+			},
+		},
+		{ title: "tut.toc.end.title", body: "tut.toc.end.body" },
+	],
+};
+
+// ---------- 27. Automatic headers ----------
+
+/** The note of the practice board, as text ("" when it is not open). */
+const noteText = (rt: TutorialRuntime) => noteTab(rt)?.view.editor?.getValue() ?? "";
+
+const autoHeaders: TutorialDefinition = {
+	id: "auto-headers",
+	icon: "heading",
+	title: "tut.autoHeaders.title",
+	summary: "tut.autoHeaders.summary",
+	modules: ["canvas-markdown"],
+	restoreSettings: [
+		{ module: "canvas-markdown", key: "autoHeaders" },
+		{ module: "canvas-markdown", key: "autoHeaderChildren" },
+		{ module: "canvas-markdown", key: "autoHeaderDepth" },
+	],
+	board: (t) => ({
+		nodes: [
+			card("ah-root", t("tut.toc.board.root"), 0, 300, 220, 70, { color: "6" }),
+			card("ah-cells", t("tut.toc.board.cells"), 340, 60, 200, 60, { color: "1" }),
+			card("ah-gen", t("tut.toc.board.genetics"), 340, 360, 200, 60, { color: "3" }),
+			card("ah-eco", t("tut.toc.board.ecology"), 340, 520, 200, 60, { color: "4" }),
+			card("ah-nuc", t("tut.toc.board.nucleus"), 660, -120, 300, 80),
+			card("ah-mem", t("tut.toc.board.membrane"), 660, 0, 200, 60),
+			card("ah-mit", t("tut.toc.board.mito"), 660, 100, 200, 60),
+			card("ah-rib", t("tut.toc.board.ribosomes"), 660, 200, 200, 60),
+			card("ah-dna", t("tut.autoHeaders.board.dna"), 660, 360, 200, 60),
+		],
+		edges: [
+			edge("ah-e1", "ah-root", "right", "ah-cells", "left"),
+			edge("ah-e2", "ah-root", "right", "ah-gen", "left"),
+			edge("ah-e3", "ah-root", "right", "ah-eco", "left"),
+			edge("ah-e4", "ah-cells", "right", "ah-nuc", "left"),
+			edge("ah-e5", "ah-cells", "right", "ah-mem", "left"),
+			edge("ah-e6", "ah-cells", "right", "ah-mit", "left"),
+			edge("ah-e7", "ah-cells", "right", "ah-rib", "left"),
+			edge("ah-e8", "ah-gen", "right", "ah-dna", "left"),
+		],
+	}),
+	steps: [
+		{
+			title: "tut.autoHeaders.children.title",
+			body: "tut.autoHeaders.children.body",
+			task: "tut.autoHeaders.children.task",
+			enter: (rt) => {
+				rt.setSetting("canvas-markdown", "autoHeaders", "off");
+				rt.setSetting("canvas-markdown", "autoHeaderChildren", 3);
+				rt.setSetting("canvas-markdown", "autoHeaderDepth", 3);
+			},
+			check: (rt) => rt.setting("canvas-markdown", "autoHeaders") === "children",
+			demo: (rt) => rt.setSetting("canvas-markdown", "autoHeaders", "children"),
+		},
+		{
+			title: "tut.autoHeaders.see.title",
+			body: "tut.autoHeaders.see.body",
+			task: "tut.autoHeaders.see.task",
+			target: (rt) => canvasSwitch(rt),
+			check: (rt) => noteText(rt).includes(`## ${rt.t("tut.toc.board.cells")}`),
+			demo: (rt) => pressSwitch(rt, canvasSwitch(rt), false),
+		},
+		{
+			title: "tut.autoHeaders.depth.title",
+			body: "tut.autoHeaders.depth.body",
+			task: "tut.autoHeaders.depth.task",
+			target: (rt) => canvasSwitch(rt),
+			check: (rt) => rt.setting("canvas-markdown", "autoHeaders") === "depth" && noteText(rt).includes(`### ${rt.t("tut.autoHeaders.board.dna")}`),
+			demo: async (rt) => {
+				rt.setSetting("canvas-markdown", "autoHeaders", "depth");
+				await rt.wait(300);
+				await pressSwitch(rt, canvasSwitch(rt), false);
+			},
+		},
+		{
+			title: "tut.autoHeaders.own.title",
+			body: "tut.autoHeaders.own.body",
+			task: "tut.autoHeaders.own.task",
+			touch: "tut.autoHeaders.own.touch",
+			enter: (rt) => {
+				const leaf = (rt.canvas.view as unknown as { leaf?: unknown }).leaf;
+				if (leaf) (rt.app.workspace as unknown as { setActiveLeaf(l: unknown, o?: object): void }).setActiveLeaf(leaf, { focus: true });
+				rt.select(["ah-gen"]);
+			},
+			target: () => document.querySelector<HTMLElement>(".canvas-menu .opc-menu-header"),
+			check: (rt) => rt.extra("ah-gen").header === -1,
+			demo: (rt) => {
+				const node = rt.node("ah-gen");
+				if (node) rt.change(() => rt.data.node(node).set({ header: -1 }));
+			},
+		},
+		{ title: "tut.autoHeaders.end.title", body: "tut.autoHeaders.end.body" },
+	],
+};
+
+// ---------- 28. Handwriting tools ----------
+
+const handwriting: TutorialDefinition = {
+	id: "handwriting",
+	icon: "signature",
+	title: "tut.hand.title",
+	summary: "tut.hand.summary",
+	modules: ["drawing", "text-align"],
+	board: (t) => {
+		const mark = ink("h-ink", [{ x: 30, y: 78 }, { x: 120, y: 82 }, { x: 260, y: 76 }], "#e03131", 4);
+		(mark[SCHEMA_KEY] as Record<string, unknown>).anchor = "h-card";
+		return {
+			nodes: [card("h-card", t("tut.hand.board.card"), 0, 0, 300, 100, { color: "4" }), mark],
+			edges: [],
+		};
+	},
+	steps: [
+		{
+			title: "tut.hand.write.title",
+			body: "tut.hand.write.body",
+			task: "tut.hand.write.task",
+			touch: "tut.hand.write.touch",
+			target: (rt) => Array.from(rt.canvas.wrapperEl.querySelectorAll<HTMLElement>(".opc-ink-toolbar .opc-ink-button")).find((b) => b.querySelector(".lucide-text-cursor-input")) ?? null,
+			check: (rt) => rt.seen("handwriting-to-text"),
+			demo: async (rt) => {
+				rt.command("drawing:handwrite-text");
+				await rt.wait(500);
+				const area = rt.canvas.wrapperEl.doc.querySelector<HTMLTextAreaElement>(".opc-handwrite-area");
+				if (!area) return;
+				area.value = rt.t("tut.hand.demoText");
+				await rt.wait(400);
+				rt.canvas.wrapperEl.doc.querySelector<HTMLElement>(".opc-handwrite-modal .mod-cta")?.click();
+				await rt.wait(400);
+			},
+		},
+		{
+			title: "tut.hand.font.title",
+			body: "tut.hand.font.body",
+			task: "tut.hand.font.task",
+			touch: "tut.hand.font.touch",
+			enter: (rt) => {
+				if (rt.canvas.wrapperEl.querySelector(".opc-ink-overlay")) rt.command("drawing:toggle-drawing");
+				rt.select(["h-card"]);
+			},
+			target: () => document.querySelector<HTMLElement>(".canvas-menu .opc-menu-font-size"),
+			check: (rt) => rt.extra("h-card").font === "hand",
+			demo: (rt) => {
+				const node = rt.node("h-card");
+				if (node) rt.change(() => rt.data.node(node).set({ font: "hand" }));
+			},
+		},
+		{
+			title: "tut.hand.embed.title",
+			body: "tut.hand.embed.body",
+			task: "tut.hand.embed.task",
+			touch: "tut.hand.embed.touch",
+			enter: (rt) => rt.select(["h-card"]),
+			check: (rt) => rt.seen("drawing-embedded"),
+			demo: async (rt) => {
+				rt.select(["h-card"]);
+				rt.command("drawing:embed-drawing");
+				await rt.wait(1200);
+			},
+		},
+		{ title: "tut.hand.end.title", body: "tut.hand.end.body" },
+	],
+};
+
+// ---------- 29. Page format ----------
+
+/** The practice board's page format, if any. */
+const paperOf = (rt: TutorialRuntime) => (rt.now()[SCHEMA_KEY] as { paper?: { format?: string; landscape?: boolean; stacks?: Record<string, { count?: number }> } } | undefined)?.paper;
+
+const paper: TutorialDefinition = {
+	id: "paper",
+	icon: "file-text",
+	title: "tut.paper.title",
+	summary: "tut.paper.summary",
+	modules: ["paper"],
+	board: (t) => ({
+		nodes: [card("pp-title", `## ${t("tut.paper.board.title")}`, 40, 40, 500, 110, { color: "5" }), card("pp-a", t("tut.paper.board.a"), 40, 200, 320, 90), card("pp-b", t("tut.paper.board.b"), 400, 200, 320, 90)],
+		edges: [],
+	}),
+	steps: [
+		{
+			title: "tut.paper.setup.title",
+			body: "tut.paper.setup.body",
+			task: "tut.paper.setup.task",
+			check: (rt) => !!paperOf(rt)?.format,
+			demo: async (rt) => {
+				rt.command("paper:set-up");
+				await rt.wait(500);
+				const modal = Array.from(rt.canvas.wrapperEl.doc.querySelectorAll<HTMLElement>(".modal-container")).pop();
+				modal?.querySelector<HTMLElement>("button.mod-cta")?.click();
+				await rt.wait(800);
+			},
+		},
+		{
+			title: "tut.paper.add.title",
+			body: "tut.paper.add.body",
+			task: "tut.paper.add.task",
+			touch: "tut.paper.add.touch",
+			target: (rt) => rt.canvas.wrapperEl.querySelector<HTMLElement>(".opc-paper-add"),
+			check: (rt) => (paperOf(rt)?.stacks?.[""]?.count ?? 1) >= 2,
+			demo: async (rt) => {
+				rt.canvas.wrapperEl.querySelector<HTMLElement>(".opc-paper-add")?.click();
+				await rt.wait(600);
+			},
+		},
+		{
+			title: "tut.paper.landscape.title",
+			body: "tut.paper.landscape.body",
+			task: "tut.paper.landscape.task",
+			check: (rt) => paperOf(rt)?.landscape === true,
+			demo: async (rt) => {
+				const now = (rt.now()[SCHEMA_KEY] as { paper?: object } | undefined)?.paper ?? { format: "A4" };
+				rt.change(() => rt.data.root(rt.canvas).set({ paper: { ...now, landscape: true } as never }));
+				await rt.wait(600);
+			},
+		},
+		{ title: "tut.paper.end.title", body: "tut.paper.end.body" },
 	],
 };
 
@@ -3697,4 +4239,4 @@ const shortcuts: TutorialDefinition = {
 	],
 };
 
-export const TUTORIALS: readonly TutorialDefinition[] = [basics, notes, shapes, edges, drawing, layers, present, mindmap, navigate, organize, markdown, select, blocks, vault, style, big, direction, pdf, pages, arrows, bars, images, file, columns, smartGroups, indent, fontSize, shortcuts];
+export const TUTORIALS: readonly TutorialDefinition[] = [basics, notes, shapes, edges, drawing, layers, present, mindmap, navigate, organize, markdown, select, blocks, vault, style, big, direction, pdf, pages, arrows, bars, images, file, columns, columnsDown, toc, autoHeaders, handwriting, paper, smartGroups, indent, fontSize, shortcuts];

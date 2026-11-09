@@ -53,3 +53,14 @@ body.opc-mod-text-align[data-opc-font-size] {
 body.opc-mod-text-align[data-opc-font-size] .markdown-source-view.mod-cm6 .cm-scroller {
 	font-size: var(--opc-card-font-size);
 }
+
+/* Text in a handwriting style: the system's own handwriting fonts (Windows, iPad, Mac), letters a
+   font lacks (right-to-left text, CJK) fall back to the next font. On the board, wherever a card
+   is built like the board's (column view, table of contents) and in its editor. */
+body.opc-mod-text-align {
+	--opc-hand-font: "Segoe Print", "Ink Free", "Bradley Hand", "Noteworthy", "Chalkboard SE", "Comic Neue", "Comic Sans MS", cursive;
+}
+body.opc-mod-text-align .canvas-node[data-opc-font="hand"] .markdown-preview-view,
+body.opc-mod-text-align[data-opc-font="hand"] .markdown-source-view.mod-cm6 .cm-scroller {
+	font-family: var(--opc-hand-font);
+}

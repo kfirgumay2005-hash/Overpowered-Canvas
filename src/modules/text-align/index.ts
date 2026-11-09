@@ -79,6 +79,9 @@ export const textAlignModule = defineModule<TextAlignSettings>({
 					node.nodeEl.removeAttribute("data-opc-font-size");
 					node.nodeEl.setCssProps({ "--opc-card-font-size": "" });
 				}
+				// Text in a handwriting style (the editor's iframe mirrors the attribute too).
+				if (extra.font && nodeType(node) !== "group") node.nodeEl.setAttribute("data-opc-font", extra.font);
+				else node.nodeEl.removeAttribute("data-opc-font");
 				const valign = effectiveVAlign(extra);
 				// Stickies always carry it: their own CSS centers them when it is absent.
 				if ((valign !== "top" || extra.kind === "sticky") && nodeType(node) !== "group") node.nodeEl.setAttribute("data-opc-valign", valign);
@@ -88,6 +91,7 @@ export const textAlignModule = defineModule<TextAlignSettings>({
 				node.nodeEl.removeAttribute("data-opc-align");
 				node.nodeEl.removeAttribute("data-opc-valign");
 				node.nodeEl.removeAttribute("data-opc-font-size");
+				node.nodeEl.removeAttribute("data-opc-font");
 				node.nodeEl.setCssProps({ "--opc-card-font-size": "" });
 			},
 		});
@@ -137,6 +141,11 @@ export const textAlignModule = defineModule<TextAlignSettings>({
 			const base = Number.parseFloat(getComputedStyle(node.canvas.wrapperEl).getPropertyValue("--font-text-size"));
 			return base > 0 ? Math.round(base) : 16;
 		};
+		/** Handwriting style on or off for these cards (on, unless all of them have it already). */
+		const toggleHand = (canvas: CanvasLike, nodes: CanvasNodeLike[], on = !nodes.every((n) => ctx.data.node(n).get().font === "hand")) =>
+			mutate(ctx, canvas, () => {
+				for (const node of nodes) ctx.data.node(node).set({ font: on ? "hand" : undefined });
+			});
 		const setSize = (canvas: CanvasLike, nodes: CanvasNodeLike[], size: (node: CanvasNodeLike) => number | undefined) =>
 			mutate(ctx, canvas, () => {
 				for (const node of nodes) ctx.data.node(node).set({ fontSize: size(node) });
@@ -156,7 +165,7 @@ export const textAlignModule = defineModule<TextAlignSettings>({
 			order: 13,
 			command: false,
 			isVisible: (selection) => !!eligible(selection),
-			isActive: (selection) => (eligible(selection) ?? []).some((n) => !!ctx.data.node(n).get().fontSize),
+			isActive: (selection) => (eligible(selection) ?? []).some((n) => !!ctx.data.node(n).get().fontSize || !!ctx.data.node(n).get().font),
 			onClick: ({ canvas, selection, buttonEl }) => {
 				const nodes = eligible(selection) ?? [];
 				const current = common(nodes, (n) => ctx.data.node(n).get().fontSize);
@@ -173,8 +182,17 @@ export const textAlignModule = defineModule<TextAlignSettings>({
 							],
 							columns: 4,
 						},
+						{
+							title: ctx.t("textAlign.font.title"),
+							items: [
+								{ id: "font:normal", label: ctx.t("textAlign.font.normal"), icon: "type", active: nodes.every((n) => !ctx.data.node(n).get().font) },
+								{ id: "font:hand", label: ctx.t("textAlign.font.hand"), icon: "signature", active: nodes.every((n) => ctx.data.node(n).get().font === "hand") },
+							],
+							columns: 2,
+						},
 					],
 					(id) => {
+						if (id.startsWith("font:")) return toggleHand(canvas, nodes, id === "font:hand");
 						if (id === "custom") return askSize(canvas, nodes);
 						if (id === "reset") return setSize(canvas, nodes, () => undefined);
 						if (id === "smaller" || id === "bigger") return setSize(canvas, nodes, (n) => stepCardFont(sizeOf(n), id === "bigger" ? 1 : -1));
@@ -200,6 +218,7 @@ export const textAlignModule = defineModule<TextAlignSettings>({
 		sizeCommand("font-size-bigger", ctx.t("textAlign.size.bigger"), "a-arrow-up", (c, nodes) => setSize(c, nodes, (n) => stepCardFont(sizeOf(n), 1)));
 		sizeCommand("font-size-smaller", ctx.t("textAlign.size.smaller"), "a-arrow-down", (c, nodes) => setSize(c, nodes, (n) => stepCardFont(sizeOf(n), -1)));
 		sizeCommand("font-size-reset", ctx.t("textAlign.size.reset"), "rotate-ccw", (c, nodes) => setSize(c, nodes, () => undefined));
+		sizeCommand("font-hand", ctx.t("textAlign.font.toggle"), "signature", (c, nodes) => toggleHand(c, nodes));
 
 		// New cards: center their text when the setting asks for it.
 		const centerNew = (node: CanvasNodeLike) => {

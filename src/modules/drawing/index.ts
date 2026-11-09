@@ -16,6 +16,7 @@ import { renderInk } from "./render";
 import { DRAWING_DEFAULTS, INK_DEFAULT, InkToolbar, PEN_TOOLS, sanitizePens, type DrawingSettings, type InkTool, type PenTool } from "./toolbar";
 import { logError } from "../../core/log";
 import { inkHost, type InkSurface } from "./api";
+import { enableInkTools } from "./ink-tools";
 
 type Ctx = ModuleContext<DrawingSettings>;
 
@@ -58,6 +59,28 @@ function eraserInput(evt: PointerEvent): boolean {
 	return evt.pointerType === "pen" && ((evt.buttons & 32) !== 0 || evt.button === 5 || (evt.buttons & 2) !== 0);
 }
 
+/** Pen samples closer than this (screen px) to the previous one replace it instead of adding a point. */
+const MERGE_PX = 0.5;
+
+/**
+ * Adds a pen sample to a stroke. Pens report 120–240 samples a second, many of them less than a
+ * pixel apart. The last point is provisional: while the pen stays within `merge` of the point
+ * before it, each new sample replaces it (the stroke still ends exactly under the pen); once it
+ * gets farther, the sample is added. Kept points are thus at least `merge` apart, slow strokes
+ * keep their shape, and the live preview and the stored stroke use the same points, so what is
+ * drawn on pen-up is exactly what was shown. The first point always stays.
+ */
+export function addPoint(points: InkPoint[], next: InkPoint, merge: number): void {
+	const kept = points[points.length - 2];
+	if (kept && merge > 0 && Math.hypot(next.x - kept.x, next.y - kept.y) < merge) points[points.length - 1] = next;
+	else points.push(next);
+}
+
+/** Two frames: what was rendered now is on screen. */
+function nextPaint(win: Window): Promise<void> {
+	return new Promise((resolve) => win.requestAnimationFrame(() => win.requestAnimationFrame(() => resolve())));
+}
+
 /** The board as a surface to draw on. */
 function boardSurface(canvas: CanvasLike): InkSurface {
 	return {
@@ -65,10 +88,37 @@ function boardSurface(canvas: CanvasLike): InkSurface {
 		toCanvas: (x, y) => canvas.posFromEvt({ clientX: x, clientY: y } as MouseEvent),
 		scale: () => canvas.scale,
 		placePreview: (svg) => {
-			if (svg.parentElement !== canvas.canvasEl) canvas.canvasEl.appendChild(svg);
+			// Last in the board, above every card (see styles.css), and as big as the part of the
+			// board on screen (and around it): a tiny layer with overflowing content is not seen as
+			// covering cards that have a compositing layer of their own (iPad: cards whose text
+			// scrolls), and the stroke would be painted under them.
+			if (svg.parentElement !== canvas.canvasEl || svg.nextElementSibling) canvas.canvasEl.appendChild(svg);
+			coverView(canvas, svg);
 		},
 		pan: (dx, dy) => canvas.setViewport(canvas.x - dx / canvas.scale, canvas.y - dy / canvas.scale, canvas.zoom),
+		settled: () => nextPaint(canvas.wrapperEl.win),
 	};
+}
+
+/**
+ * Sizes the preview layer to the board area on screen, twice as wide and high around it (the
+ * view may move while drawing), in board units; its viewBox keeps board coordinates.
+ */
+function coverView(canvas: CanvasLike, svg: SVGSVGElement): void {
+	// The core's own measure of the view: reading the wrapper's size here would force a layout
+	// on every pen move and press.
+	const w = canvas.canvasRect?.width || 1000;
+	const h = canvas.canvasRect?.height || 1000;
+	const scale = canvas.scale || 1;
+	const bw = (w / scale) * 2;
+	const bh = (h / scale) * 2;
+	const x = Math.floor(canvas.x - bw / 2);
+	const y = Math.floor(canvas.y - bh / 2);
+	const key = `${x},${y},${Math.ceil(bw)},${Math.ceil(bh)}`;
+	if (svg.dataset.cover === key) return;
+	svg.dataset.cover = key;
+	svg.setAttribute("viewBox", `${x} ${y} ${Math.ceil(bw)} ${Math.ceil(bh)}`);
+	svg.setCssProps({ "--opc-preview-x": `${x}px`, "--opc-preview-y": `${y}px`, "--opc-preview-w": `${Math.ceil(bw)}px`, "--opc-preview-h": `${Math.ceil(bh)}px` });
 }
 
 class InkSession {
@@ -92,11 +142,15 @@ class InkSession {
 		box?: { minX: number; minY: number; maxX: number; maxY: number };
 		/** Line tool: Shift held, draw a straight line. */
 		straight?: boolean;
+		/** Pen strokes: board distance under which a new sample replaces the last one. */
+		merge?: number;
 	} | null = null;
 	private penUntil = 0;
 	/** The drag button: until it is pressed again or a tool is picked, input moves the view. */
 	private panning = false;
 	private lastCarrier: CanvasNodeLike | null = null;
+	/** Where the pen last pressed on the board (a card made from handwriting goes there). */
+	lastPress: { x: number; y: number } | null = null;
 	/** Lasso selection: carrier → stroke ids. */
 	readonly selection = new Map<CanvasNodeLike, Set<string>>();
 
@@ -106,6 +160,7 @@ class InkSession {
 		private readonly surface: InkSurface,
 		private readonly onClose: () => void,
 		private readonly rerender: (node: CanvasNodeLike) => void,
+		private readonly onHandwrite: () => void = () => {},
 	) {
 		const host = surface.host;
 		// A hovering pen shows its brush before any press.
@@ -137,6 +192,8 @@ class InkSession {
 			close: () => this.onClose(),
 			colorName: (color) => colorName(ctx.t, color),
 			hiddenTools: surface.inkOnly ? ["line", "arrow"] : [],
+			// Handwriting → text makes a card on the board: not offered in other views.
+			...(surface.inkOnly ? {} : { handwrite: () => this.onHandwrite() }),
 		});
 		host.addClass("opc-drawing");
 		this.overlay.addEventListener("pointerdown", this.onDown);
@@ -199,6 +256,7 @@ class InkSession {
 		// Pressing where nothing can be drawn (between the cards of another view): left to it.
 		const p = this.panning ? { x: 0, y: 0 } : this.surface.toCanvas(evt.clientX, evt.clientY, true);
 		if (!p) return;
+		if (!this.panning && !this.surface.inkOnly) this.lastPress = { x: p.x, y: p.y };
 		evt.preventDefault();
 		evt.stopPropagation();
 		capturePointer(this.overlay, evt.pointerId);
@@ -227,7 +285,8 @@ class InkSession {
 			this.drawPreview();
 			return;
 		}
-		this.current = { ...base, mode: "draw", points: [this.point(evt)] };
+		// Samples closer than about half a screen pixel to the last one replace it (see addPoint).
+		this.current = { ...base, mode: "draw", points: [this.point(evt)], merge: MERGE_PX / Math.max(1e-6, this.surface.scale()) };
 		this.armHold(evt);
 		this.drawPreview();
 	};
@@ -260,7 +319,8 @@ class InkSession {
 			this.drawPreview();
 			return;
 		}
-		for (const e of events.length ? events : [evt]) cur.points.push(cur.mode === "lasso" ? { ...this.pos(e), p: 0.5 } : this.point(e));
+		if (cur.mode === "lasso") for (const e of events.length ? events : [evt]) cur.points.push({ ...this.pos(e), p: 0.5 });
+		else for (const e of events.length ? events : [evt]) addPoint(cur.points, this.point(e), cur.merge ?? 0);
 		if (cur.mode === "draw" && Math.hypot(evt.clientX - cur.lastHold.x, evt.clientY - cur.lastHold.y) > 4) {
 			cur.recognized = null;
 			this.armHold(evt);
@@ -273,6 +333,8 @@ class InkSession {
 		if (!cur || evt.pointerId !== cur.pointerId) return;
 		this.current = null;
 		window.clearTimeout(cur.holdTimer);
+		// A drawn stroke's preview stays until the surface shows the committed stroke (no blink).
+		if (cur.mode === "draw" && !cur.recognized) this.holdUntilSettled();
 		this.layer.querySelectorAll(".opc-ink-live").forEach((el) => el.remove());
 		try {
 			if (cur.mode === "draw") this.commitStroke(cur.points, cur.recognized);
@@ -288,6 +350,34 @@ class InkSession {
 		}
 		this.renderSelection();
 	};
+
+	/**
+	 * Moves the live stroke into a copy of the preview layer that stays where it is until the
+	 * surface has drawn the committed stroke (the next stroke may start meanwhile, even on
+	 * another card of another view: the copy doesn't follow the preview).
+	 */
+	private holdUntilSettled(): void {
+		const live = Array.from(this.layer.querySelectorAll(".opc-ink-live"));
+		const parent = this.preview.parentElement;
+		if (!live.length || !parent) return;
+		const ghost = this.preview.cloneNode(false) as SVGSVGElement;
+		ghost.addClass("opc-ink-settling");
+		const layer = this.layer.cloneNode(false) as SVGGElement;
+		ghost.appendChild(layer);
+		for (const el of live) {
+			el.removeClass("opc-ink-live");
+			layer.appendChild(el);
+		}
+		parent.insertBefore(ghost, this.preview);
+		const done = () => ghost.remove();
+		const win = this.surface.host.win;
+		const fallback = win.setTimeout(done, 1500);
+		const settled = this.surface.settled?.() ?? nextPaint(win);
+		void settled.then(() => {
+			win.clearTimeout(fallback);
+			done();
+		}, done);
+	}
 
 	private onKey = (evt: KeyboardEvent) => {
 		if ((evt.target as HTMLElement | null)?.closest?.("input, textarea, [contenteditable=true]")) return;
@@ -634,8 +724,45 @@ export const drawingModule = defineModule<DrawingSettings>({
 		/** Clicking ink selects / drags its carrier like a card (the card box itself is click-through). */
 		const forward = (node: CanvasNodeLike) => (evt: PointerEvent) => (node as unknown as { onPointerdown(e: PointerEvent): void }).onPointerdown(evt);
 
+		/**
+		 * Performance with a lot of handwriting: each stroke is a card of its own, and while the
+		 * view zooms or pans the core detaches every card that leaves the view. Before detaching,
+		 * `preDetach()` saves the scroll and focus state of the card's content, which reads layout
+		 * (`offsetParent`, `scrollTop`) in between the DOM changes of the same frame: one forced
+		 * layout per card. Drawings have no content to save (their text is empty), so they skip it.
+		 */
+		const patchedProtos = new WeakSet<object>();
+		const patchedBreakpoints = new WeakSet<object>();
+		const isInkEl = (n: CanvasNodeLike) => n.nodeEl.getAttribute("data-opc-kind") === "ink";
+		const patchDetach = (node: CanvasNodeLike) => {
+			for (let proto = Object.getPrototypeOf(node) as object | null; proto && proto !== Object.prototype; proto = Object.getPrototypeOf(proto) as object | null) {
+				if (Object.prototype.hasOwnProperty.call(proto, "preDetach") && !patchedProtos.has(proto)) {
+					patchedProtos.add(proto);
+					ctx.patch("node.preDetach (drawing)", proto as CanvasNodeLike & { preDetach(): void }, {
+						preDetach: (next) =>
+							function (this: CanvasNodeLike) {
+								if (isInkEl(this)) return;
+								return next.call(this);
+							},
+					});
+				}
+				// A drawing's card never shows its (empty) text: its content stays unmounted at every
+				// zoom, so zooming past the content breakpoint mounts and lays out nothing for it.
+				if (Object.prototype.hasOwnProperty.call(proto, "updateBreakpoint") && !patchedBreakpoints.has(proto)) {
+					patchedBreakpoints.add(proto);
+					ctx.patch("node.updateBreakpoint (drawing)", proto as CanvasNodeLike & { updateBreakpoint(show: boolean): void }, {
+						updateBreakpoint: (next) =>
+							function (this: CanvasNodeLike, show: boolean) {
+								return next.call(this, isInkEl(this) ? false : show);
+							},
+					});
+				}
+			}
+		};
+
 		ctx.decorateNodes({
 			apply: (node, extra) => {
+				patchDetach(node);
 				if (extra.kind === "ink" && nodeType(node) === "text") renderInk(node, extra.strokes ?? [], sessions.get(node.canvas)?.selectedOf(node) ?? new Set(), forward(node), resizing.get(node));
 				else if (node.nodeEl.getAttribute("data-opc-kind") === "ink") renderInk(node, undefined, new Set(), forward(node));
 			},
@@ -644,6 +771,8 @@ export const drawingModule = defineModule<DrawingSettings>({
 			},
 		});
 		enableAnchors(ctx);
+		// Handwriting → text and drawing embeds (the drawings meant: the lasso's, else the selection).
+		const tools = enableInkTools(ctx, (canvas) => sessions.get(canvas)?.lastPress ?? null, (canvas) => [...(sessions.get(canvas)?.selection.keys() ?? [])]);
 
 		// Resizing a drawing's card stretches the strokes with it: live while dragging (the
 		// drawing is scaled to the box), written into the strokes when the handle is let go.
@@ -752,7 +881,7 @@ export const drawingModule = defineModule<DrawingSettings>({
 			// The lasso or the highlighter ends first.
 			claimTool(canvas, "drawing", () => stop(canvas));
 			canvas.deselectAll();
-			sessions.set(canvas, new InkSession(ctx, canvas, surface, () => stop(canvas), rerender));
+			sessions.set(canvas, new InkSession(ctx, canvas, surface, () => stop(canvas), rerender, () => tools.handwrite(canvas)));
 			if (onEnd) ended.set(canvas, onEnd);
 			ctx.events.emit("drawing-mode-changed", canvas, ctx.settings.tool);
 		};

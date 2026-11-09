@@ -114,6 +114,31 @@ export function isHiddenNode(node: CanvasNodeLike): boolean {
 	return node.nodeEl.hasClass("opc-layer-hidden") || node.nodeEl.hasClass("opc-page-hidden");
 }
 
+/** Every class that takes a card or an arrow off the board (layers, pages, folded groups and branches). */
+export const OFF_BOARD_CLASSES = ["opc-layer-hidden", "opc-page-hidden", "opc-hidden-by-collapse", "opc-hidden-by-branch"] as const;
+
+function offBoard(el: Element | undefined | null): boolean {
+	if (!el) return false;
+	const list = el.classList;
+	return OFF_BOARD_CLASSES.some((c) => list.contains(c));
+}
+
+/**
+ * Not drawn right now for any reason: another page, a hidden layer, inside a folded group or a
+ * folded branch. Anything that paints the board by itself (the far-zoom renderer, exports)
+ * must skip these, or it shows "ghosts" of cards and arrows the DOM hides.
+ */
+export function isOffBoard(node: CanvasNodeLike): boolean {
+	return offBoard(node.nodeEl);
+}
+
+/** An arrow that is not drawn: hidden itself, or one of its ends is off the board. */
+export function isEdgeOffBoard(edge: { lineGroupEl?: Element; from?: { node?: CanvasNodeLike }; to?: { node?: CanvasNodeLike } }): boolean {
+	const a = edge.from?.node;
+	const b = edge.to?.node;
+	return offBoard(edge.lineGroupEl) || !a || !b || isOffBoard(a) || isOffBoard(b);
+}
+
 export function randomId(length = 16): string {
 	const bytes = new Uint8Array(length / 2);
 	crypto.getRandomValues(bytes);

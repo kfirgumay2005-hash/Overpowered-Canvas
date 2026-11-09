@@ -77,6 +77,14 @@ export interface PublicEventMap {
 	"text-highlighted": [canvas: CanvasLike, node: CanvasNodeLike];
 	"text-colored": [canvas: CanvasLike, node: CanvasNodeLike];
 	"column-card-added": [canvas: CanvasLike, node: CanvasNodeLike, kind: "child" | "sibling"];
+	"column-card-resized": [canvas: CanvasLike, node: CanvasNodeLike];
+	"toc-shown": [canvas: CanvasLike, parentId: string];
+	"toc-arranged": [canvas: CanvasLike, parentId: string];
+	"toc-closed": [canvas: CanvasLike];
+	"handwriting-to-text": [canvas: CanvasLike, node: CanvasNodeLike];
+	"drawing-embedded": [canvas: CanvasLike, path: string];
+	"paper-changed": [canvas: CanvasLike];
+	"paper-exported": [canvas: CanvasLike, path: string];
 	"lasso-selected": [canvas: CanvasLike, items: CanvasItemLike[]];
 	"selection-cut": [canvas: CanvasLike, count: number];
 	"smart-group-changed": [canvas: CanvasLike, change: "group" | "ungroup", cards: number];

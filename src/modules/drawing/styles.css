@@ -10,6 +10,11 @@ body.opc-mod-drawing .canvas-node[data-opc-kind="ink"] > .canvas-node-container 
 body.opc-mod-drawing .canvas-node[data-opc-kind="ink"] > .canvas-node-container > .canvas-node-content {
 	visibility: hidden;
 }
+/* A drawing's card never mounts its (empty) text, so the core shows its placeholder icon there:
+   out of the page entirely, so style passes (every zoom step) skip it. */
+body.opc-mod-drawing .canvas-node[data-opc-kind="ink"] > .canvas-node-container > .canvas-node-placeholder {
+	display: none;
+}
 body.opc-mod-drawing .canvas-node[data-opc-kind="ink"].is-selected > .canvas-node-container,
 body.opc-mod-drawing .canvas-node[data-opc-kind="ink"].is-focused > .canvas-node-container {
 	border: 1px dashed var(--color-accent);
@@ -91,6 +96,15 @@ body.opc-mod-drawing svg.opc-ink-preview {
 	pointer-events: none;
 	/* Above every card, whatever its layer: the stroke being drawn is never covered. */
 	z-index: 2147483647;
+}
+/* On the board the layer covers the visible board (see coverView in index.ts): with its real
+   size, the browser sees it covers cards that have a compositing layer of their own and stacks
+   it above them too. */
+body.opc-mod-drawing .canvas > svg.opc-ink-preview[data-cover] {
+	left: var(--opc-preview-x);
+	top: var(--opc-preview-y);
+	width: var(--opc-preview-w);
+	height: var(--opc-preview-h);
 }
 body.opc-mod-drawing svg.opc-ink-preview .is-highlighter {
 	mix-blend-mode: multiply;
@@ -254,4 +268,14 @@ body.theme-dark.opc-mod-drawing .opc-ink-pen[style*="#1e1e1e"] {
 }
 body.theme-dark.opc-mod-drawing .opc-ink-pen[style*="#1e1e1e"] .opc-ink-pen-dot {
 	background: #e8e8e8;
+}
+
+/* Handwriting → text: a big box to write in with the pen (the system turns it into text). */
+.opc-handwrite-modal .opc-handwrite-area {
+	display: block;
+	width: 100%;
+	min-height: min(40vh, 320px);
+	font-size: 1.4em;
+	line-height: 1.5;
+	resize: vertical;
 }

@@ -10,9 +10,30 @@
  * - Within a heading, the plain lines come first, then the sub-headings in outline order (a
  *   heading's block ends where the next heading starts). A header lifted out from under a plain
  *   line goes back under that line when the note is applied to the canvas (see apply.ts).
+ * - Automatic header rules (a setting) make more cards headers at the automatic level: those with
+ *   at least N children, or those down to depth N of their map (its first card is depth 1). A
+ *   card's own setting wins: a level, "automatic", or "never a header" (`header: -1`).
  */
 import type { CanvasNodeData } from "../../data/json-canvas";
 import type { OutlineItem } from "./outline";
+
+/** Which cards the automatic header rules make headers (off when absent). */
+export interface AutoHeaders {
+	rule: "children" | "depth";
+	n: number;
+}
+
+/** A card's own "never a header" (wins over the automatic rules). */
+export const NOT_HEADER = -1;
+
+/** The rules the Canvas ⇄ Markdown settings set, for other views of the same outline (text pages). */
+export const autoHeadersHost: { rules: AutoHeaders | null } = { rules: null };
+
+/** Whether the rules make a card with `children` children at `depth` (its map's first card: 1) a header. */
+export function autoHeader(rules: AutoHeaders | null | undefined, children: number, depth: number): boolean {
+	if (!rules || rules.n < 1) return false;
+	return rules.rule === "children" ? children >= rules.n : depth >= 2 && depth <= rules.n;
+}
 
 /** Heading marks at the start of a card's text. */
 const MARKS = /^(#{1,6})[ \t]+(?=\S)/;
@@ -33,11 +54,29 @@ export function withoutMarks(text: string): string {
 
 /** The level a card's text marks or its x-opc data sets; 0: automatic; undefined: not a header. */
 export function headerOf(node: CanvasNodeData): number | undefined {
+	const own = headerSetting(node);
+	return own === "never" ? undefined : own;
+}
+
+/**
+ * A card's own header setting: a level (1–6), 0 (automatic), "never" (not a header, whatever the
+ * automatic rules say), or undefined (nothing of its own: the rules decide).
+ */
+export function headerSetting(node: CanvasNodeData): number | "never" | undefined {
 	const extra = node["x-opc"];
 	const own = isPlainObject(extra) && typeof extra.header === "number" ? extra.header : undefined;
+	if (own === NOT_HEADER) return "never";
 	if (own !== undefined) return own;
 	if (node.type !== "text" || typeof node.text !== "string") return undefined;
 	return headingMarks(node.text) || undefined;
+}
+
+/** The header an outline item gets: its own setting, else the automatic rules'. */
+export function headerWith(node: CanvasNodeData, rules: AutoHeaders | null | undefined, children: number, depth: number): number | undefined {
+	const own = headerSetting(node);
+	if (own === "never") return undefined;
+	if (own !== undefined) return own;
+	return autoHeader(rules, children, depth) ? 0 : undefined;
 }
 
 /** The heading level a header card takes under a heading of `parentLevel` (null: stays in the outline). */

@@ -6,13 +6,14 @@ import type { CanvasLike, CanvasNodeLike } from "../../internals/types";
 import { relayoutMap } from "../auto-layout/arrange";
 import { inkHost } from "../drawing/api";
 import { growthOf, makeSiblingRoom } from "../mindmap/room";
-import { recordChild, storedOrder } from "../mindmap/order-store";
+import { recordChild } from "../mindmap/order-store";
 import { childPosition, childrenOf, directionBetween, type Dir, type TNode } from "../mindmap/tree";
 import { pagesHost } from "../pages/api";
 import { canvasDirection, centerOn, mutate, nodeType, randomId, selectedNodes } from "../shared";
 import { marksHost, type MarkMode } from "../text-highlight/api";
 import { ColumnView, type ColumnOptions, type ColumnTool } from "./columns";
-import { groupEdges, largestRoot, orderedChildren, pathTo, tapDirection, treeStep, walkStep, type WalkBox, type WalkEdge } from "./walk";
+import { mapModel, shownInMap as shown } from "./map-model";
+import { largestRoot, orderedChildren, pathTo, tapDirection, treeStep, walkStep } from "./walk";
 
 /** What the arrow keys follow: the map's hierarchy, or where the cards sit. */
 export type WalkKeys = "tree" | "layout";
@@ -56,57 +57,31 @@ const TAP_MOVE = 6;
 const ZOOM_STEP = 0.5;
 /** Board changes are shown in the column view this long after the last one. */
 const REFRESH_MS = 80;
+/** Ink alone is drawn again sooner: the pen's stroke waits for it (no blink after pen-up). */
+const INK_REFRESH_MS = 16;
 /** Room around a card added inside a group. */
 const GROUP_PAD = 20;
 /** Controls drawn by the walk: a tap on them is not a tap on the board. */
 const WALK_UI = ".opc-walk-pad, .opc-walk-hints, .opc-columns";
 const DIRS: Dir[] = ["up", "down", "left", "right"];
-const DRAWINGS: ReadonlySet<string> = new Set(["ink", "line", "guide"]);
 const LABELS = { up: "presentation.walk.up", down: "presentation.walk.down", left: "presentation.walk.left", right: "presentation.walk.right" } as const;
-
-/** Cards (and groups) a walk can stop on. Cards on other pages count: a walk can go there. */
-function shown(node: CanvasNodeLike): boolean {
-	const el = node.nodeEl;
-	return !node.id.includes("~") && !el.hasClass("opc-hidden-by-collapse") && !el.hasClass("opc-hidden-by-branch") && !el.hasClass("opc-layer-hidden");
-}
 
 /**
  * Walking through a map without slides: the arrow keys (or the on-screen arrows) move along the
  * map's links at the current zoom. Read-only on the board; Esc ends it. The column view shows the
  * map as columns, one page at a time, and lets cards be added, edited, marked and drawn on.
  */
-export function enableWalk(ctx: ModuleContext<object>, presenting: (canvas: CanvasLike) => boolean, options: () => WalkOptions) {
+/** Top to bottom columns: down goes to the children, up to the parent, left and right along the siblings. */
+const DOWNWARD: Record<Dir, Dir> = { up: "left", down: "right", left: "up", right: "down" };
+
+export function enableWalk(ctx: ModuleContext<object>, presenting: (canvas: CanvasLike) => boolean, options: () => WalkOptions, flipColumns: () => void) {
 	const walks = new Map<CanvasLike, Walk>();
 
 	const pageOf = (node: CanvasNodeLike | undefined) => (node && pagesHost.api ? pagesHost.api.pageOf(node) : "");
 	/** The page the column view shows: the current card's. */
 	const columnPage = (canvas: CanvasLike, walk: Walk) => pageOf(canvas.nodes.get(walk.current));
 
-	/**
-	 * The map as a walk sees it: cards and groups joined by their edges, with groups read as cards
-	 * (see groupEdges). With `page`, only that page's cards (the column view, which shows a page
-	 * at a time and follows the links to the others); without it, every page, a card whose branch
-	 * was moved to a page leading to that page.
-	 */
-	const model = (canvas: CanvasLike, page?: string) => {
-		const nodes = new Map<string, TNode>();
-		const boxes: WalkBox[] = [];
-		const api = pagesHost.api;
-		for (const n of canvas.nodes.values()) {
-			// Ink, drawn lines and infinite lines are marks on the board, not stops.
-			if (!shown(n) || DRAWINGS.has(ctx.data.node(n).get().kind ?? "")) continue;
-			const on = api ? api.pageOf(n) : "";
-			if (page !== undefined && api && on !== page) continue;
-			const box = { id: n.id, x: n.x, y: n.y, width: n.width, height: n.height };
-			nodes.set(n.id, box);
-			boxes.push({ ...box, group: nodeType(n) === "group", page: on });
-		}
-		const edges: WalkEdge[] = [...canvas.edges.values()].map((e) => ({ from: e.from.node.id, to: e.to.node.id })).filter((e) => nodes.has(e.from) && nodes.has(e.to));
-		const pageLinks: WalkEdge[] = [];
-		if (page === undefined) for (const link of api?.links(canvas) ?? []) if (nodes.has(link.anchor) && nodes.has(link.root)) pageLinks.push({ from: link.anchor, to: link.root });
-		// A page lies in a region of its own: where it is says nothing about the card it hangs from.
-		return { nodes, edges: [...groupEdges(boxes, edges), ...pageLinks], order: storedOrder(ctx, canvas) };
-	};
+	const model = (canvas: CanvasLike, page?: string) => mapModel(ctx, canvas, page);
 	const modelFor = (canvas: CanvasLike, walk: Walk) => model(canvas, walk.columns ? columnPage(canvas, walk) : undefined);
 
 	const nextFrom = (canvas: CanvasLike, walk: Walk, dir: Dir) => {
@@ -178,6 +153,8 @@ export function enableWalk(ctx: ModuleContext<object>, presenting: (canvas: Canv
 	const step = (canvas: CanvasLike, dir: Dir, how?: "tap") => {
 		const walk = walks.get(canvas);
 		if (!walk) return;
+		// The keys and the pad's arrows go the way the levels run on screen.
+		if (walk.columns && options().columns.vertical) dir = DOWNWARD[dir];
 		const { next, edges } = nextFrom(canvas, walk, dir);
 		if (!next) return;
 		// Each parent remembers the child visited last (going down, or along the siblings), so
@@ -346,6 +323,23 @@ export function enableWalk(ctx: ModuleContext<object>, presenting: (canvas: Canv
 		if (back && canvas.nodes.has(back)) go(canvas, walk, back);
 	};
 
+	/**
+	 * A card resized in the column view: the board card takes the size (its top-left corner stays,
+	 * so ink on it keeps its place), one undo step; a map with a recorded layout arranges itself
+	 * again around the new size.
+	 */
+	const resizeCard = (canvas: CanvasLike, id: string, size: { width: number; height: number }): boolean => {
+		const node = canvas.nodes.get(id);
+		const walk = walks.get(canvas);
+		if (!node || !walk || walk.wasReadonly || canvas.readonly) return false;
+		const ok = mutate(ctx, canvas, () => node.moveAndResize({ x: node.x, y: node.y, width: size.width, height: size.height }));
+		if (ok) {
+			ctx.events.emit("column-card-resized", canvas, node);
+			void relayoutMap(ctx, canvas, node).catch((e) => logError("[overpowered-canvas] columns: layout", e));
+		}
+		return ok;
+	};
+
 	// ---------- following the board ----------
 
 	/** Shows the board's changes in the column view (debounced; never while a card is edited). */
@@ -355,7 +349,7 @@ export function enableWalk(ctx: ModuleContext<object>, presenting: (canvas: Canv
 		if (ink) walk.pending.ink = true;
 		else walk.pending.all = true;
 		canvas.wrapperEl.win.clearTimeout(walk.pending.timer);
-		walk.pending.timer = canvas.wrapperEl.win.setTimeout(() => flush(canvas), REFRESH_MS);
+		walk.pending.timer = canvas.wrapperEl.win.setTimeout(() => flush(canvas), walk.pending.all ? REFRESH_MS : INK_REFRESH_MS);
 	};
 	const flush = (canvas: CanvasLike) => {
 		const walk = walks.get(canvas);
@@ -453,6 +447,8 @@ export function enableWalk(ctx: ModuleContext<object>, presenting: (canvas: Canv
 					return w ? tools(w) : [];
 				},
 				useTool: (tool) => useTool(canvas, tool),
+				resize: (id, size) => resizeCard(canvas, id, size),
+				flip: flipColumns,
 			});
 		}
 		go(canvas, walk, walk.current);

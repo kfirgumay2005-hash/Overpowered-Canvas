@@ -5,7 +5,7 @@ import { unpack } from "../../geometry/ink";
 import type { CanvasLike } from "../../internals/types";
 import { mergeWithDefaults } from "../../settings/settings";
 import { pagesHost } from "../pages/api";
-import { capturePointer, nodeType, isHiddenNode, renderedZ } from "../shared";
+import { capturePointer, nodeType, isEdgeOffBoard, isOffBoard, renderedZ } from "../shared";
 import { cssColor, fitTransform, toMap, toWorld, unionBox, type Box, type MapTransform } from "./logic";
 import { joinTopLane, LANE_RANK } from "../../ui/top-lane";
 
@@ -139,7 +139,7 @@ class Minimap {
 		g.setTransform(dpr, 0, 0, dpr, 0, 0);
 		g.clearRect(0, 0, width, height);
 		const boxes: Box[] = [];
-		const shown = [...canvas.nodes.values()].filter((n) => !isHiddenNode(n));
+		const shown = [...canvas.nodes.values()].filter((n) => !isOffBoard(n));
 		for (const n of shown) boxes.push({ minX: n.x, minY: n.y, maxX: n.x + n.width, maxY: n.y + n.height });
 		// The map frames the content (the view rectangle may run past its edge), so panning and
 		// zooming don't change the transform and the cached layer stays valid.
@@ -164,7 +164,7 @@ class Minimap {
 		for (const e of canvas.edges.values()) {
 			const a = e.from?.node;
 			const b = e.to?.node;
-			if (!a || !b || isHiddenNode(a) || isHiddenNode(b)) continue;
+			if (!a || !b || isEdgeOffBoard(e)) continue;
 			const p = toMap(t, a.x + a.width / 2, a.y + a.height / 2);
 			const q = toMap(t, b.x + b.width / 2, b.y + b.height / 2);
 			g.moveTo(p.x, p.y);

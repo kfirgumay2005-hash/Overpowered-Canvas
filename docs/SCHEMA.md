@@ -53,6 +53,21 @@ interface OpcRoot {                       // file root "x-opc"
                                           // note's outline; read by every layout, the walk, the column view and
                                           // the Markdown export. Children it doesn't name keep their board place.
                                           // Not copied into a note's data block (the outline is the order).
+  tocLayouts?: Record<string, {           // Table of contents, free arrangement: parent card id (or
+    rows: { id: string; tree: TocTree; color?: string }[][];  // "page:<id>", "page:" = main page's top level)
+  }>;                                     // → rows of cells; a block is one cell or a cell group (outline color
+                                          // "1"–"6" or "#rrggbb"). TocTree = card id | { dir: "row" | "col";
+                                          // items: TocTree[] } (cells beside / below each other).
+  inkEmbeds?: Record<string, string[]>;   // drawing embeds: SVG file path → the drawing cards it shows; the
+                                          // file is written again when one of them changes (drawing module)
+  paper?: {                               // page format (paper module); absent = the infinite canvas
+    format: "A3" | "A4" | "A5" | "Letter" | "Legal" | "custom";
+    landscape?: boolean;
+    width?: number; height?: number;      // custom size, millimetres (50–2000)
+    stacks?: Record<string, { x: number; y: number; count?: number }>;
+                                          // page of the canvas ("" = main) → top-left of its stack of sheets
+                                          // (board px, 1 mm = 96/25.4 px) and sheets added by hand
+  };
 }
 
 // "right" | "left" | "down" | "up" | "balanced" | "radial" | "layered-right" | "layered-left" |
@@ -68,6 +83,7 @@ interface OpcNode {
   valign?: "top" | "middle" | "bottom";   // absent = top (stickies: middle)
   fontSize?: number;                      // text size in px (6–200); absent = the canvas's size
   header?: number;                        // header card: a heading in the Markdown note; 0 = automatic level,
+                                          // -1 = never a header (wins over the automatic header rules),
                                           // 1–6 = its own (only deeper than automatic). Text starting with
                                           // "## " counts as a header too, at that level.
   dir?: "ltr" | "rtl" | "auto";

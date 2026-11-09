@@ -1,249 +1,271 @@
-# Feedback round 12: progress
+# Feedback round 13: progress
 
-Branch `feature/feedback-round-12` (from `main` at 0.18.2). One commit per item.
+Branch `feature/feedback-round-13` (from `main` at 0.19.1). One commit per item.
 When resuming: read this file and `git log`, then continue with the first item that is not done.
-(Round 11's notes are in git history: `git show 22f6de7:PROGRESS.md`.)
+(Round 12's notes are in git history: `git show 21b7dc9:PROGRESS.md`.)
 
 | # | Item | Class | Status |
 |---|------|-------|--------|
-| 1 | Pages bar overlaps the color palettes | IMPROVEMENT (bug) | done |
-| 2 | Gear in the side controls opens the plugin's settings | IMPROVEMENT | done |
-| 3 | Emoji picker in the bottom toolbar | NEW | done |
-| 4 | Cropped images become invisible | IMPROVEMENT (bug) | done |
-| 5 | Shortcuts window (replaces the shortcut settings) | NEW (replaces 2 settings + the core help list) | done |
-| 6 | Context menu styling | NEW | done |
+| A1 | Ghost marks after moving a branch / folding | IMPROVEMENT (bug) | done |
+| A2 | Column mode: drawing bar over the breadcrumb | IMPROVEMENT (bug) | done |
+| A3 | Live stroke under the card (regression) | IMPROVEMENT (bug) | done (with A4) |
+| A4 | Column mode: stroke flicker on pen-up | IMPROVEMENT (bug) | done (with A3) |
+| A5 | Column mode: no vertical finger scroll with a pen tool | IMPROVEMENT (bug) | done |
+| A6 | Column mode: wide cards run into the next column | IMPROVEMENT (bug) | done |
+| B1 | Resize cards in column mode | NEW | done |
+| C1 | Vertical column mode | NEW (orientation of the column view) | done |
+| C2 | Table of Contents mode | NEW | done |
+| D1 | Automatic header rules | IMPROVEMENT (headers) | done |
+| E1 | Handwriting performance + Ink-style features | IMPROVEMENT + NEW | done |
+| E2 | Page format mode | NEW | done |
 
-## 1. Pages bar vs. palettes (done)
+## A1. Ghost marks (done)
 
-Root cause. Every bar that floats at the top of a board picked its own spot with no knowledge of
-the others: the pages bar at the top start corner (`max-width: 100% - 120px`), the highlighter /
-text color palette and the drawing toolbar centered at the same `top`, the search bar at the top
-end, the minimap in a top corner (by default the same corner as the pages bar). On an iPad in
-portrait (or any narrow window) the centered palette and a long breadcrumb share the row.
+Root cause. The far-zoom renderer (performance module, `LodLayer`) paints the board on a bitmap
+once a large canvas is zoomed out past its threshold. It skipped cards on other pages / hidden
+layers (`isHiddenNode`), but:
+- it painted **every arrow**, including the arrows of other pages (their `d` is still set), so the
+  other pages' maps showed as brace-like curves and dashes next to the current page; zooming in
+  past the threshold hides the bitmap, which is why they came and went with the zoom (context 1);
+- it painted cards and arrows inside **folded branches and folded groups** (`opc-hidden-by-branch`,
+  `opc-hidden-by-collapse`): moving a folded card away left the whole folded map visible at its old
+  place when zoomed out, and the minimap drew straight lines from the moved card back to the
+  hidden children (context 2);
+- its cached scene was keyed only by card data, so switching pages or folding (no data change)
+  could keep showing the old scene.
 
-Fix: `src/ui/top-lane.ts`, one layout for all top bars of a host (the canvas wrapper, or the
-column view). Each bar joins with a rank (pages 0, search 1, palettes 2, minimap 3); a bar that
-would cover a bar of a lower rank moves just below it (`--opc-lane-offset` added to its `top`).
-Re-placed on any size change of the host or a bar and when a bar comes or goes (ResizeObserver +
-MutationObserver, one frame later). The host gets `--opc-lane-side` (the room the side controls
-take), so centered palettes stay clear of the controls and wrap onto a second row instead.
-The pages bar is one row: crumbs shrink with "…" (the current page keeps the most room).
+Fix: `isOffBoard(node)` / `isEdgeOffBoard(edge)` in `src/modules/shared.ts` (one list of every class
+that takes something off the board). The far-zoom renderer, the minimap and image export use them
+for cards, arrows, group labels and the content bounds; the cached scene is also keyed by the set
+of off-board cards (`hiddenKey`) and invalidated on page / fold events.
 
-Tested (test vault, 3 nested pages with long titles): 820 px wide (iPad portrait) — palette moved
-to its own row under the breadcrumb (before: same row, overlapping); 430 px (phone) — breadcrumb,
-search, drawing toolbar and minimap stacked without overlap, crumbs truncated on one row; 1500 px
-— palette stays on the first row next to the breadcrumb (no needless move). Unit tests 733/733.
-Notes with pages keep their static bar (no floating palettes there). No tutorial text changed:
-the bars still look and work the same, only their position adapts.
+Tested (harness, real 159-card map copy, far-zoom renderer forced on):
+- context 1: move a branch to a new page, zoom out to -3: pixels painted outside the shown page
+  7186 → 0 (screenshot showed the same braces and dashes as the report before the fix);
+- context 2: fold the root, move it 3000 px right, zoom out to -4: painted pixels 58435 (the
+  whole folded map + lines back in the minimap) → 360 (only the folded card).
+Unit tests 773/773. No tutorial text changes (behavior is what the user expected all along).
 
-## 2. Gear opens the plugin's settings (done)
+## A2. Column mode: tool bars over the breadcrumb (done)
 
-Classification: IMPROVEMENT. The gear is the core "Canvas settings" button (`canvas.quickSettingsButton`),
-which opened a small menu (Snap to grid, Snap to objects, Read-only, and our Customize the bars).
-Now (better-defaults module, `settings-gear.ts`, new option "Settings button opens this plugin's
-settings", on by default): a click or tap opens Obsidian's settings on this plugin's tab
-(`app.setting.open()` + `openTabById(manifest.id)`, exposed to modules as
-`ctx.openPluginSettings()`); right-click or a long press (500 ms, touch/pen) opens the canvas
-options menu as before, so snap and read-only stay one gesture away. The tooltip says so. With the
-option off the button behaves exactly as the core one.
+Root cause. Round 12's `src/ui/top-lane.ts` keeps top bars apart per host element. The pages
+bar lives in the canvas wrapper, but in column mode the pen rack, highlighter and text color
+palettes live in the column view (`.opc-columns`, a child of the wrapper): two hosts, two lanes,
+so they never saw each other.
 
-Tested (test vault): mouse click → settings on the plugin's tab (this Obsidian opens settings in a
-popout window; the popout showed "Overpowered Canvas"); touch tap (CDP touch events) → same; touch
-long press → canvas options menu, no settings; right-click → canvas options menu; option off →
-click opens the canvas options, label back to "Canvas settings"; on again → takeover back.
-Tutorials updated (5 locales): "Your own bars" s1 (+ touch line), popup/image touch lines;
-"A canvas as a file" s3/s4 (read-only via right-click / long press, + touch lines).
-Run in English: Your own bars 7/7, A canvas as a file 4/4.
+Fix: a lane now belongs to the board. `joinTopLane` resolves the host to its `.canvas-wrapper`
+(`laneRoot`), so bars of any view inside the board share one layout; the lane also watches each
+bar's own parent so a bar leaving a nested view leaves the lane. Same mechanism for both modes,
+so they can't drift apart again.
 
-## 4. Cropped images invisible (done)
+Tested (harness, 820 px window = iPad portrait, 5 nested pages with long titles, column view on
+the deepest page): pen rack before: same row as the breadcrumb (overlap); after: moved below it
+(breadcrumb 125-154, rack 161-222). Highlighter palette in columns: below the breadcrumb.
+Canvas mode drawing bar: still below the breadcrumb (regression check).
 
-Root cause. A cropped card shows its picture by taking the `<img>` out of flow
-(`position: absolute`, sized and shifted in % of the content box) inside a clipping
-`.canvas-node-content`. In current Obsidian the card's `.canvas-node-container` is a flex row and
-the content box is a `flex: 0 1 auto` item, i.e. exactly as wide as its content. With the only
-child out of flow the content box shrank to **0 px wide** (height still stretched to 448 px), so
-the image was `100% / w` of 0 = 0 px wide: only the card's border was left. Reproduced in the test
-vault (content 0×448, img 0×448). Data, file and crop math were fine; nothing was "broken" in the
-stored crop, which is why reloading didn't help.
+## A3 + A4. Live stroke under cards / flicker on pen-up (done, one commit: same code path)
 
-Fix (image-crop CSS): the content box of a cropped card fills the card by itself
-(`flex: 1 1 auto; width: 100%; height: 100%; min-width/min-height: 0`). The column view ignored
-crops in its default mode (it rendered `![[image]]` in full): a cropped image card now shows only
-its crop there too (`.opc-crop-view`, same CSS, at the column's width). Actual-size column mode
-copies the card (and its crop) and works with the CSS fix.
+A3 root causes (two paths left after the earlier max z-index fix):
+- Board: the live stroke's layer was a 1x1 px SVG at the board origin with `overflow: visible`.
+  On iPad (WebKit) a card whose text scrolls has a compositing layer of its own; WebKit decides
+  whether a later element must be layered above it by the element's box, and a 1x1 box at (0,0)
+  "covers" nothing, so the stroke was painted into the board's layer, beneath those cards. Only
+  some cards (long text, scrolling content) and only on iPad, hence "rare but real".
+- Column view: the live layer sits inside the card drawn on; every column card has an opacity
+  (a stacking context), so a stroke running onto the next card or column went under it.
+Fix: the board's live layer now has its real size (`coverView`: twice the visible board, viewBox
+in board coordinates, re-placed on every press/hover; last child of the board). The column card
+drawn on and its column get `is-inking` (z-index above the others).
+A4 root cause: on pen-up the live path was removed at once, and the column view redrew ink 80 ms
+later (debounce), so the stroke vanished for a few frames. Fix: `InkSession.holdUntilSettled`
+moves the finished stroke's preview into a copy of the layer that stays until the surface
+reports the committed ink is painted (`InkSurface.settled`: the board after two frames, the
+column view after its ink refresh + two frames; 1.5 s fallback). The copy does not follow the
+preview, so writing fast (next stroke on another card) is fine. Ink-only refreshes in the column
+view now run after 16 ms instead of 80.
 
-Tested (test vault; PNG 1200×400, JPG 300×900, WebP 64×64, SVG 400×300): crop through the crop
-dialog with 4:3, 1:1, 16:9 presets and a touch drag of a corner handle → each card shows its crop
-right away; closed and reopened the canvas → same; re-crop 1:1 → 3:4 (editor opens on the current
-crop) → updated; "Reset crop" → full picture, attribute gone; column view (default and actual
-size) → crop shown; PNG export → all crops right. Canvas ⇄ Markdown keeps the crop data (the note
-itself shows the whole picture: Markdown has no crop). Tutorials run in English: Images 4/4,
-Column view 11/11 (no text change needed: the feature works as the tutorial already describes).
+Tested (harness): column view, pen stroke on a card, every frame recorded from pen-down to
+700 ms after pen-up: blank frames after the stroke started 3 (old) → 0 (new, three runs); the copy
+is gone afterwards (one path left). Board: no blank frames, live layer covers the whole view,
+strokes land on the same words as drawn.
 
-## 5. Shortcuts window (done)
+## A5. Column mode: fingers scroll in every direction with a pen tool on (done)
 
-Classification: NEW window, replacing what existed: the core "Canvas help" list (the ? button) and
-the two options that chose keys (mind map "Key for a sibling card", smart groups "Ctrl/Cmd+G in
-canvases"). No parallel feature is left: those options are gone, the ? button opens the window.
+Root cause. With a tool on, its overlay covers the column view and receives every press. The
+column view chose the column to drag up/down from the element pressed (`closest(column)`), which
+is the overlay, so no column moved; only the sideways part (all columns) worked.
+Fix: `columnAtPoint` finds the column under the finger by position when the press is not on a
+column element; a vertical drag between columns moves the whole view. Pen/stylus input still
+draws (the drawing module keeps it); touches pan as before when palm navigation is on.
+Tested (harness, CDP touch with the pen tool on, palm navigation on): finger drag down 150 px on
+the children's column: before 0 px, after the column moved 150 px; no ink created by the finger.
+Tutorial "Column view" → "Write on the cards" gained a paragraph about palm navigation (5 locales).
 
-Inventory (every key the plugin handles, now all in `src/core/shortcuts/catalog.ts`): tools on the
-board (Ctrl/Cmd+F search, P drawing, H highlighter, L lasso, M minimap, Ctrl/Cmd+G / Shift+G
-smart groups — the latter were missing from any list before); while a tool is on (drawing Esc and
-Delete/Backspace, highlighter Esc, lasso Esc); mind maps (Tab, Enter, Alt/Ctrl/Ctrl+Shift+arrows
-= 14 keys); sticky notes (Tab, Ctrl+arrows); presentations and frame shows (next, previous, first,
-last, end); walking and the column view (arrows, Home, + / =, -, Esc, Tab, Enter, F2); pages (Esc
-while placing a branch); editing (Ctrl+Enter / Esc in column view and text pages editors, Esc while
-dragging a note block); plus Obsidian's own canvas keys (read-only, from the old help list).
+## A6. Column mode: wide cards run into the next column (done)
 
-How it works:
-- `core/shortcuts/keys.ts`: combos as text ("Mod+Shift+G"), letters read by key position (any
-  layout), Shift dropped from typed symbols, Mac/Windows display.
-- `core/shortcuts/store.ts`: current keys = catalog defaults + `settings.shortcuts` (id → combos,
-  `[]` = off; absent = default). Live: modules read keys on every press.
-- `CanvasUi.addCanvasKey` now takes a shortcut id; one catch-all handler per canvas view, first in
-  its scope, runs the bound shortcuts and lets unhandled keys through (so Obsidian hotkeys and the
-  canvas' own keys still work — Ctrl+G with nothing to group reaches the graph view naturally; the
-  old `runHotkeyCommand` workaround is no longer needed there).
-- In-mode keys (presentation, frames, walk, drawing, lasso, highlighter, pages, note blocks,
-  editors) use `ctx.isShortcut` / `ctx.shortcutOf`.
-- Window (`ui/shortcuts-modal.ts`): search (action, situation, category, key — "ctrl+g" works),
-  categories, per row: key chips with ×, + to record (Esc cancels), ↺ to default, warning when two
-  plugin shortcuts share a key; Reset all (two clicks). Recording a taken key shows who has it
-  (other canvas shortcut, built-in canvas key, any Obsidian hotkey) with Replace / Keep both /
-  Cancel ("Use it anyway" when only a built-in key has it).
+Root cause. Each column starts after the card the next column continues from (`reach`: the
+focused card's width at actual size), but the column itself is as wide as its widest card, and
+nothing limited what it drew: a sibling (or a big image) wider than the focused card lay under
+the next column, and faded cards are semi-transparent, so it showed through the children.
+Fix (the proposed clip line, applied to every column): `columnClips` (pure, tested) gives each
+column the distance to the next column's start; the column gets `clip-path` up to there
+(`is-clipped`, `--opc-column-clip`). Siblings stay faded as before; the part past the line is
+not drawn and not hit by taps. The children's column (last) is never cut, so children always
+show whole. The "+" buttons of the focused card stay inside the gap before the line.
+Tested (harness, actual size, focused card 250 px with a 700 px sibling): a point past the
+children's column start inside the sibling's box hit `[eta, cls]` before, `[eta]` after;
+screenshot shows the sibling cut at the line, children whole. Unit tests: column-layout 4/4.
+Tutorial "Column view" → "Cards at their real size": one sentence added (5 locales).
 
-Migration: `sanitizeSettings` — when data.json has no `shortcuts` yet, "Shift+Enter" as sibling
-key becomes `mindmap.sibling: ["Shift+Enter"]`, smart groups keys off become `groups.group: []`,
-`groups.ungroup: []`. Once `shortcuts` is saved it wins (no second migration). Unit-tested, and
-tested live (old data.json → keys migrated and saved, Shift+Enter adds the sibling, Enter doesn't).
+## B1. Resize cards in column mode (done)
 
-Obsidian's Hotkeys (decision): canvas shortcuts can't be Obsidian hotkeys (single letters, only
-when a card is selected, only while presenting…), so they live in the plugin. The plugin's
-commands keep their hotkeys in Obsidian (hotkeys.json): the window's "Commands (Obsidian hotkeys)"
-section reads and writes them through `app.hotkeyManager` (same data, no copy) and links to
-Settings → Hotkeys filtered to the plugin. One store per kind of key, no duplicate.
+Classification: NEW (the column view had no way to change a card's size; the board's own resize
+handles are untouched).
+What: at actual card size, the current card gets a round handle at its bottom-right corner
+(`addResizer` in columns.ts), next to the "+" buttons. Drag with finger, pen or mouse (pointer
+capture; the card, its text layout and the children's column follow live), or focus it and use
+the arrow keys (Shift: 50). On release the walker's `resizeCard` writes the size to the board
+card (`moveAndResize`, top-left kept, one undo step), emits `column-card-resized`, and a map with
+a recorded layout arranges itself again (`relayoutMap`). Pictures keep their aspect ratio.
+Ink keeps its board position (anchored strokes are relative to the card's top-left corner, which
+does not move), so it lands on the same place in every view. Hidden while a tool is on or a card
+is edited, like the "+" buttons.
+Tested (harness): drag +120/+90 px on a 250x60 card → 370x150, x/y unchanged, anchored ink
+unchanged, children's column 32 px after the new right edge, one undo step. Tutorial "Column
+view": new step "Make a card bigger to write on it" (touch line + keyboard alternative, 5
+locales); Show me in English: 12/12 tasks.
 
-Entry points: the ? button of every canvas, command "Shortcuts", a "Shortcuts" row at the top of the
-plugin settings (and "Keys" rows in Mind maps and Smart groups that open it). Opening from the
-settings closes them first (they may be a popout window). Touch: list, ×, ↺, Reset all work by
-touch; a line tells that recording needs a keyboard on phones/tablets; bigger targets on touch.
+## C1. Column view top to bottom (done)
 
-Tested (test vault, real key events over CDP): + then Shift+D on Drawing → saved, P removed → P
-does nothing, Shift+D toggles drawing, Esc ends it; recording M on Drawing → "M is already in use:
-Show or hide the minimap (canvas shortcut)" → Replace → minimap key off; Ctrl+P on Lasso → "Command
-palette: Open command palette (Obsidian hotkey)" → Cancel; search "ctrl+g" → Group the selected
-cards; Alt+M on the Toggle minimap command → in hotkeys.json, Alt+M in a canvas toggles the minimap
-(Obsidian hotkeys still pass through); Reset all → `{}` and the command hotkey removed; Ctrl+G with
-two cards → smart group, with nothing selected → graph view; Tab/Enter in a mind map; walk arrows
-and Esc. Phone width 430 px: layout fits, no horizontal scroll. Unit tests: 759.
-Tutorials: new "Your shortcuts" (5 steps, touch lines, the user's keys restored when it ends —
-`restoreShortcuts`); Mind maps s2 and Smart groups s2 point to the window (5 locales). Run in
-English: Your shortcuts 4/4, Mind maps 11/11, Smart groups 5/5, Drawing 10/10, Presentations 5/5,
-Column view 11/11.
+Classification: NEW, built as an orientation of the existing column view (no second view).
+`ColumnOptions.vertical` (setting `presentation.columnVertical`, command "Column view: toggle top
+to bottom", a rows/columns button in the column view's tool bar, settings toggle). The same
+`ColumnView` lays out levels as rows: `layoutRows` measures row heights (only known after the
+text is laid out), places each row after the card it continues from, centers the children's row
+under the current card, cuts each row where the next starts (A6 rule on the other axis). Drags
+swap axes (along a row: that row; across: all rows). The walker remaps keys and pad arrows
+(`DOWNWARD`: ↓ child, ↑ parent, ←/→ siblings). "+" buttons swap sides (child below, sibling
+beside); resize handle, pen, highlighter, text color, editing all shared.
+Tested (harness): flip → rows stacked top to bottom, children centered under the focused card,
+wide sibling cut at the next row; keys ↓ inc, → gen, ↑ epi, → cls. New tutorial "Column view,
+top to bottom" (4 tasks, touch lines, command alternatives; 5 locales): Show me in English 4/4;
+"Column view" 12/12 again. Unit tests 780/780. README updated.
 
-## 3. Emoji picker (done)
+## C2. Table of contents (done)
 
-Classification: NEW (no emoji feature existed; the icon picker of card templates is for Lucide
-icons and stays as it is). Module `emoji-picker` (group Cards, on by default).
+Classification: NEW (no grid view existed; it reuses the column view's card rendering and the
+walk's map model instead of duplicating them).
+Where: `presentation/toc.ts` (TocView + enableToc), `toc-layout.ts` (pure arrangement model,
+8 unit tests), `card-face.ts` (card rendering extracted from the column view: replica text,
+images, crops, ink, colors; the column view uses it too), `map-model.ts` (the walk's model:
+groups as cards, sibling order, one page). Root data `tocLayouts` (schema + validator +
+SCHEMA.md); events `toc-shown`, `toc-arranged`, `toc-closed`.
+What: command "Table of contents view", a grid button in the side controls. A box named after
+the parent card holds its children as cells; a cell with children has an arrow (top-left) into
+its own grid; back buttons (fixed top right, joined to the top lane so it stays clear of the
+pages bar, and in the box's title) go up; Backspace too, Esc closes. Pinch / Ctrl+wheel / buttons
+zoom, drag or wheel pans. Uniform cells (width setting) or real size with ink (button + setting).
+Simple grid: N per row (setting). Free arrangement: drag a cell beside/below another to form a
+cell group (split tree of rows/columns, so cells of different sizes stay tidy), guide lines show
+the landing place, groups move by handle or outline, cells/groups can go between cells or into a
+new row, tap the handle for colors / ungroup. Each change is one undo step, stored in the canvas,
+restored after reopening and when switching modes. Pages: only the page shown; a page anchor's
+arrow opens that page (breadcrumb follows), back returns. Double tap edits a text cell.
+Exclusive with the walk/column view.
+Tested (harness): board like the drawings (DIA → A, G, H, I; A → B…F): DIA grid rows [A*, G, H]
+[I]; into A; C right of B, D below B, E right of D, F to a new row → group col[B, row[D,E]] beside
+C + F below (as in "RESULTS"), 4 undo steps, saved to disk, same after closing and reopening;
+real size: cells 260/100 px wide like the cards; group menu recolor; group moved after F; back
+→ DIA; pages: anchor arrow opens the sub-page and back returns; simple/free switch; lint clean.
+New tutorial "Table of contents" (8 tasks, touch lines; 5 locales): Show me 8/8; "Column view"
+12/12 and "Column view, top to bottom" 4/4 re-run after the rendering refactor. Tests 794/794.
 
-- Data: emojibase-data 18 (MIT, in THIRD_PARTY_NOTICES.md), read at build time by
-  `scripts/emoji-data.mjs` (esbuild virtual module "emoji-data"): 1,906 emoji up to Emoji 16 (newer
-  ones are left out because most systems can't draw them yet), 9 categories, 5 skin tones where
-  they exist, English names and keywords as plain text, names and keywords in the other UI
-  languages deflate-compressed (~350 KB in all, main.js 4.76 → 5.17 MB with this round). No network.
-  Parsed only when the picker first opens (~35 ms); the UI language's names are unpacked then
-  (DecompressionStream; English search still works without it).
-- Picker (`panel.ts`, in the shared popover above the bottom bar): search (UI language + English,
-  best matches first, Enter picks the first), category tabs that scroll the list and follow it,
-  Recently used (36, stored in the module settings), skin tone (hand button, remembered), preview
-  with the name, large touch targets, `content-visibility` for the long list. Stays open for
-  several picks; Esc / outside tap closes.
-- Insertion: editing a card → at the cursor (the button keeps the editor's focus; after the picker
-  closes the cursor is right after the emoji); a text card selected → at the end of its text,
-  after a space (the existing words stay intact and it lands where typing would continue; several
-  selected text cards each get it, one undo step); nothing (or no text card) selected → a new
-  120×80 card in the middle of the view, which stays selected, so the next emoji join it.
-  Read-only canvas → notice. Command "Insert emoji" too (assignable in the Shortcuts window).
+## D1. Automatic header rules (done)
 
-Tested (test vault, real mouse/touch/keyboard over CDP): nothing selected → typed "pizza", Enter →
-new card "🍕"; clicked 😀 → same card "🍕 😀"; editing "Hello world" with the cursor after "Hello"
-→ clicked the button and 🐵 → "Hello🐵 world", still editing, Esc → typing "!" lands after the emoji;
-"Lunch" selected, by touch: tap button, tone 3, "thumbs up" → "Lunch 👍🏽", one undo restores
-"Lunch"; recent list updates at once; search "ピザ" (UI in Japanese) and "пицца" (Russian) find
-🍕, "pizza" still works. Unit tests (logic) 7. Tutorial "Sticky notes and text": new step
-"Emoji" (touch line, 5 locales), run in English: 8/8.
+Classification: IMPROVEMENT of the existing header cards (round 9): the same lifting and level
+rules, more cards made headers by a setting.
+What: Canvas ⇄ Markdown settings "Automatic headers" (off / by number of children / by depth),
+"Automatic headers: children" (N, 1–20, default 3), "Automatic headers: depth" (N, 1–6, default
+3); command "Automatic headers: choose the rule" (palette / tablets). `headers.ts`:
+`autoHeader`, `headerSetting`, `headerWith`; `structure.ts` counts depth from each map's first
+card (depth 1) and children per card; levels then follow the existing rules (nearest heading + 1,
+up to H6, lifted out of plain lines), and the existing formatting (no blank line under a heading,
+blank lines only before headings, first level without bullets) is untouched because the rules
+only set `header: 0` on outline items. Manual settings win: a level, "automatic", or the new
+"never a header" (`header: -1`, stored by "Not a header" while a rule is on; validator, schema
+and SCHEMA.md updated). Round trip (`apply.ts`): a heading the rule makes is not stored on the
+card (so turning the rule off or changing N changes the note next time); a rule heading written
+as a plain line in the note becomes "never a header". Applies to notes from canvases, notes with
+pages, copied outlines and text pages (`autoHeadersHost` tells the text pages view).
+Tested: 7 unit tests (both rules, N = 1 / 3, manual level and "never", plain-first format, round
+trip stores nothing and gives the same note, plain line → -1); harness: Copy as outline on the
+DIA board with off / children 4 / depth 2 gave the expected headings; "Not a header" stored -1
+and kept A a plain line under the depth rule. New tutorial "Automatic headers" (4 tasks, command
+alternative, touch line; 5 locales) 4/4; "Canvas ⇄ Markdown" (header step got a pointer) 7/7.
+Tests 807/807, lint clean.
 
-## 6. Right-click menu style (done)
+## E1 (part 1). Handwriting performance at scale (done)
 
-Classification: NEW (nothing styled menus before; `ui/menu-fit.ts` only keeps long canvas menus on
-screen and is unchanged). Module `menu-style` (group Interaction, on by default but changes nothing
-until an option is set).
+Measured first (docs/BENCHMARKS.md, "Handwriting at scale"): a board with 3,024 handwritten
+words (each stroke its own drawing card, as the pen makes them). Profiler + timeline trace showed
+the cost was not painting ink but per-frame style and layout work over every card:
+1. `--zoom-multiplier` written on the wrapper every pinch frame → every element of every card
+   restyled (84 % of main-thread time). Fixed in the performance module (`coalesceZoomMultiplier`).
+2. Drawing cards mounted Markdown views for their empty text (re-mounted at the zoom breakpoint,
+   `onRender` forcing layout) → content never mounted for drawings, placeholder `display: none`.
+3. `preDetach()` forced a layout per card leaving the view → skipped for drawings.
+4. Pen-up: `sameSnapshot` stringified the whole board twice → structural comparison; validated
+   reads cached per stored object; live layer size from the core's cached rect.
+5. Pen input: sub-pixel samples replace the provisional last point (`addPoint`, WYSIWYG).
+Results (alternated builds, same board): zoom 15.5 → 52.5 fps (p95 140 → 18–35 ms), pan 33.5 →
+57 fps, wheel zoom 49 → 57 fps, pen-up 38 → 5 ms. Stored format unchanged (no migration needed;
+existing handwriting works as is). Viewport culling = the core's virtualize (already there);
+far-zoom bitmap = the performance module's LOD layer (A1 fixed its ghosts). Tests 813/813 (new:
+same-snapshot, pen merge). Drawing tutorial 10/10; column flicker test still 0 blank frames.
+Ink plugin studied (CC BY-NC-ND: ideas only, no code): its geometry caches, culling, ~1 px point
+merge and quiet-period saves match what was measured here.
 
-- Options: text size, space between items, item side padding, menu width (at least), corner radius,
-  icon size, space after the icon, shadow (theme / none / soft / strong), colors — background, text
-  and icons, item under the pointer, border and separators — separately for light and dark mode
-  (one color can't suit both), "Apply to the whole vault", "Reset to default", and ↺ per option.
-  Every option starts at "theme" (-1 / empty): only what the user changes is written, so themes and
-  other plugins' items keep their look; warning items (Delete…) keep their color.
-- Scope: `Menu.prototype.showAtPosition` is patched to mark menus opened in a canvas (the point or
-  the menu's parent control is in a canvas view) with `opc-menu-styled`; the generated CSS targets
-  `.menu.opc-menu-styled`, or every `.menu` with the whole-vault switch. Mobile menus (long press)
-  go through the same call; on phones the width option is left out (they are bottom sheets).
-- CSS (`logic.ts`, unit-tested) is written into a `<style>` of every window: main, popouts and the
-  settings window (which may be a popout). The settings show a live preview: a menu built with
-  Obsidian's own classes, so the same CSS styles it (one item shown "under the pointer").
-  Native system menus can't be styled (said in the description).
+## E1 (part 2). Ink-inspired features (done)
 
-Tested (test vault, dark theme): text 20, spacing 9, width 300, radius 14, dark background, red
-hover, light background → right-click on a card: styled (rgb(16,32,48), 20 px, 9 px, 300 px, 14 px);
-light mode: light background used; tab header menu: unstyled, with "Apply to the whole vault":
-styled; touch long-press on a card: styled; another plugin's item (AI Tools ›) and the red
-"Remove" intact; settings (popout window): preview follows each change, slider 2 px → preview 2 px,
-Reset to default → all theme, preview back to theme values. Unit tests 5. Tutorial "Your own bars":
-new step "Style the right-click menu" (touch line, settings restored at the end), summary updated,
-5 locales; run in English 8/8.
+Classification: NEW (none existed; the font option extends the existing card text style picker).
+- Handwriting → text (`drawing/ink-tools.ts`): a button in the drawing bar and the command
+  "Handwriting to text…" open a large writing box; the device's own recognition (Scribble on
+  iPad, Windows pen input) turns pen writing into text as it is written, "Insert as a card" puts it
+  where the pen last pressed on the board (one undo step, event `handwriting-to-text`). Reading
+  strokes already on the board needs a recognizer the device offers to apps: the Handwriting
+  Recognition API is feature-detected ("Read handwriting into a text card" in the command palette
+  and the drawing's menu appear only there). Neither this Windows Electron nor iPad WebKit has it,
+  so that path is unit-tested against a fake recognizer only; no recognizer is bundled.
+- Text in a handwriting style (text-align module): x-opc `font: "hand"` (schema + validator),
+  the text size picker got a Font row (Normal / Handwriting), command "Handwriting font: on /
+  off"; system handwriting fonts with fallback (letters a font lacks use a regular font); shows on
+  the board, in its editor (mirrored attribute) and wherever cards are built like the board.
+- Embedding: "Embed the drawing in a note" (command + drawing context menu) saves the selected
+  drawings (the lasso's in drawing mode, or those stuck to selected cards) as an SVG file
+  (`<files folder>/Drawings/…`; a tutorial board's own folder), copies `![[…svg]]`, records it in
+  root `inkEmbeds` (schema + validator + SCHEMA.md) and writes the file again 1 s after any of
+  those drawings changes (event `drawing-embedded`). Dark mode keeps the default ink light.
+Tested: unit (SVG output, reading order, fake recognizer); harness: font applied (computed font
+family = the handwriting stack), writing box → card, embed written and rewritten after the
+drawing changed (1 → 2 paths). New tutorial "Handwriting tools" (3 tasks, touch lines,
+command alternatives; 5 locales) 3/3 with no leaked files; "Drawing" (pointer added) 10/10.
 
-## Follow-up (owner's feedback on items 2 and 6)
+## E2. Page format (done)
 
-- Gear: back to the core menu (Snap to grid, Snap to objects, Read-only, Customize the bars); its
-  last item is now "Overpowered Canvas settings" (added right before the menu shows, own section,
-  so it comes after every other item). The click takeover and its option were removed; tutorial
-  texts back to "the settings button's menu" (with touch lines). Show me passes: Your own bars 9/9,
-  A canvas as a file 4/4.
-- `core/menu-kinds.ts`: tells right-click menus (a `contextmenu` just before, or the canvas
-  node/edge/selection menu events) from the ⋮ menu (a press on the view header's ⋮, or `file-menu`
-  with source "more-options") and whether they belong to a canvas; classes `opc-menu-in-canvas`,
-  `opc-menu-context`, `opc-menu-more`; listeners get the menu before it shows.
-- Customize the bars: sections "Right-click menu" and "More options menu (⋮)": an "Apply to the
-  whole vault" switch each, and a switch per item the menu has shown (items are known by their
-  title; the list fills as menus open). Taken-off items are removed before the menu shows; stray
-  separators are tidied. Restore defaults clears both.
-- Menu style: its own "whole vault" switch is gone (it was never released): it styles every menu
-  opened in a canvas, and right-click / ⋮ menus everywhere when their switch is on.
-- Tested: gear → menu → "Overpowered Canvas settings" opens the plugin's tab; Zoom to selection and
-  Edit taken off → gone from a card's right-click menu; "Split down" taken off the ⋮ menu → gone in
-  a canvas, still in a note until "Apply to the whole vault" is on, then gone there too; "Paste" in a
-  note's right-click menu the same, and the menu style (21 px) followed the switch. New tutorial
-  step "Choose the right-click menu's items" (5 locales).
-
-## Follow-up 2
-
-- Gear menu: 8 px between each icon and its name (`opc-gear-menu`, better-defaults CSS; it was 0).
-- Customize the bars: a row of icons at the top (bottom bar, side bar, popup, image popup,
-  right-click menu, ⋮ menu) that stays in view; a press scrolls to that section, the one in view is
-  marked. The dialog (not its content) is the scroller: redrawing the list after a switch now keeps
-  the scroll position too.
-- Column view: a button in the side bar (presentation module, `opc-columns-control`, listed in
-  Customize the bars → side bar) next to the existing command; the side bar is hidden while the
-  column view is open, its × closes it.
-- Tutorials: Your own bars s1 and Column view s1 mention them (5 locales); run in English: 9/9, 11/11.
-
-## Follow-up 3
-
-- Customize the bars: the title was cut by the cover drawn above the sticky icon row. Now the title,
-  a new search box and the icon row are fixed and only the list below scrolls (no cover needed).
-- Search: rows whose name has every word typed (a section whose name matches keeps all its rows);
-  hints, Add a command and Restore step aside while searching; "Nothing matches" when empty. The
-  search, its focus and the scroll place survive the redraw after a switch; a section icon clears
-  the search and jumps. Tested by typing ("layer" → side bar + right-click menu rows; toggling
-  "Move to the layer above" kept the search). Tutorial Your own bars s1 mentions it (5 locales), 9/9.
+Classification: NEW (different from Pages, which it works with). Module `src/modules/paper/`.
+- "Page format…" dialog (A3/A4/A5/Letter/Legal/custom mm, landscape, "Endless board" = off),
+  opt-in per canvas, stored in root `paper` (schema + validator + SCHEMA.md).
+- Sheets as a layer under everything, 1 mm = 96/25.4 board px (100 % zoom ≈ real paper size);
+  one stack per Pages page (placed around that page's content on first show, `paper.stacks`), so
+  sub-pages use the same format; stacks grow with content and with "+ Add a page"; commands add /
+  remove page.
+- Export: "Export the pages as PDF" (desktop) prints one PDF page per sheet at the sheet's size;
+  each sheet is drawn by the image exporter (new `region` option) as a ~240 dpi picture. Two
+  traps found: the PDF printer does not paint an SVG foreignObject nor the live cloned board, and
+  it lays pages out at its own scale (pixel heights spilled each sheet onto two pages), so print
+  sheets take `100vh` of the page box. On tablets/phones the command saves one PNG per sheet.
+  Text in the PDF is therefore not selectable (pictures).
+Tested (harness): dialog lists the formats; A4 sheets 793.7 × 1122.5 px under the cards; add page
+2 → 3; PDF = 3 pages, MediaBox 595.92 × 841.92 pt (A4), one 1985 × 2808 px picture per page; a
+sub-page got its own stack (A5 landscape, 793.7 px wide). New tutorial "Page format" (3 tasks,
+touch line; 5 locales) 3/3. Tests 834/834, lint clean.

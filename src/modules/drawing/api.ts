@@ -26,6 +26,12 @@ export interface InkSurface {
 	pan(dx: number, dy: number): void;
 	/** Pens, eraser and lasso only: lines, arrows and recognized shapes would not show there. */
 	inkOnly?: boolean;
+	/**
+	 * Resolves once this surface shows ink committed now (the board does within a frame or two;
+	 * another view may redraw later). Until then the stroke's live preview stays on screen, so a
+	 * stroke never blinks out between the pen lifting and the stroke being drawn for good.
+	 */
+	settled?(): Promise<void>;
 }
 
 export interface InkApi {

@@ -1,4 +1,5 @@
 import { FuzzySuggestModal, MarkdownView, Modal, Notice, Setting, SuggestModal, TFile, normalizePath, type App, type ItemView, type MenuItem, type WorkspaceLeaf } from "obsidian";
+import { autoHeadersHost, type AutoHeaders } from "./headers";
 import { defineModule, type ModuleContext } from "../../core/module";
 import type { CanvasFileData } from "../../data/json-canvas";
 import { MAP_LAYOUTS, type MapLayout } from "../../data/schema";
@@ -16,6 +17,7 @@ import { DataStore } from "./store";
 import { PagedNotes } from "./paged-view";
 import { enablePackedReading } from "./packed-view";
 import { enableHeaderCards } from "./header-ui";
+import { ChoiceModal } from "../../ui/choice-modal";
 import { pagesHost } from "../pages/api";
 import { viewMemory } from "../../core/view-memory";
 import { buildStructure, childOrderOf } from "./structure";
@@ -34,6 +36,12 @@ interface CanvasMarkdownSettings {
 	pages: "paged" | "flat";
 	/** The first level under each heading as plain lines (no bullet), deeper levels as bullets. */
 	plainFirst: boolean;
+	/** Automatic headers: cards with at least N children, or down to depth N, become headings. */
+	autoHeaders: "off" | "children" | "depth";
+	/** N of the children rule. */
+	autoHeaderChildren: number;
+	/** N of the depth rule (a map's first card is depth 1). */
+	autoHeaderDepth: number;
 }
 
 const BUTTONS: CanvasMarkdownSettings["button"][] = ["all", "canvas", "off"];
@@ -149,7 +157,7 @@ export const canvasMarkdownModule = defineModule<CanvasMarkdownSettings>({
 	description: "canvasMarkdown.desc",
 	group: "data",
 	defaultEnabled: true,
-	defaultSettings: { indent: "tab", layout: "right", pasteOutlines: true, button: "all", storage: "file", pages: "paged", plainFirst: false },
+	defaultSettings: { indent: "tab", layout: "right", pasteOutlines: true, button: "all", storage: "file", pages: "paged", plainFirst: false, autoHeaders: "off", autoHeaderChildren: 3, autoHeaderDepth: 3 },
 	sanitizeSettings: (raw, defaults) => {
 		const s = mergeWithDefaults(raw, defaults);
 		return {
@@ -160,6 +168,9 @@ export const canvasMarkdownModule = defineModule<CanvasMarkdownSettings>({
 			storage: STORAGES.includes(s.storage) ? s.storage : defaults.storage,
 			pages: PAGE_MODES.includes(s.pages) ? s.pages : defaults.pages,
 			plainFirst: typeof s.plainFirst === "boolean" ? s.plainFirst : defaults.plainFirst,
+			autoHeaders: s.autoHeaders === "children" || s.autoHeaders === "depth" ? s.autoHeaders : "off",
+			autoHeaderChildren: typeof s.autoHeaderChildren === "number" && s.autoHeaderChildren >= 1 && s.autoHeaderChildren <= 50 ? Math.round(s.autoHeaderChildren) : defaults.autoHeaderChildren,
+			autoHeaderDepth: typeof s.autoHeaderDepth === "number" && s.autoHeaderDepth >= 1 && s.autoHeaderDepth <= 6 ? Math.round(s.autoHeaderDepth) : defaults.autoHeaderDepth,
 		};
 	},
 
@@ -173,7 +184,16 @@ export const canvasMarkdownModule = defineModule<CanvasMarkdownSettings>({
 		const indent = () => INDENTS[ctx.settings.indent];
 		const rtlOf = (canvas: CanvasLike | null) => (canvas ? canvasDirection(canvas) === "rtl" : getComputedStyle(activeDocument.body).direction === "rtl");
 
+		/** The automatic header rules set (null: off); also told to other views of the outline. */
+		const autoHeaders = (): AutoHeaders | null => {
+			const s = ctx.settings;
+			return s.autoHeaders === "off" ? null : { rule: s.autoHeaders, n: s.autoHeaders === "children" ? s.autoHeaderChildren : s.autoHeaderDepth };
+		};
+		autoHeadersHost.rules = autoHeaders();
+		ctx.onSettingsChange(() => (autoHeadersHost.rules = autoHeaders()));
+		ctx.register(() => (autoHeadersHost.rules = null));
 		const applyOptions = (canvas: CanvasLike | null, sourcePath: string): ApplyOptions => ({
+			autoHeaders: autoHeaders(),
 			layout: ctx.settings.layout,
 			rtl: rtlOf(canvas),
 			spacing: 30,
@@ -223,7 +243,7 @@ export const canvasMarkdownModule = defineModule<CanvasMarkdownSettings>({
 				const edges = (data.edges ?? []).map((e) => ({ from: e.fromNode, to: e.toNode }));
 				scope = new Set([selected[0]!.id, ...descendants(edges, selected[0]!.id)]);
 			} else if (selected.length > 1) scope = new Set(selected.map((n) => n.id));
-			const s = buildStructure(data, { rtl: rtlOf(canvas), freeLabel: t("canvasMarkdown.freeNodes"), scope });
+			const s = buildStructure(data, { rtl: rtlOf(canvas), freeLabel: t("canvasMarkdown.freeNodes"), scope, autoHeaders: autoHeaders() });
 			return { md: s.items.length ? writeOutline(s.items, { indent: indent(), ids: false, plain: ctx.settings.plainFirst }) : "", count: countItems(s.items, "node") };
 		};
 
@@ -442,7 +462,7 @@ export const canvasMarkdownModule = defineModule<CanvasMarkdownSettings>({
 		 * keeps its data inside loses any separate file it had.
 		 */
 		const noteText = async (data: CanvasFileData, canvasFile: TFile, notePath: string, frontmatter: string, paged: boolean): Promise<string> => {
-			const opts = { canvasPath: canvasFile.path, rtl: rtlOf(openCanvasFor(canvasFile)), freeLabel: t("canvasMarkdown.freeNodes"), indent: indent(), frontmatter, paged, plain: ctx.settings.plainFirst };
+			const opts = { canvasPath: canvasFile.path, rtl: rtlOf(openCanvasFor(canvasFile)), freeLabel: t("canvasMarkdown.freeNodes"), indent: indent(), frontmatter, paged, plain: ctx.settings.plainFirst, autoHeaders: autoHeaders() };
 			if (ctx.settings.storage === "file") {
 				const clean = exportClean(data, { ...opts, notePath });
 				await store.save(notePath, clean.data);
@@ -657,6 +677,17 @@ export const canvasMarkdownModule = defineModule<CanvasMarkdownSettings>({
 			},
 			true,
 		);
+		// The automatic header rule, from the command palette (a tablet has no settings at hand).
+		ctx.addCommand({
+			id: "auto-headers",
+			name: t("canvasMarkdown.autoHeaders.pick"),
+			icon: "heading",
+			callback: () => {
+				const now = ctx.settings.autoHeaders;
+				const choices = (["off", "children", "depth"] as const).map((id) => ({ id, label: t(`canvasMarkdown.autoHeaders.${id}`), icon: id === "off" ? "pilcrow" : id === "children" ? "list-tree" : "layers", active: now === id }));
+				new ChoiceModal(app, t("canvasMarkdown.autoHeaders.name"), choices, (id) => void ctx.updateSettings({ autoHeaders: id === "children" || id === "depth" ? id : "off" })).open();
+			},
+		});
 		ctx.addCommand({
 			id: "note-to-canvas",
 			name: t("canvasMarkdown.cmd.fromNote"),
@@ -766,6 +797,23 @@ export const canvasMarkdownModule = defineModule<CanvasMarkdownSettings>({
 			.setName(ctx.t("canvasMarkdown.plainFirst.name"))
 			.setDesc(ctx.t("canvasMarkdown.plainFirst.desc"))
 			.addToggle((tg) => tg.setValue(ctx.settings.plainFirst).onChange((v) => ctx.updateSettings({ plainFirst: v })));
+		new Setting(el)
+			.setName(ctx.t("canvasMarkdown.autoHeaders.name"))
+			.setDesc(ctx.t("canvasMarkdown.autoHeaders.desc"))
+			.addDropdown((d) =>
+				d
+					.addOptions({ off: ctx.t("canvasMarkdown.autoHeaders.off"), children: ctx.t("canvasMarkdown.autoHeaders.children"), depth: ctx.t("canvasMarkdown.autoHeaders.depth") })
+					.setValue(ctx.settings.autoHeaders)
+					.onChange((v) => ctx.updateSettings({ autoHeaders: v === "children" || v === "depth" ? v : "off" })),
+			);
+		new Setting(el)
+			.setName(ctx.t("canvasMarkdown.autoHeaderChildren.name"))
+			.setDesc(ctx.t("canvasMarkdown.autoHeaderChildren.desc"))
+			.addSlider((sl) => sl.setLimits(1, 20, 1).setValue(ctx.settings.autoHeaderChildren).onChange((v) => ctx.updateSettings({ autoHeaderChildren: v })));
+		new Setting(el)
+			.setName(ctx.t("canvasMarkdown.autoHeaderDepth.name"))
+			.setDesc(ctx.t("canvasMarkdown.autoHeaderDepth.desc"))
+			.addSlider((sl) => sl.setLimits(1, 6, 1).setValue(ctx.settings.autoHeaderDepth).onChange((v) => ctx.updateSettings({ autoHeaderDepth: v })));
 		new Setting(el)
 			.setName(ctx.t("canvasMarkdown.storage.name"))
 			.setDesc(ctx.t("canvasMarkdown.storage.desc"))

@@ -6,6 +6,7 @@
 import type { CanvasFileData } from "../../data/json-canvas";
 import { nodeText, pageOfNode, pagesOfRoot, buildStructure, type PageRef } from "../canvas-markdown/structure";
 import type { OutlineItem } from "../canvas-markdown/outline";
+import type { AutoHeaders } from "../canvas-markdown/headers";
 import { titleOf, pageChildren, withoutLink } from "../pages/logic";
 
 export interface BookItem {
@@ -45,6 +46,8 @@ export interface BookOptions {
 	untitled: string;
 	/** Heading of the list of unconnected cards. */
 	freeLabel: string;
+	/** Automatic header rules of Canvas ⇄ Markdown (the same outline, the same headings). */
+	autoHeaders?: AutoHeaders | null;
 }
 
 function pageOrder(pages: PageRef[]): { id: string; ref?: PageRef }[] {
@@ -102,7 +105,7 @@ export function buildBook(data: CanvasFileData, opts: BookOptions): Book {
 	const out: BookPage[] = pageOrder(pages).map(({ id, ref }) => {
 		// Cards of a page that no longer exists show on the main page, as on the board.
 		const scope = new Set(nodes.filter((n) => (known.has(pageOf.get(n.id)!) ? pageOf.get(n.id) : "") === id).map((n) => n.id));
-		const s = buildStructure(data, { rtl: opts.rtl, freeLabel: opts.freeLabel, scope });
+		const s = buildStructure(data, { rtl: opts.rtl, freeLabel: opts.freeLabel, scope, autoHeaders: opts.autoHeaders });
 		const ids = new Map([...s.alias].map(([canvasId, alias]) => [alias, canvasId]));
 		const rootAlias = ref ? s.alias.get(ref.root) : undefined;
 		let items = rootAlias ? liftRoot(s.items, rootAlias) : s.items;
