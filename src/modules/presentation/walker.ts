@@ -348,6 +348,23 @@ export function enableWalk(ctx: ModuleContext<object>, presenting: (canvas: Canv
 		if (back && canvas.nodes.has(back)) go(canvas, walk, back);
 	};
 
+	/**
+	 * A card resized in the column view: the board card takes the size (its top-left corner stays,
+	 * so ink on it keeps its place), one undo step; a map with a recorded layout arranges itself
+	 * again around the new size.
+	 */
+	const resizeCard = (canvas: CanvasLike, id: string, size: { width: number; height: number }): boolean => {
+		const node = canvas.nodes.get(id);
+		const walk = walks.get(canvas);
+		if (!node || !walk || walk.wasReadonly || canvas.readonly) return false;
+		const ok = mutate(ctx, canvas, () => node.moveAndResize({ x: node.x, y: node.y, width: size.width, height: size.height }));
+		if (ok) {
+			ctx.events.emit("column-card-resized", canvas, node);
+			void relayoutMap(ctx, canvas, node).catch((e) => logError("[overpowered-canvas] columns: layout", e));
+		}
+		return ok;
+	};
+
 	// ---------- following the board ----------
 
 	/** Shows the board's changes in the column view (debounced; never while a card is edited). */
@@ -455,6 +472,7 @@ export function enableWalk(ctx: ModuleContext<object>, presenting: (canvas: Canv
 					return w ? tools(w) : [];
 				},
 				useTool: (tool) => useTool(canvas, tool),
+				resize: (id, size) => resizeCard(canvas, id, size),
 			});
 		}
 		go(canvas, walk, walk.current);

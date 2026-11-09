@@ -921,4 +921,8 @@ export const tutorialsEn = {
 	"tut.bars.menus.body": "**Customize the bars** also lists the **right-click menu** and the **⋮ menu** (top right of a canvas): switch an item off and it leaves that menu. An item shows up in the list once the menu has shown it, so open the menu once first.\n\nBy default this changes the menus of canvases only; **Apply to the whole vault** does it for those menus everywhere in Obsidian (and the menu style follows).",
 	"tut.bars.menus.task": "Right-click a card, then in **Customize the bars** switch off an item of **Right-click menu** and close the dialog.",
 	"tut.bars.menus.touch": "Long-press a card, then open **Customize the bars** from the settings button and switch off an item of **Right-click menu**.",
+	"tut.columns.resize.title": "Make a card bigger to write on it",
+	"tut.columns.resize.body": "At their real size, the card you are on has a round **handle** at its bottom-right corner. Drag it to make the card bigger or smaller: room for a whole handwritten paragraph or a drawing. The children's column moves along. The new size is the card's size on the board too, and the handwriting already on it stays where it is. A map with an automatic layout arranges itself around the new size.",
+	"tut.columns.resize.task": "Drag the round handle at the bottom-right corner of **Vegetables** (with the mouse, or select it and press the arrow keys).",
+	"tut.columns.resize.touch": "Put a finger on the round handle at the bottom-right corner of **Vegetables** and slide it.",
 } as const;

@@ -1300,6 +1300,41 @@ const columns: TutorialDefinition = {
 			},
 		},
 		{
+			title: "tut.columns.resize.title",
+			body: "tut.columns.resize.body",
+			task: "tut.columns.resize.task",
+			touch: "tut.columns.resize.touch",
+			target: (rt) => columnsEl(rt)?.querySelector<HTMLElement>(".opc-columns-card.is-current .opc-columns-resize") ?? null,
+			enter: async (rt) => {
+				if (rt.setting("presentation", "columnActualSize") !== true) rt.setSetting("presentation", "columnActualSize", true);
+				await ensureColumns(rt, "c-veg");
+			},
+			check: (rt) => rt.seen("column-card-resized"),
+			demo: async (rt) => {
+				await ensureColumns(rt, "c-veg");
+				if (rt.setting("presentation", "columnActualSize") !== true) rt.command("presentation:columns-actual-size");
+				await rt.wait(500);
+				await walkToColumn(rt, "c-root", "c-veg");
+				const handle = columnsEl(rt)?.querySelector<HTMLElement>(".opc-columns-card.is-current .opc-columns-resize");
+				if (!handle) return;
+				// A finger dragging the handle down and to the right.
+				const r = handle.getBoundingClientRect();
+				let x = r.left + r.width / 2;
+				let y = r.top + r.height / 2;
+				const fire = (type: string) =>
+					handle.dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true, pointerId: 9, pointerType: "touch", isPrimary: true, clientX: x, clientY: y, button: 0, buttons: type === "pointerup" ? 0 : 1 }));
+				fire("pointerdown");
+				for (let i = 1; i <= 20; i++) {
+					x += 6;
+					y += 4;
+					fire("pointermove");
+					await rt.wait(16);
+				}
+				fire("pointerup");
+				await rt.wait(500);
+			},
+		},
+		{
 			title: "tut.columns.ink.title",
 			body: "tut.columns.ink.body",
 			task: "tut.columns.ink.task",

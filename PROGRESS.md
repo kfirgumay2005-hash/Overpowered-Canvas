@@ -12,7 +12,7 @@ When resuming: read this file and `git log`, then continue with the first item t
 | A4 | Column mode: stroke flicker on pen-up | IMPROVEMENT (bug) | done (with A3) |
 | A5 | Column mode: no vertical finger scroll with a pen tool | IMPROVEMENT (bug) | done |
 | A6 | Column mode: wide cards run into the next column | IMPROVEMENT (bug) | done |
-| B1 | Resize cards in column mode | NEW | todo |
+| B1 | Resize cards in column mode | NEW | done |
 | C1 | Vertical column mode | NEW (orientation of the column view) | todo |
 | C2 | Table of Contents mode | NEW | todo |
 | D1 | Automatic header rules | IMPROVEMENT (headers) | todo |
@@ -116,3 +116,21 @@ Tested (harness, actual size, focused card 250 px with a 700 px sibling): a poin
 children's column start inside the sibling's box hit `[eta, cls]` before, `[eta]` after;
 screenshot shows the sibling cut at the line, children whole. Unit tests: column-layout 4/4.
 Tutorial "Column view" → "Cards at their real size": one sentence added (5 locales).
+
+## B1. Resize cards in column mode (done)
+
+Classification: NEW (the column view had no way to change a card's size; the board's own resize
+handles are untouched).
+What: at actual card size, the current card gets a round handle at its bottom-right corner
+(`addResizer` in columns.ts), next to the "+" buttons. Drag with finger, pen or mouse (pointer
+capture; the card, its text layout and the children's column follow live), or focus it and use
+the arrow keys (Shift: 50). On release the walker's `resizeCard` writes the size to the board
+card (`moveAndResize`, top-left kept, one undo step), emits `column-card-resized`, and a map with
+a recorded layout arranges itself again (`relayoutMap`). Pictures keep their aspect ratio.
+Ink keeps its board position (anchored strokes are relative to the card's top-left corner, which
+does not move), so it lands on the same place in every view. Hidden while a tool is on or a card
+is edited, like the "+" buttons.
+Tested (harness): drag +120/+90 px on a 250x60 card → 370x150, x/y unchanged, anchored ink
+unchanged, children's column 32 px after the new right edge, one undo step. Tutorial "Column
+view": new step "Make a card bigger to write on it" (touch line + keyboard alternative, 5
+locales); Show me in English: 12/12 tasks.

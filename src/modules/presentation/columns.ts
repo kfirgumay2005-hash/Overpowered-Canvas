@@ -47,6 +47,8 @@ export interface ColumnHost {
 	tools(): ColumnTool[];
 	/** A tool button was pressed: turn it on (or off, when it is on). */
 	useTool(tool: ColumnTool): void;
+	/** A card was resized here (actual size): write its new size to the canvas. */
+	resize(id: string, size: { width: number; height: number }): boolean;
 }
 
 const TOOL_ICONS: Record<ColumnTool, string> = { ink: "pen-tool", highlight: "highlighter", color: "baseline" };
@@ -64,6 +66,10 @@ const TAP_MOVE = 6;
 const DOUBLE_TAP_MS = 400;
 /** Room between two columns, in px at zoom 1. */
 const GAP = 32;
+/** Smallest card a resize leaves (board units). */
+const MIN_CARD = 40;
+/** Arrow keys on the resize handle: this many board units a press (Shift: five times). */
+const KEY_STEP = 10;
 const MIN_ZOOM = 0.25;
 const MAX_ZOOM = 4;
 
@@ -218,6 +224,7 @@ export class ColumnView {
 				const own = this.ctx.data.node(node).get().fontSize;
 				if (own && !actual) card.setCssStyles({ fontSize: `${Math.round((columnFont * own) / canvasFont)}px` });
 				if (id === current && editable) this.addButtons(card, path.length > 1);
+				if (id === current && editable && actual) this.addResizer(card, node);
 				widest = Math.max(widest, width);
 				if (id === column.active) activeWidth = width;
 			}
@@ -323,6 +330,85 @@ export class ColumnView {
 		};
 		button("child", this.ctx.t("presentation.columns.addChild"));
 		if (sibling) button("sibling", this.ctx.t("presentation.columns.addSibling"));
+	}
+
+	/**
+	 * The handle at the bottom-right corner of the current card at its real size: drag it (finger,
+	 * pen or mouse) or use the arrow keys on it to make the card bigger or smaller. The card and
+	 * the columns after it follow live; the size is written to the board card on release, so every
+	 * view shows the same card (its ink stays where it is on the card, from its top-left corner).
+	 */
+	private addResizer(card: HTMLElement, node: CanvasNodeLike): void {
+		const handle = card.createEl("button", { cls: "clickable-icon opc-columns-resize", attr: { "aria-label": this.ctx.t("presentation.columns.resize") } });
+		setIcon(handle, "move-diagonal-2");
+		const ratio = this.imageOf(node) ? (node as CanvasNodeLike & { aspectRatio?: number }).aspectRatio || node.width / Math.max(1, node.height) : 0;
+		const sizeFor = (width: number, height: number) => {
+			const w = Math.max(MIN_CARD, Math.round(width));
+			// Pictures keep their shape, as on the board.
+			return { width: w, height: ratio ? Math.max(MIN_CARD, Math.round(w / ratio)) : Math.max(MIN_CARD, Math.round(height)) };
+		};
+		const apply = (size: { width: number; height: number }) => {
+			card.setCssProps({ "--opc-card-width": `${size.width}px`, "--opc-card-height": `${size.height}px` });
+			card.querySelector<HTMLElement>(":scope > .opc-columns-replica")?.setCssProps({ "--canvas-node-width": `${size.width}px`, "--canvas-node-height": `${size.height}px` });
+			const placed = this.placed[this.middle];
+			if (placed && placed.card === card) {
+				placed.reach = size.width;
+				placed.width = Math.max(placed.width, size.width);
+				placed.column.setCssProps({ "--opc-column-width": `${placed.width}px` });
+			}
+			this.layout(false);
+		};
+		const commit = (size: { width: number; height: number }) => {
+			if (size.width === node.width && size.height === node.height) return;
+			if (!this.host.resize(node.id, size)) new Notice(this.ctx.t("presentation.columns.saveFailed"));
+		};
+		let drag: { id: number; x: number; y: number; width: number; height: number; size: { width: number; height: number } } | null = null;
+		handle.addEventListener("pointerdown", (e) => {
+			e.preventDefault();
+			e.stopPropagation();
+			drag = { id: e.pointerId, x: e.clientX, y: e.clientY, width: node.width, height: node.height, size: { width: node.width, height: node.height } };
+			try {
+				handle.setPointerCapture(e.pointerId);
+			} catch {
+				// Synthetic pointers can't be captured; the drag still follows over the handle.
+			}
+			card.addClass("is-resizing");
+		});
+		handle.addEventListener("pointermove", (e) => {
+			if (!drag || e.pointerId !== drag.id) return;
+			e.preventDefault();
+			e.stopPropagation();
+			const k = this.view.zoom || 1;
+			drag.size = sizeFor(drag.width + (e.clientX - drag.x) / k, drag.height + (e.clientY - drag.y) / k);
+			apply(drag.size);
+		});
+		const end = (e: PointerEvent) => {
+			if (!drag || e.pointerId !== drag.id) return;
+			e.stopPropagation();
+			const size = drag.size;
+			drag = null;
+			card.removeClass("is-resizing");
+			// A release right after a drag is not a tap on the card.
+			this.swallowUntil = performance.now() + 300;
+			commit(size);
+		};
+		handle.addEventListener("pointerup", end);
+		handle.addEventListener("pointercancel", end);
+		handle.addEventListener("click", (e) => {
+			e.preventDefault();
+			e.stopPropagation();
+		});
+		handle.addEventListener("keydown", (e) => {
+			const step = e.shiftKey ? KEY_STEP * 5 : KEY_STEP;
+			const keys: Record<string, [number, number]> = { ArrowRight: [step, 0], ArrowLeft: [-step, 0], ArrowDown: [0, step], ArrowUp: [0, -step] };
+			const d = keys[e.key];
+			if (!d) return;
+			e.preventDefault();
+			e.stopPropagation();
+			const size = sizeFor(node.width + d[0], node.height + d[1]);
+			apply(size);
+			commit(size);
+		});
 	}
 
 	private cardEl(id: string): HTMLElement | null {
@@ -683,7 +769,7 @@ export class ColumnView {
 	private onClick = (evt: MouseEvent) => {
 		const target = evt.target as HTMLElement;
 		// The bars of the tools and the buttons on the card take their own clicks.
-		if (target.closest(".opc-columns-editor, .opc-columns-add") || !target.closest(".opc-columns-zoom")) return;
+		if (target.closest(".opc-columns-editor, .opc-columns-add, .opc-columns-resize") || !target.closest(".opc-columns-zoom")) return;
 		evt.preventDefault();
 		evt.stopPropagation();
 		if (performance.now() < this.swallowUntil) {

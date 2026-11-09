@@ -369,8 +369,36 @@ body.opc-mod-presentation .opc-columns-add.is-sibling {
 	bottom: -14px;
 	transform: translateX(-50%);
 }
-body.opc-mod-presentation .opc-columns.has-tool .opc-columns-add,
-body.opc-mod-presentation .opc-columns-card.is-editing .opc-columns-add {
+/* Resizing the current card at its real size (bottom-right corner). */
+body.opc-mod-presentation .opc-columns-resize {
+	position: absolute;
+	z-index: 2;
+	right: -14px;
+	bottom: -14px;
+	width: 28px;
+	height: 28px;
+	padding: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: 50%;
+	color: var(--text-normal);
+	background-color: var(--background-secondary);
+	border: 1px solid var(--background-modifier-border);
+	box-shadow: var(--shadow-s);
+	cursor: nwse-resize;
+	touch-action: none;
+}
+body.opc-mod-presentation .opc-columns-resize .svg-icon {
+	width: 16px;
+	height: 16px;
+}
+body.opc-mod-presentation .opc-columns-card.is-resizing {
+	outline: 1px dashed var(--color-accent);
+	outline-offset: 2px;
+}
+body.opc-mod-presentation .opc-columns.has-tool :is(.opc-columns-add, .opc-columns-resize),
+body.opc-mod-presentation .opc-columns-card.is-editing :is(.opc-columns-add, .opc-columns-resize) {
 	display: none;
 }
 /* Cards at their board size without a replica (files, links): the frame takes no room, so the

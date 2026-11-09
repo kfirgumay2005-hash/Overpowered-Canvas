@@ -1493,4 +1493,5 @@ export const ja: Record<I18nKey, string> = {
 	"menuStyle.where.desc": "キャンバスで開いたすべてのメニュー。「バーのカスタマイズ」で「保管庫全体に適用」をオンにした右クリックメニューと ⋮ メニューは、ほかの場所でも対象になります。",
 	"barButtons.search": "ボタンとメニュー項目を検索…",
 	"barButtons.noMatch": "検索に一致するものはありません。",
+	"presentation.columns.resize": "カードのサイズを変更（ドラッグ、または矢印キー）",
 };

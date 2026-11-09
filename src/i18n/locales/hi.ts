@@ -1493,4 +1493,5 @@ export const hi: Record<I18nKey, string> = {
 	"menuStyle.where.desc": "कैनवास में खुला हर मेनू। बार अनुकूलित करें में जिनके लिए \"पूरे वॉल्ट पर लागू करें\" चालू हो, वे राइट-क्लिक और ⋮ मेनू दूसरी जगहों पर भी।",
 	"barButtons.search": "बटन और मेनू आइटम खोजें…",
 	"barButtons.noMatch": "खोज से कुछ मेल नहीं खाता।",
+	"presentation.columns.resize": "कार्ड का आकार बदलें (खींचें, या तीर कुंजियाँ)",
 };
