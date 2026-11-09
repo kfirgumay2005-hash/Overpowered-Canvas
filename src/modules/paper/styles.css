@@ -57,18 +57,15 @@ body.opc-mod-paper .opc-paper-add:hover {
 }
 /* The PDF: each sheet one PDF page, exactly its size. */
 body.opc-mod-paper .opc-paper-print .opc-paper-print-sheet {
-	/* A hair under the page, so rounding never spills onto an extra PDF page. */
-	width: var(--opc-sheet-w);
-	height: calc(var(--opc-sheet-h) - 1px);
+	/* One printed page each: the printer lays pages out at its own scale, so the sheet takes the
+	   page box (a hair under its height, so rounding never spills onto another page). The page
+	   has the sheet's proportions, so the picture fills it exactly. */
+	width: 100%;
+	height: calc(100vh - 2px);
 	overflow: hidden;
 }
-body.opc-mod-paper .opc-paper-print .opc-paper-print-sheet {
-	position: relative;
-}
-/* A change of named page forces a new PDF page, so neighbouring sheets take different names. */
-body.opc-mod-paper .opc-paper-print .opc-paper-print-sheet:nth-child(odd) {
-	page: opc-paper-odd;
-}
-body.opc-mod-paper .opc-paper-print .opc-paper-print-sheet:nth-child(even) {
-	page: opc-paper-even;
+body.opc-mod-paper .opc-paper-print .opc-paper-print-sheet > img {
+	display: block;
+	width: 100%;
+	height: 100%;
 }

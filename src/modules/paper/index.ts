@@ -285,20 +285,18 @@ export const paperModule = defineModule<object>({
 			const notice = new Notice(t("paper.pdf.working"), 0);
 			const doc = canvas.wrapperEl.doc;
 			const root = doc.body.createDiv({ cls: "print opc-paper-print" });
+			const urls: string[] = [];
 			try {
 				const svgs = await sheetSvgs(canvas);
-				const size = layers.get(canvas)?.sheets[0];
 				for (const r of svgs) {
 					const sheet = root.createDiv({ cls: "opc-paper-print-sheet" });
-					sheet.setCssProps({ "--opc-sheet-w": `${size?.width ?? r.width}px`, "--opc-sheet-h": `${size?.height ?? r.height}px` });
-					// The exporter's clone of the board (HTML) and its styles, put in the page as they
-					// are: printing draws them as vector text and shapes (an SVG foreignObject would not
-					// be painted by the PDF printer).
-					const parsed = new DOMParser().parseFromString(r.svg, "image/svg+xml");
-					const style = parsed.querySelector("style");
-					const clone = parsed.querySelector("foreignObject")?.firstElementChild;
-					if (style) sheet.appendChild(doc.importNode(style, true));
-					if (clone) sheet.appendChild(doc.importNode(clone, true));
+					// Each sheet as a sharp picture (about 240 dpi): drawn exactly as the image export
+					// draws the board, which the PDF printer can't do from the live layout.
+					const png = await svgToPng(r, 2.5);
+					const img = sheet.createEl("img", { attr: { alt: "" } });
+					img.src = URL.createObjectURL(png);
+					urls.push(img.src);
+					await img.decode().catch(() => undefined);
 				}
 				await new Promise((res) => window.setTimeout(res, PRINT_SETTLE));
 				const pdf = await contents.printToPDF({ pageSize: pdfPageSize(spec), printBackground: true, margins: { marginType: "none" }, preferCSSPageSize: false });
@@ -312,6 +310,7 @@ export const paperModule = defineModule<object>({
 			} finally {
 				notice.hide();
 				root.remove();
+				for (const u of urls) URL.revokeObjectURL(u);
 			}
 		};
 

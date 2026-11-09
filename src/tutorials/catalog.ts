@@ -1829,6 +1829,62 @@ const handwriting: TutorialDefinition = {
 	],
 };
 
+// ---------- 29. Page format ----------
+
+/** The practice board's page format, if any. */
+const paperOf = (rt: TutorialRuntime) => (rt.now()[SCHEMA_KEY] as { paper?: { format?: string; landscape?: boolean; stacks?: Record<string, { count?: number }> } } | undefined)?.paper;
+
+const paper: TutorialDefinition = {
+	id: "paper",
+	icon: "file-text",
+	title: "tut.paper.title",
+	summary: "tut.paper.summary",
+	modules: ["paper"],
+	board: (t) => ({
+		nodes: [card("pp-title", `## ${t("tut.paper.board.title")}`, 40, 40, 500, 110, { color: "5" }), card("pp-a", t("tut.paper.board.a"), 40, 200, 320, 90), card("pp-b", t("tut.paper.board.b"), 400, 200, 320, 90)],
+		edges: [],
+	}),
+	steps: [
+		{
+			title: "tut.paper.setup.title",
+			body: "tut.paper.setup.body",
+			task: "tut.paper.setup.task",
+			check: (rt) => !!paperOf(rt)?.format,
+			demo: async (rt) => {
+				rt.command("paper:set-up");
+				await rt.wait(500);
+				const modal = Array.from(rt.canvas.wrapperEl.doc.querySelectorAll<HTMLElement>(".modal-container")).pop();
+				modal?.querySelector<HTMLElement>("button.mod-cta")?.click();
+				await rt.wait(800);
+			},
+		},
+		{
+			title: "tut.paper.add.title",
+			body: "tut.paper.add.body",
+			task: "tut.paper.add.task",
+			touch: "tut.paper.add.touch",
+			target: (rt) => rt.canvas.wrapperEl.querySelector<HTMLElement>(".opc-paper-add"),
+			check: (rt) => (paperOf(rt)?.stacks?.[""]?.count ?? 1) >= 2,
+			demo: async (rt) => {
+				rt.canvas.wrapperEl.querySelector<HTMLElement>(".opc-paper-add")?.click();
+				await rt.wait(600);
+			},
+		},
+		{
+			title: "tut.paper.landscape.title",
+			body: "tut.paper.landscape.body",
+			task: "tut.paper.landscape.task",
+			check: (rt) => paperOf(rt)?.landscape === true,
+			demo: async (rt) => {
+				const now = (rt.now()[SCHEMA_KEY] as { paper?: object } | undefined)?.paper ?? { format: "A4" };
+				rt.change(() => rt.data.root(rt.canvas).set({ paper: { ...now, landscape: true } as never }));
+				await rt.wait(600);
+			},
+		},
+		{ title: "tut.paper.end.title", body: "tut.paper.end.body" },
+	],
+};
+
 // ---------- 9. Finding your way ----------
 
 const CAMP = { w: 900, h: 560 };
@@ -4183,4 +4239,4 @@ const shortcuts: TutorialDefinition = {
 	],
 };
 
-export const TUTORIALS: readonly TutorialDefinition[] = [basics, notes, shapes, edges, drawing, layers, present, mindmap, navigate, organize, markdown, select, blocks, vault, style, big, direction, pdf, pages, arrows, bars, images, file, columns, columnsDown, toc, autoHeaders, handwriting, smartGroups, indent, fontSize, shortcuts];
+export const TUTORIALS: readonly TutorialDefinition[] = [basics, notes, shapes, edges, drawing, layers, present, mindmap, navigate, organize, markdown, select, blocks, vault, style, big, direction, pdf, pages, arrows, bars, images, file, columns, columnsDown, toc, autoHeaders, handwriting, paper, smartGroups, indent, fontSize, shortcuts];

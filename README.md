@@ -107,7 +107,8 @@ button goes up): a simple grid of N cells per row, or a free arrangement where c
 beside or below each other form colored cell groups, saved with the canvas. Handwriting stays smooth on boards with thousands of strokes; the drawing
 bar turns pen writing into text cards (the device's own handwriting recognition), cards can show
 their text in a handwriting font, and a drawing can be embedded in a note as a picture that follows
-it when it changes. Also
+it when it changes. A canvas can also switch to fixed-size pages (A3, A4, A5, Letter, Legal or a
+size of its own, portrait or landscape) that grow as you write and export to PDF, one page per sheet. Also
 collapsible branches with child counts, and automatic layout that keeps the order the cards show
 on the board (mind map in any direction,
 collision-free radial that respects every card's size, balanced, layered flowchart, grid) as one
