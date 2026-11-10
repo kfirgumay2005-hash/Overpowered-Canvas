@@ -1700,6 +1700,29 @@ const toc: TutorialDefinition = {
 			},
 		},
 		{
+			title: "tut.toc.ink.title",
+			body: "tut.toc.ink.body",
+			task: "tut.toc.ink.task",
+			touch: "tut.toc.ink.touch",
+			target: (rt) => tocEl(rt)?.querySelector<HTMLElement>(".opc-toc-tool.is-ink") ?? null,
+			enter: (rt) => void ensureToc(rt),
+			check: (rt) => rt.seen("toc-tool", (_c, tool) => tool === "ink") && (rt.seen("stroke-added") || strokeCount(rt.now()) > strokeCount(rt.before)),
+			demo: async (rt) => {
+				await ensureToc(rt);
+				const pen = () => tocEl(rt)?.querySelector<HTMLElement>(".opc-toc-tool.is-ink");
+				if (!pen()?.hasClass("is-active")) pen()?.click();
+				await rt.wait(600);
+				// An underline on Membrane, as the pen would write it there.
+				const data = ink(randomId(), [{ x: 680, y: 44 }, { x: 760, y: 47 }, { x: 840, y: 43 }], "#1971c2");
+				(data[SCHEMA_KEY] as Record<string, unknown>).anchor = "t-mem";
+				rt.add([data]);
+				await rt.wait(600);
+				// The pen off again for the next steps.
+				if (pen()?.hasClass("is-active")) pen()?.click();
+				await rt.wait(300);
+			},
+		},
+		{
 			title: "tut.toc.actual.title",
 			body: "tut.toc.actual.body",
 			task: "tut.toc.actual.task",

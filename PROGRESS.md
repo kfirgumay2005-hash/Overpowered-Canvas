@@ -13,7 +13,7 @@ When resuming: read this file and `git log`, then continue with the first item t
 | 3 | Drawing: palm rejection with Scribble on (iPad) | IMPROVEMENT (bug) | done |
 | 4 | Raw HTML/Markdown in grid titles and other card-text labels | IMPROVEMENT (bug) | done |
 | 5 | Grid mode: nested sub-groups | IMPROVEMENT | done |
-| 6 | Grid mode: handwriting tools | NEW (tools in the grid view) | |
+| 6 | Grid mode: handwriting tools | NEW (tools in the grid view) | done |
 | 7 | Grid mode: lock layout toggle | NEW | done |
 | 8 | Group customization (thickness, colors, style, radius) | IMPROVEMENT | done |
 
@@ -259,3 +259,31 @@ rgb(232,89,12) in both themes; settings render the 4 new rows with the swatch an
 test (style through moves/sub-groups/reload/defaults) — tests 844/844. Tutorial "Table of
 contents": the color step became "The group's look" (menu, outline, settings; 5 locales; its demo
 updated for the submenu); Show me in English 10/10. Lint clean.
+
+## 6. Table of contents: pen, highlighter, text color (done)
+
+Classification: NEW for this view, built on the existing shared tool surfaces (no second drawing
+or marking implementation): `TocView.inkSurface()` / `markSurface()` give the drawing module and
+the highlighter the same contract as the column view (`InkSurface`, `MarkSurface`), so strokes
+and marks go into the same board data (ink stuck to the card, `==…==` / color spans in the card's
+text) and show on the board and in the column view on the same words.
+- Buttons in the view's controls (pen, highlighter, text color; offered by the modules that are
+  on, none on a read-only board); event `toc-tool`.
+- Pen: cells show at their real size while it is on (like the column view), strokes are mapped
+  from the cell's rect to board coordinates, the live stroke sits in the cell drawn on (raised
+  above its neighbours), ink-only changes redraw only the cells' ink after 16 ms (`scheduleInk` /
+  `refreshInk`; the stroke stays until it shows, `settled`), the stroke's preview is kept across
+  full redraws. Drawing cards (item 2) are refreshed too.
+- Input rules (as item 1): with a tool on nothing can be arranged (no handles, a drag pans); a
+  finger drag moves the view, a finger tap on a cell's arrow opens it, on the box's back button
+  goes up, a double tap edits a cell; the pen draws / marks; palm guard (item 3) with the view's
+  zoom and pan as its view state. Esc ends the tool, not the view. The tool's bar never covers the
+  box's title (the sheet moves below it after the tool starts and after going in or out).
+Tested (harness, toc6.canvas): pen on → 5 cells at real size, arranging off, button active; a
+pen stroke on cell C → one drawing anchored to C, inside C's box, drawn in the cell, no live
+preview left; finger drag → view panned, no ink, nothing stored; finger tap on B's arrow → B's
+grid, pen still on; bar bottom 236 px, title top 244 px; highlighter: pen swipe over "some words"
+→ card text `Under B with ==some words== to mark` and a mark in the cell; Esc → tool off, view
+open; palm resting + pen stroke → view restored, only the pen's stroke kept. Tutorial "Table of
+contents": new step "Write on the cells" (touch line; 5 locales); Show me in English 11/11.
+Tests 844/844, lint clean.

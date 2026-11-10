@@ -1054,4 +1054,8 @@ export const tutorialsEn = {
 	"tut.toc.lock.body": "Once the cells are where you want them, **lock the layout** (the lock button at the bottom right). Then a drag on a cell moves the view instead of the cell, so zoomed in, writing or highlighting, nothing gets moved by accident. Going into cells, back, zooming and the tools still work. The lock is saved with the canvas; press it again to arrange.",
 	"tut.toc.lock.task": "Press the lock button at the bottom right (or `Ctrl/Cmd+P` → **Table of contents: lock / unlock the layout**).",
 	"tut.toc.lock.touch": "Tap the lock button at the bottom right.",
+	"tut.toc.ink.title": "Write on the cells",
+	"tut.toc.ink.body": "The **pen**, the **highlighter** and the **text color** buttons at the bottom right work here as on the board: the same ink and marks, on the same cards, so what you write here shows on the board and in the column view, on the same words.\n\nWhile the pen is on, the cells show at their real size and nothing can be moved. The pen writes; a finger **drag** moves the view, a finger **tap** on a cell's arrow opens its cells, a double tap edits a cell. A resting palm is ignored. `Esc` (or the button again) turns the tool off.",
+	"tut.toc.ink.task": "Press the pen button at the bottom right and write on **Membrane**.",
+	"tut.toc.ink.touch": "Tap the pen at the bottom right and write on **Membrane** with your pen; move the view with a finger.",
 } as const;

@@ -611,6 +611,10 @@ body.opc-mod-presentation .opc-toc-grip.is-sub {
 body.opc-mod-presentation .opc-toc-cell {
 	position: relative;
 }
+/* The cell the pen writes on lies above its neighbours (a stroke may run past its edge). */
+body.opc-mod-presentation .opc-toc-cell.is-inking {
+	z-index: 2;
+}
 body.opc-mod-presentation .opc-toc.is-free .opc-toc-cell {
 	cursor: grab;
 }

@@ -13,6 +13,10 @@ import { mapModel } from "./map-model";
 import { TOC_LINES, type TocLine } from "../../data/schema";
 import { cardsOf, findSub, isGroup, moveIn, normalize, restyle, simpleArrangement, styleOfGroup, ungroup, type TocGroupStyle, type Side, type TocArrangement, type TocBlock, type TocDrop, type TocMoving, type TocTree } from "./toc-layout";
 import { orderedChildren, treeParent } from "./walk";
+import { inkHost, type InkSurface } from "../drawing/api";
+import { marksHost, type MarkMode, type MarkSurface } from "../text-highlight/api";
+import type { ViewState } from "../../ui/palm-guard";
+import { TOOL_OVERLAYS, type ColumnTool } from "./columns";
 
 export type TocMode = "simple" | "free";
 
@@ -63,6 +67,9 @@ interface Press {
 	/** The card pressed, for taps. */
 	card: string | null;
 	grip: string | null;
+	/** Under a tool's overlay: the cell whose arrow was tapped, or the box's back button. */
+	open?: string | null;
+	up?: boolean;
 }
 
 /** What drawing the cells needs. */
@@ -75,6 +82,13 @@ interface RenderEnv {
 	presets: Record<string, string>;
 	free: boolean;
 }
+
+/** Ink alone is drawn again this soon after a change (the pen's stroke waits for it). */
+const INK_REFRESH_MS = 16;
+/** How near a cell (screen px) a pen press still draws on it. */
+const INK_REACH = 12;
+const TOOL_ICONS: Record<ColumnTool, string> = { ink: "pen-tool", highlight: "highlighter", color: "baseline" };
+const TOOL_LABELS = { ink: "drawing.command", highlight: "textHighlight.button", color: "textHighlight.color.button" } as const;
 
 /** Highest color slot a theme can define (see the custom-colors module). */
 const MAX_SLOT = 32;
@@ -146,6 +160,15 @@ export class TocView {
 	private lastTap = { id: "", at: 0 };
 	private editing: HTMLTextAreaElement | null = null;
 	private timer = 0;
+	private inkTimer = 0;
+	/** The tool on (pen, highlighter, text color), if any. */
+	private tool: ColumnTool | null = null;
+	/** The pen shows the cells at their size on the board, whatever the setting. */
+	private forcedActual = false;
+	/** The cell a pen gesture draws on (from its press to its release). */
+	private inkCard: string | null = null;
+	/** Waiting for committed ink to show (see InkSurface.settled). */
+	private settleWaiters: (() => void)[] = [];
 	private readonly leaveLane: () => void;
 
 	constructor(
@@ -181,6 +204,9 @@ export class TocView {
 		this.el.addEventListener("pointercancel", this.onCancel);
 		this.el.addEventListener("wheel", this.onWheel, { passive: false });
 		this.el.addEventListener("click", this.onClick, true);
+		const release = () => (this.inkCard = null);
+		this.el.addEventListener("pointerup", release, true);
+		this.el.addEventListener("pointercancel", release, true);
 		this.resizer = new ResizeObserver(() => this.applyView());
 		this.resizer.observe(this.el);
 		this.component.load();
@@ -188,6 +214,8 @@ export class TocView {
 	}
 
 	destroy(): void {
+		this.endTool();
+		this.el.win.clearTimeout(this.inkTimer);
 		this.el.win.clearTimeout(this.timer);
 		this.resizer.disconnect();
 		this.editing?.blur();
@@ -208,6 +236,18 @@ export class TocView {
 			if (this.editing || this.drag) return this.schedule();
 			this.render(true);
 		}, REFRESH_MS);
+	}
+
+	/** Ink changed on the board: only the cells' ink is drawn again (soon: the pen's stroke waits for it). */
+	scheduleInk(): void {
+		const win = this.el.win;
+		win.clearTimeout(this.inkTimer);
+		this.inkTimer = win.setTimeout(() => this.refreshInk(), INK_REFRESH_MS);
+	}
+
+	/** The tool on in this view (pen, highlighter, text color), if any. */
+	hasTool(): boolean {
+		return !!this.tool;
 	}
 
 	/** Another page shown on the board: its top level. */
@@ -300,10 +340,15 @@ export class TocView {
 	// ---------- drawing ----------
 
 	private render(keepView: boolean): void {
-		const opts = this.options();
+		const opts = { ...this.options() };
+		// The pen writes on cells at their size on the board (strokes land where they show).
+		if (this.forcedActual) opts.actualSize = true;
 		this.component.unload();
 		this.component = new Component();
 		this.component.load();
+		// The pen's live stroke may sit in a cell: out of the cells before they are drawn again.
+		const preview = this.sheet.querySelector<SVGSVGElement>("svg.opc-ink-preview");
+		if (preview) this.el.appendChild(preview);
 		this.sheet.empty();
 		const model = this.model();
 		if (this.level.parent && !model.nodes.has(this.level.parent)) this.level = { page: this.level.page, parent: "" };
@@ -312,7 +357,7 @@ export class TocView {
 		const stored = this.ctx.data.root(this.canvas).get().tocLayouts?.[tocKey(this.level)];
 		this.arrangement = opts.mode === "simple" ? simpleArrangement(children, opts.perRow) : normalize(stored, children, opts.perRow);
 		// Locked: nothing moves (a drag pans the view); reading, the tools and going in and out still work.
-		const free = opts.mode === "free" && this.editable() && !this.locked();
+		const free = opts.mode === "free" && this.editable() && !this.locked() && !this.tool;
 		this.el.toggleClass("is-free", free);
 		this.el.toggleClass("is-locked", this.locked());
 		this.el.toggleClass("is-actual-size", opts.actualSize);
@@ -361,6 +406,8 @@ export class TocView {
 		});
 		this.renderControls(opts);
 		this.applyView(!keepView);
+		if (this.tool && !keepView) this.clearToolBar();
+		this.settle();
 		Promise.all(pending).then(
 			() => this.applyView(!keepView),
 			(e) => logError("[overpowered-canvas] table of contents: render", e),
@@ -418,9 +465,13 @@ export class TocView {
 				run();
 			});
 		};
+		// The pen, the highlighter and the text color tool, as in the column view.
+		for (const tool of this.tools()) button(`tool is-${tool}`, TOOL_ICONS[tool], this.ctx.t(TOOL_LABELS[tool]), () => this.useTool(tool), this.tool === tool);
 		button("zoom-in", "zoom-in", this.ctx.t("presentation.walk.zoomIn"), () => this.zoomBy(1.25));
 		button("zoom-out", "zoom-out", this.ctx.t("presentation.walk.zoomOut"), () => this.zoomBy(0.8));
-		button("actual", "scan", this.ctx.t("presentation.tocActualSize.name"), () => this.setOptions({ actualSize: !opts.actualSize }), opts.actualSize);
+		// The setting itself (the pen shows real size anyway while it is on).
+		const actual = this.options().actualSize;
+		button("actual", "scan", this.ctx.t("presentation.tocActualSize.name"), () => this.setOptions({ actualSize: !actual }), actual);
 		if (opts.mode === "free" && this.editable()) {
 			const locked = this.locked();
 			button("lock", locked ? "lock" : "lock-open", this.ctx.t(locked ? "presentation.toc.unlock" : "presentation.toc.lock"), () => this.toggleLock(), locked);
@@ -489,7 +540,14 @@ export class TocView {
 
 	private onDown = (evt: PointerEvent) => {
 		evt.stopPropagation();
-		const target = evt.target as HTMLElement;
+		let target = evt.target as HTMLElement;
+		// A finger the tool let through (it moves the view, or taps): what is under the overlay.
+		const overlay = !!target.closest(TOOL_OVERLAYS);
+		if (overlay && evt.pointerType === "touch") {
+			// No emulated mouse press after it (it would take the focus from a cell opened for editing).
+			evt.preventDefault();
+			target = this.underOverlays(evt.clientX, evt.clientY) ?? target;
+		}
 		if (target.closest("textarea, .opc-toc-controls")) return;
 		this.pointers.set(evt.pointerId, { x: evt.clientX, y: evt.clientY });
 		if (this.pointers.size === 2) {
@@ -513,7 +571,10 @@ export class TocView {
 		if (free && sub) moving = { kind: "sub", sub };
 		else if (free && group) moving = { kind: "block", block: group };
 		else if (free && cell) moving = { kind: "card", card: cell };
-		this.press = { id: evt.pointerId, x: evt.clientX, y: evt.clientY, moved: false, target: moving, card: cell, grip };
+		// Under a tool's overlay the arrow into a cell and the box's back button take taps here.
+		const open = overlay ? (target.closest<HTMLElement>(".opc-toc-open")?.dataset.id ?? null) : null;
+		const up = overlay && !!target.closest(".opc-toc-back");
+		this.press = { id: evt.pointerId, x: evt.clientX, y: evt.clientY, moved: false, target: moving, card: open || up ? null : cell, grip, open, up };
 	};
 
 	private onMove = (evt: PointerEvent) => {
@@ -560,6 +621,8 @@ export class TocView {
 		this.el.removeClass("is-panning");
 		if (this.drag) return this.endDrag();
 		if (press.moved) return;
+		if (press.open) return this.enter(press.open);
+		if (press.up) return this.back();
 		if (press.grip) return this.groupMenu(press.grip, evt);
 		if (!press.card) return;
 		const now = Date.now();
@@ -896,6 +959,188 @@ export class TocView {
 		input.click();
 	}
 
+	// ---------- tools: pen, highlighter, text color ----------
+
+	/** The tools offered here (by the modules that are on; none on a read-only board). */
+	private tools(): ColumnTool[] {
+		if (!this.editable()) return [];
+		const out: ColumnTool[] = [];
+		if (inkHost.api) out.push("ink");
+		if (marksHost.api) out.push("highlight", "color");
+		return out;
+	}
+
+	/** A tool button: turns the tool on (or off, when it is on). The same ink and marks as on the board. */
+	private useTool(tool: ColumnTool): void {
+		const was = this.tool;
+		this.endTool();
+		if (was === tool) return this.toolChanged();
+		this.tool = tool;
+		const ended = () => {
+			if (this.tool !== tool) return;
+			this.tool = null;
+			this.toolChanged();
+		};
+		this.toolChanged();
+		if (tool === "ink") inkHost.api?.start(this.canvas, this.inkSurface(), ended);
+		else marksHost.api?.start(this.canvas, tool satisfies MarkMode, this.markSurface(), ended);
+		// A tool that could not start (a read-only board): nothing is on.
+		if (tool === "ink" ? !inkHost.api?.active(this.canvas) : !marksHost.api?.active(this.canvas)) ended();
+		else {
+			this.clearToolBar();
+			this.ctx.events.emit("toc-tool", this.canvas, tool);
+		}
+	}
+
+	/** The tool's bar (top of the view) must not hide the box's title: the sheet moves down below it. */
+	private clearToolBar(): void {
+		const win = this.el.win;
+		win.requestAnimationFrame(() => {
+			const bar = this.el.querySelector<HTMLElement>(":scope > .opc-ink-toolbar, :scope > .opc-hl-bar");
+			const head = this.sheet.querySelector<HTMLElement>(".opc-toc-head");
+			if (!bar || !head) return;
+			const below = bar.getBoundingClientRect().bottom + 8 - head.getBoundingClientRect().top;
+			if (below <= 0) return;
+			this.view = { ...this.view, y: this.view.y + below };
+			this.applyView();
+		});
+	}
+
+	private endTool(): void {
+		const tool = this.tool;
+		this.tool = null;
+		if (tool === "ink") inkHost.api?.stop(this.canvas);
+		else if (tool) marksHost.api?.stop(this.canvas);
+	}
+
+	/** Draws again for the tool now on: cells at their real size while the pen is on, no arranging. */
+	private toolChanged(): void {
+		this.forcedActual = this.tool === "ink" && !this.options().actualSize;
+		this.el.toggleClass("has-tool", !!this.tool);
+		this.render(true);
+	}
+
+	private cardEl(id: string): HTMLElement | null {
+		return this.sheet.querySelector<HTMLElement>(`.opc-toc-card[data-id="${CSS.escape(id)}"]`);
+	}
+
+	/** The element of the view under a screen point, below the tools' overlays. */
+	private underOverlays(x: number, y: number): HTMLElement | null {
+		for (const el of this.el.doc.elementsFromPoint(x, y)) {
+			if (!el.instanceOf(HTMLElement) || !this.el.contains(el)) continue;
+			if (el.closest(TOOL_OVERLAYS) || el.closest(".opc-ink-preview")) continue;
+			return el;
+		}
+		return null;
+	}
+
+	/** The cell shown at its board size under (or right next to) a screen point. */
+	private actualCardAt(x: number, y: number): string | null {
+		let best: { id: string; d: number } | null = null;
+		for (const card of Array.from(this.sheet.querySelectorAll<HTMLElement>(".opc-toc-card.is-actual"))) {
+			const r = card.getBoundingClientRect();
+			const d = Math.hypot(Math.max(r.left - x, 0, x - r.right), Math.max(r.top - y, 0, y - r.bottom));
+			if (d <= INK_REACH && card.dataset.id && (!best || d < best.d)) best = { id: card.dataset.id, d };
+		}
+		return best?.id ?? null;
+	}
+
+	/** The board point a screen point over cell `id` stands for. */
+	private toBoard(id: string, x: number, y: number): { x: number; y: number } | null {
+		const node = this.canvas.nodes.get(id);
+		const r = this.cardEl(id)?.getBoundingClientRect();
+		if (!node || !r || !r.width) return null;
+		const k = node.width / r.width;
+		return { x: node.x + (x - r.left) * k, y: node.y + (y - r.top) * k };
+	}
+
+	/** The zoom and pan, to put back when a palm moved them before the pen came. */
+	private viewState(): ViewState {
+		return {
+			get: () => ({ ...this.view }),
+			set: (state) => {
+				this.view = { ...(state as View) };
+				this.applyView();
+			},
+		};
+	}
+
+	/**
+	 * Where the pen draws here: on the cells at their board size, in board coordinates, into the
+	 * same ink as on the board and in the column view (a stroke lands on the same words). Ink only.
+	 */
+	inkSurface(): InkSurface {
+		return {
+			host: this.el,
+			inkOnly: true,
+			toCanvas: (x, y, press) => {
+				if (press) this.inkCard = this.actualCardAt(x, y);
+				const id = this.inkCard ?? this.actualCardAt(x, y);
+				return id ? this.toBoard(id, x, y) : null;
+			},
+			scale: () => {
+				const id = this.inkCard ?? "";
+				const node = this.canvas.nodes.get(id);
+				const r = this.cardEl(id)?.getBoundingClientRect();
+				return node && r?.width ? r.width / node.width : this.view.zoom;
+			},
+			placePreview: (svg, layer, x, y) => {
+				const id = this.inkCard ?? (Number.isFinite(x) ? this.actualCardAt(x, y) : null);
+				const card = id ? this.cardEl(id) : null;
+				const node = id ? this.canvas.nodes.get(id) : undefined;
+				if (!card || !node) return;
+				if (svg.parentElement !== card) card.appendChild(svg);
+				layer.setAttribute("transform", `translate(${-node.x} ${-node.y})`);
+				for (const el of Array.from(this.sheet.querySelectorAll(".opc-toc-cell.is-inking"))) el.removeClass("is-inking");
+				card.closest(".opc-toc-cell")?.addClass("is-inking");
+			},
+			settled: () => new Promise<void>((resolve) => this.settleWaiters.push(resolve)),
+			view: this.viewState(),
+			pan: (dx, dy) => {
+				this.view = { ...this.view, x: this.view.x + dx, y: this.view.y + dy };
+				this.applyView();
+			},
+		};
+	}
+
+	/** Where the highlighter and the text color tool mark words here. */
+	markSurface(): MarkSurface {
+		return {
+			host: this.el,
+			view: this.viewState(),
+			cardAt: (x, y) => {
+				const card = this.el.doc.elementFromPoint(x, y)?.closest<HTMLElement>(".opc-toc-card");
+				const node = card?.dataset.id ? this.canvas.nodes.get(card.dataset.id) : undefined;
+				if (!card || !node || card.hasClass("is-editing")) return null;
+				const root = card.querySelector<HTMLElement>(".markdown-preview-sizer") ?? card.querySelector<HTMLElement>(".opc-columns-body");
+				return root ? { node, root } : null;
+			},
+		};
+	}
+
+	/** Draws the cells' ink again (strokes added, erased or moved), nothing else. */
+	refreshInk(): void {
+		for (const card of Array.from(this.sheet.querySelectorAll<HTMLElement>(".opc-toc-card.is-actual, .opc-toc-card.is-drawing"))) {
+			const node = card.dataset.id ? this.canvas.nodes.get(card.dataset.id) : undefined;
+			if (!node) continue;
+			card.querySelector(".opc-columns-ink")?.remove();
+			this.faces.drawInk(card, node, card.hasClass("is-drawing"));
+			// The pen's live preview stays on top.
+			const preview = card.querySelector(":scope > svg.opc-ink-preview");
+			if (preview) card.appendChild(preview);
+		}
+		this.settle();
+	}
+
+	/** Committed ink is in the DOM now: resolve those waiting once it is painted. */
+	private settle(): void {
+		if (!this.settleWaiters.length) return;
+		const waiting = this.settleWaiters;
+		this.settleWaiters = [];
+		const win = this.el.win;
+		win.requestAnimationFrame(() => win.requestAnimationFrame(() => waiting.forEach((f) => f())));
+	}
+
 	// ---------- editing ----------
 
 	/** Edits a text card in its cell; the change goes to the board card (one undo step). */
@@ -971,10 +1216,16 @@ export function enableToc(ctx: ModuleContext<object>, options: () => TocOptions,
 	const toggle = (canvas: CanvasLike) => (views.has(canvas) ? close(canvas) : open(canvas));
 
 	const schedule = (canvas: CanvasLike) => views.get(canvas)?.schedule();
-	ctx.on("node-set-data", (node) => schedule(node.canvas));
-	ctx.on("node-extra-change", (node) => schedule(node.canvas));
-	ctx.on("node-added", (node) => schedule(node.canvas));
-	ctx.on("node-removed", (node) => schedule(node.canvas));
+	// Ink changes only draw the ink again (fast, the pen's stroke stays until it shows); the rest redraws.
+	const isInk = (node: CanvasNodeLike) => ctx.data.node(node).get().kind === "ink";
+	const changed = (node: CanvasNodeLike) => (isInk(node) ? views.get(node.canvas)?.scheduleInk() : schedule(node.canvas));
+	ctx.on("node-set-data", changed);
+	ctx.on("node-extra-change", changed);
+	ctx.on("node-added", changed);
+	ctx.on("node-removed", changed);
+	ctx.on("node-moved", (node) => {
+		if (isInk(node)) views.get(node.canvas)?.scheduleInk();
+	});
 	ctx.on("edge-added", (edge) => schedule(edge.canvas));
 	ctx.on("edge-removed", (edge) => schedule(edge.canvas));
 	ctx.on("history-apply", schedule);
@@ -991,6 +1242,8 @@ export function enableToc(ctx: ModuleContext<object>, options: () => TocOptions,
 			const view = views.get(canvas);
 			if (!view || ctx.activeCanvas() !== canvas || view.isEditing()) return;
 			if ((evt.target as HTMLElement | null)?.closest?.("textarea, input, [contenteditable=true]")) return;
+			// Esc with a tool on ends the tool (the tool handles it), not the view.
+			if (evt.key === "Escape" && view.hasTool()) return;
 			if (evt.key === "Escape") close(canvas);
 			else if (evt.key === "Backspace") view.back();
 			else return;
