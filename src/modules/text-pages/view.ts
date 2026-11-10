@@ -10,6 +10,7 @@ import { pagesHost, type PagesSource } from "../pages/api";
 import { renderPagesBar } from "../pages/bar";
 import { mutate } from "../shared";
 import { buildBook, headingMarkdown, withCardText, type Book, type BookItem, type BookPage } from "./book";
+import { escapeMarkdown, renderTitle } from "../../ui/card-title";
 
 export const TEXT_PAGES_VIEW = "opc-text-pages";
 
@@ -160,7 +161,7 @@ export class TextPagesView extends FileView {
 			alive: () => this.contentEl.isConnected,
 			pages: () => book.pages.filter((p) => p.id).map((p) => ({ id: p.id, anchor: p.anchor!, root: "", ...(p.parent ? { parent: p.parent } : {}) })),
 			current: () => this.page,
-			title: (id) => book.pages.find((p) => p.id === id)?.title ?? file.basename,
+			title: (id) => book.pages.find((p) => p.id === id)?.title ?? escapeMarkdown(file.basename),
 			count: (id) => [...book.pageOf.values()].filter((p) => p === id).length,
 			show: (id) => void this.navigate(id),
 		};
@@ -199,7 +200,7 @@ export class TextPagesView extends FileView {
 		const source = this.pagesSource();
 		if (source && book.pages.length > 1) {
 			const bar = this.contentEl.createDiv({ cls: "opc-pages-bar opc-text-bar" });
-			renderPagesBar(bar, source, this.ctx.t, () => void pagesHost.api?.openIndex());
+			renderPagesBar(this.app, bar, source, this.ctx.t, () => void pagesHost.api?.openIndex());
 		}
 		const scrollEl = this.contentEl.createDiv({ cls: "opc-text-scroll" });
 		const article = this.pageShell(scrollEl);
@@ -261,7 +262,8 @@ export class TextPagesView extends FileView {
 		pending.push(MarkdownRenderer.render(this.app, text, body, this.file?.path ?? "", owner));
 		if (!item.opens) return;
 		const target = this.book?.pages.find((p) => p.id === item.opens);
-		const link = block.createEl("a", { cls: "opc-text-pagelink", text: target?.title ?? this.ctx.t("pages.link") });
+		const link = block.createEl("a", { cls: "opc-text-pagelink" });
+		this.pageTitle(link.createSpan(), target?.title, this.ctx.t("pages.link"));
 		setIcon(link.createSpan({ cls: "opc-text-pagelink-icon" }), "arrow-right-from-line");
 		this.wirePageLink(link, item.opens, print);
 	}
@@ -269,10 +271,16 @@ export class TextPagesView extends FileView {
 	private drawBackLink(page: BookPage, el: HTMLElement): void {
 		const parent = this.book?.pages.find((p) => p.id === (page.parent ?? ""));
 		const row = el.createDiv({ cls: "opc-text-back", attr: { dir: "auto" } });
-		const link = row.createEl("a", { cls: "opc-text-pagelink", text: parent?.title ?? this.ctx.t("pages.main") });
+		const link = row.createEl("a", { cls: "opc-text-pagelink" });
+		this.pageTitle(link.createSpan(), parent?.title, this.ctx.t("pages.main"));
 		setIcon(link.createSpan({ cls: "opc-text-pagelink-icon" }), "arrow-left-from-line");
 		const parentId = page.parent ?? "";
 		this.wirePageLink(link, parentId, !!el.closest(".print"), page.anchor);
+	}
+
+	/** A page's title (one line of Markdown) formatted as on its card; `fallback` is plain text. */
+	private pageTitle(el: HTMLElement, title: string | undefined, fallback: string): void {
+		renderTitle(this.app, el, title ?? escapeMarkdown(fallback), this.file?.path ?? "");
 	}
 
 	private wirePageLink(link: HTMLAnchorElement, page: string, print: boolean, card?: string): void {
@@ -297,7 +305,7 @@ export class TextPagesView extends FileView {
 			const button = nav.createEl("button", { attr: { "aria-label": label } });
 			button.disabled = !target;
 			setIcon(button.createSpan({ cls: "opc-text-pagelink-icon" }), icon);
-			button.createSpan({ text: target?.title ?? label });
+			this.pageTitle(button.createSpan(), target?.title, label);
 			if (target) navControl(button, () => void this.navigate(target.id));
 		};
 		step(book.pages[at - 1], this.rtl ? "chevron-right" : "chevron-left", this.ctx.t("textPages.previous"));

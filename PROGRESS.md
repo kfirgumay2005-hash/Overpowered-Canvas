@@ -11,7 +11,7 @@ When resuming: read this file and `git log`, then continue with the first item t
 | 1 | Column mode: finger tap on a card with a drawing tool on | IMPROVEMENT (bug) | done |
 | 2 | Drawing: embed selected strokes into a card / take them out | IMPROVEMENT | done |
 | 3 | Drawing: palm rejection with Scribble on (iPad) | IMPROVEMENT (bug) | done |
-| 4 | Raw HTML/Markdown in grid titles and other card-text labels | IMPROVEMENT (bug) | |
+| 4 | Raw HTML/Markdown in grid titles and other card-text labels | IMPROVEMENT (bug) | done |
 | 5 | Grid mode: nested sub-groups | IMPROVEMENT | |
 | 6 | Grid mode: handwriting tools | NEW (tools in the grid view) | |
 | 7 | Grid mode: lock layout toggle | NEW | |
@@ -142,3 +142,43 @@ iPad with Scribble on and off: writing on the open board with the hand resting, 
 column view, and (after item 6) in the table of contents.
 Tutorial "Drawing" → "Draw!": a paragraph on palm rejection (5 locales). Show me in English:
 Drawing 11/11, Column view 12/12. Tests 836/836, lint clean.
+
+## 4. Raw HTML / Markdown in titles (done)
+
+Classification: IMPROVEMENT (bug). Root cause: every label made from a card's text used
+`titleOf()` (pages/logic.ts), a plain-text cleanup that removed `#`, `*_~=` and links but not
+HTML, so the `<mark style=…>` the highlighter writes (and `<span style="color…">` of the text
+color tool) showed as text; formatting was lost everywhere. (In the user's screenshot the
+breadcrumb looked right only because that card had no highlight: with one it showed the same raw
+tag, reproduced below.)
+
+Fix: one shared path, `src/ui/card-title.ts` + `src/ui/title-text.ts` (pure, 3 unit tests):
+- `titleMarkdown(text)`: the first non-empty line without heading / list / task / quote marks,
+  embeds turned into links;
+- `renderTitle(app, el, md, path)`: rendered by Obsidian's `MarkdownRenderer` (the cards' own
+  renderer), the paragraph unwrapped, one line with an ellipsis (`ui/card-title.css`), `dir=auto`
+  (the title's own direction, as on the card), links inert inside controls; plain text shows
+  until the render is done;
+- `plainTitle(text)` for notices / tooltips / debug: also strips HTML tags and decodes entities
+  (`titleOf` now delegates to it); `escapeMarkdown` for file and group names.
+Every place a card's text is shown outside the card, and what was found:
+- table of contents (grid) title: raw → formatted (`toc.ts renderTitle`);
+- pages bar breadcrumb (board, notes with pages, text pages): raw HTML when the page's card had a
+  highlight → formatted (`renderPagesBar` takes the app; `PagesSource.title` is now one line of
+  Markdown);
+- pages index (side panel): raw → formatted;
+- text pages: page links, back links, previous / next buttons: raw → formatted (book titles are
+  Markdown now);
+- note-link hover preview header (`node-links`): marks stripped only partly → formatted;
+- canvas search: no labels, but it matched the raw HTML (a phrase across a highlight wasn't
+  found, "background" matched highlighted cards) → tags removed before matching;
+- notices naming a page ("moved to page…", placing banner) and debug notices: plain text, tags
+  now stripped;
+- checked, nothing to fix: column view (shows the cards themselves, rendered), minimap (no text),
+  tutorials (their own strings), walk hints (no text), table of contents cells (rendered cards).
+Tested (harness, titles.canvas: a page whose first card is the screenshot's text):
+before: grid title and crumb text `…è <mark style"background: #ffd43b80;">più grande</mark>`;
+after: `(📖)se il calcolo invece è più grande` with a real `<mark>` (background
+rgba(255, 212, 59, 0.5)), one line, ellipsis; pages index entry and text-pages crumbs the same.
+Tutorials "Big maps in pages" 14/14 and "Table of contents" 8/8 (no text change needed: the
+behavior is what they describe). Tests 839/839, lint clean.

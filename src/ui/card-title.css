@@ -1,0 +1,23 @@
+/* A card's first line shown as a formatted one-line title (src/ui/card-title.ts). */
+.opc-title {
+	display: block;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.opc-title :is(p, div, span.cm-highlight) {
+	display: inline;
+	margin: 0;
+}
+.opc-title mark {
+	border-radius: 2px;
+}
+/* Its links are text here: a press goes to the control the title is on. */
+.opc-title a {
+	pointer-events: none;
+}
+.opc-title img {
+	max-height: 1.2em;
+	vertical-align: middle;
+}

@@ -11,6 +11,7 @@ import { boundsOf, branchOf, cardLink, freeRegion, pageChildren, pointLinksAt, t
 import { logError } from "../../core/log";
 import { debugMode, debugNotice } from "../../core/debug";
 import { joinTopLane, LANE_RANK } from "../../ui/top-lane";
+import { escapeMarkdown, plainTitle, renderTitle, titleMarkdown } from "../../ui/card-title";
 
 export const PAGES_VIEW = "opc-pages";
 
@@ -161,16 +162,17 @@ export const pagesModule = defineModule<PagesSettings>({
 			if (from !== page) ctx.events.emit("page-shown", canvas, page);
 			if (debugMode()) {
 				const all = ["", ...pagesOf(canvas).map((p) => p.id)];
-				debugNotice("debug.nav.shown", { page: pageTitle(canvas, page), at: `${all.indexOf(page) + 1} / ${all.length}`, place: path ?? "" });
+				debugNotice("debug.nav.shown", { page: plainTitle(pageTitle(canvas, page)), at: `${all.indexOf(page) + 1} / ${all.length}`, place: path ?? "" });
 			}
 		};
 
+		/** A page's title as one line of Markdown (its first card's first line). */
 		const pageTitle = (canvas: CanvasLike, page: string): string => {
-			if (!page) return canvas.view.file?.basename ?? ctx.t("pages.main");
+			if (!page) return escapeMarkdown(canvas.view.file?.basename ?? ctx.t("pages.main"));
 			const info = pagesOf(canvas).find((p) => p.id === page);
 			const root = info ? canvas.nodes.get(info.root) : undefined;
-			const text = root ? nodeLabel(root) : "";
-			return text || ctx.t("pages.untitled");
+			const text = root ? (nodeType(root) === "text" ? titleMarkdown(root.text ?? "") : escapeMarkdown(nodeLabel(root))) : "";
+			return text || escapeMarkdown(ctx.t("pages.untitled"));
 		};
 
 		// ---------- the bar at the top of the board ----------
@@ -192,7 +194,7 @@ export const pagesModule = defineModule<PagesSettings>({
 				bar.addEventListener("pointerdown", (evt) => evt.stopPropagation());
 				bars.set(canvas, bar);
 			}
-			renderPagesBar(bar, sourceOf(canvas), ctx.t, () => void openIndex(), ctx.settings.onePage);
+			renderPagesBar(ctx.app, bar, sourceOf(canvas), ctx.t, () => void openIndex(), ctx.settings.onePage);
 		};
 
 		/** The pages of a canvas on the board, for the bar and the index. */
@@ -920,7 +922,7 @@ class PagesView extends ItemView {
 					fold(!folded.has(id));
 				});
 			}
-			item.createSpan({ cls: "opc-pages-title", text: source.title(id) });
+			renderTitle(this.ctx.app, item.createSpan({ cls: "opc-pages-title" }), source.title(id), source.path ?? "");
 			item.createSpan({ cls: "opc-pages-count", text: String(source.count(id)) });
 			if (id && source.merge) {
 				const merge = item.createEl("button", { cls: "clickable-icon opc-pages-merge", attr: { "aria-label": this.ctx.t("pages.merge") } });

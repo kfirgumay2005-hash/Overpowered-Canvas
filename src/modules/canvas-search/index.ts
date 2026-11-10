@@ -73,7 +73,8 @@ class CanvasSearchBar {
 		for (const node of this.canvas.nodes.values()) {
 			const type = nodeType(node);
 			let text = "";
-			if (type === "text") text = node.text ?? "";
+			// What the card shows: the HTML the highlighter and text colors write is not searched.
+			if (type === "text") text = (node.text ?? "").replace(/<[^>]*>/g, "");
 			else if (type === "group") text = node.label ?? "";
 			else if (type === "link") text = String((node as unknown as { url?: string }).url ?? "");
 			else if (type === "file" && node.file instanceof TFile) {

@@ -5,9 +5,9 @@ import type { CanvasLike, CanvasNodeLike } from "../../internals/types";
 import { nodeText } from "../canvas-markdown/structure";
 import { cssColor } from "../minimap/logic";
 import { pagesHost } from "../pages/api";
-import { titleOf } from "../pages/logic";
 import { canvasDirection, mutate, nodeType } from "../shared";
 import { joinTopLane, LANE_RANK } from "../../ui/top-lane";
+import { renderTitle, titleMarkdown } from "../../ui/card-title";
 import { CardFaces } from "./card-face";
 import { zoomAround, type View } from "./column-layout";
 import { mapModel } from "./map-model";
@@ -232,14 +232,19 @@ export class TocView {
 		return (this.ctx.data.root(this.canvas).get().pages ?? []).some((p) => p.id === this.level.page);
 	}
 
-	private title(): string {
+	/** The box's title: the parent card's first line, formatted as on the card (a group's name, the file's name). */
+	private renderTitle(el: HTMLElement): void {
 		const { parent, page } = this.level;
 		const node = parent ? this.canvas.nodes.get(parent) : undefined;
-		if (node) return titleOf(nodeType(node) === "group" ? (node.label ?? "") : nodeText(node.getData())) || "…";
-		if (!page) return this.canvas.view.file?.basename ?? "";
-		const info = (this.ctx.data.root(this.canvas).get().pages ?? []).find((p) => p.id === page);
-		const root = info ? this.canvas.nodes.get(info.root) : undefined;
-		return root ? titleOf(nodeText(root.getData())) : "";
+		const info = !node && page ? (this.ctx.data.root(this.canvas).get().pages ?? []).find((p) => p.id === page) : undefined;
+		const card = node ?? (info ? this.canvas.nodes.get(info.root) : undefined);
+		const path = this.canvas.view.file?.path ?? "";
+		if (card && nodeType(card) !== "group") {
+			const md = titleMarkdown(nodeText(card.getData()));
+			if (md) return renderTitle(this.app, el, md, path);
+		}
+		el.addClass("opc-title");
+		el.setText(card ? (nodeType(card) === "group" ? card.label ?? "" : "") || "…" : (this.canvas.view.file?.basename ?? ""));
 	}
 
 	// ---------- drawing ----------
@@ -265,7 +270,7 @@ export class TocView {
 		this.backEl.toggle(this.canGoBack());
 
 		const head = this.sheet.createDiv({ cls: "opc-toc-head" });
-		head.createSpan({ cls: "opc-toc-title", text: this.title() });
+		this.renderTitle(head.createSpan({ cls: "opc-toc-title" }));
 		if (this.canGoBack()) {
 			const up = head.createEl("button", { cls: "clickable-icon opc-toc-back", attr: { "aria-label": this.ctx.t("presentation.toc.back") } });
 			setIcon(up, "corner-left-up");

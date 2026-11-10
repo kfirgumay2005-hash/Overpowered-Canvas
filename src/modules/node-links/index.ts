@@ -5,6 +5,7 @@ import { embedRegistry, type EmbedContext } from "../../internals/app";
 import type { CanvasLike, CanvasNodeLike, CanvasViewLike } from "../../internals/types";
 import { pagesHost } from "../pages/api";
 import { centerOn, selectedNodes } from "../shared";
+import { renderTitle, titleMarkdown } from "../../ui/card-title";
 
 /** "#abc123" → "abc123" for node subpaths; headings and blocks (#^…) are not node ids. */
 export function nodeIdFromSubpath(subpath: string | undefined): string | null {
@@ -43,7 +44,11 @@ class NodeEmbed extends Component {
 		const node = data.nodes?.find((n) => n.id === this.nodeId);
 		const header = el.createDiv({ cls: "opc-node-embed-header" });
 		setIcon(header.createSpan({ cls: "opc-node-embed-icon" }), "layout-dashboard");
-		header.createSpan({ text: `${this.file.basename} › ${node ? labelOf(node, this.labels.group) : this.nodeId}` });
+		header.createSpan({ text: `${this.file.basename} › ` });
+		// The card's first line formatted as on the card (highlights, colors), never raw Markdown.
+		const title = header.createSpan({ cls: "opc-node-embed-title" });
+		if (node?.type === "text" && typeof node.text === "string" && titleMarkdown(node.text)) renderTitle(app, title, titleMarkdown(node.text), this.file.path);
+		else title.setText(node ? labelOf(node, this.labels.group) : this.nodeId);
 		header.setAttr("aria-label", this.labels.open);
 		header.addEventListener("click", (evt) => void app.workspace.openLinkText(`${this.file.path}#${this.nodeId}`, this.ctx.sourcePath, evt.ctrlKey || evt.metaKey));
 		const body = el.createDiv({ cls: "opc-node-embed-content markdown-rendered" });
