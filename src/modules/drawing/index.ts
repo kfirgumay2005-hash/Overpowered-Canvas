@@ -17,6 +17,8 @@ import { DRAWING_DEFAULTS, INK_DEFAULT, InkToolbar, PEN_TOOLS, sanitizePens, typ
 import { logError } from "../../core/log";
 import { inkHost, type InkSurface } from "./api";
 import { enableInkTools } from "./ink-tools";
+import { enableEmbed } from "./embed";
+import { blurTextFields, PalmGuard } from "../../ui/palm-guard";
 
 type Ctx = ModuleContext<DrawingSettings>;
 
@@ -96,6 +98,13 @@ function boardSurface(canvas: CanvasLike): InkSurface {
 			coverView(canvas, svg);
 		},
 		pan: (dx, dy) => canvas.setViewport(canvas.x - dx / canvas.scale, canvas.y - dy / canvas.scale, canvas.zoom),
+		view: {
+			get: () => ({ x: canvas.x, y: canvas.y, zoom: canvas.zoom }),
+			set: (state) => {
+				const v = state as { x: number; y: number; zoom: number };
+				canvas.setViewport(v.x, v.y, v.zoom);
+			},
+		},
 		settled: () => nextPaint(canvas.wrapperEl.win),
 	};
 }
@@ -131,6 +140,7 @@ class InkSession {
 	private current: {
 		mode: "draw" | "erase" | "lasso" | "move" | "scale" | "line" | "pan";
 		pointerId: number;
+		pointerType?: string;
 		points: InkPoint[];
 		erasing: boolean;
 		changed: boolean;
@@ -145,7 +155,8 @@ class InkSession {
 		/** Pen strokes: board distance under which a new sample replaces the last one. */
 		merge?: number;
 	} | null = null;
-	private penUntil = 0;
+	/** Palm rejection (pen contacts claimed from the system, palms refused or cancelled). */
+	private readonly guard: PalmGuard;
 	/** The drag button: until it is pressed again or a tool is picked, input moves the view. */
 	private panning = false;
 	private lastCarrier: CanvasNodeLike | null = null;
@@ -161,11 +172,15 @@ class InkSession {
 		private readonly onClose: () => void,
 		private readonly rerender: (node: CanvasNodeLike) => void,
 		private readonly onHandwrite: () => void = () => {},
+		private readonly onEmbed: ((at: { x: number; y: number }) => void) | null = null,
 	) {
 		const host = surface.host;
 		// A hovering pen shows its brush before any press.
 		syncCanvasRect(canvas);
 		this.overlay = host.createDiv({ cls: "opc-ink-overlay" });
+		this.guard = new PalmGuard(this.overlay, surface.view);
+		// Nothing to write text into under the pen (the system's handwriting input would take it).
+		blurTextFields(host.doc);
 		this.preview = host.createSvg("svg", { cls: "opc-ink-preview" });
 		this.layer = this.preview.createSvg("g");
 		surface.placePreview(this.preview, this.layer, Number.NaN, Number.NaN);
@@ -192,8 +207,10 @@ class InkSession {
 			close: () => this.onClose(),
 			colorName: (color) => colorName(ctx.t, color),
 			hiddenTools: surface.inkOnly ? ["line", "arrow"] : [],
-			// Handwriting → text makes a card on the board: not offered in other views.
+			// Handwriting → text makes a card on the board: not offered in other views (nor strokes
+			// put into a new card, which the other views would not show).
 			...(surface.inkOnly ? {} : { handwrite: () => this.onHandwrite() }),
+			...(surface.inkOnly || !onEmbed ? {} : { embed: (at: { x: number; y: number }) => onEmbed(at) }),
 		});
 		host.addClass("opc-drawing");
 		this.overlay.addEventListener("pointerdown", this.onDown);
@@ -207,6 +224,7 @@ class InkSession {
 
 	destroy(): void {
 		this.clearSelection();
+		this.guard.destroy();
 		this.surface.host.win.removeEventListener("keydown", this.onKey, true);
 		this.overlay.remove();
 		this.preview.remove();
@@ -236,16 +254,21 @@ class InkSession {
 	// ---------- pointer handling ----------
 
 	private onDown = (evt: PointerEvent) => {
-		if (evt.pointerType === "pen") this.penUntil = Date.now() + 800;
+		// Palm rejection: a touch while the pen is in use, or a palm-sized one, is refused.
+		if (this.guard.down(evt)) return;
+		const cur = this.current;
+		if (evt.pointerType === "pen" && cur && cur.mode === "draw" && cur.pointerType === "touch") {
+			// The pen landed while a touch was drawing: that touch was a palm. Its stroke goes.
+			this.current = null;
+			window.clearTimeout(cur.holdTimer);
+			this.layer.querySelectorAll(".opc-ink-live").forEach((el) => el.remove());
+		}
 		if (evt.pointerType === "touch") {
-			// Palm rejection: ignore touches while a pen is in use.
-			if (Date.now() < this.penUntil) {
-				evt.preventDefault();
-				evt.stopPropagation();
+			// Palm navigation or the drag button: fingers pan and zoom (the event reaches the view).
+			if (this.ctx.settings.penOnly || this.panning) {
+				this.guard.pass(evt);
 				return;
 			}
-			// Palm navigation or the drag button: fingers pan and zoom (the event reaches the canvas).
-			if (this.ctx.settings.penOnly || this.panning) return;
 		}
 		if (evt.pointerType === "mouse" && evt.button !== 0) return; // middle/right: core panning
 		// A pen or mouse can't press twice: the last stroke lost its release (it happens on
@@ -261,7 +284,7 @@ class InkSession {
 		evt.stopPropagation();
 		capturePointer(this.overlay, evt.pointerId);
 		this.surface.placePreview(this.preview, this.layer, evt.clientX, evt.clientY);
-		const base = { pointerId: evt.pointerId, points: [] as InkPoint[], erasing: false, changed: false, holdTimer: 0, lastHold: { x: evt.clientX, y: evt.clientY }, recognized: null };
+		const base = { pointerId: evt.pointerId, pointerType: evt.pointerType, points: [] as InkPoint[], erasing: false, changed: false, holdTimer: 0, lastHold: { x: evt.clientX, y: evt.clientY }, recognized: null };
 		if (this.panning) {
 			this.current = { ...base, mode: "pan" };
 			return;
@@ -292,7 +315,7 @@ class InkSession {
 	};
 
 	private onMove = (evt: PointerEvent) => {
-		if (evt.pointerType === "pen") this.penUntil = Date.now() + 800;
+		this.guard.move(evt);
 		const cur = this.current;
 		if (!cur) this.surface.placePreview(this.preview, this.layer, evt.clientX, evt.clientY);
 		const over = this.surface.toCanvas(evt.clientX, evt.clientY, false);
@@ -329,6 +352,7 @@ class InkSession {
 	};
 
 	private onUp = (evt: PointerEvent) => {
+		this.guard.up(evt);
 		const cur = this.current;
 		if (!cur || evt.pointerId !== cur.pointerId) return;
 		this.current = null;
@@ -612,6 +636,11 @@ class InkSession {
 		this.layer.createSvg("rect", { cls: ["opc-ink-selection", "opc-ink-handle"], attr: { x: box.maxX - h / 2, y: box.maxY - h / 2, width: h, height: h } });
 	}
 
+	/** The lasso lets go of its strokes (they were moved into or out of a card). */
+	dropSelection(): void {
+		this.clearSelection();
+	}
+
 	private clearSelection(): void {
 		const carriers = [...this.selection.keys()];
 		this.selection.clear();
@@ -771,6 +800,12 @@ export const drawingModule = defineModule<DrawingSettings>({
 			},
 		});
 		enableAnchors(ctx);
+		// Strokes into a card and back out (the lasso's strokes, else the drawings selected).
+		const embedding = enableEmbed(
+			ctx,
+			(canvas) => [...(sessions.get(canvas)?.selection ?? new Map<CanvasNodeLike, Set<string>>())].map(([carrier, ids]) => ({ carrier, ids })),
+			(canvas) => sessions.get(canvas)?.dropSelection(),
+		);
 		// Handwriting → text and drawing embeds (the drawings meant: the lasso's, else the selection).
 		const tools = enableInkTools(ctx, (canvas) => sessions.get(canvas)?.lastPress ?? null, (canvas) => [...(sessions.get(canvas)?.selection.keys() ?? [])]);
 
@@ -881,7 +916,7 @@ export const drawingModule = defineModule<DrawingSettings>({
 			// The lasso or the highlighter ends first.
 			claimTool(canvas, "drawing", () => stop(canvas));
 			canvas.deselectAll();
-			sessions.set(canvas, new InkSession(ctx, canvas, surface, () => stop(canvas), rerender, () => tools.handwrite(canvas)));
+			sessions.set(canvas, new InkSession(ctx, canvas, surface, () => stop(canvas), rerender, () => tools.handwrite(canvas), (at) => embedding.menu(canvas, at)));
 			if (onEnd) ended.set(canvas, onEnd);
 			ctx.events.emit("drawing-mode-changed", canvas, ctx.settings.tool);
 		};

@@ -72,10 +72,14 @@ arrowheads, routing (curved, straight, right-angle, A\* around cards), floating 
 highlight / select connected edges, draggable bend points and labels.
 
 **Drawing** — pen, pencil, marker and highlighter with pressure and tilt (perfect-freehand),
-palm rejection, palm navigation and a drag button, the pen's eraser end, whole-stroke and partial eraser, lasso to
+palm rejection (a resting palm never draws or moves the board under the pen, also with
+Scribble on), palm navigation and a drag button, the pen's eraser end, whole-stroke and partial eraser, lasso to
 move / scale / delete / lock strokes, recent colors, smoothing, a size slider with an exact
 number box, and shape recognition (hold at the end of a stroke). Every stroke is its own
 drawing; resize a drawing's card and its strokes scale with it. Marks drawn on a card stick to it: they move, copy and delete with the card.
+Strokes picked with the lasso can be put into a card (**Put into a card**: a new card made
+around them, or the card under them) and taken out again; a card made for a drawing stretches
+it when resized, and shows it in the column view and the table of contents.
 Highlight words inside a card without editing it, or color their letters (swipe or tap with a pen
 or the mouse; the highlight or color goes into the card's text, so it shows in every view and in
 Markdown; **Neutral** writes Obsidian's own `==highlight==` in your theme's color). Free lines and arrows whose ends stick to cards and that
@@ -104,7 +108,9 @@ for handwriting. The same view also runs top to bottom (the root on top, each le
 it), and cards wider than the way down are cut where the next level starts. The table of contents
 shows a card's children together as cells of a grid (arrows go into a cell's own grid, a back
 button goes up): a simple grid of N cells per row, or a free arrangement where cells dragged
-beside or below each other form colored cell groups, saved with the canvas. Handwriting stays smooth on boards with thousands of strokes; the drawing
+beside or below each other form colored cell groups (with sub-groups inside them, your own colors,
+thickness, line and corners per group, and a lock against moving them by accident), saved with the canvas. The pen, highlighter and text
+color work on the cells too, into the same ink and marks as on the board. Handwriting stays smooth on boards with thousands of strokes; the drawing
 bar turns pen writing into text cards (the device's own handwriting recognition), cards can show
 their text in a handwriting font, and a drawing can be embedded in a note as a picture that follows
 it when it changes. A canvas can also switch to fixed-size pages (A3, A4, A5, Letter, Legal or a

@@ -4,6 +4,7 @@
  * and colors.
  */
 import type { CanvasLike, CanvasNodeLike } from "../../internals/types";
+import type { ViewState } from "../../ui/palm-guard";
 
 /** Highlight the words (a background), or color their text. */
 export type MarkMode = "highlight" | "color";
@@ -20,6 +21,8 @@ export interface MarkTarget {
 export interface MarkSurface {
 	/** The overlay, the previews and the bar go in here. */
 	host: HTMLElement;
+	/** The view's position and zoom, so a palm's pan can be undone when the pen lands. */
+	view?: ViewState;
 	/** The card at a screen point (the tool's overlay is out of the way while this runs). */
 	cardAt(x: number, y: number): MarkTarget | null;
 }

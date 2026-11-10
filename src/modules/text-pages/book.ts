@@ -7,7 +7,8 @@ import type { CanvasFileData } from "../../data/json-canvas";
 import { nodeText, pageOfNode, pagesOfRoot, buildStructure, type PageRef } from "../canvas-markdown/structure";
 import type { OutlineItem } from "../canvas-markdown/outline";
 import type { AutoHeaders } from "../canvas-markdown/headers";
-import { titleOf, pageChildren, withoutLink } from "../pages/logic";
+import { pageChildren, withoutLink } from "../pages/logic";
+import { escapeMarkdown, titleMarkdown } from "../../ui/title-text";
 
 export interface BookItem {
 	/** Canvas id of the card; absent for the list of unconnected cards. */
@@ -25,6 +26,7 @@ export interface BookItem {
 export interface BookPage {
 	/** "" for the main page. */
 	id: string;
+	/** One line of Markdown (shown formatted, see ui/card-title.ts). */
 	title: string;
 	parent?: string;
 	/** The card of the parent page this page comes from. */
@@ -81,7 +83,7 @@ export function buildBook(data: CanvasFileData, opts: BookOptions): Book {
 	const rootOf = new Map(pages.map((p) => [p.root, p]));
 	const titleOfPage = (ref: PageRef) => {
 		const root = byId.get(ref.root);
-		return (root && titleOf(nodeText(root))) || opts.untitled;
+		return (root && titleMarkdown(nodeText(root))) || escapeMarkdown(opts.untitled);
 	};
 
 	const toItem = (item: OutlineItem, ids: Map<string, string>): BookItem => {
@@ -113,7 +115,7 @@ export function buildBook(data: CanvasFileData, opts: BookOptions): Book {
 		if (rootAlias) items = [...items].sort((a, b) => Number(b.id === rootAlias) - Number(a.id === rootAlias));
 		return {
 			id,
-			title: ref ? titleOfPage(ref) : opts.mainTitle,
+			title: ref ? titleOfPage(ref) : escapeMarkdown(opts.mainTitle),
 			items: items.map((i) => toItem(i, ids)),
 			...(ref?.parent && known.has(ref.parent) ? { parent: ref.parent } : ref ? { parent: "" } : {}),
 			...(ref ? { anchor: ref.anchor } : {}),

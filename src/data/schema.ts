@@ -191,6 +191,8 @@ export interface OpcRoot {
 	 * main page's top level) → how its children's cells are arranged and grouped.
 	 */
 	tocLayouts?: Record<string, TocArrangement>;
+	/** Table of contents: the layout is locked (cells and groups can't be moved; reading, tools and navigating still work). */
+	tocLocked?: boolean;
 	/** Drawing embeds: SVG file path (in the vault) → the drawings it shows; written again when they change. */
 	inkEmbeds?: Record<string, string[]>;
 	/** Page format: the board shows sheets of this paper size (absent: the infinite canvas). */
@@ -211,15 +213,41 @@ export interface PaperSpec {
 	stacks?: Record<string, { x: number; y: number; count?: number }>;
 }
 
-/** A cell (the card id), or cells side by side ("row") or one under another ("col"). */
-export type TocTree = string | { dir: "row" | "col"; items: TocTree[] };
+/**
+ * A cell (the card id), or cells side by side ("row") or one under another ("col"). A split with
+ * `group` is a sub-group: its cells inside an outline of their own, inside the block's group.
+ */
+export type TocTree = string | TocSplit;
 
-/** A cell of the table of contents' grid: one card, or a cell group (with its outline color). */
-export interface TocBlock {
+export interface TocSplit {
+	dir: "row" | "col";
+	items: TocTree[];
+	group?: TocSubGroup;
+}
+
+export const TOC_LINES = ["solid", "dashed", "dotted"] as const;
+export type TocLine = (typeof TOC_LINES)[number];
+
+/** How a group's or sub-group's outline looks; absent fields use the settings' defaults. */
+export interface TocGroupStyle {
+	/** A canvas color "1"–"6", a theme's extra color "7"–"32", or "#rrggbb". */
+	color?: string;
+	/** Outline thickness in px. */
+	width?: number;
+	line?: TocLine;
+	/** Corner radius in px. */
+	radius?: number;
+}
+
+/** A sub-group's id and outline. */
+export interface TocSubGroup extends TocGroupStyle {
+	id: string;
+}
+
+/** A cell of the table of contents' grid: one card, or a cell group (with its outline; groups only). */
+export interface TocBlock extends TocGroupStyle {
 	id: string;
 	tree: TocTree;
-	/** A canvas color "1"–"6" or "#rrggbb"; groups only. */
-	color?: string;
 }
 
 /** The rows of the table of contents' grid, each a list of cells and cell groups. */
@@ -271,6 +299,8 @@ export interface OpcNode {
 	autoFit?: boolean;
 	/** Ink carriers: the card the strokes were drawn on; the ink moves, copies and deletes with it. */
 	anchor?: string;
+	/** A card made to hold a drawing ("Embed into a new card"): the ink stuck to it stretches when it is resized. */
+	drawingCard?: boolean;
 	locked?: boolean;
 	breakpoint?: number;
 	collapsed?: boolean;

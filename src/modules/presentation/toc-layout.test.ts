@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cardsOf, moveIn, normalize, recolor, simpleArrangement, ungroup, type TocArrangement } from "./toc-layout";
+import { cardsOf, findSub, groupsAround, moveIn, normalize, recolor, restyle, simpleArrangement, styleOfGroup, subGroupsOf, ungroup, type TocArrangement } from "./toc-layout";
 
 const kids = ["B", "C", "D", "E", "F"];
 const shape = (arr: TocArrangement) => arr.rows.map((row) => row.map((b) => b.tree));
@@ -76,5 +76,76 @@ describe("table of contents arrangement", () => {
 		arr = moveIn(arr, { kind: "card", card: "C" }, { kind: "cell", card: "B", side: "right" }, kids, "n1");
 		arr = ungroup(arr, arr.rows[0]![0]!.id);
 		expect(shape(normalize(arr, kids, 5))).toEqual([["B", "C", "D", "E", "F"]]);
+	});
+
+	describe("sub-groups", () => {
+		/** B, C, D in one group (a row). */
+		const grouped = () => {
+			let arr = simpleArrangement(kids, 5);
+			arr = moveIn(arr, { kind: "card", card: "C" }, { kind: "cell", card: "B", side: "right" }, kids, "n1");
+			return moveIn(arr, { kind: "card", card: "D" }, { kind: "cell", card: "C", side: "right" }, kids, "n2");
+		};
+
+		it("makes a sub-group from a cell dropped on the middle of a cell of the same group", () => {
+			const arr = moveIn(grouped(), { kind: "card", card: "D" }, { kind: "sub", card: "C", side: "bottom" }, kids, "s1");
+			const block = arr.rows[0]![0]!;
+			expect(block.tree).toEqual({ dir: "row", items: ["B", { dir: "col", items: ["C", "D"], group: { id: "s1", color: expect.any(String) } }] });
+			// Its own outline color, not the group's.
+			expect(findSub(arr, "s1")!.split.group!.color).not.toBe(block.color);
+			expect(groupsAround(arr, "D")).toEqual([block.id, "s1"]);
+			expect(groupsAround(arr, "B")).toEqual([block.id]);
+		});
+
+		it("nests sub-groups in sub-groups", () => {
+			let arr = moveIn(grouped(), { kind: "card", card: "D" }, { kind: "sub", card: "C", side: "bottom" }, kids, "s1");
+			arr = moveIn(arr, { kind: "card", card: "B" }, { kind: "sub", card: "D", side: "right" }, kids, "s2");
+			// B left the group's top level: s1 holds the whole group now, so it is the group's outline.
+			expect(subGroupsOf(arr.rows[0]![0]!.tree).map((s) => s.group!.id)).toEqual(["s2"]);
+			expect(groupsAround(arr, "B")).toEqual([arr.rows[0]![0]!.id, "s2"]);
+			// With a cell left beside them, both levels stay.
+			let deep = moveIn(grouped(), { kind: "card", card: "D" }, { kind: "sub", card: "C", side: "bottom" }, kids, "s1");
+			deep = moveIn(deep, { kind: "card", card: "E" }, { kind: "cell", card: "B", side: "left" }, kids, "x");
+			deep = moveIn(deep, { kind: "card", card: "B" }, { kind: "sub", card: "D", side: "right" }, kids, "s2");
+			expect(subGroupsOf(deep.rows[0]![0]!.tree).map((s) => s.group!.id)).toEqual(["s1", "s2"]);
+			expect(groupsAround(deep, "B")).toEqual([deep.rows[0]![0]!.id, "s1", "s2"]);
+			const colors = [deep.rows[0]![0]!.color, findSub(deep, "s1")!.split.group!.color, findSub(deep, "s2")!.split.group!.color];
+			expect(new Set(colors).size).toBe(3);
+		});
+
+		it("moves a sub-group as a unit, inside its group or out to a group of its own", () => {
+			let arr = moveIn(grouped(), { kind: "card", card: "D" }, { kind: "sub", card: "C", side: "bottom" }, kids, "s1");
+			arr = recolor(arr, "s1", "#123456");
+			const inside = moveIn(arr, { kind: "sub", sub: "s1" }, { kind: "cell", card: "B", side: "left" }, kids, "x");
+			expect(inside.rows[0]![0]!.tree).toEqual({ dir: "row", items: [{ dir: "col", items: ["C", "D"], group: { id: "s1", color: "#123456" } }, "B"] });
+			const out = moveIn(arr, { kind: "sub", sub: "s1" }, { kind: "slot", row: 1, index: 0, newRow: true }, kids, "g2");
+			expect(shape(out)).toEqual([["B", "E", "F"], [{ dir: "col", items: ["C", "D"] }]]);
+			expect(out.rows[1]![0]!.color).toBe("#123456");
+		});
+
+		it("dissolves a sub-group in its place, and one left with one cell", () => {
+			const arr = moveIn(grouped(), { kind: "card", card: "D" }, { kind: "sub", card: "C", side: "right" }, kids, "s1");
+			expect(ungroup(arr, "s1").rows[0]![0]!.tree).toEqual({ dir: "row", items: ["B", "C", "D"] });
+			// D leaves the grid's children: the sub-group of C alone is no group.
+			const left = normalize(arr, ["B", "C", "E", "F"], 5);
+			expect(left.rows[0]![0]!.tree).toEqual({ dir: "row", items: ["B", "C"] });
+		});
+	});
+
+	it("keeps a group's own outline through moves, sub-groups and reloads; undefined goes back to the default", () => {
+		let arr = simpleArrangement(kids, 5);
+		arr = moveIn(arr, { kind: "card", card: "C" }, { kind: "cell", card: "B", side: "right" }, kids, "n1");
+		arr = moveIn(arr, { kind: "card", card: "D" }, { kind: "cell", card: "C", side: "right" }, kids, "n2");
+		const g = arr.rows[0]![0]!.id;
+		arr = restyle(arr, g, { color: "12", width: 4, line: "dashed", radius: 0 });
+		arr = moveIn(arr, { kind: "card", card: "D" }, { kind: "sub", card: "C", side: "right" }, kids, "s1");
+		arr = restyle(arr, "s1", { color: "#abcdef", width: 1, line: "dotted", radius: 24 });
+		arr = moveIn(arr, { kind: "block", block: g }, { kind: "slot", row: 0, index: 3, newRow: false }, kids, "x");
+		arr = normalize(JSON.parse(JSON.stringify(arr)) as TocArrangement, kids, 5);
+		expect(styleOfGroup(arr, g)).toEqual({ color: "12", width: 4, line: "dashed", radius: 0 });
+		expect(styleOfGroup(arr, "s1")).toEqual({ color: "#abcdef", width: 1, line: "dotted", radius: 24 });
+		// Out to a group of its own: its outline goes along.
+		const out = moveIn(arr, { kind: "sub", sub: "s1" }, { kind: "slot", row: 1, index: 0, newRow: true }, kids, "g2");
+		expect(styleOfGroup(out, "g2")).toEqual({ color: "#abcdef", width: 1, line: "dotted", radius: 24 });
+		expect(styleOfGroup(restyle(arr, g, { width: undefined, line: undefined }), g)).toEqual({ color: "12", radius: 0 });
 	});
 });

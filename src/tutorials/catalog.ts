@@ -633,6 +633,22 @@ const drawing: TutorialDefinition = {
 			},
 		},
 		{
+			title: "tut.drawing.embed.title",
+			body: "tut.drawing.embed.body",
+			task: "tut.drawing.embed.task",
+			touch: "tut.drawing.embed.touch",
+			target: ".opc-ink-embed",
+			check: (rt) => rt.seen("ink-embedded") || grew(rt, (n) => !!extraOf(n).drawingCard),
+			demo: async (rt) => {
+				// A little wave on the empty board, picked and put into a card of its own.
+				const id = randomId();
+				rt.add([ink(id, [{ x: 400, y: 30 }, { x: 440, y: 10 }, { x: 480, y: 50 }, { x: 520, y: 20 }, { x: 560, y: 40 }], "#1971c2")]);
+				await rt.wait(300);
+				rt.select([id]);
+				rt.command("drawing:embed-ink-new");
+			},
+		},
+		{
 			title: "tut.drawing.s5.title",
 			body: "tut.drawing.s5.body",
 			task: "tut.drawing.s5.task",
@@ -1630,9 +1646,29 @@ const toc: TutorialDefinition = {
 				fire("pointerdown");
 				fire("pointerup");
 				await rt.wait(400);
-				const items = Array.from(rt.canvas.wrapperEl.doc.querySelectorAll<HTMLElement>(".menu .menu-item"));
-				(items.find((i) => !i.querySelector(".menu-item-icon .lucide-check") && !i.hasClass("is-disabled")) ?? items[0])?.click();
+				// The menu's first item opens the colors; then a color not in use.
+				rt.canvas.wrapperEl.doc.querySelector<HTMLElement>(".menu .menu-item")?.click();
 				await rt.wait(400);
+				const swatches = Array.from(rt.canvas.wrapperEl.doc.querySelectorAll<HTMLElement>(".menu .menu-item.opc-toc-swatch-item"));
+				(swatches.find((i) => !i.hasClass("mod-selected") && !i.querySelector(".menu-item-icon.mod-checked, .lucide-check")) ?? swatches[0])?.click();
+				await rt.wait(400);
+				rt.canvas.wrapperEl.doc.querySelectorAll(".menu").forEach((m) => m.remove());
+			},
+		},
+		{
+			title: "tut.toc.sub.title",
+			body: "tut.toc.sub.body",
+			task: "tut.toc.sub.task",
+			touch: "tut.toc.sub.touch",
+			check: (rt) => /"group"/.test(tocStored(rt, "t-cells")),
+			demo: async (rt) => {
+				// Mitochondria joins the group (beside Membrane), then goes onto Membrane's middle.
+				const mit = tocCell(rt, "t-mit");
+				const mem = tocCell(rt, "t-mem")?.getBoundingClientRect();
+				if (mit && mem) await tocDragTo(rt, mit, mem.right - 4, mem.top + mem.height / 2);
+				const again = tocCell(rt, "t-mit");
+				const target = tocCell(rt, "t-mem")?.getBoundingClientRect();
+				if (again && target) await tocDragTo(rt, again, target.left + target.width / 2, target.top + target.height / 2);
 			},
 		},
 		{
@@ -1648,6 +1684,42 @@ const toc: TutorialDefinition = {
 				const cyc = tocCell(rt, "t-cyc");
 				const grid = tocEl(rt)?.querySelector<HTMLElement>(".opc-toc-grid")?.getBoundingClientRect();
 				if (cyc && grid) await tocDragTo(rt, cyc, grid.left + 30, grid.bottom - 2);
+			},
+		},
+		{
+			title: "tut.toc.lock.title",
+			body: "tut.toc.lock.body",
+			task: "tut.toc.lock.task",
+			touch: "tut.toc.lock.touch",
+			target: (rt) => tocEl(rt)?.querySelector<HTMLElement>(".opc-toc-lock") ?? null,
+			check: (rt) => rt.seen("toc-locked", (_c, locked) => locked === true),
+			demo: async (rt) => {
+				await ensureToc(rt);
+				if (!tocEl(rt)?.hasClass("is-locked")) tocEl(rt)?.querySelector<HTMLElement>(".opc-toc-lock")?.click();
+				await rt.wait(400);
+			},
+		},
+		{
+			title: "tut.toc.ink.title",
+			body: "tut.toc.ink.body",
+			task: "tut.toc.ink.task",
+			touch: "tut.toc.ink.touch",
+			target: (rt) => tocEl(rt)?.querySelector<HTMLElement>(".opc-toc-tool.is-ink") ?? null,
+			enter: (rt) => void ensureToc(rt),
+			check: (rt) => rt.seen("toc-tool", (_c, tool) => tool === "ink") && (rt.seen("stroke-added") || strokeCount(rt.now()) > strokeCount(rt.before)),
+			demo: async (rt) => {
+				await ensureToc(rt);
+				const pen = () => tocEl(rt)?.querySelector<HTMLElement>(".opc-toc-tool.is-ink");
+				if (!pen()?.hasClass("is-active")) pen()?.click();
+				await rt.wait(600);
+				// An underline on Membrane, as the pen would write it there.
+				const data = ink(randomId(), [{ x: 680, y: 44 }, { x: 760, y: 47 }, { x: 840, y: 43 }], "#1971c2");
+				(data[SCHEMA_KEY] as Record<string, unknown>).anchor = "t-mem";
+				rt.add([data]);
+				await rt.wait(600);
+				// The pen off again for the next steps.
+				if (pen()?.hasClass("is-active")) pen()?.click();
+				await rt.wait(300);
 			},
 		},
 		{

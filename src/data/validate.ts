@@ -35,7 +35,9 @@ import {
 	type TocArrangement,
 	type PaperSpec,
 	PAPER_FORMAT_IDS,
+	TOC_LINES,
 	type TocBlock,
+	type TocSubGroup,
 	type TocTree,
 } from "./schema";
 
@@ -206,10 +208,14 @@ function tocTree(raw: unknown, depth = 12): TocTree | undefined {
 	if (typeof raw === "string") return raw.length > 0 ? raw : undefined;
 	if (depth <= 0 || !isPlainObject(raw) || (raw.dir !== "row" && raw.dir !== "col") || !Array.isArray(raw.items) || raw.items.length > 200) return undefined;
 	const items = raw.items.map((item) => tocTree(item, depth - 1)).filter((item): item is TocTree => item !== undefined);
-	return items.length ? { dir: raw.dir, items } : undefined;
+	if (!items.length) return undefined;
+	const group = tocSubGroup(raw.group);
+	return group ? { dir: raw.dir, items, group } : { dir: raw.dir, items };
 }
-const tocColor: Sanitizer<string> = (raw) => (typeof raw === "string" && /^(?:[1-6]|#[0-9a-fA-F]{6})$/.test(raw) ? raw : undefined);
-const tocBlock = objectOf<TocBlock>({ id: nonEmptyStr, tree: (raw) => tocTree(raw), color: tocColor }, { required: ["id", "tree"] });
+const tocColor: Sanitizer<string> = (raw) => (typeof raw === "string" && /^(?:[1-9]|[12][0-9]|3[0-2]|#[0-9a-fA-F]{6})$/.test(raw) ? raw : undefined);
+const tocStyle = { color: tocColor, width: inRange(0.5, 12), line: oneOf(TOC_LINES), radius: inRange(0, 48) };
+const tocSubGroup = objectOf<TocSubGroup>({ id: nonEmptyStr, ...tocStyle }, { required: ["id"] });
+const tocBlock = objectOf<TocBlock>({ id: nonEmptyStr, tree: (raw) => tocTree(raw), ...tocStyle }, { required: ["id", "tree"] });
 const tocArrangement = objectOf<TocArrangement>({ rows: arrayOf(arrayOf(tocBlock, { min: 1 })) }, { required: ["rows"] });
 
 const paperStack = objectOf<{ x: number; y: number; count?: number }>({ x: finite, y: finite, count: inRange(1, 999) }, { required: ["x", "y"] });
@@ -233,6 +239,7 @@ export const ROOT_SHAPE: Shape<OpcRoot> = {
 	pages: arrayOf(objectOf<PageInfo>({ id: nonEmptyStr, anchor: nonEmptyStr, root: nonEmptyStr, parent: nonEmptyStr }, { required: ["id", "anchor", "root"] })),
 	childOrder: recordOf(arrayOf(nonEmptyStr)),
 	tocLayouts: recordOf(tocArrangement),
+	tocLocked: bool,
 	inkEmbeds: recordOf(arrayOf(nonEmptyStr, { min: 1 })),
 	paper: paperSpec,
 };
@@ -258,6 +265,7 @@ export const NODE_SHAPE: Shape<OpcNode> = {
 	autoWidth: bool,
 	autoFit: bool,
 	anchor: str,
+	drawingCard: bool,
 	locked: bool,
 	breakpoint: finite,
 	collapsed: bool,

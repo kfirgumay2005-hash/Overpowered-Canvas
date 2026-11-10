@@ -48,6 +48,7 @@ export interface PagesSource {
 	pages(): PageInfo[];
 	/** "" for the main page. */
 	current(): string;
+	/** The page's title as one line of Markdown (shown formatted, see ui/card-title.ts). */
 	title(page: string): string;
 	count(page: string): number;
 	show(page: string): void;

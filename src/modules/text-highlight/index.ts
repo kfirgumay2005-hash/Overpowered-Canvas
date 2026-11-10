@@ -7,6 +7,7 @@ import { marksHost, type MarkMode, type MarkSurface, type MarkTarget } from "./a
 import { locate, pickedRange, recolor, rehighlight, uncolor, unhighlight, withoutColors, withoutHighlights } from "./source";
 import { logWarn } from "../../core/log";
 import { joinTopLane, LANE_RANK } from "../../ui/top-lane";
+import { blurTextFields, PalmGuard } from "../../ui/palm-guard";
 
 interface HighlightSettings {
 	/** Highlight color: "" for the theme's own highlight, else a CSS color. */
@@ -105,6 +106,13 @@ function charAt(root: HTMLElement, x: number, y: number): number | null {
 function boardSurface(canvas: CanvasLike): MarkSurface {
 	return {
 		host: canvas.wrapperEl,
+		view: {
+			get: () => ({ x: canvas.x, y: canvas.y, zoom: canvas.zoom }),
+			set: (state) => {
+				const v = state as { x: number; y: number; zoom: number };
+				canvas.setViewport(v.x, v.y, v.zoom);
+			},
+		},
 		cardAt: (x, y) => {
 			const nodeEl = canvas.wrapperEl.doc.elementFromPoint(x, y)?.closest(".canvas-node");
 			if (!nodeEl) return null;
@@ -135,7 +143,8 @@ class HighlightSession {
 	private readonly marks: HTMLElement;
 	private erase = false;
 	private gesture: { pointerId: number; target: MarkTarget; start: number; end: number; x: number; y: number; moved: boolean; restore: () => void } | null = null;
-	private penUntil = 0;
+	/** Palm rejection (pen contacts claimed from the system, palms refused or cancelled). */
+	private readonly guard: PalmGuard;
 
 	constructor(
 		private readonly ctx: Ctx,
@@ -147,6 +156,8 @@ class HighlightSession {
 	) {
 		const host = surface.host;
 		this.overlay = host.createDiv({ cls: "opc-hl-overlay" });
+		this.guard = new PalmGuard(this.overlay, surface.view);
+		blurTextFields(host.doc);
 		this.marks = host.createDiv({ cls: "opc-hl-marks" });
 		this.bar = host.createDiv({ cls: "opc-hl-bar" });
 		joinTopLane(host, this.bar, LANE_RANK.palette);
@@ -164,6 +175,7 @@ class HighlightSession {
 	destroy(): void {
 		this.gesture?.restore();
 		this.gesture = null;
+		this.guard.destroy();
 		this.surface.host.win.removeEventListener("keydown", this.onKey, true);
 		this.overlay.remove();
 		this.marks.remove();
@@ -259,18 +271,13 @@ class HighlightSession {
 	}
 
 	private onDown = (e: PointerEvent) => {
-		if (e.pointerType === "pen") {
-			penSeen = true;
-			this.penUntil = Date.now() + 800;
-		}
-		if (e.pointerType === "touch") {
-			if (Date.now() < this.penUntil) {
-				e.preventDefault();
-				e.stopPropagation();
-				return;
-			}
-			// Once a pen has been used, fingers move and zoom the board.
-			if (penSeen) return;
+		// Palm rejection: a touch while the pen is in use, or a palm-sized one, is refused.
+		if (this.guard.down(e)) return;
+		if (e.pointerType === "pen") penSeen = true;
+		// Once a pen has been used, fingers move and zoom the board.
+		if (e.pointerType === "touch" && penSeen) {
+			this.guard.pass(e);
+			return;
 		}
 		if (e.pointerType === "mouse" && e.button !== 0) return;
 		// A pen or mouse can't press twice: the last gesture lost its release (tablets), drop it.
@@ -292,6 +299,7 @@ class HighlightSession {
 	};
 
 	private onMove = (e: PointerEvent) => {
+		this.guard.move(e);
 		const g = this.gesture;
 		if (!g || e.pointerId !== g.pointerId) return;
 		e.preventDefault();
@@ -302,6 +310,7 @@ class HighlightSession {
 	};
 
 	private onUp = (e: PointerEvent) => {
+		this.guard.up(e);
 		const g = this.gesture;
 		if (!g || e.pointerId !== g.pointerId) return;
 		this.gesture = null;
@@ -314,6 +323,7 @@ class HighlightSession {
 	};
 
 	private onCancel = (e: PointerEvent) => {
+		this.guard.up(e);
 		if (this.gesture && e.pointerId === this.gesture.pointerId) this.dropGesture();
 	};
 

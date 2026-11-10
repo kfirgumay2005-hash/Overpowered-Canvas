@@ -54,10 +54,15 @@ interface OpcRoot {                       // file root "x-opc"
                                           // the Markdown export. Children it doesn't name keep their board place.
                                           // Not copied into a note's data block (the outline is the order).
   tocLayouts?: Record<string, {           // Table of contents, free arrangement: parent card id (or
-    rows: { id: string; tree: TocTree; color?: string }[][];  // "page:<id>", "page:" = main page's top level)
+    rows: { id: string; tree: TocTree; color?: string; width?: number; line?: "solid" | "dashed" | "dotted"; radius?: number }[][];
+                                          // ("page:<id>", "page:" = main page's top level). Outline: color = canvas color
+                                          // "1"–"6", theme slot "7"–"32" or "#rrggbb"; width / radius px (absent: settings)
   }>;                                     // → rows of cells; a block is one cell or a cell group (outline color
                                           // "1"–"6" or "#rrggbb"). TocTree = card id | { dir: "row" | "col";
-                                          // items: TocTree[] } (cells beside / below each other).
+                                          // items: TocTree[]; group?: { id; color?; width?; line?; radius? } } (cells
+                                          // beside / below each other; with `group`: a sub-group, its own
+                                          // outline inside the block's group, nested at any depth).
+  tocLocked?: boolean;                    // table of contents: layout locked (no cell or group moves)
   inkEmbeds?: Record<string, string[]>;   // drawing embeds: SVG file path → the drawing cards it shows; the
                                           // file is written again when one of them changes (drawing module)
   paper?: {                               // page format (paper module); absent = the infinite canvas
@@ -91,6 +96,7 @@ interface OpcNode {
   autoWidth?: boolean;                    // grow in width (no wrapping) and height
   autoFit?: boolean;                      // width fits the text up to the auto-resize max width, then wraps; height follows
   anchor?: string;                        // ink carriers: id of the card the strokes are drawn on (moves / copies / deletes with it)
+  drawingCard?: boolean;                  // a card made for a drawing ("Embed into a new card"): ink stuck to it stretches with it
   locked?: boolean; breakpoint?: number; collapsed?: boolean;
   styles?: Record<string, string>;        // custom style attributes → data-* attributes
   fill?: string; stroke?: string; strokeWidth?: number; opacity?: number; rotation?: number;

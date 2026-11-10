@@ -81,6 +81,22 @@ export function scaleStrokes(strokes: Stroke[], from: { width: number; height: n
 	});
 }
 
+/**
+ * Strokes of a carrier at `origin`, drawn on a card that went from box `from` to box `to`
+ * (resized, maybe moved): each point keeps its place relative to the card, widths scale by the
+ * smaller of the two factors (as scaleStrokes). Returns the carrier's new box and strokes.
+ */
+export function stretchStrokes(strokes: Stroke[], origin: { x: number; y: number }, from: Box, to: Box): { box: Box; strokes: Stroke[] } | null {
+	const sx = to.width / Math.max(1, from.width);
+	const sy = to.height / Math.max(1, from.height);
+	const sw = Math.min(sx, sy);
+	const moved = strokes.map((s) => {
+		const pts = absolutePoints(s, origin).map((p) => ({ ...p, x: to.x + (p.x - from.x) * sx, y: to.y + (p.y - from.y) * sy }));
+		return { ...makeStroke(s.id, pts, to, s), ...(s.opacity !== undefined ? { opacity: s.opacity } : {}), ...(s.locked ? { locked: true } : {}), size: Math.max(0.5, Math.round(s.size * sw * 10) / 10) };
+	});
+	return refit(moved, to);
+}
+
 /** Absolute points of a stored stroke. */
 export function absolutePoints(s: Stroke, origin: { x: number; y: number }): InkPoint[] {
 	return unpack(s.pts, s.tilt).map((p) => ({ ...p, x: p.x + origin.x, y: p.y + origin.y }));

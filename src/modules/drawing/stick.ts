@@ -26,6 +26,22 @@ export function cardUnder(points: { x: number; y: number }[], cards: Box[]): str
 	return null;
 }
 
+/**
+ * The card under a drawing (pure): of `cards` (topmost first), the one holding the largest share
+ * of its points, if that share is at least `least`; on a tie the topmost.
+ */
+export function cardUnderMost(points: { x: number; y: number }[], cards: Box[], least = 0.5): string | null {
+	if (!points.length) return null;
+	let best: { id: string; share: number } | null = null;
+	for (const c of cards) {
+		let inside = 0;
+		for (const p of points) if (p.x >= c.x && p.x <= c.x + c.width && p.y >= c.y && p.y <= c.y + c.height) inside++;
+		const share = inside / points.length;
+		if (share >= least && (!best || share > best.share)) best = { id: c.id, share };
+	}
+	return best?.id ?? null;
+}
+
 /** Node data after a paste or duplicate: card references point at the copies, or are dropped. */
 export function remapRefs(nodes: CanvasNodeData[], idMap: Map<string, string>): void {
 	for (const n of nodes) {

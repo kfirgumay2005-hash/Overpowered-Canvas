@@ -71,6 +71,10 @@ body.opc-mod-drawing .opc-ink-overlay {
 	z-index: 1;
 	touch-action: none;
 	cursor: crosshair;
+	/* No text selection, loupe or long-press callout under the pen (palm-guard.ts). */
+	user-select: none;
+	-webkit-user-select: none;
+	-webkit-touch-callout: none;
 }
 body.opc-mod-drawing .opc-ink-overlay[data-tool="eraser"] {
 	cursor: cell;

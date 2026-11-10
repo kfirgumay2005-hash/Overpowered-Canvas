@@ -7,6 +7,7 @@
  * side by side, joined by the links in their cards.
  */
 import type { PageInfo } from "../../data/schema";
+import { plainTitle } from "../../ui/title-text";
 
 export interface PlanNode {
 	id: string;
@@ -151,17 +152,13 @@ export function pageDepth(pages: PageInfo[], id: string): number {
 	return pagePath(pages, id).length;
 }
 
-/** The first line of a card's text as a title: no heading marks, links shown as their text. */
+/**
+ * The first line of a card's text as a plain title: no heading or list marks, no Markdown marks
+ * or HTML tags (highlights, text colors), links shown as their text. Shown formatted instead
+ * with ui/card-title.ts.
+ */
 export function titleOf(text: string): string {
-	const first = text.split("\n").find((l) => l.trim()) ?? "";
-	return first
-		.replace(/^#+\s*/, "")
-		.replace(/!?\[\[([^\]|]*)\|([^\]]*)\]\]/g, "$2")
-		.replace(/!?\[\[([^\]]*)\]\]/g, (_, target: string) => target.split("/").pop()!.replace(/#.*$/, ""))
-		.replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
-		.replace(/[*_~`=]+/g, "")
-		.trim()
-		.slice(0, 80);
+	return plainTitle(text);
 }
 
 /** Pages after `id` is merged back: its pages now hang from its parent. */

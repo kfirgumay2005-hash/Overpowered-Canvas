@@ -1,271 +1,289 @@
-# Feedback round 13: progress
+# Feedback round 14: progress
 
-Branch `feature/feedback-round-13` (from `main` at 0.19.1). One commit per item.
+Branch `feature/feedback-round-14` (from `main` at 0.20.1). One commit per item.
 When resuming: read this file and `git log`, then continue with the first item that is not done.
-(Round 12's notes are in git history: `git show 21b7dc9:PROGRESS.md`.)
+(Round 13's notes are in git history: `git show 193375b:PROGRESS.md`.)
+
+"Grid mode" in the feedback is the **Table of contents** view (`presentation/toc.ts`).
 
 | # | Item | Class | Status |
 |---|------|-------|--------|
-| A1 | Ghost marks after moving a branch / folding | IMPROVEMENT (bug) | done |
-| A2 | Column mode: drawing bar over the breadcrumb | IMPROVEMENT (bug) | done |
-| A3 | Live stroke under the card (regression) | IMPROVEMENT (bug) | done (with A4) |
-| A4 | Column mode: stroke flicker on pen-up | IMPROVEMENT (bug) | done (with A3) |
-| A5 | Column mode: no vertical finger scroll with a pen tool | IMPROVEMENT (bug) | done |
-| A6 | Column mode: wide cards run into the next column | IMPROVEMENT (bug) | done |
-| B1 | Resize cards in column mode | NEW | done |
-| C1 | Vertical column mode | NEW (orientation of the column view) | done |
-| C2 | Table of Contents mode | NEW | done |
-| D1 | Automatic header rules | IMPROVEMENT (headers) | done |
-| E1 | Handwriting performance + Ink-style features | IMPROVEMENT + NEW | done |
-| E2 | Page format mode | NEW | done |
+| 1 | Column mode: finger tap on a card with a drawing tool on | IMPROVEMENT (bug) | done |
+| 2 | Drawing: embed selected strokes into a card / take them out | IMPROVEMENT | done |
+| 3 | Drawing: palm rejection with Scribble on (iPad) | IMPROVEMENT (bug) | done |
+| 4 | Raw HTML/Markdown in grid titles and other card-text labels | IMPROVEMENT (bug) | done |
+| 5 | Grid mode: nested sub-groups | IMPROVEMENT | done |
+| 6 | Grid mode: handwriting tools | NEW (tools in the grid view) | done |
+| 7 | Grid mode: lock layout toggle | NEW | done |
+| 8 | Group customization (thickness, colors, style, radius) | IMPROVEMENT | done |
 
-## A1. Ghost marks (done)
+## 1. Column mode: finger tap on a card with a tool on (done)
 
-Root cause. The far-zoom renderer (performance module, `LodLayer`) paints the board on a bitmap
-once a large canvas is zoomed out past its threshold. It skipped cards on other pages / hidden
-layers (`isHiddenNode`), but:
-- it painted **every arrow**, including the arrows of other pages (their `d` is still set), so the
-  other pages' maps showed as brace-like curves and dashes next to the current page; zooming in
-  past the threshold hides the bitmap, which is why they came and went with the zoom (context 1);
-- it painted cards and arrows inside **folded branches and folded groups** (`opc-hidden-by-branch`,
-  `opc-hidden-by-collapse`): moving a folded card away left the whole folded map visible at its old
-  place when zoomed out, and the minimap drew straight lines from the moved card back to the
-  hidden children (context 2);
-- its cached scene was keyed only by card data, so switching pages or folding (no data change)
-  could keep showing the old scene.
+Root cause. With the pen (or highlighter / text color) on, the tool's overlay covers the column
+view. With palm navigation on, a finger press is not taken by the tool, so it reaches the column
+view: dragging worked (A5 of round 13), but a tap's `click` lands on the overlay, and the column
+view only treated clicks inside its cards (`.opc-columns-zoom`) as taps.
 
-Fix: `isOffBoard(node)` / `isEdgeOffBoard(edge)` in `src/modules/shared.ts` (one list of every class
-that takes something off the board). The far-zoom renderer, the minimap and image export use them
-for cards, arrows, group labels and the content bounds; the cached scene is also keyed by the set
-of off-board cards (`hiddenKey`) and invalidated on page / fold events.
+Fix (`presentation/columns.ts`): on pointer-up of a finger that did not move, if it was pressed
+on a tool overlay (`TOOL_OVERLAYS`), the column view finds the card under the finger below the
+overlays (`underOverlays`, `elementsFromPoint`) and runs the same tap logic as a click
+(`tap()`: links, go to the card, tap the current card again to edit). The click that follows is
+swallowed. The finger's `pointerdown` on an overlay is `preventDefault`ed so no emulated mouse
+press follows it: that press used to take the focus away from a card just opened for editing by a
+double tap. Pens still draw (the drawing session keeps their presses), finger drags still move
+the view, palm rejection is unchanged (a touch right after the pen never reaches the view). Same
+code for both orientations (left to right, top to bottom).
 
-Tested (harness, real 159-card map copy, far-zoom renderer forced on):
-- context 1: move a branch to a new page, zoom out to -3: pixels painted outside the shown page
-  7186 → 0 (screenshot showed the same braces and dashes as the report before the fix);
-- context 2: fold the root, move it 3000 px right, zoom out to -4: painted pixels 58435 (the
-  whole folded map + lines back in the minimap) → 360 (only the folded card).
-Unit tests 773/773. No tutorial text changes (behavior is what the user expected all along).
+Tested (harness, deep.canvas, palm navigation on, CDP touch):
+- pen tool, left to right and top to bottom: finger tap on a child card → it became the current
+  card (before: unchanged), tool still on, no ink created;
+- highlighter and text color, both orientations (after a pen was used, so fingers navigate):
+  tap → card current, tool on, card text unchanged;
+- pen stroke on the current card → 1 drawing; finger drag down 120 px → the column moved 120 px,
+  no navigation; vertical mode: sideways drag moved the row 120 px;
+- double tap on the current card with the pen on → editor opened and focused (before the
+  preventDefault: opened and closed at once);
+- no tool, mouse click on a child → navigates (regression).
+Tutorial "Column view" → "Write on the cards": one sentence (tap = go, drag = move, pen = write),
+5 locales; Show me in English 12/12. Typecheck, tests 834/834, lint clean.
 
-## A2. Column mode: tool bars over the breadcrumb (done)
+## 2. Strokes into a card and back out (done)
 
-Root cause. Round 12's `src/ui/top-lane.ts` keeps top bars apart per host element. The pages
-bar lives in the canvas wrapper, but in column mode the pen rack, highlighter and text color
-palettes live in the column view (`.opc-columns`, a child of the wrapper): two hosts, two lanes,
-so they never saw each other.
+Classification: IMPROVEMENT. Already there: ink stuck to a card (`x-opc.anchor`, round 2: moves,
+copies, deletes with the card, shows in the column view and the table of contents) and two
+commands, "Stick drawn marks to the cards under them" / "Unstick drawn marks from their cards",
+which only took whole drawings selected on the board and only cards already under them. Extended
+instead of adding a parallel feature (same command ids, so hotkeys stay):
+- `drawing/embed.ts`: works on the strokes picked with the drawing bar's **lasso** (single strokes
+  out of a drawing are split off), else on the drawings selected on the board (and the ink of
+  selected cards). **Embed drawing into a new card** (new, `embed-ink-new`): an empty text card is
+  made around the strokes (their box + the drawing padding), marked `drawingCard: true` (schema,
+  validator, SCHEMA.md), and the strokes are stuck to it without moving. **Embed drawing into the
+  card under it** (`attach-ink`): the selected card, else the topmost card holding most of the
+  strokes' points (`cardUnderMost`, pure + tested); with nothing picked it keeps its old
+  behavior (every free stroke over a card sticks to it). **Take drawing out of its card**
+  (`detach-ink`): frees the picked ink; a drawing card left empty is removed. One undo step each;
+  events `ink-embedded`, `ink-taken-out` (EVENTS.md, tutorial runner).
+- UI: a **Put into a card** button in the drawing bar while the lasso holds strokes (menu: new
+  card / card under it (disabled when there is none) / take out); the same items in the context
+  menu (long press) of a drawing or of a card with ink; command palette.
+- Resizing: `anchors.ts` stretches the ink of a `drawingCard` with the card (`stretchStrokes`,
+  pure + tested: points keep their place relative to the card, widths scale by the smaller
+  factor). Live while dragging, always computed from the strokes at the start of the resize (no
+  rounding drift), ends after a 500 ms pause. Text cards with handwriting keep the old behavior
+  (ink stays on the words). The column view's resize handle stretches it too (same event).
+- Column view / table of contents: at real size the ink was already drawn; below real size a
+  card that is only a drawing (no text, ink on it) now shows its drawing scaled to the cell
+  (`CardFaces.isDrawing`, `drawInk(..., fit)`), instead of an empty card.
 
-Fix: a lane now belongs to the board. `joinTopLane` resolves the host to its `.canvas-wrapper`
-(`laneRoot`), so bars of any view inside the board share one layout; the lane also watches each
-bar's own parent so a bar leaving a nested view leaves the lane. Same mechanism for both modes,
-so they can't drift apart again.
+Tested (harness, emb.canvas): two free pen strokes → lasso → Put into a card → new card:
+card 132×102 around them, both drawings anchored, every stroke point at the same board position
+(compared before/after), ink drawn above the card, lasso emptied; resize by the bottom-right
+handle to 250×135 → strokes stretched (widths 7 → 9.3), one undo step restored 132×102 and widths
+7; linked under Card B: the column view shows the drawing (2 paths, 314×170 px) and the table of
+contents too (214×116 px); Take out → strokes back on the board at the same positions, empty card
+removed, notice. A stroke over Card A → lasso → "card under it" → anchored to A, moved with A.
+Unit tests: stretch, cardUnderMost. Tutorial "Drawing": new step "Put a drawing into a card"
+(touch line, command alternative; 5 locales) and the marks step names the renamed command; Show
+me in English 11/11. README updated. Tests 836/836, lint clean.
 
-Tested (harness, 820 px window = iPad portrait, 5 nested pages with long titles, column view on
-the deepest page): pen rack before: same row as the breadcrumb (overlap); after: moved below it
-(breadcrumb 125-154, rack 161-222). Highlighter palette in columns: below the breadcrumb.
-Canvas mode drawing bar: still below the breadcrumb (regression check).
+## 3. Palm rejection with Scribble on (done)
 
-## A3 + A4. Live stroke under cards / flicker on pen-up (done, one commit: same code path)
+Classification: IMPROVEMENT (bug) of the existing palm rejection.
 
-A3 root causes (two paths left after the earlier max z-index fix):
-- Board: the live stroke's layer was a 1x1 px SVG at the board origin with `overflow: visible`.
-  On iPad (WebKit) a card whose text scrolls has a compositing layer of its own; WebKit decides
-  whether a later element must be layered above it by the element's box, and a 1x1 box at (0,0)
-  "covers" nothing, so the stroke was painted into the board's layer, beneath those cards. Only
-  some cards (long text, scrolling content) and only on iPad, hence "rare but real".
-- Column view: the live layer sits inside the card drawn on; every column card has an opacity
-  (a stacking context), so a stroke running onto the next card or column went under it.
-Fix: the board's live layer now has its real size (`coverView`: twice the visible board, viewBox
-in board coordinates, re-placed on every press/hover; last child of the board). The column card
-drawn on and its column get `is-inking` (z-index above the others).
-A4 root cause: on pen-up the live path was removed at once, and the column view redrew ink 80 ms
-later (debounce), so the stroke vanished for a few frames. Fix: `InkSession.holdUntilSettled`
-moves the finished stroke's preview into a copy of the layer that stays until the surface
-reports the committed ink is painted (`InkSurface.settled`: the board after two frames, the
-column view after its ink refresh + two frames; 1.5 s fallback). The copy does not follow the
-preview, so writing fast (next stroke on another card) is fine. Ink-only refreshes in the column
-view now run after 16 ms instead of 80.
+What was wrong (read from the code and the core's own touch handler, reproduced with mixed
+touch + pen input in one CDP session, `palm.mjs`):
+- The old rejection only refused a touch that **started** within 800 ms after a pen event. A
+  palm usually lands **before** the pen. With palm navigation on, that touch went to the board:
+  the core's `onTouchdown` pans with it for as long as it stays down (and after 600 ms still it
+  turns into a long press: drag-select box, card drag, context menu on release). Nothing ended
+  that gesture when the pen came, so the board slid under the pen while writing. Without palm
+  navigation the palm started a stroke of its own, and the pen's press "finished" it (committed).
+- With Scribble on, WebKit decides per pencil contact whether it is handwriting for a text
+  field: pen `touchstart`s were not claimed by the page (only pointer events were handled), so
+  the system could hold back, cancel or take pen input — the pen's first events come late or a
+  stroke gets a `pointercancel`, which makes the 800 ms window open late and the palm win more
+  often. Writing on cards felt fine because the hand usually rests off the card; on the open
+  board it rests on the drawing surface. Editable things near the pen are Scribble targets: the
+  drawing bar's exact-size box (`<input type=number>`) and a focused text field.
 
-Tested (harness): column view, pen stroke on a card, every frame recorded from pen-down to
-700 ms after pen-up: blank frames after the stroke started 3 (old) → 0 (new, three runs); the copy
-is gone afterwards (one path left). Board: no blank frames, live layer covers the whole view,
-strokes land on the same words as drawn.
+Fix: `src/ui/palm-guard.ts` (`PalmGuard`), used by the drawing session and the highlighter / text
+color session, on the board and in the column view:
+- pen `touchstart`/`touchmove` over the tool's overlay are `preventDefault`ed (non-passive
+  listeners; `touchType === "stylus"`): the page claims the pencil, so Scribble, scrolling,
+  selection and the loupe stay out; touches while the pen is active are claimed too;
+- strict pointer types: a touch while a pen is down or within 800 ms of its last event (hover
+  included) is refused; a palm-sized contact (> 64 px) is refused once a pen was seen; a lost
+  pen release stops counting after 3 s (fingers can't be locked out);
+- touches let through to the view (palm navigation) are remembered; when the pen lands while
+  they are still down they are palms: their gesture gets a `pointercancel` (the core ends its
+  pan / long press / selection drag, the column view its drag), their later events are
+  swallowed, a long-press menu from them is dropped, and the view goes back to where it was when
+  the palm touched (`InkSurface.view` / `MarkSurface.view`: board viewport, column view zoom +
+  pan + level shifts);
+- a touch that was drawing when the pen lands was a palm: its stroke is discarded, not committed;
+- no editable element under the pen: focused text fields are blurred when a tool starts and when
+  the pen lands; the exact-size box is read-only until pressed or focused (Scribble ignores
+  read-only fields); overlays have `user-select: none` and no touch callout (touch-action was
+  already `none`).
 
-## A5. Column mode: fingers scroll in every direction with a pen tool on (done)
+Tested (harness, palm.canvas / deep.canvas; a palm = a CDP touch that lands, drags 60 px, rests,
+then stays down while a CDP pen writes; before = main build, after = this build):
+- board, palm navigation on: view drift during the stroke 120 × 50 board units → 0 (rest 100 ms
+  and 900 ms), pen stroke drawn (1 drawing);
+- board, palm navigation off: 2 drawings (palm's + pen's) → 1 (pen's);
+- column view with the pen tool: the column under the palm moved 120 px during the stroke → 0,
+  stroke drawn;
+- regressions: finger pan with no pen moves the board; 1.2 s after the pen a finger pans again;
+  a touch 100 ms after the pen is refused (no pan, no ink); a synthetic stylus `touchstart` is
+  claimed, a finger one is not; the size box is read-only until pressed.
+Not reproducible here: real Scribble (needs an iPad with an Apple Pencil). Please test on the
+iPad with Scribble on and off: writing on the open board with the hand resting, on cards, in the
+column view, and (after item 6) in the table of contents.
+Tutorial "Drawing" → "Draw!": a paragraph on palm rejection (5 locales). Show me in English:
+Drawing 11/11, Column view 12/12. Tests 836/836, lint clean.
 
-Root cause. With a tool on, its overlay covers the column view and receives every press. The
-column view chose the column to drag up/down from the element pressed (`closest(column)`), which
-is the overlay, so no column moved; only the sideways part (all columns) worked.
-Fix: `columnAtPoint` finds the column under the finger by position when the press is not on a
-column element; a vertical drag between columns moves the whole view. Pen/stylus input still
-draws (the drawing module keeps it); touches pan as before when palm navigation is on.
-Tested (harness, CDP touch with the pen tool on, palm navigation on): finger drag down 150 px on
-the children's column: before 0 px, after the column moved 150 px; no ink created by the finger.
-Tutorial "Column view" → "Write on the cards" gained a paragraph about palm navigation (5 locales).
+## 4. Raw HTML / Markdown in titles (done)
 
-## A6. Column mode: wide cards run into the next column (done)
+Classification: IMPROVEMENT (bug). Root cause: every label made from a card's text used
+`titleOf()` (pages/logic.ts), a plain-text cleanup that removed `#`, `*_~=` and links but not
+HTML, so the `<mark style=…>` the highlighter writes (and `<span style="color…">` of the text
+color tool) showed as text; formatting was lost everywhere. (In the user's screenshot the
+breadcrumb looked right only because that card had no highlight: with one it showed the same raw
+tag, reproduced below.)
 
-Root cause. Each column starts after the card the next column continues from (`reach`: the
-focused card's width at actual size), but the column itself is as wide as its widest card, and
-nothing limited what it drew: a sibling (or a big image) wider than the focused card lay under
-the next column, and faded cards are semi-transparent, so it showed through the children.
-Fix (the proposed clip line, applied to every column): `columnClips` (pure, tested) gives each
-column the distance to the next column's start; the column gets `clip-path` up to there
-(`is-clipped`, `--opc-column-clip`). Siblings stay faded as before; the part past the line is
-not drawn and not hit by taps. The children's column (last) is never cut, so children always
-show whole. The "+" buttons of the focused card stay inside the gap before the line.
-Tested (harness, actual size, focused card 250 px with a 700 px sibling): a point past the
-children's column start inside the sibling's box hit `[eta, cls]` before, `[eta]` after;
-screenshot shows the sibling cut at the line, children whole. Unit tests: column-layout 4/4.
-Tutorial "Column view" → "Cards at their real size": one sentence added (5 locales).
+Fix: one shared path, `src/ui/card-title.ts` + `src/ui/title-text.ts` (pure, 3 unit tests):
+- `titleMarkdown(text)`: the first non-empty line without heading / list / task / quote marks,
+  embeds turned into links;
+- `renderTitle(app, el, md, path)`: rendered by Obsidian's `MarkdownRenderer` (the cards' own
+  renderer), the paragraph unwrapped, one line with an ellipsis (`ui/card-title.css`), `dir=auto`
+  (the title's own direction, as on the card), links inert inside controls; plain text shows
+  until the render is done;
+- `plainTitle(text)` for notices / tooltips / debug: also strips HTML tags and decodes entities
+  (`titleOf` now delegates to it); `escapeMarkdown` for file and group names.
+Every place a card's text is shown outside the card, and what was found:
+- table of contents (grid) title: raw → formatted (`toc.ts renderTitle`);
+- pages bar breadcrumb (board, notes with pages, text pages): raw HTML when the page's card had a
+  highlight → formatted (`renderPagesBar` takes the app; `PagesSource.title` is now one line of
+  Markdown);
+- pages index (side panel): raw → formatted;
+- text pages: page links, back links, previous / next buttons: raw → formatted (book titles are
+  Markdown now);
+- note-link hover preview header (`node-links`): marks stripped only partly → formatted;
+- canvas search: no labels, but it matched the raw HTML (a phrase across a highlight wasn't
+  found, "background" matched highlighted cards) → tags removed before matching;
+- notices naming a page ("moved to page…", placing banner) and debug notices: plain text, tags
+  now stripped;
+- checked, nothing to fix: column view (shows the cards themselves, rendered), minimap (no text),
+  tutorials (their own strings), walk hints (no text), table of contents cells (rendered cards).
+Tested (harness, titles.canvas: a page whose first card is the screenshot's text):
+before: grid title and crumb text `…è <mark style"background: #ffd43b80;">più grande</mark>`;
+after: `(📖)se il calcolo invece è più grande` with a real `<mark>` (background
+rgba(255, 212, 59, 0.5)), one line, ellipsis; pages index entry and text-pages crumbs the same.
+Tutorials "Big maps in pages" 14/14 and "Table of contents" 8/8 (no text change needed: the
+behavior is what they describe). Tests 839/839, lint clean.
 
-## B1. Resize cards in column mode (done)
+## 5. Table of contents: nested sub-groups (done)
 
-Classification: NEW (the column view had no way to change a card's size; the board's own resize
-handles are untouched).
-What: at actual card size, the current card gets a round handle at its bottom-right corner
-(`addResizer` in columns.ts), next to the "+" buttons. Drag with finger, pen or mouse (pointer
-capture; the card, its text layout and the children's column follow live), or focus it and use
-the arrow keys (Shift: 50). On release the walker's `resizeCard` writes the size to the board
-card (`moveAndResize`, top-left kept, one undo step), emits `column-card-resized`, and a map with
-a recorded layout arranges itself again (`relayoutMap`). Pictures keep their aspect ratio.
-Ink keeps its board position (anchored strokes are relative to the card's top-left corner, which
-does not move), so it lands on the same place in every view. Hidden while a tool is on or a card
-is edited, like the "+" buttons.
-Tested (harness): drag +120/+90 px on a 250x60 card → 370x150, x/y unchanged, anchored ink
-unchanged, children's column 32 px after the new right edge, one undo step. Tutorial "Column
-view": new step "Make a card bigger to write on it" (touch line + keyboard alternative, 5
-locales); Show me in English: 12/12 tasks.
+Classification: IMPROVEMENT of the existing cell groups (round 13, C2).
+Model (`toc-layout.ts`, pure): a split of a group's tree may carry `group: { id, color }` (schema
+`TocSplit` / `TocSubGroup`, validator, SCHEMA.md): a sub-group, never merged into its parent when
+directions match, dissolved when it holds one cell, folded into the group when it holds all of
+it (one outline, not two). New drop `{ kind: "sub" }` (wrap the target cell and the dropped one
+into a new sub-group where the cell was) and new moving kind `{ kind: "sub" }` (the sub-group as a
+unit: beside a cell, into another sub-group, or out to a grid slot where it becomes a group of
+its own keeping its color). `recolor` / `ungroup` take a group's or a sub-group's id (a dissolved
+sub-group leaves its cells in place). New groups/sub-groups get automatic colors different from
+every outline around them. Helpers `findSub`, `subGroupsOf`, `groupsAround`. Nesting is recursive
+(the validator already allowed 12 levels).
+View (`toc.ts`): sub-groups render with their own outline and a small handle (free mode); drag
+by the handle or the outline moves it; a tap on the handle opens the same menu as a group
+(colors, Ungroup the cells). Drop rule: the middle half of a cell of the **same group** → new
+sub-group (dashed box around the cell); its edges → move within the group; a cell of another
+group → join it; a lone cell → new group; between rows → new row. The guide carries a label
+saying which (New sub-group / Join this group / New group / Move here / New row; 5 locales);
+joining is drawn in the accent color, moves muted. Each change is one undo step, stored with the
+canvas like groups.
+Tested: 4 new unit tests (make, nest with three distinct colors, move as a unit in and out,
+dissolve / one cell left) — toc-layout 12/12. Harness (toc5.canvas, real mouse drags): C beside B
+→ "New group"; D beside C → "Join this group"; D on C's middle → "New sub-group", stored
+`{dir: col, items: [c, d], group: {id, color: "6"}}` inside group color 5; B on D's middle →
+nested sub-group; the sub-group dragged by its handle to a new row → a group of its own, color
+kept; undo restored both levels; tap on a sub-group handle → menu with colors + Ungroup → cells
+back in place. Tutorial "Table of contents": new step "Groups inside groups" (touch line; 5
+locales); Show me in English 9/9. Tests 843/843, lint clean.
 
-## C1. Column view top to bottom (done)
+## 7. Table of contents: lock the layout (done)
 
-Classification: NEW, built as an orientation of the existing column view (no second view).
-`ColumnOptions.vertical` (setting `presentation.columnVertical`, command "Column view: toggle top
-to bottom", a rows/columns button in the column view's tool bar, settings toggle). The same
-`ColumnView` lays out levels as rows: `layoutRows` measures row heights (only known after the
-text is laid out), places each row after the card it continues from, centers the children's row
-under the current card, cuts each row where the next starts (A6 rule on the other axis). Drags
-swap axes (along a row: that row; across: all rows). The walker remaps keys and pad arrows
-(`DOWNWARD`: ↓ child, ↑ parent, ←/→ siblings). "+" buttons swap sides (child below, sibling
-beside); resize handle, pen, highlighter, text color, editing all shared.
-Tested (harness): flip → rows stacked top to bottom, children centered under the focused card,
-wide sibling cut at the next row; keys ↓ inc, → gen, ↑ epi, → cls. New tutorial "Column view,
-top to bottom" (4 tasks, touch lines, command alternatives; 5 locales): Show me in English 4/4;
-"Column view" 12/12 again. Unit tests 780/780. README updated.
+Classification: NEW (nothing locked the grid; the canvas's read-only mode only applies to the
+board). In `toc.ts`: a lock button in the view's controls (free arrangement, editable boards) and
+the command "Table of contents: lock / unlock the layout" (palette, `presentation:toc-lock`).
+Locked: the view renders without the free arrangement's handles and drag targets, so a drag on a
+cell or group pans the view; going into cells, back, zoom, links, editing and (item 6) the pen,
+highlighter and text color tools still work. Stored per canvas in the canvas root (`tocLocked`,
+schema + validator + SCHEMA.md), so it is the same on every device, written as a view setting:
+no undo step, and the flag is written into the existing undo snapshots too, so undoing an
+earlier change never unlocks it. Event `toc-locked` (EVENTS.md, tutorial runner).
+Column view: not added on purpose — a drag there only ever pans (cards are never moved by a
+drag; the only size change is the explicit resize handle), so there is nothing to lock.
+Tested (harness, toc5.canvas): lock → class is-locked, no is-free, button active with the unlock
+label; a drag of C onto B's edge panned the view and stored nothing; closed the tab, reopened the
+canvas and the table of contents: still locked; the command unlocked it and the same drag made a
+group; lock toggled with a pending grouping: history length unchanged (6/7 → 6/7), undo removed
+the grouping and kept the lock; the file on disk has `"tocLocked":true`. Tutorial "Table of
+contents": new step "Lock the layout" (touch line, command alternative; 5 locales); Show me in
+English 10/10. Tests 843/843, lint clean.
 
-## C2. Table of contents (done)
+## 8. Group customization (done)
 
-Classification: NEW (no grid view existed; it reuses the column view's card rendering and the
-walk's map model instead of duplicating them).
-Where: `presentation/toc.ts` (TocView + enableToc), `toc-layout.ts` (pure arrangement model,
-8 unit tests), `card-face.ts` (card rendering extracted from the column view: replica text,
-images, crops, ink, colors; the column view uses it too), `map-model.ts` (the walk's model:
-groups as cards, sibling order, one page). Root data `tocLayouts` (schema + validator +
-SCHEMA.md); events `toc-shown`, `toc-arranged`, `toc-closed`.
-What: command "Table of contents view", a grid button in the side controls. A box named after
-the parent card holds its children as cells; a cell with children has an arrow (top-left) into
-its own grid; back buttons (fixed top right, joined to the top lane so it stays clear of the
-pages bar, and in the box's title) go up; Backspace too, Esc closes. Pinch / Ctrl+wheel / buttons
-zoom, drag or wheel pans. Uniform cells (width setting) or real size with ink (button + setting).
-Simple grid: N per row (setting). Free arrangement: drag a cell beside/below another to form a
-cell group (split tree of rows/columns, so cells of different sizes stay tidy), guide lines show
-the landing place, groups move by handle or outline, cells/groups can go between cells or into a
-new row, tap the handle for colors / ungroup. Each change is one undo step, stored in the canvas,
-restored after reopening and when switching modes. Pages: only the page shown; a page anchor's
-arrow opens that page (breadcrumb follows), back returns. Double tap edits a text cell.
-Exclusive with the walk/column view.
-Tested (harness): board like the drawings (DIA → A, G, H, I; A → B…F): DIA grid rows [A*, G, H]
-[I]; into A; C right of B, D below B, E right of D, F to a new row → group col[B, row[D,E]] beside
-C + F below (as in "RESULTS"), 4 undo steps, saved to disk, same after closing and reopening;
-real size: cells 260/100 px wide like the cards; group menu recolor; group moved after F; back
-→ DIA; pages: anchor arrow opens the sub-page and back returns; simple/free switch; lint clean.
-New tutorial "Table of contents" (8 tasks, touch lines; 5 locales): Show me 8/8; "Column view"
-12/12 and "Column view, top to bottom" 4/4 re-run after the rendering refactor. Tests 794/794.
+Classification: IMPROVEMENT of the cell groups' color menu (round 13 had 6 canvas colors + ungroup).
+- Stored per group and sub-group (`TocGroupStyle`: `color`, `width`, `line`, `radius`; schema,
+  validator, SCHEMA.md). Colors reuse the plugin's color system: canvas colors "1"–"6", the
+  theme's extra slots "7"–"32" (the custom-colors module's), or "#rrggbb". Kept through every
+  move, sub-group → group, reload (`styleOf`, `restyle`, `styleOfGroup`; unit test).
+- Settings (Presentations): default outline thickness (1–12 px, 2), line (solid / dashed /
+  dotted), corners (0–48 px, 12), and **your group colors** (swatches, click to remove, color picker
+  to add; max 24). Defaults are CSS variables on the view; a group's own values win via classes
+  (no inheritance into nested sub-groups).
+- Handle menu: **Color ▸** (canvas colors, theme slots that exist, your colors — each with its swatch —,
+  **Pick a color…** (system picker; the color is added to your colors), **Automatic color**),
+  **Outline ▸** (thickness default/1/2/3/4/6/8 px, line default/solid/dashed/dotted, corners
+  default/0/4/8/16/24 px), **Ungroup the cells**. Submenus where the app has them, else inline.
+- Light and dark: "#rrggbb" colors render identically; canvas colors follow the theme as on the
+  board; the handle's icon is black or white by the color's luminance, so it stays readable.
+Tested (harness): menu shows Color ▸ / Outline ▸ / Ungroup; Outline → 6 px, Dashed, 0 px and
+Color → Purple stored as `{color: "6", width: 6, line: "dashed", radius: 0}`, computed border
+dashed / 0 px corners; light theme: purple follows the theme (rgb(168,130,255) → rgb(120,82,238)),
+handle icon black → white; Pick a color… #e8590c → stored, added to the palette setting, same
+rgb(232,89,12) in both themes; settings render the 4 new rows with the swatch and picker. Unit
+test (style through moves/sub-groups/reload/defaults) — tests 844/844. Tutorial "Table of
+contents": the color step became "The group's look" (menu, outline, settings; 5 locales; its demo
+updated for the submenu); Show me in English 10/10. Lint clean.
 
-## D1. Automatic header rules (done)
+## 6. Table of contents: pen, highlighter, text color (done)
 
-Classification: IMPROVEMENT of the existing header cards (round 9): the same lifting and level
-rules, more cards made headers by a setting.
-What: Canvas ⇄ Markdown settings "Automatic headers" (off / by number of children / by depth),
-"Automatic headers: children" (N, 1–20, default 3), "Automatic headers: depth" (N, 1–6, default
-3); command "Automatic headers: choose the rule" (palette / tablets). `headers.ts`:
-`autoHeader`, `headerSetting`, `headerWith`; `structure.ts` counts depth from each map's first
-card (depth 1) and children per card; levels then follow the existing rules (nearest heading + 1,
-up to H6, lifted out of plain lines), and the existing formatting (no blank line under a heading,
-blank lines only before headings, first level without bullets) is untouched because the rules
-only set `header: 0` on outline items. Manual settings win: a level, "automatic", or the new
-"never a header" (`header: -1`, stored by "Not a header" while a rule is on; validator, schema
-and SCHEMA.md updated). Round trip (`apply.ts`): a heading the rule makes is not stored on the
-card (so turning the rule off or changing N changes the note next time); a rule heading written
-as a plain line in the note becomes "never a header". Applies to notes from canvases, notes with
-pages, copied outlines and text pages (`autoHeadersHost` tells the text pages view).
-Tested: 7 unit tests (both rules, N = 1 / 3, manual level and "never", plain-first format, round
-trip stores nothing and gives the same note, plain line → -1); harness: Copy as outline on the
-DIA board with off / children 4 / depth 2 gave the expected headings; "Not a header" stored -1
-and kept A a plain line under the depth rule. New tutorial "Automatic headers" (4 tasks, command
-alternative, touch line; 5 locales) 4/4; "Canvas ⇄ Markdown" (header step got a pointer) 7/7.
-Tests 807/807, lint clean.
-
-## E1 (part 1). Handwriting performance at scale (done)
-
-Measured first (docs/BENCHMARKS.md, "Handwriting at scale"): a board with 3,024 handwritten
-words (each stroke its own drawing card, as the pen makes them). Profiler + timeline trace showed
-the cost was not painting ink but per-frame style and layout work over every card:
-1. `--zoom-multiplier` written on the wrapper every pinch frame → every element of every card
-   restyled (84 % of main-thread time). Fixed in the performance module (`coalesceZoomMultiplier`).
-2. Drawing cards mounted Markdown views for their empty text (re-mounted at the zoom breakpoint,
-   `onRender` forcing layout) → content never mounted for drawings, placeholder `display: none`.
-3. `preDetach()` forced a layout per card leaving the view → skipped for drawings.
-4. Pen-up: `sameSnapshot` stringified the whole board twice → structural comparison; validated
-   reads cached per stored object; live layer size from the core's cached rect.
-5. Pen input: sub-pixel samples replace the provisional last point (`addPoint`, WYSIWYG).
-Results (alternated builds, same board): zoom 15.5 → 52.5 fps (p95 140 → 18–35 ms), pan 33.5 →
-57 fps, wheel zoom 49 → 57 fps, pen-up 38 → 5 ms. Stored format unchanged (no migration needed;
-existing handwriting works as is). Viewport culling = the core's virtualize (already there);
-far-zoom bitmap = the performance module's LOD layer (A1 fixed its ghosts). Tests 813/813 (new:
-same-snapshot, pen merge). Drawing tutorial 10/10; column flicker test still 0 blank frames.
-Ink plugin studied (CC BY-NC-ND: ideas only, no code): its geometry caches, culling, ~1 px point
-merge and quiet-period saves match what was measured here.
-
-## E1 (part 2). Ink-inspired features (done)
-
-Classification: NEW (none existed; the font option extends the existing card text style picker).
-- Handwriting → text (`drawing/ink-tools.ts`): a button in the drawing bar and the command
-  "Handwriting to text…" open a large writing box; the device's own recognition (Scribble on
-  iPad, Windows pen input) turns pen writing into text as it is written, "Insert as a card" puts it
-  where the pen last pressed on the board (one undo step, event `handwriting-to-text`). Reading
-  strokes already on the board needs a recognizer the device offers to apps: the Handwriting
-  Recognition API is feature-detected ("Read handwriting into a text card" in the command palette
-  and the drawing's menu appear only there). Neither this Windows Electron nor iPad WebKit has it,
-  so that path is unit-tested against a fake recognizer only; no recognizer is bundled.
-- Text in a handwriting style (text-align module): x-opc `font: "hand"` (schema + validator),
-  the text size picker got a Font row (Normal / Handwriting), command "Handwriting font: on /
-  off"; system handwriting fonts with fallback (letters a font lacks use a regular font); shows on
-  the board, in its editor (mirrored attribute) and wherever cards are built like the board.
-- Embedding: "Embed the drawing in a note" (command + drawing context menu) saves the selected
-  drawings (the lasso's in drawing mode, or those stuck to selected cards) as an SVG file
-  (`<files folder>/Drawings/…`; a tutorial board's own folder), copies `![[…svg]]`, records it in
-  root `inkEmbeds` (schema + validator + SCHEMA.md) and writes the file again 1 s after any of
-  those drawings changes (event `drawing-embedded`). Dark mode keeps the default ink light.
-Tested: unit (SVG output, reading order, fake recognizer); harness: font applied (computed font
-family = the handwriting stack), writing box → card, embed written and rewritten after the
-drawing changed (1 → 2 paths). New tutorial "Handwriting tools" (3 tasks, touch lines,
-command alternatives; 5 locales) 3/3 with no leaked files; "Drawing" (pointer added) 10/10.
-
-## E2. Page format (done)
-
-Classification: NEW (different from Pages, which it works with). Module `src/modules/paper/`.
-- "Page format…" dialog (A3/A4/A5/Letter/Legal/custom mm, landscape, "Endless board" = off),
-  opt-in per canvas, stored in root `paper` (schema + validator + SCHEMA.md).
-- Sheets as a layer under everything, 1 mm = 96/25.4 board px (100 % zoom ≈ real paper size);
-  one stack per Pages page (placed around that page's content on first show, `paper.stacks`), so
-  sub-pages use the same format; stacks grow with content and with "+ Add a page"; commands add /
-  remove page.
-- Export: "Export the pages as PDF" (desktop) prints one PDF page per sheet at the sheet's size;
-  each sheet is drawn by the image exporter (new `region` option) as a ~240 dpi picture. Two
-  traps found: the PDF printer does not paint an SVG foreignObject nor the live cloned board, and
-  it lays pages out at its own scale (pixel heights spilled each sheet onto two pages), so print
-  sheets take `100vh` of the page box. On tablets/phones the command saves one PNG per sheet.
-  Text in the PDF is therefore not selectable (pictures).
-Tested (harness): dialog lists the formats; A4 sheets 793.7 × 1122.5 px under the cards; add page
-2 → 3; PDF = 3 pages, MediaBox 595.92 × 841.92 pt (A4), one 1985 × 2808 px picture per page; a
-sub-page got its own stack (A5 landscape, 793.7 px wide). New tutorial "Page format" (3 tasks,
-touch line; 5 locales) 3/3. Tests 834/834, lint clean.
+Classification: NEW for this view, built on the existing shared tool surfaces (no second drawing
+or marking implementation): `TocView.inkSurface()` / `markSurface()` give the drawing module and
+the highlighter the same contract as the column view (`InkSurface`, `MarkSurface`), so strokes
+and marks go into the same board data (ink stuck to the card, `==…==` / color spans in the card's
+text) and show on the board and in the column view on the same words.
+- Buttons in the view's controls (pen, highlighter, text color; offered by the modules that are
+  on, none on a read-only board); event `toc-tool`.
+- Pen: cells show at their real size while it is on (like the column view), strokes are mapped
+  from the cell's rect to board coordinates, the live stroke sits in the cell drawn on (raised
+  above its neighbours), ink-only changes redraw only the cells' ink after 16 ms (`scheduleInk` /
+  `refreshInk`; the stroke stays until it shows, `settled`), the stroke's preview is kept across
+  full redraws. Drawing cards (item 2) are refreshed too.
+- Input rules (as item 1): with a tool on nothing can be arranged (no handles, a drag pans); a
+  finger drag moves the view, a finger tap on a cell's arrow opens it, on the box's back button
+  goes up, a double tap edits a cell; the pen draws / marks; palm guard (item 3) with the view's
+  zoom and pan as its view state. Esc ends the tool, not the view. The tool's bar never covers the
+  box's title (the sheet moves below it after the tool starts and after going in or out).
+Tested (harness, toc6.canvas): pen on → 5 cells at real size, arranging off, button active; a
+pen stroke on cell C → one drawing anchored to C, inside C's box, drawn in the cell, no live
+preview left; finger drag → view panned, no ink, nothing stored; finger tap on B's arrow → B's
+grid, pen still on; bar bottom 236 px, title top 244 px; highlighter: pen swipe over "some words"
+→ card text `Under B with ==some words== to mark` and a mark in the cell; Esc → tool off, view
+open; palm resting + pen stroke → view restored, only the pen's stroke kept. Tutorial "Table of
+contents": new step "Write on the cells" (touch line; 5 locales); Show me in English 11/11.
+Tests 844/844, lint clean.

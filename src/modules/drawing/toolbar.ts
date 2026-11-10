@@ -111,6 +111,8 @@ export interface ToolbarHost {
 	hiddenTools?: InkTool[];
 	/** Handwriting → text (the system turns pen writing into text), where offered. */
 	handwrite?(): void;
+	/** The lasso's strokes into a card (or out of it): the choice, by the button at `at`. */
+	embed?(at: { x: number; y: number }): void;
 }
 
 export class InkToolbar {
@@ -186,6 +188,19 @@ export class InkToolbar {
 		const sizeBox = this.el.createDiv({ cls: "opc-ink-size-box" });
 		const size = sizeBox.createEl("input", { type: "range", cls: "opc-ink-size", attr: { min: String(MIN_SIZE), max: String(MAX_SIZE), step: "1", "aria-label": t("drawing.size") } });
 		const exact = sizeBox.createEl("input", { type: "number", cls: "opc-ink-size-number", attr: { min: String(MIN_SIZE), max: String(MAX_SIZE), step: "1", inputmode: "decimal", "aria-label": t("drawing.sizeExact") } });
+		// Not a text field until pressed or focused: the system's handwriting input (Scribble on
+		// iPad) would otherwise take pen strokes written near the bar as text for it.
+		exact.readOnly = true;
+		const unlock = () => (exact.readOnly = false);
+		exact.addEventListener("pointerdown", () => {
+			unlock();
+			// A press that didn't end in the field (a drag, a cancel) locks it again.
+			exact.win.setTimeout(() => {
+				if (exact.doc.activeElement !== exact) exact.readOnly = true;
+			}, 600);
+		});
+		exact.addEventListener("focus", unlock);
+		exact.addEventListener("blur", () => (exact.readOnly = true));
 		size.value = exact.value = String(sizeOf());
 		setTooltip(size, t("drawing.size"), { placement: "bottom" });
 		setTooltip(exact, t("drawing.sizeExact"), { placement: "bottom" });
@@ -221,6 +236,12 @@ export class InkToolbar {
 			}
 		});
 		if (this.host.hasSelection()) button("lock", t("drawing.lockSelection"), () => this.host.lockSelection());
+		if (this.host.hasSelection() && this.host.embed) {
+			const b = button("square-plus", t("drawing.embedCard.button"), () => {
+				const r = b.getBoundingClientRect();
+				this.host.embed?.({ x: r.left, y: r.bottom + 4 });
+			}, false, "opc-ink-embed");
+		}
 		if (this.host.handwrite) button("text-cursor-input", t("drawing.handwrite.button"), () => this.host.handwrite?.());
 		button("sliders-horizontal", t("drawing.more"), () => this.toggleMore());
 		button("x", t("drawing.exit"), () => this.host.close(), false, "mod-close");

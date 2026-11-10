@@ -55,6 +55,10 @@ export class CardFaces {
 			const view = card.createDiv({ cls: "opc-crop-view", attr: { "data-opc-crop": "" } });
 			view.setCssProps({ "--opc-crop-x": String(cropped.crop.x), "--opc-crop-y": String(cropped.crop.y), "--opc-crop-w": String(cropped.crop.w), "--opc-crop-h": String(cropped.crop.h), "--opc-crop-ratio": String(node.width / Math.max(1, node.height)) });
 			view.createEl("img", { attr: { src: cropped.src, draggable: "false" } });
+		} else if (!actual && this.isDrawing(node, text)) {
+			// A card that is only a drawing: the drawing, at the view's width.
+			card.addClass("is-drawing");
+			this.drawInk(card, node, true);
 		} else {
 			const body = card.createDiv({ cls: "opc-columns-body markdown-preview-view markdown-rendered" });
 			pending = MarkdownRenderer.render(this.app, text, body, source, component);
@@ -146,8 +150,18 @@ export class CardFaces {
 		card.setCssProps({ "--opc-card-color": /^\d+\s*,\s*\d+\s*,\s*\d+$/.test(color) ? `rgb(${color})` : color });
 	}
 
-	/** Ink drawn on the card (stuck to it, or lying on it) at its place on the card. */
-	drawInk(card: HTMLElement, node: CanvasNodeLike): void {
+	/** A text card with no text and ink on it (a card made for a drawing, or one only drawn on). */
+	isDrawing(node: CanvasNodeLike, text: string): boolean {
+		if (nodeType(node) !== "text" || text.trim()) return false;
+		if (this.ctx.data.node(node).get().drawingCard) return true;
+		return [...this.canvas.nodes.values()].some((n) => this.ctx.data.node(n).get().anchor === node.id);
+	}
+
+	/**
+	 * Ink drawn on the card (stuck to it, or lying on it) at its place on the card. `fit`: the
+	 * card's box scaled to the view's width instead (a drawing card shown smaller than on the board).
+	 */
+	drawInk(card: HTMLElement, node: CanvasNodeLike, fit = false): void {
 		const carriers = [...this.canvas.nodes.values()].filter((n) => {
 			if (nodeType(n) !== "text") return false;
 			const extra = this.ctx.data.node(n).get();
@@ -162,7 +176,7 @@ export class CardFaces {
 		const minY = Math.min(node.y, ...carriers.map((c) => c.y));
 		const maxX = Math.max(node.x + node.width, ...carriers.map((c) => c.x + c.width));
 		const maxY = Math.max(node.y + node.height, ...carriers.map((c) => c.y + c.height));
-		const svg = card.createSvg("svg", { cls: "opc-columns-ink" });
+		const svg = card.createSvg("svg", { cls: fit ? ["opc-columns-ink", "is-fit"] : "opc-columns-ink" });
 		svg.setAttribute("viewBox", `0 0 ${maxX - minX} ${maxY - minY}`);
 		svg.setAttribute("width", String(maxX - minX));
 		svg.setAttribute("height", String(maxY - minY));

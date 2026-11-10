@@ -17,6 +17,7 @@ import { debugNotice } from "../../core/debug";
 import type { NoteData } from "./note";
 import { readPagedNote, sectionAt, type PagedNote, type PageSection } from "./paged";
 import { pageOrder } from "./structure";
+import { escapeMarkdown, plainTitle, titleMarkdown } from "../../ui/card-title";
 
 /** Lines shown in an editor, [from, to) as document positions; null = the whole note. */
 interface Shown {
@@ -271,7 +272,7 @@ export class PagedNotes {
 	}
 
 	private sourceTitle(open: Open, path: string, page: string): string {
-		return page ? open.note.sections.find((s) => s.page === page)?.title || this.ctx.t("pages.untitled") : (path.split("/").pop()?.replace(/\.md$/, "") ?? path);
+		return page ? plainTitle(open.note.sections.find((s) => s.page === page)?.title ?? "") || this.ctx.t("pages.untitled") : (path.split("/").pop()?.replace(/\.md$/, "") ?? path);
 	}
 
 	// ---------- the bar and the index ----------
@@ -285,7 +286,7 @@ export class PagedNotes {
 			alive: () => view.containerEl.isConnected && !!open(),
 			pages: () => (open()?.note.pages ?? []).filter((p) => open()!.note.sections.some((s) => s.page === p.id)).map((p) => ({ id: p.id, anchor: p.anchor, root: p.root, ...(p.parent ? { parent: p.parent } : {}) })),
 			current: () => open()?.page ?? "",
-			title: (page) => (page ? open()?.note.sections.find((s) => s.page === page)?.title || this.ctx.t("pages.untitled") : (view.file?.basename ?? "")),
+			title: (page) => (page ? titleMarkdown(open()?.note.sections.find((s) => s.page === page)?.title ?? "") || escapeMarkdown(this.ctx.t("pages.untitled")) : escapeMarkdown(view.file?.basename ?? "")),
 			count: (page) => open()?.note.sections.find((s) => s.page === page)?.count ?? 0,
 			show: (page) => this.show(path, page),
 		};
@@ -309,7 +310,7 @@ export class PagedNotes {
 			this.makeTools(view, bar.createDiv({ cls: "opc-md-pages-tools" }));
 		}
 		const where = bar.querySelector<HTMLElement>(".opc-md-pages-where")!;
-		renderPagesBar(where, this.sourceFor(view), this.ctx.t, () => void pagesHost.api?.openIndex());
+		renderPagesBar(this.app, where, this.sourceFor(view), this.ctx.t, () => void pagesHost.api?.openIndex());
 		where.querySelector(".opc-pages-index")?.toggleClass("is-hidden", !pagesHost.api);
 		this.updateTools(bar, open);
 	}
