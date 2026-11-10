@@ -1646,9 +1646,13 @@ const toc: TutorialDefinition = {
 				fire("pointerdown");
 				fire("pointerup");
 				await rt.wait(400);
-				const items = Array.from(rt.canvas.wrapperEl.doc.querySelectorAll<HTMLElement>(".menu .menu-item"));
-				(items.find((i) => !i.querySelector(".menu-item-icon .lucide-check") && !i.hasClass("is-disabled")) ?? items[0])?.click();
+				// The menu's first item opens the colors; then a color not in use.
+				rt.canvas.wrapperEl.doc.querySelector<HTMLElement>(".menu .menu-item")?.click();
 				await rt.wait(400);
+				const swatches = Array.from(rt.canvas.wrapperEl.doc.querySelectorAll<HTMLElement>(".menu .menu-item.opc-toc-swatch-item"));
+				(swatches.find((i) => !i.hasClass("mod-selected") && !i.querySelector(".menu-item-icon.mod-checked, .lucide-check")) ?? swatches[0])?.click();
+				await rt.wait(400);
+				rt.canvas.wrapperEl.doc.querySelectorAll(".menu").forEach((m) => m.remove());
 			},
 		},
 		{

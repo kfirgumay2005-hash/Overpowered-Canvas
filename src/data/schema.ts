@@ -225,18 +225,29 @@ export interface TocSplit {
 	group?: TocSubGroup;
 }
 
-/** A sub-group's id and outline color (a canvas color "1"–"6" or "#rrggbb"). */
-export interface TocSubGroup {
-	id: string;
+export const TOC_LINES = ["solid", "dashed", "dotted"] as const;
+export type TocLine = (typeof TOC_LINES)[number];
+
+/** How a group's or sub-group's outline looks; absent fields use the settings' defaults. */
+export interface TocGroupStyle {
+	/** A canvas color "1"–"6", a theme's extra color "7"–"32", or "#rrggbb". */
 	color?: string;
+	/** Outline thickness in px. */
+	width?: number;
+	line?: TocLine;
+	/** Corner radius in px. */
+	radius?: number;
 }
 
-/** A cell of the table of contents' grid: one card, or a cell group (with its outline color). */
-export interface TocBlock {
+/** A sub-group's id and outline. */
+export interface TocSubGroup extends TocGroupStyle {
+	id: string;
+}
+
+/** A cell of the table of contents' grid: one card, or a cell group (with its outline; groups only). */
+export interface TocBlock extends TocGroupStyle {
 	id: string;
 	tree: TocTree;
-	/** A canvas color "1"–"6" or "#rrggbb"; groups only. */
-	color?: string;
 }
 
 /** The rows of the table of contents' grid, each a list of cells and cell groups. */

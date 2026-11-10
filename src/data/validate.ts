@@ -35,6 +35,7 @@ import {
 	type TocArrangement,
 	type PaperSpec,
 	PAPER_FORMAT_IDS,
+	TOC_LINES,
 	type TocBlock,
 	type TocSubGroup,
 	type TocTree,
@@ -211,9 +212,10 @@ function tocTree(raw: unknown, depth = 12): TocTree | undefined {
 	const group = tocSubGroup(raw.group);
 	return group ? { dir: raw.dir, items, group } : { dir: raw.dir, items };
 }
-const tocColor: Sanitizer<string> = (raw) => (typeof raw === "string" && /^(?:[1-6]|#[0-9a-fA-F]{6})$/.test(raw) ? raw : undefined);
-const tocSubGroup = objectOf<TocSubGroup>({ id: nonEmptyStr, color: tocColor }, { required: ["id"] });
-const tocBlock = objectOf<TocBlock>({ id: nonEmptyStr, tree: (raw) => tocTree(raw), color: tocColor }, { required: ["id", "tree"] });
+const tocColor: Sanitizer<string> = (raw) => (typeof raw === "string" && /^(?:[1-9]|[12][0-9]|3[0-2]|#[0-9a-fA-F]{6})$/.test(raw) ? raw : undefined);
+const tocStyle = { color: tocColor, width: inRange(0.5, 12), line: oneOf(TOC_LINES), radius: inRange(0, 48) };
+const tocSubGroup = objectOf<TocSubGroup>({ id: nonEmptyStr, ...tocStyle }, { required: ["id"] });
+const tocBlock = objectOf<TocBlock>({ id: nonEmptyStr, tree: (raw) => tocTree(raw), ...tocStyle }, { required: ["id", "tree"] });
 const tocArrangement = objectOf<TocArrangement>({ rows: arrayOf(arrayOf(tocBlock, { min: 1 })) }, { required: ["rows"] });
 
 const paperStack = objectOf<{ x: number; y: number; count?: number }>({ x: finite, y: finite, count: inRange(1, 999) }, { required: ["x", "y"] });

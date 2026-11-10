@@ -547,8 +547,18 @@ body.opc-mod-presentation .opc-toc-block {
 body.opc-mod-presentation .opc-toc-block.is-group {
 	padding: var(--size-4-3);
 	padding-top: calc(var(--size-4-3) + 10px);
-	border: 2px solid var(--opc-toc-group, var(--color-accent));
-	border-radius: var(--radius-l);
+	/* Thickness, line and corners from the settings; a group's own win (classes below). */
+	border: var(--opc-toc-group-width, 2px) var(--opc-toc-group-line, solid) var(--opc-toc-group, var(--color-accent));
+	border-radius: var(--opc-toc-group-radius, var(--radius-l));
+}
+body.opc-mod-presentation .opc-toc :is(.opc-toc-block.is-group, .opc-toc-split.is-subgroup).has-own-width {
+	border-width: var(--opc-toc-own-width);
+}
+body.opc-mod-presentation .opc-toc :is(.opc-toc-block.is-group, .opc-toc-split.is-subgroup).has-own-line {
+	border-style: var(--opc-toc-own-line);
+}
+body.opc-mod-presentation .opc-toc :is(.opc-toc-block.is-group, .opc-toc-split.is-subgroup).has-own-radius {
+	border-radius: var(--opc-toc-own-radius);
 }
 body.opc-mod-presentation .opc-toc.is-free .opc-toc-block.is-group {
 	cursor: grab;
@@ -564,7 +574,8 @@ body.opc-mod-presentation .opc-toc-grip {
 	align-items: center;
 	justify-content: center;
 	border-radius: var(--radius-s);
-	color: var(--background-primary);
+	/* Black or white, whichever reads on the group's color (light and dark themes alike). */
+	color: var(--opc-toc-group-ink, var(--background-primary));
 	background-color: var(--opc-toc-group, var(--color-accent));
 	cursor: grab;
 	touch-action: none;
@@ -585,8 +596,8 @@ body.opc-mod-presentation .opc-toc-split.is-subgroup {
 	position: relative;
 	padding: var(--size-4-2);
 	padding-top: calc(var(--size-4-2) + 8px);
-	border: 2px solid var(--opc-toc-group, var(--color-accent));
-	border-radius: var(--radius-m);
+	border: var(--opc-toc-group-width, 2px) var(--opc-toc-group-line, solid) var(--opc-toc-group, var(--color-accent));
+	border-radius: calc(var(--opc-toc-group-radius, 12px) * 0.67);
 }
 body.opc-mod-presentation .opc-toc.is-free .opc-toc-split.is-subgroup {
 	cursor: grab;
@@ -730,4 +741,36 @@ body.opc-mod-presentation .opc-toc-guide-label {
 body.opc-mod-presentation .opc-toc-guide.is-sub .opc-toc-guide-label {
 	top: 4px;
 	left: 4px;
+}
+
+/* A group's color choices: each with its color. */
+.menu .menu-item.opc-toc-swatch-item .menu-item-icon svg {
+	color: var(--opc-swatch);
+	fill: var(--opc-swatch);
+}
+/* The system color picker opened from a group's menu (not seen itself). */
+body.opc-mod-presentation .opc-toc-color-input {
+	position: absolute;
+	right: var(--size-4-4);
+	bottom: var(--size-4-4);
+	width: 1px;
+	height: 1px;
+	opacity: 0;
+	pointer-events: none;
+}
+/* Settings: your group colors. */
+.opc-toc-palette {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--size-2-2);
+	margin-inline-end: var(--size-4-2);
+}
+.opc-toc-palette-swatch {
+	width: 22px;
+	height: 22px;
+	padding: 0;
+	border-radius: 50%;
+	border: 1px solid var(--background-modifier-border);
+	background-color: var(--opc-swatch);
+	box-shadow: none;
 }

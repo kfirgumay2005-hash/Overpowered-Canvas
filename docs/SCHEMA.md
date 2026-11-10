@@ -54,10 +54,12 @@ interface OpcRoot {                       // file root "x-opc"
                                           // the Markdown export. Children it doesn't name keep their board place.
                                           // Not copied into a note's data block (the outline is the order).
   tocLayouts?: Record<string, {           // Table of contents, free arrangement: parent card id (or
-    rows: { id: string; tree: TocTree; color?: string }[][];  // "page:<id>", "page:" = main page's top level)
+    rows: { id: string; tree: TocTree; color?: string; width?: number; line?: "solid" | "dashed" | "dotted"; radius?: number }[][];
+                                          // ("page:<id>", "page:" = main page's top level). Outline: color = canvas color
+                                          // "1"–"6", theme slot "7"–"32" or "#rrggbb"; width / radius px (absent: settings)
   }>;                                     // → rows of cells; a block is one cell or a cell group (outline color
                                           // "1"–"6" or "#rrggbb"). TocTree = card id | { dir: "row" | "col";
-                                          // items: TocTree[]; group?: { id: string; color?: string } } (cells
+                                          // items: TocTree[]; group?: { id; color?; width?; line?; radius? } } (cells
                                           // beside / below each other; with `group`: a sub-group, its own
                                           // outline inside the block's group, nested at any depth).
   tocLocked?: boolean;                    // table of contents: layout locked (no cell or group moves)

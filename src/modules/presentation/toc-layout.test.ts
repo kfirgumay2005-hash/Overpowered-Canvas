@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cardsOf, findSub, groupsAround, moveIn, normalize, recolor, simpleArrangement, subGroupsOf, ungroup, type TocArrangement } from "./toc-layout";
+import { cardsOf, findSub, groupsAround, moveIn, normalize, recolor, restyle, simpleArrangement, styleOfGroup, subGroupsOf, ungroup, type TocArrangement } from "./toc-layout";
 
 const kids = ["B", "C", "D", "E", "F"];
 const shape = (arr: TocArrangement) => arr.rows.map((row) => row.map((b) => b.tree));
@@ -129,5 +129,23 @@ describe("table of contents arrangement", () => {
 			const left = normalize(arr, ["B", "C", "E", "F"], 5);
 			expect(left.rows[0]![0]!.tree).toEqual({ dir: "row", items: ["B", "C"] });
 		});
+	});
+
+	it("keeps a group's own outline through moves, sub-groups and reloads; undefined goes back to the default", () => {
+		let arr = simpleArrangement(kids, 5);
+		arr = moveIn(arr, { kind: "card", card: "C" }, { kind: "cell", card: "B", side: "right" }, kids, "n1");
+		arr = moveIn(arr, { kind: "card", card: "D" }, { kind: "cell", card: "C", side: "right" }, kids, "n2");
+		const g = arr.rows[0]![0]!.id;
+		arr = restyle(arr, g, { color: "12", width: 4, line: "dashed", radius: 0 });
+		arr = moveIn(arr, { kind: "card", card: "D" }, { kind: "sub", card: "C", side: "right" }, kids, "s1");
+		arr = restyle(arr, "s1", { color: "#abcdef", width: 1, line: "dotted", radius: 24 });
+		arr = moveIn(arr, { kind: "block", block: g }, { kind: "slot", row: 0, index: 3, newRow: false }, kids, "x");
+		arr = normalize(JSON.parse(JSON.stringify(arr)) as TocArrangement, kids, 5);
+		expect(styleOfGroup(arr, g)).toEqual({ color: "12", width: 4, line: "dashed", radius: 0 });
+		expect(styleOfGroup(arr, "s1")).toEqual({ color: "#abcdef", width: 1, line: "dotted", radius: 24 });
+		// Out to a group of its own: its outline goes along.
+		const out = moveIn(arr, { kind: "sub", sub: "s1" }, { kind: "slot", row: 1, index: 0, newRow: true }, kids, "g2");
+		expect(styleOfGroup(out, "g2")).toEqual({ color: "#abcdef", width: 1, line: "dotted", radius: 24 });
+		expect(styleOfGroup(restyle(arr, g, { width: undefined, line: undefined }), g)).toEqual({ color: "12", radius: 0 });
 	});
 });

@@ -3,7 +3,6 @@ import type { ModuleContext } from "../../core/module";
 import { logError } from "../../core/log";
 import type { CanvasLike, CanvasNodeLike } from "../../internals/types";
 import { nodeText } from "../canvas-markdown/structure";
-import { cssColor } from "../minimap/logic";
 import { pagesHost } from "../pages/api";
 import { canvasDirection, mutate, nodeType } from "../shared";
 import { joinTopLane, LANE_RANK } from "../../ui/top-lane";
@@ -11,7 +10,8 @@ import { renderTitle, titleMarkdown } from "../../ui/card-title";
 import { CardFaces } from "./card-face";
 import { zoomAround, type View } from "./column-layout";
 import { mapModel } from "./map-model";
-import { cardsOf, findSub, isGroup, moveIn, normalize, recolor, simpleArrangement, ungroup, type Side, type TocArrangement, type TocBlock, type TocDrop, type TocMoving, type TocTree } from "./toc-layout";
+import { TOC_LINES, type TocLine } from "../../data/schema";
+import { cardsOf, findSub, isGroup, moveIn, normalize, restyle, simpleArrangement, styleOfGroup, ungroup, type TocGroupStyle, type Side, type TocArrangement, type TocBlock, type TocDrop, type TocMoving, type TocTree } from "./toc-layout";
 import { orderedChildren, treeParent } from "./walk";
 
 export type TocMode = "simple" | "free";
@@ -26,6 +26,10 @@ export interface TocOptions {
 	actualSize: boolean;
 	/** Text size in px; 0 = as the canvas shows its cards. */
 	fontSize: number;
+	/** How group outlines look unless a group has its own (settings). */
+	group: { width: number; line: TocLine; radius: number };
+	/** The user's own group colors ("#rrggbb"). */
+	palette: string[];
 }
 
 /** What the table of contents shows: the children of `parent` on `page` ("" = the page's top cards). */
@@ -70,6 +74,35 @@ interface RenderEnv {
 	pending: Promise<void>[];
 	presets: Record<string, string>;
 	free: boolean;
+}
+
+/** Highest color slot a theme can define (see the custom-colors module). */
+const MAX_SLOT = 32;
+/** Outline thicknesses and corner radii offered in a group's menu (px). */
+const WIDTHS = [1, 2, 3, 4, 6, 8];
+const RADII = [0, 4, 8, 16, 24];
+
+/** Black or white, whichever reads better on `color` (the handle's icon on the group's color). */
+const inks = new Map<string, string>();
+function inkOn(doc: Document, color: string): string {
+	const known = inks.get(color);
+	if (known) return known;
+	const g = createEl("canvas").getContext("2d");
+	let ink = "var(--background-primary)";
+	if (g) {
+		g.fillStyle = "#000";
+		g.fillStyle = color;
+		const v = String(g.fillStyle);
+		const hex = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})/i.exec(v);
+		const rgb = /rgba?\((\d+),\s*(\d+),\s*(\d+)/.exec(v);
+		const [r, gg, b] = hex ? hex.slice(1).map((h) => Number.parseInt(h, 16)) : rgb ? rgb.slice(1).map(Number) : [NaN, NaN, NaN];
+		if (Number.isFinite(r)) {
+			const lum = (0.2126 * r! + 0.7152 * gg! + 0.0722 * b!) / 255;
+			ink = lum > 0.55 ? "#000000" : "#ffffff";
+		}
+	}
+	inks.set(color, ink);
+	return ink;
 }
 
 /** A drop in the middle part of a cell (this share of its width and height) makes a sub-group. */
@@ -285,7 +318,14 @@ export class TocView {
 		this.el.toggleClass("is-actual-size", opts.actualSize);
 		const canvasFont = this.faces.canvasFontSize();
 		const font = opts.fontSize > 0 ? opts.fontSize : canvasFont;
-		this.el.setCssProps({ "--opc-columns-font-size": `${font}px`, "--opc-columns-width": `${opts.cellWidth}px` });
+		this.el.setCssProps({
+			"--opc-columns-font-size": `${font}px`,
+			"--opc-columns-width": `${opts.cellWidth}px`,
+			// Group outlines by default (each group may have its own).
+			"--opc-toc-group-width": `${opts.group.width}px`,
+			"--opc-toc-group-line": opts.group.line,
+			"--opc-toc-group-radius": `${opts.group.radius}px`,
+		});
 		this.backEl.toggle(this.canGoBack());
 
 		const head = this.sheet.createDiv({ cls: "opc-toc-head" });
@@ -301,9 +341,8 @@ export class TocView {
 		}
 		const grid = this.sheet.createDiv({ cls: "opc-toc-grid" });
 		if (!children.length) grid.createDiv({ cls: "opc-toc-empty", text: this.ctx.t("presentation.toc.empty") });
-		const presets: Record<string, string> = {};
-		const body = getComputedStyle(this.el.doc.body);
-		for (let i = 1; i <= 6; i++) presets[String(i)] = body.getPropertyValue(`--canvas-color-${i}`);
+		this.readPresets();
+		const presets = this.presets;
 		const pending: Promise<void>[] = [];
 		this.arrangement.rows.forEach((row, r) => {
 			const rowEl = grid.createDiv({ cls: "opc-toc-row", attr: { "data-row": String(r) } });
@@ -311,8 +350,7 @@ export class TocView {
 				const blockEl = rowEl.createDiv({ cls: "opc-toc-block", attr: { "data-block": block.id } });
 				if (isGroup(block)) {
 					blockEl.addClass("is-group");
-					const color = cssColor(block.color, presets);
-					if (color) blockEl.setCssProps({ "--opc-toc-group": color });
+					this.paintGroup(blockEl, block);
 					if (free) {
 						const grip = blockEl.createEl("button", { cls: "clickable-icon opc-toc-grip", attr: { "aria-label": this.ctx.t("presentation.toc.group"), "data-block": block.id } });
 						setIcon(grip, "grip-horizontal");
@@ -338,8 +376,7 @@ export class TocView {
 				// A sub-group: an outline of its own (its own color), a handle to move it or open its menu.
 				split.addClass("is-subgroup");
 				split.dataset.sub = tree.group.id;
-				const color = cssColor(tree.group.color, env.presets);
-				if (color) split.setCssProps({ "--opc-toc-group": color });
+				this.paintGroup(split, tree.group);
 				if (env.free) {
 					const grip = split.createEl("button", { cls: "clickable-icon opc-toc-grip is-sub", attr: { "aria-label": this.ctx.t("presentation.toc.subgroup"), "data-sub": tree.group.id } });
 					setIcon(grip, "grip-horizontal");
@@ -754,27 +791,109 @@ export class TocView {
 		this.render(true);
 	}
 
-	/** A tap on a group's handle: its outline color, or ungrouping. */
-	private groupMenu(block: string, evt: PointerEvent): void {
-		const menu = new Menu();
-		const current = this.arrangement.rows.flat().find((b) => b.id === block)?.color;
-		for (const color of Object.keys(COLOR_NAMES) as (keyof typeof COLOR_NAMES)[]) {
-			menu.addItem((i) =>
-				i
-					.setTitle(this.ctx.t(COLOR_NAMES[color]))
-					.setIcon("circle")
-					.setChecked(current === color)
-					.onClick(() => this.save(recolor(this.arrangement, block, color))),
-			);
+	// ---------- group outlines ----------
+
+	/** Canvas colors 1–6 and a theme's extra colors 7–32, as CSS colors (read on each draw: themes change). */
+	private presets: Record<string, string> = {};
+	private readPresets(): void {
+		const body = getComputedStyle(this.el.doc.body);
+		this.presets = {};
+		for (let i = 1; i <= MAX_SLOT; i++) {
+			const v = body.getPropertyValue(`--canvas-color-${i}`).trim();
+			if (v) this.presets[String(i)] = /^\d+\s*,/.test(v) ? `rgb(${v})` : v;
 		}
+	}
+
+	/** A stored group color as a CSS color (a slot number, or "#rrggbb"). */
+	private colorOf(color: string | undefined): string | null {
+		if (!color) return null;
+		return /^\d+$/.test(color) ? (this.presets[color] ?? null) : color;
+	}
+
+	/** Draws a group's or sub-group's outline: its color and, when it has them, its own thickness, line and corners. */
+	private paintGroup(el: HTMLElement, style: TocGroupStyle): void {
+		const color = this.colorOf(style.color);
+		if (color) el.setCssProps({ "--opc-toc-group": color, "--opc-toc-group-ink": inkOn(el.doc, color) });
+		if (style.width !== undefined) el.setCssProps({ "--opc-toc-own-width": `${style.width}px` });
+		if (style.line) el.setCssProps({ "--opc-toc-own-line": style.line });
+		if (style.radius !== undefined) el.setCssProps({ "--opc-toc-own-radius": `${style.radius}px` });
+		el.toggleClass("has-own-width", style.width !== undefined);
+		el.toggleClass("has-own-line", !!style.line);
+		el.toggleClass("has-own-radius", style.radius !== undefined);
+	}
+
+	/**
+	 * A tap on a group's or sub-group's handle: its color (canvas colors, the theme's extra colors,
+	 * your own colors, any color), its outline (thickness, line, corners), or ungrouping.
+	 */
+	private groupMenu(id: string, evt: PointerEvent): void {
+		const t = this.ctx.t;
+		const style = styleOfGroup(this.arrangement, id) ?? {};
+		const set = (patch: TocGroupStyle) => this.save(restyle(this.arrangement, id, patch));
+		const menu = new Menu();
+		/** A submenu where the app has them, else the items right in the menu after a title. */
+		const submenu = (title: string, icon: string, fill: (m: Menu) => void) => {
+			let target: Menu | null = null;
+			menu.addItem((i) => {
+				i.setTitle(title).setIcon(icon);
+				target = (i as unknown as { setSubmenu?(): Menu }).setSubmenu?.() ?? null;
+				if (!target) i.setDisabled(true);
+			});
+			fill(target ?? menu);
+		};
+		const swatch = (m: Menu, title: string, value: string | undefined, css: string | null) =>
+			m.addItem((i) => {
+				i.setTitle(title).setIcon(css ? "circle" : "circle-dashed").setChecked(style.color === value).onClick(() => set({ color: value }));
+				const dom = (i as unknown as { dom?: HTMLElement }).dom;
+				if (dom && css) {
+					dom.addClass("opc-toc-swatch-item");
+					dom.setCssProps({ "--opc-swatch": css });
+				}
+			});
+		submenu(t("presentation.toc.style.color"), "palette", (m) => {
+			for (const slot of Object.keys(COLOR_NAMES) as (keyof typeof COLOR_NAMES)[]) swatch(m, t(COLOR_NAMES[slot]), slot, this.colorOf(slot));
+			for (let n = 7; n <= MAX_SLOT; n++) if (this.presets[String(n)]) swatch(m, t("customColors.item", { n }), String(n), this.presets[String(n)]!);
+			for (const hex of this.options().palette) swatch(m, hex, hex, hex);
+			m.addSeparator();
+			m.addItem((i) => i.setTitle(t("presentation.toc.style.pick")).setIcon("pipette").onClick(() => this.pickColor(style.color, (hex) => set({ color: hex }))));
+			m.addItem((i) => i.setTitle(t("presentation.toc.style.auto")).setIcon("refresh-ccw").onClick(() => set({ color: undefined })));
+		});
+		const defaults = this.options().group;
+		submenu(t("presentation.toc.style.outline"), "square-dashed", (m) => {
+			m.addItem((i) => i.setTitle(t("presentation.toc.style.widthDefault", { px: defaults.width })).setIcon("minus").setChecked(style.width === undefined).onClick(() => set({ width: undefined })));
+			for (const px of WIDTHS) m.addItem((i) => i.setTitle(t("presentation.toc.style.width", { px })).setIcon("minus").setChecked(style.width === px).onClick(() => set({ width: px })));
+			m.addSeparator();
+			m.addItem((i) => i.setTitle(t("presentation.toc.style.lineDefault", { line: t(`presentation.toc.line.${defaults.line}`) })).setIcon("square").setChecked(!style.line).onClick(() => set({ line: undefined })));
+			for (const line of TOC_LINES) m.addItem((i) => i.setTitle(t(`presentation.toc.line.${line}`)).setIcon(line === "solid" ? "square" : "square-dashed").setChecked(style.line === line).onClick(() => set({ line })));
+			m.addSeparator();
+			m.addItem((i) => i.setTitle(t("presentation.toc.style.radiusDefault", { px: defaults.radius })).setIcon("square-round-corner").setChecked(style.radius === undefined).onClick(() => set({ radius: undefined })));
+			for (const px of RADII) m.addItem((i) => i.setTitle(t("presentation.toc.style.radius", { px })).setIcon("square-round-corner").setChecked(style.radius === px).onClick(() => set({ radius: px })));
+		});
 		menu.addSeparator();
 		menu.addItem((i) =>
 			i
-				.setTitle(this.ctx.t("presentation.toc.ungroup"))
+				.setTitle(t("presentation.toc.ungroup"))
 				.setIcon("ungroup")
-				.onClick(() => this.save(ungroup(this.arrangement, block))),
+				.onClick(() => this.save(ungroup(this.arrangement, id))),
 		);
 		menu.showAtPosition({ x: evt.clientX, y: evt.clientY }, this.el.doc);
+	}
+
+	/** The system's color picker; the color picked is kept among your own colors too. */
+	private pickColor(current: string | undefined, done: (hex: string) => void): void {
+		const input = this.el.createEl("input", { cls: "opc-toc-color-input", type: "color" });
+		input.value = current && /^#[0-9a-f]{6}$/i.test(current) ? current : "#4dabf7";
+		const finish = () => {
+			input.remove();
+			const hex = input.value.toLowerCase();
+			if (!/^#[0-9a-f]{6}$/.test(hex)) return;
+			const palette = this.options().palette;
+			if (!palette.includes(hex)) this.setOptions({ palette: [...palette, hex].slice(-24) });
+			done(hex);
+		};
+		input.addEventListener("change", finish, { once: true });
+		input.addEventListener("blur", () => this.el.win.setTimeout(() => input.remove(), 1000), { once: true });
+		input.click();
 	}
 
 	// ---------- editing ----------

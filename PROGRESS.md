@@ -15,7 +15,7 @@ When resuming: read this file and `git log`, then continue with the first item t
 | 5 | Grid mode: nested sub-groups | IMPROVEMENT | done |
 | 6 | Grid mode: handwriting tools | NEW (tools in the grid view) | |
 | 7 | Grid mode: lock layout toggle | NEW | done |
-| 8 | Group customization (thickness, colors, style, radius) | IMPROVEMENT | |
+| 8 | Group customization (thickness, colors, style, radius) | IMPROVEMENT | done |
 
 ## 1. Column mode: finger tap on a card with a tool on (done)
 
@@ -233,3 +233,29 @@ group; lock toggled with a pending grouping: history length unchanged (6/7 → 6
 the grouping and kept the lock; the file on disk has `"tocLocked":true`. Tutorial "Table of
 contents": new step "Lock the layout" (touch line, command alternative; 5 locales); Show me in
 English 10/10. Tests 843/843, lint clean.
+
+## 8. Group customization (done)
+
+Classification: IMPROVEMENT of the cell groups' color menu (round 13 had 6 canvas colors + ungroup).
+- Stored per group and sub-group (`TocGroupStyle`: `color`, `width`, `line`, `radius`; schema,
+  validator, SCHEMA.md). Colors reuse the plugin's color system: canvas colors "1"–"6", the
+  theme's extra slots "7"–"32" (the custom-colors module's), or "#rrggbb". Kept through every
+  move, sub-group → group, reload (`styleOf`, `restyle`, `styleOfGroup`; unit test).
+- Settings (Presentations): default outline thickness (1–12 px, 2), line (solid / dashed /
+  dotted), corners (0–48 px, 12), and **your group colors** (swatches, click to remove, color picker
+  to add; max 24). Defaults are CSS variables on the view; a group's own values win via classes
+  (no inheritance into nested sub-groups).
+- Handle menu: **Color ▸** (canvas colors, theme slots that exist, your colors — each with its swatch —,
+  **Pick a color…** (system picker; the color is added to your colors), **Automatic color**),
+  **Outline ▸** (thickness default/1/2/3/4/6/8 px, line default/solid/dashed/dotted, corners
+  default/0/4/8/16/24 px), **Ungroup the cells**. Submenus where the app has them, else inline.
+- Light and dark: "#rrggbb" colors render identically; canvas colors follow the theme as on the
+  board; the handle's icon is black or white by the color's luminance, so it stays readable.
+Tested (harness): menu shows Color ▸ / Outline ▸ / Ungroup; Outline → 6 px, Dashed, 0 px and
+Color → Purple stored as `{color: "6", width: 6, line: "dashed", radius: 0}`, computed border
+dashed / 0 px corners; light theme: purple follows the theme (rgb(168,130,255) → rgb(120,82,238)),
+handle icon black → white; Pick a color… #e8590c → stored, added to the palette setting, same
+rgb(232,89,12) in both themes; settings render the 4 new rows with the swatch and picker. Unit
+test (style through moves/sub-groups/reload/defaults) — tests 844/844. Tutorial "Table of
+contents": the color step became "The group's look" (menu, outline, settings; 5 locales; its demo
+updated for the submenu); Show me in English 10/10. Lint clean.

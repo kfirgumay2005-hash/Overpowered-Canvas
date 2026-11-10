@@ -7,9 +7,19 @@
 // group, cells can form sub-groups (a split with `group`), with outlines of their own, nested at
 // any depth.
 
-import type { TocArrangement, TocBlock, TocSplit, TocSubGroup, TocTree } from "../../data/schema";
+import type { TocArrangement, TocBlock, TocGroupStyle, TocSplit, TocSubGroup, TocTree } from "../../data/schema";
 
-export type { TocArrangement, TocBlock, TocSplit, TocSubGroup, TocTree };
+export type { TocArrangement, TocBlock, TocGroupStyle, TocSplit, TocSubGroup, TocTree };
+
+/** The outline fields of a group or sub-group that are set (undefined ones left out). */
+export function styleOf(s: TocGroupStyle): TocGroupStyle {
+	const out: TocGroupStyle = {};
+	if (s.color !== undefined) out.color = s.color;
+	if (s.width !== undefined) out.width = s.width;
+	if (s.line !== undefined) out.line = s.line;
+	if (s.radius !== undefined) out.radius = s.radius;
+	return out;
+}
 
 export type Side = "left" | "right" | "top" | "bottom";
 
@@ -129,7 +139,7 @@ export function normalize(stored: TocArrangement | undefined, children: readonly
 			if (tree === null) continue;
 			// A sub-group holding the whole group is the group itself: one outline, not two.
 			if (typeof tree !== "string" && tree.group) tree = { dir: tree.dir, items: tree.items };
-			out.push({ id: unique(block.id), tree, ...(block.color && typeof tree !== "string" ? { color: block.color } : {}) });
+			out.push({ id: unique(block.id), tree, ...(typeof tree !== "string" ? styleOf(block) : {}) });
 		}
 		if (out.length) rows.push(out);
 	}
@@ -172,7 +182,7 @@ function colorGroups(arr: TocArrangement): TocArrangement {
 	return {
 		rows: arr.rows.map((row) =>
 			row.map((b) => {
-				if (!isGroup(b)) return b.color ? { id: b.id, tree: b.tree } : b;
+				if (!isGroup(b)) return { id: b.id, tree: b.tree };
 				const color = b.color ?? pick();
 				return { ...b, color, tree: paint(b.tree, [color], 1) };
 			}),
@@ -272,7 +282,7 @@ export function moveIn(arr: TocArrangement, moving: TocMoving, drop: TocDrop, ch
 	// measured on), then take the original out. A sub-group moved out becomes a group of its own.
 	let placed: TocBlock;
 	if (moving.kind === "block") placed = { ...source.block };
-	else if (moving.kind === "sub" && typeof payload !== "string") placed = { id: newId, tree: { dir: payload.dir, items: payload.items }, ...(payload.group?.color ? { color: payload.group.color } : {}) };
+	else if (moving.kind === "sub" && typeof payload !== "string") placed = { id: newId, tree: { dir: payload.dir, items: payload.items }, ...(payload.group ? styleOf(payload.group) : {}) };
 	else placed = { id: newId, tree: payload };
 	const rows = arr.rows.map((row) => [...row]);
 	const r = Math.max(0, Math.min(drop.row, rows.length));
@@ -281,7 +291,7 @@ export function moveIn(arr: TocArrangement, moving: TocMoving, drop: TocDrop, ch
 	let out: TocArrangement = { rows };
 	if (moving.kind === "block") out = { rows: out.rows.map((row) => row.filter((b) => b === placed || b !== source.block)).filter((row) => row.length > 0) };
 	else out = withoutCards(out, moved, placed);
-	const clean = { rows: out.rows.map((row) => row.map((b) => ({ id: b.id, tree: b.tree, ...(b.color ? { color: b.color } : {}) }))) };
+	const clean = { rows: out.rows.map((row) => row.map((b) => ({ id: b.id, tree: b.tree, ...styleOf(b) }))) };
 	return normalize(clean, children, Number.POSITIVE_INFINITY);
 }
 
@@ -294,16 +304,32 @@ function mapSubs(tree: TocTree, id: string, fn: (g: TocSubGroup) => TocSubGroup 
 	return group ? { dir: tree.dir, items, group } : { dir: tree.dir, items };
 }
 
-/** A group's or sub-group's outline color (undefined: back to an automatic one). */
-export function recolor(arr: TocArrangement, id: string, color: string | undefined): TocArrangement {
+/**
+ * Changes a group's or sub-group's outline: the fields given (undefined: back to the default; for
+ * the color, an automatic one).
+ */
+export function restyle(arr: TocArrangement, id: string, patch: TocGroupStyle): TocArrangement {
 	return {
 		rows: arr.rows.map((row) =>
 			row.map((b) => {
-				if (b.id === id) return { id: b.id, tree: b.tree, ...(color ? { color } : {}) };
-				return { ...b, tree: mapSubs(b.tree, id, (g) => ({ id: g.id, ...(color ? { color } : {}) })) };
+				if (b.id === id) return { id: b.id, tree: b.tree, ...styleOf({ ...styleOf(b), ...patch }) };
+				return { ...b, tree: mapSubs(b.tree, id, (g) => ({ id: g.id, ...styleOf({ ...styleOf(g), ...patch }) })) };
 			}),
 		),
 	};
+}
+
+/** A group's or sub-group's outline color (undefined: back to an automatic one). */
+export function recolor(arr: TocArrangement, id: string, color: string | undefined): TocArrangement {
+	return restyle(arr, id, { color });
+}
+
+/** The outline of group or sub-group `id` as stored. */
+export function styleOfGroup(arr: TocArrangement, id: string): TocGroupStyle | null {
+	const block = arr.rows.flat().find((b) => b.id === id);
+	if (block) return styleOf(block);
+	const sub = findSub(arr, id);
+	return sub?.split.group ? styleOf(sub.split.group) : null;
 }
 
 /**

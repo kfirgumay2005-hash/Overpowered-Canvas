@@ -108,7 +108,8 @@ for handwriting. The same view also runs top to bottom (the root on top, each le
 it), and cards wider than the way down are cut where the next level starts. The table of contents
 shows a card's children together as cells of a grid (arrows go into a cell's own grid, a back
 button goes up): a simple grid of N cells per row, or a free arrangement where cells dragged
-beside or below each other form colored cell groups, saved with the canvas. Handwriting stays smooth on boards with thousands of strokes; the drawing
+beside or below each other form colored cell groups (with sub-groups inside them, your own colors,
+thickness, line and corners per group, and a lock against moving them by accident), saved with the canvas. Handwriting stays smooth on boards with thousands of strokes; the drawing
 bar turns pen writing into text cards (the device's own handwriting recognition), cards can show
 their text in a handwriting font, and a drawing can be embedded in a note as a picture that follows
 it when it changes. A canvas can also switch to fixed-size pages (A3, A4, A5, Letter, Legal or a

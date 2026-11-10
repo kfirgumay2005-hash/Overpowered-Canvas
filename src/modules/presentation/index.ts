@@ -1,6 +1,6 @@
 import { Notice, Setting, setIcon, setTooltip } from "obsidian";
 import { defineModule, type ModuleContext } from "../../core/module";
-import type { OpcNode } from "../../data/schema";
+import { TOC_LINES, type OpcNode, type TocLine } from "../../data/schema";
 import { LOCALES } from "../../i18n";
 import type { CanvasLike, CanvasNodeLike } from "../../internals/types";
 import { NumberPromptModal } from "../../ui/number-prompt";
@@ -37,6 +37,14 @@ interface PresentationSettings {
 	tocCellWidth: number;
 	/** Table of contents: cells at their size on the board, with their handwriting. */
 	tocActualSize: boolean;
+	/** Table of contents: outline thickness of groups and sub-groups (px), unless a group has its own. */
+	tocGroupWidth: number;
+	/** Table of contents: outline line of groups, unless a group has its own. */
+	tocGroupLine: TocLine;
+	/** Table of contents: corner radius of groups (px), unless a group has its own. */
+	tocGroupRadius: number;
+	/** Table of contents: the user's own outline colors ("#rrggbb"), offered in every group's menu. */
+	tocGroupColors: string[];
 }
 
 interface Session {
@@ -79,7 +87,7 @@ export const presentationModule = defineModule<PresentationSettings>({
 	description: "presentation.desc",
 	group: "interaction",
 	defaultEnabled: true,
-	defaultSettings: { slideWidth: 1200, slideHeight: 675, fullscreen: true, walkKeys: "tree", walkTapZones: true, walkHints: true, columnFontSize: 0, columnWidth: 340, columnActualSize: false, columnVertical: false, tocMode: "free", tocPerRow: 3, tocCellWidth: 240, tocActualSize: false },
+	defaultSettings: { slideWidth: 1200, slideHeight: 675, fullscreen: true, walkKeys: "tree", walkTapZones: true, walkHints: true, columnFontSize: 0, columnWidth: 340, columnActualSize: false, columnVertical: false, tocMode: "free", tocPerRow: 3, tocCellWidth: 240, tocActualSize: false, tocGroupWidth: 2, tocGroupLine: "solid", tocGroupRadius: 12, tocGroupColors: [] },
 	sanitizeSettings: (raw, defaults) => {
 		const s = mergeWithDefaults(raw, defaults);
 		const num = (v: unknown, min: number, max: number, fallback: number) => (typeof v === "number" && Number.isFinite(v) && v >= min && v <= max ? Math.round(v) : fallback);
@@ -94,6 +102,10 @@ export const presentationModule = defineModule<PresentationSettings>({
 			tocPerRow: num(s.tocPerRow, 1, 12, defaults.tocPerRow),
 			tocCellWidth: num(s.tocCellWidth, 120, 1200, defaults.tocCellWidth),
 			tocActualSize: typeof s.tocActualSize === "boolean" ? s.tocActualSize : defaults.tocActualSize,
+			tocGroupWidth: num(s.tocGroupWidth, 1, 12, defaults.tocGroupWidth),
+			tocGroupLine: (TOC_LINES as readonly string[]).includes(s.tocGroupLine) ? s.tocGroupLine : defaults.tocGroupLine,
+			tocGroupRadius: num(s.tocGroupRadius, 0, 48, defaults.tocGroupRadius),
+			tocGroupColors: Array.isArray(s.tocGroupColors) ? [...new Set(s.tocGroupColors.filter((c): c is string => typeof c === "string" && /^#[0-9a-f]{6}$/i.test(c)).map((c) => c.toLowerCase()))].slice(0, 24) : [],
 		};
 	},
 	overlapsWith: ["advanced-canvas"],
@@ -109,12 +121,21 @@ export const presentationModule = defineModule<PresentationSettings>({
 		// The table of contents and the walk (with the column view) take turns on a board.
 		const toc = enableToc(
 			ctx,
-			() => ({ mode: ctx.settings.tocMode, perRow: ctx.settings.tocPerRow, cellWidth: ctx.settings.tocCellWidth, actualSize: ctx.settings.tocActualSize, fontSize: ctx.settings.columnFontSize }),
+			() => ({
+				mode: ctx.settings.tocMode,
+				perRow: ctx.settings.tocPerRow,
+				cellWidth: ctx.settings.tocCellWidth,
+				actualSize: ctx.settings.tocActualSize,
+				fontSize: ctx.settings.columnFontSize,
+				group: { width: ctx.settings.tocGroupWidth, line: ctx.settings.tocGroupLine, radius: ctx.settings.tocGroupRadius },
+				palette: ctx.settings.tocGroupColors,
+			}),
 			(patch) =>
 				void ctx.updateSettings({
 					...(patch.mode ? { tocMode: patch.mode } : {}),
 					...(patch.actualSize !== undefined ? { tocActualSize: patch.actualSize } : {}),
 					...(patch.perRow !== undefined ? { tocPerRow: patch.perRow } : {}),
+					...(patch.palette ? { tocGroupColors: patch.palette } : {}),
 				}),
 			(canvas) => {
 				if (walker.walking(canvas)) walker.stop(canvas);
@@ -126,7 +147,8 @@ export const presentationModule = defineModule<PresentationSettings>({
 		};
 		ctx.onSettingsChange((next, prev) => {
 			if (next.columnFontSize !== prev.columnFontSize || next.columnWidth !== prev.columnWidth || next.columnActualSize !== prev.columnActualSize || next.columnVertical !== prev.columnVertical) walker.refresh();
-			if (next.tocMode !== prev.tocMode || next.tocPerRow !== prev.tocPerRow || next.tocCellWidth !== prev.tocCellWidth || next.tocActualSize !== prev.tocActualSize || next.columnFontSize !== prev.columnFontSize) toc.refresh();
+			const tocKeys = ["tocMode", "tocPerRow", "tocCellWidth", "tocActualSize", "columnFontSize", "tocGroupWidth", "tocGroupLine", "tocGroupRadius"] as const;
+			if (tocKeys.some((k) => next[k] !== prev[k]) || next.tocGroupColors.join() !== prev.tocGroupColors.join()) toc.refresh();
 		});
 
 		const show = (canvas: CanvasLike, session: Session) => {
@@ -504,5 +526,40 @@ export const presentationModule = defineModule<PresentationSettings>({
 			.setName(ctx.t("presentation.tocActualSize.name"))
 			.setDesc(ctx.t("presentation.tocActualSize.desc"))
 			.addToggle((t) => t.setValue(ctx.settings.tocActualSize).onChange((v) => ctx.updateSettings({ tocActualSize: v })));
+		new Setting(el)
+			.setName(ctx.t("presentation.tocGroupWidth.name"))
+			.setDesc(ctx.t("presentation.tocGroupWidth.desc"))
+			.addSlider((s) => s.setLimits(1, 12, 1).setValue(ctx.settings.tocGroupWidth).onChange((v) => ctx.updateSettings({ tocGroupWidth: v })));
+		new Setting(el)
+			.setName(ctx.t("presentation.tocGroupLine.name"))
+			.setDesc(ctx.t("presentation.tocGroupLine.desc"))
+			.addDropdown((d) => {
+				for (const line of TOC_LINES) d.addOption(line, ctx.t(`presentation.toc.line.${line}`));
+				d.setValue(ctx.settings.tocGroupLine).onChange((v) => ctx.updateSettings({ tocGroupLine: (TOC_LINES as readonly string[]).includes(v) ? (v as TocLine) : "solid" }));
+			});
+		new Setting(el)
+			.setName(ctx.t("presentation.tocGroupRadius.name"))
+			.setDesc(ctx.t("presentation.tocGroupRadius.desc"))
+			.addSlider((s) => s.setLimits(0, 48, 1).setValue(ctx.settings.tocGroupRadius).onChange((v) => ctx.updateSettings({ tocGroupRadius: v })));
+		// The user's own group colors: each swatch removes itself, the picker adds one.
+		const palette = new Setting(el).setName(ctx.t("presentation.tocGroupColors.name")).setDesc(ctx.t("presentation.tocGroupColors.desc"));
+		const swatches = palette.controlEl.createDiv({ cls: "opc-toc-palette" });
+		const drawSwatches = () => {
+			swatches.empty();
+			for (const color of ctx.settings.tocGroupColors) {
+				const b = swatches.createEl("button", { cls: "opc-toc-palette-swatch", attr: { "aria-label": ctx.t("presentation.tocGroupColors.remove", { color }) } });
+				b.setCssProps({ "--opc-swatch": color });
+				setTooltip(b, ctx.t("presentation.tocGroupColors.remove", { color }));
+				b.addEventListener("click", () => void ctx.updateSettings({ tocGroupColors: ctx.settings.tocGroupColors.filter((c) => c !== color) }).then(drawSwatches));
+			}
+		};
+		drawSwatches();
+		palette.addColorPicker((p) =>
+			p.setValue("#4dabf7").onChange((v) => {
+				const color = v.toLowerCase();
+				if (!/^#[0-9a-f]{6}$/.test(color) || ctx.settings.tocGroupColors.includes(color)) return;
+				void ctx.updateSettings({ tocGroupColors: [...ctx.settings.tocGroupColors, color].slice(-24) }).then(drawSwatches);
+			}),
+		);
 	},
 });
