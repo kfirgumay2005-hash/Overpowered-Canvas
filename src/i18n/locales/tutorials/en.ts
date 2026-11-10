@@ -1050,4 +1050,8 @@ export const tutorialsEn = {
 	"tut.toc.sub.body": "Drop a cell on the **middle** of another cell of the **same group**: the two become a **sub-group** inside it, with an outline (and a color) of its own. Sub-groups can hold sub-groups too.\n\nWhile you drag, a label says what the drop will do: **New sub-group** (a dashed box), **Join this group**, **New group**, **Move here** or **New row**. Drag a sub-group by its small handle to move it as one; tap the handle for its color or **Ungroup the cells**.",
 	"tut.toc.sub.task": "Drag **Mitochondria** beside **Membrane** (it joins the group), then onto the **middle** of **Membrane**.",
 	"tut.toc.sub.touch": "Hold **Mitochondria** with a finger, slide it beside **Membrane** and let go; then slide it onto the middle of **Membrane** until the box says **New sub-group**.",
+	"tut.toc.lock.title": "Lock the layout",
+	"tut.toc.lock.body": "Once the cells are where you want them, **lock the layout** (the lock button at the bottom right). Then a drag on a cell moves the view instead of the cell, so zoomed in, writing or highlighting, nothing gets moved by accident. Going into cells, back, zooming and the tools still work. The lock is saved with the canvas; press it again to arrange.",
+	"tut.toc.lock.task": "Press the lock button at the bottom right (or `Ctrl/Cmd+P` → **Table of contents: lock / unlock the layout**).",
+	"tut.toc.lock.touch": "Tap the lock button at the bottom right.",
 } as const;

@@ -1590,4 +1590,7 @@ export const hi: Record<I18nKey, string> = {
 	"presentation.toc.drop.group": "नया समूह",
 	"presentation.toc.drop.move": "यहाँ ले जाएँ",
 	"presentation.toc.drop.row": "नई पंक्ति",
+	"presentation.toc.lock": "लेआउट लॉक करें (सेल और समूह अपनी जगह रहें)",
+	"presentation.toc.unlock": "लेआउट अनलॉक करें (सेल और समूह फिर से व्यवस्थित करें)",
+	"presentation.toc.lockCommand": "विषय-सूची: लेआउट लॉक / अनलॉक करें",
 };

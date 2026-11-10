@@ -237,6 +237,7 @@ export const ROOT_SHAPE: Shape<OpcRoot> = {
 	pages: arrayOf(objectOf<PageInfo>({ id: nonEmptyStr, anchor: nonEmptyStr, root: nonEmptyStr, parent: nonEmptyStr }, { required: ["id", "anchor", "root"] })),
 	childOrder: recordOf(arrayOf(nonEmptyStr)),
 	tocLayouts: recordOf(tocArrangement),
+	tocLocked: bool,
 	inkEmbeds: recordOf(arrayOf(nonEmptyStr, { min: 1 })),
 	paper: paperSpec,
 };

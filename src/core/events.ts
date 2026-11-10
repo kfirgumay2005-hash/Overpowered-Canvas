@@ -83,6 +83,7 @@ export interface PublicEventMap {
 	"toc-closed": [canvas: CanvasLike];
 	"handwriting-to-text": [canvas: CanvasLike, node: CanvasNodeLike];
 	"drawing-embedded": [canvas: CanvasLike, path: string];
+	"toc-locked": [canvas: CanvasLike, locked: boolean];
 	"ink-embedded": [canvas: CanvasLike, card: CanvasNodeLike, strokes: number];
 	"ink-taken-out": [canvas: CanvasLike, strokes: number];
 	"paper-changed": [canvas: CanvasLike];

@@ -191,6 +191,8 @@ export interface OpcRoot {
 	 * main page's top level) → how its children's cells are arranged and grouped.
 	 */
 	tocLayouts?: Record<string, TocArrangement>;
+	/** Table of contents: the layout is locked (cells and groups can't be moved; reading, tools and navigating still work). */
+	tocLocked?: boolean;
 	/** Drawing embeds: SVG file path (in the vault) → the drawings it shows; written again when they change. */
 	inkEmbeds?: Record<string, string[]>;
 	/** Page format: the board shows sheets of this paper size (absent: the infinite canvas). */

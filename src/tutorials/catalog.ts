@@ -1683,6 +1683,19 @@ const toc: TutorialDefinition = {
 			},
 		},
 		{
+			title: "tut.toc.lock.title",
+			body: "tut.toc.lock.body",
+			task: "tut.toc.lock.task",
+			touch: "tut.toc.lock.touch",
+			target: (rt) => tocEl(rt)?.querySelector<HTMLElement>(".opc-toc-lock") ?? null,
+			check: (rt) => rt.seen("toc-locked", (_c, locked) => locked === true),
+			demo: async (rt) => {
+				await ensureToc(rt);
+				if (!tocEl(rt)?.hasClass("is-locked")) tocEl(rt)?.querySelector<HTMLElement>(".opc-toc-lock")?.click();
+				await rt.wait(400);
+			},
+		},
+		{
 			title: "tut.toc.actual.title",
 			body: "tut.toc.actual.body",
 			task: "tut.toc.actual.task",

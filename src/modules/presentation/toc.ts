@@ -278,8 +278,10 @@ export class TocView {
 		this.children = children;
 		const stored = this.ctx.data.root(this.canvas).get().tocLayouts?.[tocKey(this.level)];
 		this.arrangement = opts.mode === "simple" ? simpleArrangement(children, opts.perRow) : normalize(stored, children, opts.perRow);
-		const free = opts.mode === "free" && this.editable();
+		// Locked: nothing moves (a drag pans the view); reading, the tools and going in and out still work.
+		const free = opts.mode === "free" && this.editable() && !this.locked();
 		this.el.toggleClass("is-free", free);
+		this.el.toggleClass("is-locked", this.locked());
 		this.el.toggleClass("is-actual-size", opts.actualSize);
 		const canvasFont = this.faces.canvasFontSize();
 		const font = opts.fontSize > 0 ? opts.fontSize : canvasFont;
@@ -382,6 +384,10 @@ export class TocView {
 		button("zoom-in", "zoom-in", this.ctx.t("presentation.walk.zoomIn"), () => this.zoomBy(1.25));
 		button("zoom-out", "zoom-out", this.ctx.t("presentation.walk.zoomOut"), () => this.zoomBy(0.8));
 		button("actual", "scan", this.ctx.t("presentation.tocActualSize.name"), () => this.setOptions({ actualSize: !opts.actualSize }), opts.actualSize);
+		if (opts.mode === "free" && this.editable()) {
+			const locked = this.locked();
+			button("lock", locked ? "lock" : "lock-open", this.ctx.t(locked ? "presentation.toc.unlock" : "presentation.toc.lock"), () => this.toggleLock(), locked);
+		}
 		button("mode", opts.mode === "free" ? "layout-dashboard" : "layout-grid", this.ctx.t(opts.mode === "free" ? "presentation.toc.toSimple" : "presentation.toc.toFree"), () => this.setOptions({ mode: opts.mode === "free" ? "simple" : "free" }), opts.mode === "free");
 		button("close", "x", this.ctx.t("presentation.toc.close"), () => this.onClose());
 	}
@@ -412,6 +418,34 @@ export class TocView {
 
 	private editable(): boolean {
 		return !this.canvas.readonly;
+	}
+
+	/** The layout is locked on this canvas (stored with it). */
+	locked(): boolean {
+		return !!this.ctx.data.root(this.canvas).get().tocLocked;
+	}
+
+	/**
+	 * Locks or unlocks the layout. Stored in the canvas (so every device shows it the same), as a
+	 * view setting: not an undo step.
+	 */
+	toggleLock(): void {
+		if (!this.editable()) return;
+		const locked = !this.locked();
+		try {
+			this.ctx.data.root(this.canvas).set({ tocLocked: locked || undefined }, { history: false });
+			// Undoing something else later must not lock or unlock it again: every undo step has it.
+			// (Replaced, not changed in place: snapshots share objects with earlier states.)
+			for (const snap of (this.canvas.history?.data ?? []) as { "x-opc"?: Record<string, unknown> }[]) {
+				const { tocLocked: _old, ...rest } = snap["x-opc"] ?? { v: 1 };
+				snap["x-opc"] = locked ? { ...rest, tocLocked: true } : rest;
+			}
+		} catch (e) {
+			logError("[overpowered-canvas] table of contents: lock", e);
+			return;
+		}
+		this.ctx.events.emit("toc-locked", this.canvas, locked);
+		this.render(true);
 	}
 
 	// ---------- pointer ----------
@@ -859,6 +893,7 @@ export function enableToc(ctx: ModuleContext<object>, options: () => TocOptions,
 		close,
 		toggle,
 		isOpen: (canvas: CanvasLike) => views.has(canvas),
+		toggleLock: (canvas: CanvasLike) => views.get(canvas)?.toggleLock(),
 		refresh: () => views.forEach((v) => v.refresh()),
 	};
 }

@@ -60,6 +60,7 @@ interface OpcRoot {                       // file root "x-opc"
                                           // items: TocTree[]; group?: { id: string; color?: string } } (cells
                                           // beside / below each other; with `group`: a sub-group, its own
                                           // outline inside the block's group, nested at any depth).
+  tocLocked?: boolean;                    // table of contents: layout locked (no cell or group moves)
   inkEmbeds?: Record<string, string[]>;   // drawing embeds: SVG file path → the drawing cards it shows; the
                                           // file is written again when one of them changes (drawing module)
   paper?: {                               // page format (paper module); absent = the infinite canvas

@@ -277,6 +277,7 @@ export const presentationModule = defineModule<PresentationSettings>({
 		command("walk-end", ctx.t("presentation.walk.end"), "x", walker.walking, walker.stop);
 		command("walk-columns", ctx.t("presentation.walk.columns"), "columns-3", (c) => !sessions.has(c), (c) => startWalk(c, undefined, true));
 		command("toc", ctx.t("presentation.toc.open"), "layout-grid", (c) => !sessions.has(c), (c) => toc.toggle(c));
+		command("toc-lock", ctx.t("presentation.toc.lockCommand"), "lock", (c) => toc.isOpen(c) && !c.readonly, (c) => toc.toggleLock(c));
 		// The column view from the side bar too (also in the command palette). While it is open the
 		// side bar is hidden; its own × closes it.
 		ctx.onCanvas((canvas) => {

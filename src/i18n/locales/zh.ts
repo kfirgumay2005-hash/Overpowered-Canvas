@@ -1590,4 +1590,7 @@ export const zh: Record<I18nKey, string> = {
 	"presentation.toc.drop.group": "新建组",
 	"presentation.toc.drop.move": "移到这里",
 	"presentation.toc.drop.row": "新行",
+	"presentation.toc.lock": "锁定布局（单元格和组保持不动）",
+	"presentation.toc.unlock": "解锁布局（重新排列单元格和组）",
+	"presentation.toc.lockCommand": "目录：锁定 / 解锁布局",
 };

@@ -14,7 +14,7 @@ When resuming: read this file and `git log`, then continue with the first item t
 | 4 | Raw HTML/Markdown in grid titles and other card-text labels | IMPROVEMENT (bug) | done |
 | 5 | Grid mode: nested sub-groups | IMPROVEMENT | done |
 | 6 | Grid mode: handwriting tools | NEW (tools in the grid view) | |
-| 7 | Grid mode: lock layout toggle | NEW | |
+| 7 | Grid mode: lock layout toggle | NEW | done |
 | 8 | Group customization (thickness, colors, style, radius) | IMPROVEMENT | |
 
 ## 1. Column mode: finger tap on a card with a tool on (done)
@@ -212,3 +212,24 @@ nested sub-group; the sub-group dragged by its handle to a new row → a group o
 kept; undo restored both levels; tap on a sub-group handle → menu with colors + Ungroup → cells
 back in place. Tutorial "Table of contents": new step "Groups inside groups" (touch line; 5
 locales); Show me in English 9/9. Tests 843/843, lint clean.
+
+## 7. Table of contents: lock the layout (done)
+
+Classification: NEW (nothing locked the grid; the canvas's read-only mode only applies to the
+board). In `toc.ts`: a lock button in the view's controls (free arrangement, editable boards) and
+the command "Table of contents: lock / unlock the layout" (palette, `presentation:toc-lock`).
+Locked: the view renders without the free arrangement's handles and drag targets, so a drag on a
+cell or group pans the view; going into cells, back, zoom, links, editing and (item 6) the pen,
+highlighter and text color tools still work. Stored per canvas in the canvas root (`tocLocked`,
+schema + validator + SCHEMA.md), so it is the same on every device, written as a view setting:
+no undo step, and the flag is written into the existing undo snapshots too, so undoing an
+earlier change never unlocks it. Event `toc-locked` (EVENTS.md, tutorial runner).
+Column view: not added on purpose — a drag there only ever pans (cards are never moved by a
+drag; the only size change is the explicit resize handle), so there is nothing to lock.
+Tested (harness, toc5.canvas): lock → class is-locked, no is-free, button active with the unlock
+label; a drag of C onto B's edge panned the view and stored nothing; closed the tab, reopened the
+canvas and the table of contents: still locked; the command unlocked it and the same drag made a
+group; lock toggled with a pending grouping: history length unchanged (6/7 → 6/7), undo removed
+the grouping and kept the lock; the file on disk has `"tocLocked":true`. Tutorial "Table of
+contents": new step "Lock the layout" (touch line, command alternative; 5 locales); Show me in
+English 10/10. Tests 843/843, lint clean.

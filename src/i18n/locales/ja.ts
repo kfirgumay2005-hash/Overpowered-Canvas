@@ -1590,4 +1590,7 @@ export const ja: Record<I18nKey, string> = {
 	"presentation.toc.drop.group": "新しいグループ",
 	"presentation.toc.drop.move": "ここへ移動",
 	"presentation.toc.drop.row": "新しい行",
+	"presentation.toc.lock": "レイアウトをロック（セルとグループを固定）",
+	"presentation.toc.unlock": "レイアウトのロックを解除（セルとグループを再配置）",
+	"presentation.toc.lockCommand": "目次：レイアウトをロック / ロック解除",
 };

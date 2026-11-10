@@ -1590,4 +1590,7 @@ export const ru: Record<I18nKey, string> = {
 	"presentation.toc.drop.group": "Новая группа",
 	"presentation.toc.drop.move": "Переместить сюда",
 	"presentation.toc.drop.row": "Новая строка",
+	"presentation.toc.lock": "Закрепить раскладку (ячейки и группы не двигаются)",
+	"presentation.toc.unlock": "Открепить раскладку (снова расставлять ячейки и группы)",
+	"presentation.toc.lockCommand": "Оглавление: закрепить / открепить раскладку",
 };

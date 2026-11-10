@@ -1592,6 +1592,9 @@ export const en = {
 	"presentation.toc.drop.group": "New group",
 	"presentation.toc.drop.move": "Move here",
 	"presentation.toc.drop.row": "New row",
+	"presentation.toc.lock": "Lock layout (cells and groups stay put)",
+	"presentation.toc.unlock": "Unlock layout (arrange cells and groups again)",
+	"presentation.toc.lockCommand": "Table of contents: lock / unlock the layout",
 } as const;
 
 export type I18nKey = keyof typeof en;

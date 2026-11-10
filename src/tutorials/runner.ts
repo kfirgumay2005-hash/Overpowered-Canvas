@@ -76,6 +76,7 @@ const WATCHED_EVENTS = [
 	"toc-shown",
 	"toc-arranged",
 	"toc-closed",
+	"toc-locked",
 	"handwriting-to-text",
 	"drawing-embedded",
 	"ink-embedded",
