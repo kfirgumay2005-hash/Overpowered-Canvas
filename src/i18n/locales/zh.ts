@@ -1584,4 +1584,10 @@ export const zh: Record<I18nKey, string> = {
 	"drawing.embedCard.noCard": "这些笔画下方没有卡片。请改为嵌入新卡片。",
 	"drawing.embedCard.done": "已成为卡片一部分的笔画：{count}",
 	"drawing.embedCard.outDone": "回到画板上的笔画：{count}",
+	"presentation.toc.subgroup": "子组：拖动以移动，点按以更改颜色",
+	"presentation.toc.drop.sub": "新建子组",
+	"presentation.toc.drop.join": "加入此组",
+	"presentation.toc.drop.group": "新建组",
+	"presentation.toc.drop.move": "移到这里",
+	"presentation.toc.drop.row": "新行",
 };

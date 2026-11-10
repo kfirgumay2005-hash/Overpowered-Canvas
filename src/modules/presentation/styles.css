@@ -580,6 +580,23 @@ body.opc-mod-presentation .opc-toc-split.is-row {
 body.opc-mod-presentation .opc-toc-split.is-col {
 	flex-direction: column;
 }
+/* A sub-group inside a group: its own outline (its own color) and a smaller handle. */
+body.opc-mod-presentation .opc-toc-split.is-subgroup {
+	position: relative;
+	padding: var(--size-4-2);
+	padding-top: calc(var(--size-4-2) + 8px);
+	border: 2px solid var(--opc-toc-group, var(--color-accent));
+	border-radius: var(--radius-m);
+}
+body.opc-mod-presentation .opc-toc.is-free .opc-toc-split.is-subgroup {
+	cursor: grab;
+}
+body.opc-mod-presentation .opc-toc-grip.is-sub {
+	top: -10px;
+	left: var(--size-4-2);
+	width: 28px;
+	height: 18px;
+}
 body.opc-mod-presentation .opc-toc-cell {
 	position: relative;
 }
@@ -690,4 +707,27 @@ body.opc-mod-presentation .opc-toc-guide {
 body.opc-mod-presentation .opc-toc-guide.is-join {
 	background-color: var(--color-accent);
 	box-shadow: 0 0 0 2px var(--background-primary);
+}
+/* Dropping on the middle of a cell of the same group: a box around it, a new sub-group. */
+body.opc-mod-presentation .opc-toc-guide.is-sub {
+	background-color: transparent;
+	border: 3px dashed var(--color-accent);
+	border-radius: var(--radius-m);
+}
+/* What the drop does, next to the guide. */
+body.opc-mod-presentation .opc-toc-guide-label {
+	position: absolute;
+	top: calc(100% + 4px);
+	left: 0;
+	padding: 1px var(--size-2-2);
+	border-radius: var(--radius-s);
+	font-size: var(--font-ui-smaller);
+	white-space: nowrap;
+	color: var(--text-on-accent);
+	background-color: var(--interactive-accent);
+	box-shadow: var(--shadow-s);
+}
+body.opc-mod-presentation .opc-toc-guide.is-sub .opc-toc-guide-label {
+	top: 4px;
+	left: 4px;
 }

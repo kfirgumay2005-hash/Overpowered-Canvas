@@ -1652,6 +1652,22 @@ const toc: TutorialDefinition = {
 			},
 		},
 		{
+			title: "tut.toc.sub.title",
+			body: "tut.toc.sub.body",
+			task: "tut.toc.sub.task",
+			touch: "tut.toc.sub.touch",
+			check: (rt) => /"group"/.test(tocStored(rt, "t-cells")),
+			demo: async (rt) => {
+				// Mitochondria joins the group (beside Membrane), then goes onto Membrane's middle.
+				const mit = tocCell(rt, "t-mit");
+				const mem = tocCell(rt, "t-mem")?.getBoundingClientRect();
+				if (mit && mem) await tocDragTo(rt, mit, mem.right - 4, mem.top + mem.height / 2);
+				const again = tocCell(rt, "t-mit");
+				const target = tocCell(rt, "t-mem")?.getBoundingClientRect();
+				if (again && target) await tocDragTo(rt, again, target.left + target.width / 2, target.top + target.height / 2);
+			},
+		},
+		{
 			title: "tut.toc.move.title",
 			body: "tut.toc.move.body",
 			task: "tut.toc.move.task",

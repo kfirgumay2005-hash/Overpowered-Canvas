@@ -1584,4 +1584,10 @@ export const ja: Record<I18nKey, string> = {
 	"drawing.embedCard.noCard": "これらの線の下にカードがありません。代わりに新しいカードに埋め込んでください。",
 	"drawing.embedCard.done": "カードの一部になった線：{count}",
 	"drawing.embedCard.outDone": "ボードに戻った線：{count}",
+	"presentation.toc.subgroup": "サブグループ：ドラッグで移動、タップで色を変更",
+	"presentation.toc.drop.sub": "新しいサブグループ",
+	"presentation.toc.drop.join": "このグループに入れる",
+	"presentation.toc.drop.group": "新しいグループ",
+	"presentation.toc.drop.move": "ここへ移動",
+	"presentation.toc.drop.row": "新しい行",
 };

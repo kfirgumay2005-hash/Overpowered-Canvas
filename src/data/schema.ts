@@ -211,8 +211,23 @@ export interface PaperSpec {
 	stacks?: Record<string, { x: number; y: number; count?: number }>;
 }
 
-/** A cell (the card id), or cells side by side ("row") or one under another ("col"). */
-export type TocTree = string | { dir: "row" | "col"; items: TocTree[] };
+/**
+ * A cell (the card id), or cells side by side ("row") or one under another ("col"). A split with
+ * `group` is a sub-group: its cells inside an outline of their own, inside the block's group.
+ */
+export type TocTree = string | TocSplit;
+
+export interface TocSplit {
+	dir: "row" | "col";
+	items: TocTree[];
+	group?: TocSubGroup;
+}
+
+/** A sub-group's id and outline color (a canvas color "1"–"6" or "#rrggbb"). */
+export interface TocSubGroup {
+	id: string;
+	color?: string;
+}
 
 /** A cell of the table of contents' grid: one card, or a cell group (with its outline color). */
 export interface TocBlock {

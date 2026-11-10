@@ -1586,6 +1586,12 @@ export const en = {
 	"drawing.embedCard.noCard": "There is no card under these strokes. Embed them into a new card instead.",
 	"drawing.embedCard.done": "Strokes now part of the card: {count}",
 	"drawing.embedCard.outDone": "Strokes back on the board: {count}",
+	"presentation.toc.subgroup": "Sub-group: drag to move it, tap for its color",
+	"presentation.toc.drop.sub": "New sub-group",
+	"presentation.toc.drop.join": "Join this group",
+	"presentation.toc.drop.group": "New group",
+	"presentation.toc.drop.move": "Move here",
+	"presentation.toc.drop.row": "New row",
 } as const;
 
 export type I18nKey = keyof typeof en;

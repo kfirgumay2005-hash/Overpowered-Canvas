@@ -57,7 +57,9 @@ interface OpcRoot {                       // file root "x-opc"
     rows: { id: string; tree: TocTree; color?: string }[][];  // "page:<id>", "page:" = main page's top level)
   }>;                                     // → rows of cells; a block is one cell or a cell group (outline color
                                           // "1"–"6" or "#rrggbb"). TocTree = card id | { dir: "row" | "col";
-                                          // items: TocTree[] } (cells beside / below each other).
+                                          // items: TocTree[]; group?: { id: string; color?: string } } (cells
+                                          // beside / below each other; with `group`: a sub-group, its own
+                                          // outline inside the block's group, nested at any depth).
   inkEmbeds?: Record<string, string[]>;   // drawing embeds: SVG file path → the drawing cards it shows; the
                                           // file is written again when one of them changes (drawing module)
   paper?: {                               // page format (paper module); absent = the infinite canvas

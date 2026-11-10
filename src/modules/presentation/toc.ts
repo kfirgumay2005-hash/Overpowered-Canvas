@@ -11,7 +11,7 @@ import { renderTitle, titleMarkdown } from "../../ui/card-title";
 import { CardFaces } from "./card-face";
 import { zoomAround, type View } from "./column-layout";
 import { mapModel } from "./map-model";
-import { cardsOf, isGroup, moveIn, normalize, recolor, simpleArrangement, ungroup, type Side, type TocArrangement, type TocDrop, type TocMoving, type TocTree } from "./toc-layout";
+import { cardsOf, findSub, isGroup, moveIn, normalize, recolor, simpleArrangement, ungroup, type Side, type TocArrangement, type TocBlock, type TocDrop, type TocMoving, type TocTree } from "./toc-layout";
 import { orderedChildren, treeParent } from "./walk";
 
 export type TocMode = "simple" | "free";
@@ -61,6 +61,20 @@ interface Press {
 	grip: string | null;
 }
 
+/** What drawing the cells needs. */
+interface RenderEnv {
+	kids: (id: string) => string[];
+	opts: TocOptions;
+	font: number;
+	canvasFont: number;
+	pending: Promise<void>[];
+	presets: Record<string, string>;
+	free: boolean;
+}
+
+/** A drop in the middle part of a cell (this share of its width and height) makes a sub-group. */
+const SUB_ZONE = 0.5;
+
 interface Drag {
 	moving: TocMoving;
 	ghost: HTMLElement;
@@ -81,6 +95,8 @@ export class TocView {
 	private readonly zoomEl: HTMLElement;
 	private readonly sheet: HTMLElement;
 	private readonly guide: HTMLElement;
+	/** Says what a drop there does (new sub-group, join a group, move here, new row). */
+	private readonly guideLabel: HTMLElement;
 	private readonly backEl: HTMLElement;
 	private readonly controls: HTMLElement;
 	private readonly faces: CardFaces;
@@ -114,6 +130,7 @@ export class TocView {
 		this.zoomEl = this.el.createDiv({ cls: "opc-toc-zoom" });
 		this.sheet = this.zoomEl.createDiv({ cls: "opc-toc-sheet" });
 		this.guide = this.el.createDiv({ cls: "opc-toc-guide" });
+		this.guideLabel = this.guide.createSpan({ cls: "opc-toc-guide-label" });
 		this.guide.hide();
 		// The way back up, always at hand whatever the zoom (top right, below the pages bar).
 		this.backEl = this.el.createEl("button", { cls: "clickable-icon opc-toc-back is-fixed", attr: { "aria-label": ctx.t("presentation.toc.back") } });
@@ -299,7 +316,7 @@ export class TocView {
 						setIcon(grip, "grip-horizontal");
 					}
 				}
-				this.renderTree(blockEl, block.tree, model.kids, opts, font, canvasFont, pending);
+				this.renderTree(blockEl, block.tree, { kids: model.kids, opts, font, canvasFont, pending, presets, free });
 			}
 		});
 		this.renderControls(opts);
@@ -311,10 +328,22 @@ export class TocView {
 		this.ctx.events.emit("toc-shown", this.canvas, this.level.parent);
 	}
 
-	private renderTree(parentEl: HTMLElement, tree: TocTree, kids: (id: string) => string[], opts: TocOptions, font: number, canvasFont: number, pending: Promise<void>[]): void {
+	private renderTree(parentEl: HTMLElement, tree: TocTree, env: RenderEnv): void {
+		const { kids, opts, font, canvasFont, pending } = env;
 		if (typeof tree !== "string") {
 			const split = parentEl.createDiv({ cls: `opc-toc-split is-${tree.dir}` });
-			for (const item of tree.items) this.renderTree(split, item, kids, opts, font, canvasFont, pending);
+			if (tree.group) {
+				// A sub-group: an outline of its own (its own color), a handle to move it or open its menu.
+				split.addClass("is-subgroup");
+				split.dataset.sub = tree.group.id;
+				const color = cssColor(tree.group.color, env.presets);
+				if (color) split.setCssProps({ "--opc-toc-group": color });
+				if (env.free) {
+					const grip = split.createEl("button", { cls: "clickable-icon opc-toc-grip is-sub", attr: { "aria-label": this.ctx.t("presentation.toc.subgroup"), "data-sub": tree.group.id } });
+					setIcon(grip, "grip-horizontal");
+				}
+			}
+			for (const item of tree.items) this.renderTree(split, item, env);
 			return;
 		}
 		const node = this.canvas.nodes.get(tree);
@@ -401,11 +430,17 @@ export class TocView {
 		}
 		if (this.pointers.size > 2 || (evt.pointerType === "mouse" && evt.button !== 0)) return;
 		const free = this.el.hasClass("is-free");
-		const grip = target.closest<HTMLElement>(".opc-toc-grip")?.dataset.block ?? null;
-		const cell = target.closest<HTMLElement>(".opc-toc-cell")?.dataset.id ?? null;
-		const group = !cell ? target.closest<HTMLElement>(".opc-toc-block.is-group")?.dataset.block ?? null : null;
+		const gripEl = target.closest<HTMLElement>(".opc-toc-grip");
+		const gripSub = gripEl?.dataset.sub ?? null;
+		const gripBlock = gripEl?.dataset.block ?? null;
+		const grip = gripSub ?? gripBlock;
+		const cell = gripEl ? null : (target.closest<HTMLElement>(".opc-toc-cell")?.dataset.id ?? null);
+		// The outline of a sub-group, or of a group, around the cells.
+		const sub = gripSub ?? (!cell && !gripEl ? (target.closest<HTMLElement>(".opc-toc-split.is-subgroup")?.dataset.sub ?? null) : null);
+		const group = gripBlock ?? (!cell && !sub ? (target.closest<HTMLElement>(".opc-toc-block.is-group")?.dataset.block ?? null) : null);
 		let moving: TocMoving | null = null;
-		if (free && (grip ?? group)) moving = { kind: "block", block: (grip ?? group)! };
+		if (free && sub) moving = { kind: "sub", sub };
+		else if (free && group) moving = { kind: "block", block: group };
 		else if (free && cell) moving = { kind: "card", card: cell };
 		this.press = { id: evt.pointerId, x: evt.clientX, y: evt.clientY, moved: false, target: moving, card: cell, grip };
 	};
@@ -497,7 +532,20 @@ export class TocView {
 	// ---------- free arrangement ----------
 
 	private elementOf(moving: TocMoving): HTMLElement | null {
-		return moving.kind === "card" ? this.sheet.querySelector<HTMLElement>(`.opc-toc-cell[data-id="${CSS.escape(moving.card)}"]`) : this.sheet.querySelector<HTMLElement>(`.opc-toc-block[data-block="${CSS.escape(moving.block)}"]`);
+		if (moving.kind === "card") return this.sheet.querySelector<HTMLElement>(`.opc-toc-cell[data-id="${CSS.escape(moving.card)}"]`);
+		if (moving.kind === "sub") return this.sheet.querySelector<HTMLElement>(`.opc-toc-split[data-sub="${CSS.escape(moving.sub)}"]`);
+		return this.sheet.querySelector<HTMLElement>(`.opc-toc-block[data-block="${CSS.escape(moving.block)}"]`);
+	}
+
+	/** The block a moved cell or sub-group comes from. */
+	private sourceBlock(moving: TocMoving): TocBlock | null {
+		if (moving.kind === "block") return this.arrangement.rows.flat().find((b) => b.id === moving.block) ?? null;
+		if (moving.kind === "sub") return findSub(this.arrangement, moving.sub)?.block ?? null;
+		return this.blockOfCard(moving.card);
+	}
+
+	private blockOfCard(id: string): TocBlock | null {
+		return this.arrangement.rows.flat().find((b) => cardsOf(b.tree).includes(id)) ?? null;
 	}
 
 	private startDrag(moving: TocMoving, x: number, y: number): void {
@@ -531,7 +579,8 @@ export class TocView {
 
 	/** Where a drag released at (x, y) lands: beside a cell, or in a cell of the grid of its own. */
 	private dropAt(x: number, y: number, moving: TocMoving): TocDrop | null {
-		const moved = new Set(moving.kind === "card" ? [moving.card] : cardsOf(this.arrangement.rows.flat().find((b) => b.id === moving.block)?.tree ?? ""));
+		const movedTree = moving.kind === "card" ? moving.card : moving.kind === "sub" ? findSub(this.arrangement, moving.sub)?.split : this.arrangement.rows.flat().find((b) => b.id === moving.block)?.tree;
+		const moved = new Set(movedTree ? cardsOf(movedTree) : []);
 		const hit = this.el.doc.elementFromPoint(x, y);
 		const cell = hit?.closest<HTMLElement>(".opc-toc-cell");
 		const id = cell?.dataset.id;
@@ -546,7 +595,13 @@ export class TocView {
 				["bottom", 1 - fy],
 			];
 			sides.sort((a, b) => a[1] - b[1]);
-			return { kind: "cell", card: id, side: sides[0]![0] };
+			const side = sides[0]![0];
+			// The middle of a cell of the same group: the two make a sub-group there.
+			const block = this.blockOfCard(id);
+			const inner = (1 - SUB_ZONE) / 2;
+			const middle = fx > inner && fx < 1 - inner && fy > inner && fy < 1 - inner;
+			if (middle && moving.kind !== "block" && block && isGroup(block) && block === this.sourceBlock(moving)) return { kind: "sub", card: id, side };
+			return { kind: "cell", card: id, side };
 		}
 		const grid = this.sheet.querySelector<HTMLElement>(".opc-toc-grid");
 		if (!grid) return null;
@@ -576,7 +631,15 @@ export class TocView {
 		const root = this.el.getBoundingClientRect();
 		const T = 4;
 		let box: { x: number; y: number; w: number; h: number } | null = null;
-		if (drop.kind === "cell") {
+		const moving = this.drag?.moving;
+		let what: "sub" | "join" | "group" | "move" | "row" = "move";
+		g.toggleClass("is-sub", drop.kind === "sub");
+		if (drop.kind === "sub") {
+			const r = this.sheet.querySelector<HTMLElement>(`.opc-toc-cell[data-id="${CSS.escape(drop.card)}"]`)?.getBoundingClientRect();
+			if (r) box = { x: r.left - T, y: r.top - T, w: r.width + 2 * T, h: r.height + 2 * T };
+			g.toggleClass("is-join", false);
+			what = "sub";
+		} else if (drop.kind === "cell") {
 			const cell = this.sheet.querySelector<HTMLElement>(`.opc-toc-cell[data-id="${CSS.escape(drop.card)}"]`);
 			const r = cell?.getBoundingClientRect();
 			if (r) {
@@ -590,11 +653,14 @@ export class TocView {
 								: { x: r.left, y: r.bottom, w: r.width, h: T };
 			}
 			g.toggleClass("is-join", true);
+			const block = this.blockOfCard(drop.card);
+			what = moving && block === this.sourceBlock(moving) ? "move" : block && isGroup(block) ? "join" : "group";
 		} else {
 			g.toggleClass("is-join", false);
 			const grid = this.sheet.querySelector<HTMLElement>(".opc-toc-grid")!;
 			const gr = grid.getBoundingClientRect();
 			const rows = Array.from(grid.querySelectorAll<HTMLElement>(":scope > .opc-toc-row"));
+			what = drop.newRow ? "row" : "move";
 			if (drop.newRow) {
 				const above = rows[drop.row - 1]?.getBoundingClientRect();
 				const below = rows[drop.row]?.getBoundingClientRect();
@@ -611,6 +677,10 @@ export class TocView {
 			}
 		}
 		if (!box) return void g.hide();
+		// Joining or making a group: the accent; moving within a group or to a slot: muted.
+		g.toggleClass("is-join", what === "join" || what === "group");
+		g.dataset.what = what;
+		this.guideLabel.setText(this.ctx.t(`presentation.toc.drop.${what}`));
 		g.show();
 		g.setCssProps({ "--opc-guide-x": `${Math.round(box.x - root.left)}px`, "--opc-guide-y": `${Math.round(box.y - root.top)}px`, "--opc-guide-w": `${Math.round(box.w)}px`, "--opc-guide-h": `${Math.round(box.h)}px` });
 	}

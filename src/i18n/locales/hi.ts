@@ -1584,4 +1584,10 @@ export const hi: Record<I18nKey, string> = {
 	"drawing.embedCard.noCard": "इन रेखाओं के नीचे कोई कार्ड नहीं है। इसके बजाय इन्हें नए कार्ड में जोड़ें।",
 	"drawing.embedCard.done": "अब कार्ड का हिस्सा बनी रेखाएँ: {count}",
 	"drawing.embedCard.outDone": "बोर्ड पर वापस आई रेखाएँ: {count}",
+	"presentation.toc.subgroup": "उप-समूह: खिसकाने के लिए खींचें, रंग के लिए टैप करें",
+	"presentation.toc.drop.sub": "नया उप-समूह",
+	"presentation.toc.drop.join": "इस समूह में जोड़ें",
+	"presentation.toc.drop.group": "नया समूह",
+	"presentation.toc.drop.move": "यहाँ ले जाएँ",
+	"presentation.toc.drop.row": "नई पंक्ति",
 };

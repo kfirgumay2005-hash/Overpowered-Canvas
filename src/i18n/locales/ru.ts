@@ -1584,4 +1584,10 @@ export const ru: Record<I18nKey, string> = {
 	"drawing.embedCard.noCard": "Под этими штрихами нет карточки. Встройте их в новую карточку.",
 	"drawing.embedCard.done": "Штрихов теперь в карточке: {count}",
 	"drawing.embedCard.outDone": "Штрихов снова на доске: {count}",
+	"presentation.toc.subgroup": "Подгруппа: перетащите, чтобы переместить, коснитесь для цвета",
+	"presentation.toc.drop.sub": "Новая подгруппа",
+	"presentation.toc.drop.join": "В эту группу",
+	"presentation.toc.drop.group": "Новая группа",
+	"presentation.toc.drop.move": "Переместить сюда",
+	"presentation.toc.drop.row": "Новая строка",
 };

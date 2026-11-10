@@ -12,7 +12,7 @@ When resuming: read this file and `git log`, then continue with the first item t
 | 2 | Drawing: embed selected strokes into a card / take them out | IMPROVEMENT | done |
 | 3 | Drawing: palm rejection with Scribble on (iPad) | IMPROVEMENT (bug) | done |
 | 4 | Raw HTML/Markdown in grid titles and other card-text labels | IMPROVEMENT (bug) | done |
-| 5 | Grid mode: nested sub-groups | IMPROVEMENT | |
+| 5 | Grid mode: nested sub-groups | IMPROVEMENT | done |
 | 6 | Grid mode: handwriting tools | NEW (tools in the grid view) | |
 | 7 | Grid mode: lock layout toggle | NEW | |
 | 8 | Group customization (thickness, colors, style, radius) | IMPROVEMENT | |
@@ -182,3 +182,33 @@ after: `(📖)se il calcolo invece è più grande` with a real `<mark>` (backgro
 rgba(255, 212, 59, 0.5)), one line, ellipsis; pages index entry and text-pages crumbs the same.
 Tutorials "Big maps in pages" 14/14 and "Table of contents" 8/8 (no text change needed: the
 behavior is what they describe). Tests 839/839, lint clean.
+
+## 5. Table of contents: nested sub-groups (done)
+
+Classification: IMPROVEMENT of the existing cell groups (round 13, C2).
+Model (`toc-layout.ts`, pure): a split of a group's tree may carry `group: { id, color }` (schema
+`TocSplit` / `TocSubGroup`, validator, SCHEMA.md): a sub-group, never merged into its parent when
+directions match, dissolved when it holds one cell, folded into the group when it holds all of
+it (one outline, not two). New drop `{ kind: "sub" }` (wrap the target cell and the dropped one
+into a new sub-group where the cell was) and new moving kind `{ kind: "sub" }` (the sub-group as a
+unit: beside a cell, into another sub-group, or out to a grid slot where it becomes a group of
+its own keeping its color). `recolor` / `ungroup` take a group's or a sub-group's id (a dissolved
+sub-group leaves its cells in place). New groups/sub-groups get automatic colors different from
+every outline around them. Helpers `findSub`, `subGroupsOf`, `groupsAround`. Nesting is recursive
+(the validator already allowed 12 levels).
+View (`toc.ts`): sub-groups render with their own outline and a small handle (free mode); drag
+by the handle or the outline moves it; a tap on the handle opens the same menu as a group
+(colors, Ungroup the cells). Drop rule: the middle half of a cell of the **same group** → new
+sub-group (dashed box around the cell); its edges → move within the group; a cell of another
+group → join it; a lone cell → new group; between rows → new row. The guide carries a label
+saying which (New sub-group / Join this group / New group / Move here / New row; 5 locales);
+joining is drawn in the accent color, moves muted. Each change is one undo step, stored with the
+canvas like groups.
+Tested: 4 new unit tests (make, nest with three distinct colors, move as a unit in and out,
+dissolve / one cell left) — toc-layout 12/12. Harness (toc5.canvas, real mouse drags): C beside B
+→ "New group"; D beside C → "Join this group"; D on C's middle → "New sub-group", stored
+`{dir: col, items: [c, d], group: {id, color: "6"}}` inside group color 5; B on D's middle →
+nested sub-group; the sub-group dragged by its handle to a new row → a group of its own, color
+kept; undo restored both levels; tap on a sub-group handle → menu with colors + Ungroup → cells
+back in place. Tutorial "Table of contents": new step "Groups inside groups" (touch line; 5
+locales); Show me in English 9/9. Tests 843/843, lint clean.
