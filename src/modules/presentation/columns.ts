@@ -5,6 +5,7 @@ import type { CanvasLike, CanvasNodeLike } from "../../internals/types";
 import type { InkSurface } from "../drawing/api";
 import { nodeType } from "../shared";
 import type { MarkSurface } from "../text-highlight/api";
+import type { ViewState } from "../../ui/palm-guard";
 import { CardFaces } from "./card-face";
 import { columnClips, columnPositions, keepZoom, zoomAround, type View } from "./column-layout";
 
@@ -471,6 +472,7 @@ export class ColumnView {
 				this.raiseInked(card);
 			},
 			settled: () => new Promise<void>((resolve) => this.settleWaiters.push(resolve)),
+			view: this.viewState(),
 			pan: (dx, dy) => {
 				this.el.addClass("is-moved");
 				this.view = { ...this.view, x: this.view.x + dx, y: this.view.y + dy };
@@ -479,10 +481,24 @@ export class ColumnView {
 		};
 	}
 
+	/** The zoom, pan and dragged levels, to put back when a palm moved them before the pen came. */
+	private viewState(): ViewState {
+		return {
+			get: () => ({ view: { ...this.view }, shifts: [...this.shifts] }),
+			set: (state) => {
+				const s = state as { view: View; shifts: number[] };
+				this.view = { ...s.view };
+				this.shifts = [...s.shifts];
+				this.layout(false);
+			},
+		};
+	}
+
 	/** Where the highlighter and the text color tool mark words in this view. */
 	markSurface(): MarkSurface {
 		return {
 			host: this.el,
+			view: this.viewState(),
 			cardAt: (x, y) => {
 				const card = this.el.doc.elementFromPoint(x, y)?.closest<HTMLElement>(".opc-columns-card");
 				const node = card?.dataset.id ? this.canvas.nodes.get(card.dataset.id) : undefined;

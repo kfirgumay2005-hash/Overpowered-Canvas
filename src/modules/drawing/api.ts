@@ -3,6 +3,7 @@
  * cards shown somewhere other than the board (the column view), into the same ink.
  */
 import type { CanvasLike } from "../../internals/types";
+import type { ViewState } from "../../ui/palm-guard";
 
 export interface InkPoint2 {
 	x: number;
@@ -24,6 +25,8 @@ export interface InkSurface {
 	placePreview(svg: SVGSVGElement, layer: SVGGElement, x: number, y: number): void;
 	/** Moves the view by a screen distance (the drag button). */
 	pan(dx: number, dy: number): void;
+	/** The view's position and zoom, so a palm's pan can be undone when the pen lands. */
+	view?: ViewState;
 	/** Pens, eraser and lasso only: lines, arrows and recognized shapes would not show there. */
 	inkOnly?: boolean;
 	/**

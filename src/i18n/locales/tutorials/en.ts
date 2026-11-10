@@ -161,7 +161,7 @@ export const tutorialsEn = {
 	"tut.drawing.s1.body": "Drawing mode turns the board into paper. A tool bar appears with **pen, pencil, marker, highlighter, eraser, lasso, lines and arrows**, plus colors and sizes. A stylus draws with pressure. The bar also turns pen writing into text cards (see the tutorial **Handwriting tools**).",
 	"tut.drawing.s1.task": "Press `P` (or the pen button in the bottom bar).",
 	"tut.drawing.s2.title": "Draw!",
-	"tut.drawing.s2.body": "Pick the **pen** in the tool bar and just draw with the mouse, a finger or a stylus. Strokes are saved in the canvas and move like any other item.",
+	"tut.drawing.s2.body": "Pick the **pen** in the tool bar and just draw with the mouse, a finger or a stylus. Strokes are saved in the canvas and move like any other item.\n\nOn a tablet the hand resting on the screen is ignored while the pen writes: it never draws, and with **palm navigation** (the hand button) it doesn't move the board under the pen either, also with the system's handwriting input (Scribble) turned on.",
 	"tut.drawing.s2.task": "Draw a circle around **Circle me!**",
 	"tut.drawing.s3.title": "Arrows that stick",
 	"tut.drawing.s3.body": "The **arrow tool** draws arrows whose ends attach to the cards you start and end on. Draw with **turns** (around other cards, for example) and the arrow keeps its corners; almost-straight parts become exactly straight. Hold **Shift** for a straight arrow. Move a card later and the arrow follows it.",

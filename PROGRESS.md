@@ -10,7 +10,7 @@ When resuming: read this file and `git log`, then continue with the first item t
 |---|------|-------|--------|
 | 1 | Column mode: finger tap on a card with a drawing tool on | IMPROVEMENT (bug) | done |
 | 2 | Drawing: embed selected strokes into a card / take them out | IMPROVEMENT | done |
-| 3 | Drawing: palm rejection with Scribble on (iPad) | IMPROVEMENT (bug) | |
+| 3 | Drawing: palm rejection with Scribble on (iPad) | IMPROVEMENT (bug) | done |
 | 4 | Raw HTML/Markdown in grid titles and other card-text labels | IMPROVEMENT (bug) | |
 | 5 | Grid mode: nested sub-groups | IMPROVEMENT | |
 | 6 | Grid mode: handwriting tools | NEW (tools in the grid view) | |
@@ -86,3 +86,59 @@ removed, notice. A stroke over Card A → lasso → "card under it" → anchored
 Unit tests: stretch, cardUnderMost. Tutorial "Drawing": new step "Put a drawing into a card"
 (touch line, command alternative; 5 locales) and the marks step names the renamed command; Show
 me in English 11/11. README updated. Tests 836/836, lint clean.
+
+## 3. Palm rejection with Scribble on (done)
+
+Classification: IMPROVEMENT (bug) of the existing palm rejection.
+
+What was wrong (read from the code and the core's own touch handler, reproduced with mixed
+touch + pen input in one CDP session, `palm.mjs`):
+- The old rejection only refused a touch that **started** within 800 ms after a pen event. A
+  palm usually lands **before** the pen. With palm navigation on, that touch went to the board:
+  the core's `onTouchdown` pans with it for as long as it stays down (and after 600 ms still it
+  turns into a long press: drag-select box, card drag, context menu on release). Nothing ended
+  that gesture when the pen came, so the board slid under the pen while writing. Without palm
+  navigation the palm started a stroke of its own, and the pen's press "finished" it (committed).
+- With Scribble on, WebKit decides per pencil contact whether it is handwriting for a text
+  field: pen `touchstart`s were not claimed by the page (only pointer events were handled), so
+  the system could hold back, cancel or take pen input — the pen's first events come late or a
+  stroke gets a `pointercancel`, which makes the 800 ms window open late and the palm win more
+  often. Writing on cards felt fine because the hand usually rests off the card; on the open
+  board it rests on the drawing surface. Editable things near the pen are Scribble targets: the
+  drawing bar's exact-size box (`<input type=number>`) and a focused text field.
+
+Fix: `src/ui/palm-guard.ts` (`PalmGuard`), used by the drawing session and the highlighter / text
+color session, on the board and in the column view:
+- pen `touchstart`/`touchmove` over the tool's overlay are `preventDefault`ed (non-passive
+  listeners; `touchType === "stylus"`): the page claims the pencil, so Scribble, scrolling,
+  selection and the loupe stay out; touches while the pen is active are claimed too;
+- strict pointer types: a touch while a pen is down or within 800 ms of its last event (hover
+  included) is refused; a palm-sized contact (> 64 px) is refused once a pen was seen; a lost
+  pen release stops counting after 3 s (fingers can't be locked out);
+- touches let through to the view (palm navigation) are remembered; when the pen lands while
+  they are still down they are palms: their gesture gets a `pointercancel` (the core ends its
+  pan / long press / selection drag, the column view its drag), their later events are
+  swallowed, a long-press menu from them is dropped, and the view goes back to where it was when
+  the palm touched (`InkSurface.view` / `MarkSurface.view`: board viewport, column view zoom +
+  pan + level shifts);
+- a touch that was drawing when the pen lands was a palm: its stroke is discarded, not committed;
+- no editable element under the pen: focused text fields are blurred when a tool starts and when
+  the pen lands; the exact-size box is read-only until pressed or focused (Scribble ignores
+  read-only fields); overlays have `user-select: none` and no touch callout (touch-action was
+  already `none`).
+
+Tested (harness, palm.canvas / deep.canvas; a palm = a CDP touch that lands, drags 60 px, rests,
+then stays down while a CDP pen writes; before = main build, after = this build):
+- board, palm navigation on: view drift during the stroke 120 × 50 board units → 0 (rest 100 ms
+  and 900 ms), pen stroke drawn (1 drawing);
+- board, palm navigation off: 2 drawings (palm's + pen's) → 1 (pen's);
+- column view with the pen tool: the column under the palm moved 120 px during the stroke → 0,
+  stroke drawn;
+- regressions: finger pan with no pen moves the board; 1.2 s after the pen a finger pans again;
+  a touch 100 ms after the pen is refused (no pan, no ink); a synthetic stylus `touchstart` is
+  claimed, a finger one is not; the size box is read-only until pressed.
+Not reproducible here: real Scribble (needs an iPad with an Apple Pencil). Please test on the
+iPad with Scribble on and off: writing on the open board with the hand resting, on cards, in the
+column view, and (after item 6) in the table of contents.
+Tutorial "Drawing" → "Draw!": a paragraph on palm rejection (5 locales). Show me in English:
+Drawing 11/11, Column view 12/12. Tests 836/836, lint clean.

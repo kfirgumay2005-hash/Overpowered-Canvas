@@ -188,6 +188,19 @@ export class InkToolbar {
 		const sizeBox = this.el.createDiv({ cls: "opc-ink-size-box" });
 		const size = sizeBox.createEl("input", { type: "range", cls: "opc-ink-size", attr: { min: String(MIN_SIZE), max: String(MAX_SIZE), step: "1", "aria-label": t("drawing.size") } });
 		const exact = sizeBox.createEl("input", { type: "number", cls: "opc-ink-size-number", attr: { min: String(MIN_SIZE), max: String(MAX_SIZE), step: "1", inputmode: "decimal", "aria-label": t("drawing.sizeExact") } });
+		// Not a text field until pressed or focused: the system's handwriting input (Scribble on
+		// iPad) would otherwise take pen strokes written near the bar as text for it.
+		exact.readOnly = true;
+		const unlock = () => (exact.readOnly = false);
+		exact.addEventListener("pointerdown", () => {
+			unlock();
+			// A press that didn't end in the field (a drag, a cancel) locks it again.
+			exact.win.setTimeout(() => {
+				if (exact.doc.activeElement !== exact) exact.readOnly = true;
+			}, 600);
+		});
+		exact.addEventListener("focus", unlock);
+		exact.addEventListener("blur", () => (exact.readOnly = true));
 		size.value = exact.value = String(sizeOf());
 		setTooltip(size, t("drawing.size"), { placement: "bottom" });
 		setTooltip(exact, t("drawing.sizeExact"), { placement: "bottom" });
