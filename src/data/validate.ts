@@ -258,6 +258,7 @@ export const NODE_SHAPE: Shape<OpcNode> = {
 	autoWidth: bool,
 	autoFit: bool,
 	anchor: str,
+	drawingCard: bool,
 	locked: bool,
 	breakpoint: finite,
 	collapsed: bool,

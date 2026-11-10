@@ -639,10 +639,8 @@ export const en = {
 	"drawing.color.blue": "Blue",
 	"drawing.color.purple": "Purple",
 	"drawing.color.white": "White",
-	"drawing.attach": "Stick drawn marks to the cards under them",
 	"drawing.split": "Split drawings into separate strokes",
 	"drawing.split.done": "Split into {count} new drawings",
-	"drawing.detach": "Unstick drawn marks from their cards",
 	"freeLines.name": "Free lines and arrows",
 	"freeLines.desc": "Lines and arrows drawn with the drawing tools. Draw with turns and the line keeps its corners (hold Shift for a straight one). Their ends can attach to cards and follow them; drag an end onto a card to attach it. A selected line shows handles: drag a segment's middle to add a corner, drag a corner to move it, double-click it to remove it.",
 	"freeLines.style": "Line style",
@@ -1579,6 +1577,15 @@ export const en = {
 	"paper.images.working": "Saving the pages…",
 	"paper.images.done": "Saved {count} pages in {path}.",
 	"paper.images.folder": "pages",
+	"drawing.embedCard.button": "Put into a card",
+	"drawing.embedCard.new": "Embed drawing into a new card",
+	"drawing.embedCard.under": "Embed drawing into the card under it",
+	"drawing.embedCard.out": "Take drawing out of its card",
+	"drawing.embedCard.nothing": "Pick strokes first: with the lasso of the drawing bar, or select drawings on the board.",
+	"drawing.embedCard.nothingOut": "Pick strokes that are part of a card (the lasso), or select a card with handwriting on it.",
+	"drawing.embedCard.noCard": "There is no card under these strokes. Embed them into a new card instead.",
+	"drawing.embedCard.done": "Strokes now part of the card: {count}",
+	"drawing.embedCard.outDone": "Strokes back on the board: {count}",
 } as const;
 
 export type I18nKey = keyof typeof en;

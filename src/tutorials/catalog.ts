@@ -633,6 +633,22 @@ const drawing: TutorialDefinition = {
 			},
 		},
 		{
+			title: "tut.drawing.embed.title",
+			body: "tut.drawing.embed.body",
+			task: "tut.drawing.embed.task",
+			touch: "tut.drawing.embed.touch",
+			target: ".opc-ink-embed",
+			check: (rt) => rt.seen("ink-embedded") || grew(rt, (n) => !!extraOf(n).drawingCard),
+			demo: async (rt) => {
+				// A little wave on the empty board, picked and put into a card of its own.
+				const id = randomId();
+				rt.add([ink(id, [{ x: 400, y: 30 }, { x: 440, y: 10 }, { x: 480, y: 50 }, { x: 520, y: 20 }, { x: 560, y: 40 }], "#1971c2")]);
+				await rt.wait(300);
+				rt.select([id]);
+				rt.command("drawing:embed-ink-new");
+			},
+		},
+		{
 			title: "tut.drawing.s5.title",
 			body: "tut.drawing.s5.body",
 			task: "tut.drawing.s5.task",

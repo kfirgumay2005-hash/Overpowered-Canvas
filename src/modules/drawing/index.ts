@@ -17,6 +17,7 @@ import { DRAWING_DEFAULTS, INK_DEFAULT, InkToolbar, PEN_TOOLS, sanitizePens, typ
 import { logError } from "../../core/log";
 import { inkHost, type InkSurface } from "./api";
 import { enableInkTools } from "./ink-tools";
+import { enableEmbed } from "./embed";
 
 type Ctx = ModuleContext<DrawingSettings>;
 
@@ -161,6 +162,7 @@ class InkSession {
 		private readonly onClose: () => void,
 		private readonly rerender: (node: CanvasNodeLike) => void,
 		private readonly onHandwrite: () => void = () => {},
+		private readonly onEmbed: ((at: { x: number; y: number }) => void) | null = null,
 	) {
 		const host = surface.host;
 		// A hovering pen shows its brush before any press.
@@ -192,8 +194,10 @@ class InkSession {
 			close: () => this.onClose(),
 			colorName: (color) => colorName(ctx.t, color),
 			hiddenTools: surface.inkOnly ? ["line", "arrow"] : [],
-			// Handwriting → text makes a card on the board: not offered in other views.
+			// Handwriting → text makes a card on the board: not offered in other views (nor strokes
+			// put into a new card, which the other views would not show).
 			...(surface.inkOnly ? {} : { handwrite: () => this.onHandwrite() }),
+			...(surface.inkOnly || !onEmbed ? {} : { embed: (at: { x: number; y: number }) => onEmbed(at) }),
 		});
 		host.addClass("opc-drawing");
 		this.overlay.addEventListener("pointerdown", this.onDown);
@@ -612,6 +616,11 @@ class InkSession {
 		this.layer.createSvg("rect", { cls: ["opc-ink-selection", "opc-ink-handle"], attr: { x: box.maxX - h / 2, y: box.maxY - h / 2, width: h, height: h } });
 	}
 
+	/** The lasso lets go of its strokes (they were moved into or out of a card). */
+	dropSelection(): void {
+		this.clearSelection();
+	}
+
 	private clearSelection(): void {
 		const carriers = [...this.selection.keys()];
 		this.selection.clear();
@@ -771,6 +780,12 @@ export const drawingModule = defineModule<DrawingSettings>({
 			},
 		});
 		enableAnchors(ctx);
+		// Strokes into a card and back out (the lasso's strokes, else the drawings selected).
+		const embedding = enableEmbed(
+			ctx,
+			(canvas) => [...(sessions.get(canvas)?.selection ?? new Map<CanvasNodeLike, Set<string>>())].map(([carrier, ids]) => ({ carrier, ids })),
+			(canvas) => sessions.get(canvas)?.dropSelection(),
+		);
 		// Handwriting → text and drawing embeds (the drawings meant: the lasso's, else the selection).
 		const tools = enableInkTools(ctx, (canvas) => sessions.get(canvas)?.lastPress ?? null, (canvas) => [...(sessions.get(canvas)?.selection.keys() ?? [])]);
 
@@ -881,7 +896,7 @@ export const drawingModule = defineModule<DrawingSettings>({
 			// The lasso or the highlighter ends first.
 			claimTool(canvas, "drawing", () => stop(canvas));
 			canvas.deselectAll();
-			sessions.set(canvas, new InkSession(ctx, canvas, surface, () => stop(canvas), rerender, () => tools.handwrite(canvas)));
+			sessions.set(canvas, new InkSession(ctx, canvas, surface, () => stop(canvas), rerender, () => tools.handwrite(canvas), (at) => embedding.menu(canvas, at)));
 			if (onEnd) ended.set(canvas, onEnd);
 			ctx.events.emit("drawing-mode-changed", canvas, ctx.settings.tool);
 		};

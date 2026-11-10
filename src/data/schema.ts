@@ -271,6 +271,8 @@ export interface OpcNode {
 	autoFit?: boolean;
 	/** Ink carriers: the card the strokes were drawn on; the ink moves, copies and deletes with it. */
 	anchor?: string;
+	/** A card made to hold a drawing ("Embed into a new card"): the ink stuck to it stretches when it is resized. */
+	drawingCard?: boolean;
 	locked?: boolean;
 	breakpoint?: number;
 	collapsed?: boolean;

@@ -410,7 +410,7 @@ export const tutorialsEn = {
 	"tut.blocks.s5.title": "Good to know",
 	"tut.blocks.s5.body": "Dragging works with touch and a pen too: tap a line, then drag its handle. A long press keeps selecting text as usual. Text dragged from a card you are editing also gets the child and sibling targets.\n\nSettings: Data features → Note blocks to canvas — hold time, use on phones, the drag handle, the targets and the name of the inbox group.",
 	"tut.drawing.mark.title": "Marks on a card",
-	"tut.drawing.mark.body": "Underline, circle or highlight words **inside** a card: what you draw over a card sticks to it. It moves with the card (by hand, auto layout or a new place in a map), is copied, cut and pasted with it, and is deleted with it. Drag the marks off the card and they come loose.\n\nOlder drawings: **Stick drawn marks to the cards under them** in the command palette. Turn it off in the drawing bar's options.",
+	"tut.drawing.mark.body": "Underline, circle or highlight words **inside** a card: what you draw over a card sticks to it. It moves with the card (by hand, auto layout or a new place in a map), is copied, cut and pasted with it, and is deleted with it. Drag the marks off the card and they come loose.\n\nOlder drawings: **Embed drawing into the card under it** in the command palette. Turn it off in the drawing bar's options.",
 	"tut.drawing.mark.task": "Pick the pen or highlighter and underline the words in **Circle me!**",
 	"tut.drawing.s7.title": "Marks travel along",
 	"tut.drawing.s7.body": "Move the card you marked: the marks stay exactly on the words.",
@@ -1042,4 +1042,8 @@ export const tutorialsEn = {
 	"tut.paper.landscape.task": "`Ctrl/Cmd+P` → **Page format…** → turn on **Landscape** → **Use these pages**.",
 	"tut.paper.end.title": "Good to know",
 	"tut.paper.end.body": "**Export the pages as PDF** (`Ctrl/Cmd+P`) saves one PDF page per sheet, at the sheet's size, next to the canvas. On a tablet or phone the same command saves one picture per sheet instead.\n\nOn a canvas with pages, each page has its own sheets in the same format, so a branch moved to a page of its own starts on fresh paper.",
+	"tut.drawing.embed.title": "Put a drawing into a card",
+	"tut.drawing.embed.body": "A sketch drawn on the empty board can become a **card**. Circle the strokes with the **lasso** of the drawing bar, then press **Put into a card** (the square with a plus) and choose:\n\n- **Embed drawing into a new card**: a card is made around the strokes, exactly where they are.\n- **Embed drawing into the card under it**: the strokes join the card they are drawn on.\n\nFrom then on the strokes are part of the card: they move, copy and delete with it, show in the column view and the table of contents, and a card made for them stretches its drawing when you resize it. **Take drawing out of its card** (the same button, or the card's menu) puts them back on the board.",
+	"tut.drawing.embed.task": "Draw something on the empty board, circle it with the lasso and press **Put into a card** → **Embed drawing into a new card** (or `Ctrl/Cmd+P` → **Embed drawing into a new card**).",
+	"tut.drawing.embed.touch": "Pick the lasso in the drawing bar, circle your drawing with the pen or a finger, tap the square with a plus, then **Embed drawing into a new card**.",
 } as const;

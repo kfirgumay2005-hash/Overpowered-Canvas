@@ -79,6 +79,8 @@ read-only unless you know the internals. Payloads are listed below; types are in
 | `toc-closed` | canvas |
 | `handwriting-to-text` | canvas, node (a text card made from handwriting: the writing box, or reading drawings) |
 | `drawing-embedded` | canvas, path (a drawing put into an SVG file for notes; the file follows the drawing) |
+| `ink-embedded` | canvas, card, strokes (strokes moved into a card: a new card made around them, or the card under them) |
+| `ink-taken-out` | canvas, strokes (strokes stuck to a card freed onto the board) |
 | `paper-changed` | canvas (the page format was set, changed or turned off, or a sheet added or removed) |
 | `paper-exported` | canvas, path (the sheets saved as a PDF, or as pictures in that folder) |
 | `lasso-selected` | canvas, items (what the lasso selected) |

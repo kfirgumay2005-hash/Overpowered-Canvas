@@ -296,6 +296,15 @@ body.opc-mod-presentation .opc-columns-ink {
 	overflow: visible;
 	pointer-events: none;
 }
+/* A drawing card below its real size: the drawing scaled to the card's width. */
+body.opc-mod-presentation .opc-columns-ink.is-fit {
+	position: static;
+	display: block;
+	width: 100%;
+	height: auto;
+	max-height: 60vh;
+	overflow: hidden;
+}
 body.opc-mod-presentation .opc-columns-card:not(.is-current):hover {
 	opacity: 0.9;
 }

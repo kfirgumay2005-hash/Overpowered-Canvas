@@ -1,12 +1,30 @@
 import { describe, expect, it } from "vitest";
 import type { Stroke } from "../../data/schema";
 import type { CanvasNodeData } from "../../data/json-canvas";
-import { cardUnder, remapRefs } from "./stick";
-import { absolutePoints, CARRIER_PAD, makeStroke, refit, scaleStrokes } from "./carriers";
+import { cardUnder, cardUnderMost, remapRefs } from "./stick";
+import { absolutePoints, CARRIER_PAD, makeStroke, refit, scaleStrokes, stretchStrokes } from "./carriers";
 
 const style = { tool: "pen" as const, color: "#000", size: 4 };
 
 describe("carriers", () => {
+	it("stretches a drawing card's strokes with the card, keeping their place on it", () => {
+		// A stroke from (110, 120) to (150, 160) on a 100 x 100 card at (100, 100), stored in a carrier at (90, 90).
+		const s = makeStroke("s1", [{ x: 110, y: 120, p: 0.5 }, { x: 150, y: 160, p: 0.5 }], { x: 90, y: 90 }, style);
+		const fit = stretchStrokes([s], { x: 90, y: 90 }, { x: 100, y: 100, width: 100, height: 100 }, { x: 50, y: 100, width: 200, height: 50 })!;
+		const pts = absolutePoints(fit.strokes[0]!, fit.box).map((p) => [p.x, p.y]);
+		expect(pts).toEqual([[70, 110], [150, 130]]);
+		expect(fit.strokes[0]!.size).toBe(2);
+		expect(fit.strokes[0]!.id).toBe("s1");
+	});
+
+	it("finds the card holding most of a drawing", () => {
+		const points = [{ x: 5, y: 5 }, { x: 15, y: 5 }, { x: 25, y: 5 }, { x: 95, y: 5 }];
+		const cards = [{ id: "top", x: 90, y: 0, width: 20, height: 20 }, { id: "big", x: 0, y: 0, width: 30, height: 20 }];
+		expect(cardUnderMost(points, cards)).toBe("big");
+		expect(cardUnderMost(points, cards, 0.8)).toBeNull();
+		expect(cardUnderMost([], cards)).toBeNull();
+	});
+
 	it("stretches strokes to a resized card", () => {
 		const s = makeStroke("s1", [{ x: 10, y: 20, p: 0.5 }, { x: 50, y: 60, p: 0.6 }], { x: 0, y: 0 }, style);
 		const [scaled] = scaleStrokes([s], { width: 100, height: 100 }, { width: 200, height: 50 });

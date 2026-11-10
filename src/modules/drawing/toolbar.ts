@@ -111,6 +111,8 @@ export interface ToolbarHost {
 	hiddenTools?: InkTool[];
 	/** Handwriting → text (the system turns pen writing into text), where offered. */
 	handwrite?(): void;
+	/** The lasso's strokes into a card (or out of it): the choice, by the button at `at`. */
+	embed?(at: { x: number; y: number }): void;
 }
 
 export class InkToolbar {
@@ -221,6 +223,12 @@ export class InkToolbar {
 			}
 		});
 		if (this.host.hasSelection()) button("lock", t("drawing.lockSelection"), () => this.host.lockSelection());
+		if (this.host.hasSelection() && this.host.embed) {
+			const b = button("square-plus", t("drawing.embedCard.button"), () => {
+				const r = b.getBoundingClientRect();
+				this.host.embed?.({ x: r.left, y: r.bottom + 4 });
+			}, false, "opc-ink-embed");
+		}
 		if (this.host.handwrite) button("text-cursor-input", t("drawing.handwrite.button"), () => this.host.handwrite?.());
 		button("sliders-horizontal", t("drawing.more"), () => this.toggleMore());
 		button("x", t("drawing.exit"), () => this.host.close(), false, "mod-close");

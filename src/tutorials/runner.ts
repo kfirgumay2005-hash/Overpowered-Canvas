@@ -78,6 +78,8 @@ const WATCHED_EVENTS = [
 	"toc-closed",
 	"handwriting-to-text",
 	"drawing-embedded",
+	"ink-embedded",
+	"ink-taken-out",
 	"paper-changed",
 	"paper-exported",
 	"lasso-selected",

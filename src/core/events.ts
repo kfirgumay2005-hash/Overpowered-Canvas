@@ -83,6 +83,8 @@ export interface PublicEventMap {
 	"toc-closed": [canvas: CanvasLike];
 	"handwriting-to-text": [canvas: CanvasLike, node: CanvasNodeLike];
 	"drawing-embedded": [canvas: CanvasLike, path: string];
+	"ink-embedded": [canvas: CanvasLike, card: CanvasNodeLike, strokes: number];
+	"ink-taken-out": [canvas: CanvasLike, strokes: number];
 	"paper-changed": [canvas: CanvasLike];
 	"paper-exported": [canvas: CanvasLike, path: string];
 	"lasso-selected": [canvas: CanvasLike, items: CanvasItemLike[]];

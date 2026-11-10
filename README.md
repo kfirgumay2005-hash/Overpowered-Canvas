@@ -76,6 +76,9 @@ palm rejection, palm navigation and a drag button, the pen's eraser end, whole-s
 move / scale / delete / lock strokes, recent colors, smoothing, a size slider with an exact
 number box, and shape recognition (hold at the end of a stroke). Every stroke is its own
 drawing; resize a drawing's card and its strokes scale with it. Marks drawn on a card stick to it: they move, copy and delete with the card.
+Strokes picked with the lasso can be put into a card (**Put into a card**: a new card made
+around them, or the card under them) and taken out again; a card made for a drawing stretches
+it when resized, and shows it in the column view and the table of contents.
 Highlight words inside a card without editing it, or color their letters (swipe or tap with a pen
 or the mouse; the highlight or color goes into the card's text, so it shows in every view and in
 Markdown; **Neutral** writes Obsidian's own `==highlight==` in your theme's color). Free lines and arrows whose ends stick to cards and that

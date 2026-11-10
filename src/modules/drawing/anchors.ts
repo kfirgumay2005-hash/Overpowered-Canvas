@@ -4,13 +4,17 @@
  * with it, is deleted with it and is drawn just above it. Moving the ink off its card frees it.
  */
 import type { ModuleContext } from "../../core/module";
+import type { Stroke } from "../../data/schema";
 import type { CanvasItemLike, CanvasLike, CanvasNodeLike } from "../../internals/types";
-import { isTextBox, mutate, nodeType, isHiddenNode, randomId, renderedZ } from "../shared";
-import { absolutePoints, CARRIER_TEXT, refit, shiftStroke } from "./carriers";
-import { cardUnder, remapRefs } from "./stick";
+import { isTextBox, nodeType, isHiddenNode, renderedZ } from "../shared";
+import { stretchStrokes, type Box } from "./carriers";
+import { remapRefs } from "./stick";
 import type { DrawingSettings } from "./toolbar";
 
 type Ctx = ModuleContext<DrawingSettings>;
+
+/** A resize of a drawing card ends after this pause. */
+const STRETCH_PAUSE_MS = 500;
 
 export function isInk(ctx: Ctx, n: CanvasNodeLike): boolean {
 	return nodeType(n) === "text" && ctx.data.node(n).get().kind === "ink";
@@ -32,7 +36,7 @@ export function enableAnchors(ctx: Ctx): void {
 	/** Card → the carriers stuck to it. */
 	const byCard = new Map<string, Set<CanvasNodeLike>>();
 	/** Where each card with ink was last seen, to move its ink by as much. */
-	const lastPos = new WeakMap<CanvasNodeLike, { x: number; y: number }>();
+	const lastPos = new WeakMap<CanvasNodeLike, Box>();
 	/** Carriers being moved by us. */
 	const moving = new Set<CanvasNodeLike>();
 
@@ -43,7 +47,7 @@ export function enableAnchors(ctx: Ctx): void {
 		if (!set) byCard.set(anchor, (set = new Set()));
 		set.add(carrier);
 		const card = carrier.canvas.nodes.get(anchor);
-		if (card && !lastPos.has(card)) lastPos.set(card, { x: card.x, y: card.y });
+		if (card && !lastPos.has(card)) lastPos.set(card, { x: card.x, y: card.y, width: card.width, height: card.height });
 	};
 	const carriersOf = (card: CanvasNodeLike) => [...(byCard.get(card.id) ?? [])].filter((c) => c.canvas === card.canvas && c.canvas.nodes.get(c.id) === c);
 
@@ -75,8 +79,10 @@ export function enableAnchors(ctx: Ctx): void {
 		}
 		const carriers = byCard.has(moved.id) ? carriersOf(moved) : [];
 		const was = lastPos.get(moved);
-		lastPos.set(moved, { x: moved.x, y: moved.y });
+		lastPos.set(moved, { x: moved.x, y: moved.y, width: moved.width, height: moved.height });
 		if (!carriers.length || !was) return;
+		// A card made for a drawing, resized: the drawing stretches with it.
+		if ((Math.abs(moved.width - was.width) > 0.01 || Math.abs(moved.height - was.height) > 0.01) && ctx.data.node(moved).get().drawingCard) return stretch(moved, carriers, was);
 		const dx = moved.x - was.x;
 		const dy = moved.y - was.y;
 		if (!dx && !dy) return;
@@ -89,6 +95,34 @@ export function enableAnchors(ctx: Ctx): void {
 			}
 		}
 	});
+
+	/**
+	 * Stretches the ink of a drawing card from the box it had when the resize began: every step
+	 * of a live resize starts from the same strokes, so rounding never adds up. A pause ends the
+	 * resize (the next one starts from the strokes as they are then).
+	 */
+	const stretching = new Map<CanvasNodeLike, { from: Box; strokes: Map<CanvasNodeLike, { origin: { x: number; y: number }; strokes: Stroke[] }>; timer: number }>();
+	const stretch = (card: CanvasNodeLike, carriers: CanvasNodeLike[], was: Box) => {
+		const win = card.canvas.wrapperEl.win;
+		let run = stretching.get(card);
+		if (!run) stretching.set(card, (run = { from: was, strokes: new Map(), timer: 0 }));
+		win.clearTimeout(run.timer);
+		run.timer = win.setTimeout(() => stretching.delete(card), STRETCH_PAUSE_MS);
+		const to = { x: card.x, y: card.y, width: card.width, height: card.height };
+		for (const c of carriers) {
+			let base = run.strokes.get(c);
+			if (!base) run.strokes.set(c, (base = { origin: { x: c.x, y: c.y }, strokes: ctx.data.node(c).get().strokes ?? [] }));
+			const fit = stretchStrokes(base.strokes, base.origin, run.from, to);
+			if (!fit) continue;
+			moving.add(c);
+			try {
+				c.moveAndResize(fit.box);
+				ctx.data.node(c).set({ strokes: fit.strokes }, { history: false });
+			} finally {
+				moving.delete(c);
+			}
+		}
+	};
 
 	// A deleted card takes its ink along (the same undo step: the core saves a moment later).
 	ctx.on("node-removed", (removed) => {
@@ -159,87 +193,5 @@ export function enableAnchors(ctx: Ctx): void {
 					return out;
 				},
 		});
-	});
-
-	// ---- Commands ----------------------------------------------------------------------------
-
-	/** Moves the strokes of free ink drawn over cards into ink stuck to those cards. */
-	const attach = (canvas: CanvasLike) => {
-		const chosen = [...canvas.selection].filter((i): i is CanvasNodeLike => "nodeEl" in i && isInk(ctx, i));
-		const carriers = (chosen.length ? chosen : [...canvas.nodes.values()].filter((n) => isInk(ctx, n))).filter((c) => !anchorOf(ctx, c));
-		const cards = stickyTargets(ctx, canvas);
-		let count = 0;
-		mutate(ctx, canvas, () => {
-			for (const carrier of carriers) {
-				const strokes = ctx.data.node(carrier).get().strokes ?? [];
-				const groups = new Map<string | null, typeof strokes>();
-				for (const s of strokes) {
-					const card = cardUnder(absolutePoints(s, carrier), cards);
-					groups.set(card, [...(groups.get(card) ?? []), s]);
-				}
-				if (groups.size === 1 && groups.has(null)) continue;
-				const origin = { x: carrier.x, y: carrier.y };
-				for (const [card, list] of groups) {
-					if (card === null) continue;
-					// Separate strokes: each one becomes its own drawing on the card.
-					if (!ctx.settings.groupStrokes) {
-						for (const stroke of list) {
-							const one = refit([stroke], origin);
-							if (one) canvas.importData({ nodes: [{ id: randomId(), type: "text", text: CARRIER_TEXT, ...one.box, "x-opc": { kind: "ink", strokes: one.strokes, anchor: card } }], edges: [] }, false);
-						}
-						count += list.length;
-						continue;
-					}
-					const fit = refit(list, origin);
-					if (!fit) continue;
-					const existing = carriersOf(canvas.nodes.get(card)!)[0];
-					if (existing) {
-						const merged = refit([...(ctx.data.node(existing).get().strokes ?? []), ...list.map((s) => shiftStroke(s, origin.x - existing.x, origin.y - existing.y))], existing);
-						if (merged) {
-							existing.moveAndResize(merged.box);
-							ctx.data.node(existing).set({ strokes: merged.strokes });
-						}
-					} else canvas.importData({ nodes: [{ id: randomId(), type: "text", text: CARRIER_TEXT, ...fit.box, "x-opc": { kind: "ink", strokes: fit.strokes, anchor: card } }], edges: [] }, false);
-					count += list.length;
-				}
-				const rest = groups.get(null) ?? [];
-				const keep = refit(rest, origin);
-				if (!keep) canvas.removeNode(carrier);
-				else {
-					carrier.moveAndResize(keep.box);
-					ctx.data.node(carrier).set({ strokes: keep.strokes });
-				}
-			}
-		});
-		return count;
-	};
-	const detach = (canvas: CanvasLike) => {
-		const chosen = [...canvas.selection].filter((i): i is CanvasNodeLike => "nodeEl" in i && isInk(ctx, i));
-		const carriers = (chosen.length ? chosen : [...canvas.nodes.values()].filter((n) => isInk(ctx, n))).filter((c) => anchorOf(ctx, c));
-		mutate(ctx, canvas, () => {
-			for (const c of carriers) ctx.data.node(c).set({ anchor: undefined });
-		});
-	};
-	ctx.addCommand({
-		id: "attach-ink",
-		name: ctx.t("drawing.attach"),
-		icon: "pin",
-		checkCallback: (checking) => {
-			const canvas = ctx.activeCanvas();
-			if (!canvas || canvas.readonly) return false;
-			if (!checking) attach(canvas);
-			return true;
-		},
-	});
-	ctx.addCommand({
-		id: "detach-ink",
-		name: ctx.t("drawing.detach"),
-		icon: "pin-off",
-		checkCallback: (checking) => {
-			const canvas = ctx.activeCanvas();
-			if (!canvas || canvas.readonly) return false;
-			if (!checking) detach(canvas);
-			return true;
-		},
 	});
 }
