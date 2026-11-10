@@ -78,6 +78,8 @@ const MIN_CARD = 40;
 const KEY_STEP = 10;
 const MIN_ZOOM = 0.25;
 const MAX_ZOOM = 4;
+/** The overlays of the drawing tools and the highlighter / text color tool. */
+export const TOOL_OVERLAYS = ".opc-ink-overlay, .opc-hl-overlay";
 
 interface Placed {
 	column: HTMLElement;
@@ -618,6 +620,9 @@ export class ColumnView {
 		}
 		if (this.pointers.size > 2) return;
 		if (evt.pointerType === "mouse" && evt.button !== 0) return;
+		// A finger on a tool's overlay (it moves the view, or taps a card: see onUp): no emulated
+		// mouse press after it, which would take the focus from a card opened for editing by the tap.
+		if (evt.pointerType === "touch" && (evt.target as HTMLElement).closest(TOOL_OVERLAYS)) evt.preventDefault();
 		const inColumn = this.columnAt(evt.target);
 		this.press = { id: evt.pointerId, x: evt.clientX, y: evt.clientY, column: inColumn >= 0 ? inColumn : this.columnAtPoint(evt.clientX, evt.clientY), moved: false, pinch: false };
 	};
@@ -667,8 +672,31 @@ export class ColumnView {
 		if (press?.id !== evt.pointerId) return;
 		this.press = null;
 		this.el.removeClass("is-dragging");
-		if (press.moved || press.pinch) this.swallowUntil = performance.now() + 300;
+		if (press.moved || press.pinch) {
+			this.swallowUntil = performance.now() + 300;
+			return;
+		}
+		// A finger tap while a tool is on: the tool's overlay lies over the cards and the finger
+		// didn't draw (fingers move the view then), so the tap goes to the card under it, as without
+		// the tool: finger drag = move, finger tap = go to the card, pen = draw.
+		const overlay = (evt.target as HTMLElement | null)?.closest?.(TOOL_OVERLAYS);
+		if (overlay && evt.pointerType === "touch") {
+			const hit = this.underOverlays(evt.clientX, evt.clientY);
+			// The click that follows lands on the overlay: it is this tap, already handled.
+			this.swallowUntil = performance.now() + 400;
+			if (hit) this.tap(hit, evt);
+		}
 	};
+
+	/** The element of the view under a screen point, below the tools' overlays. */
+	private underOverlays(x: number, y: number): HTMLElement | null {
+		for (const el of this.el.doc.elementsFromPoint(x, y)) {
+			if (!el.instanceOf(HTMLElement) || !this.el.contains(el)) continue;
+			if (el.closest(TOOL_OVERLAYS) || el.closest(".opc-ink-preview")) continue;
+			return el.closest(".opc-columns-zoom") ? el : null;
+		}
+		return null;
+	}
 
 	private onCancel = (evt: PointerEvent) => {
 		this.pointers.delete(evt.pointerId);
@@ -703,6 +731,12 @@ export class ColumnView {
 			this.swallowUntil = 0;
 			return;
 		}
+		this.tap(target, evt);
+	};
+
+	/** A tap on `target`: links open, a card goes there, a second tap on the current card edits it. */
+	private tap(target: HTMLElement, evt: MouseEvent): void {
+		if (target.closest(".opc-columns-editor, .opc-columns-add, .opc-columns-resize")) return;
 		const link = target.closest<HTMLAnchorElement>("a");
 		if (link && this.openLink(link, evt)) return;
 		const card = target.closest<HTMLElement>(".opc-columns-card");
@@ -716,7 +750,7 @@ export class ColumnView {
 			this.edit(id);
 		} else if (card.hasClass("is-current")) this.recenter();
 		else this.host.open(id);
-	};
+	}
 
 	private openLink(link: HTMLAnchorElement, evt: MouseEvent): boolean {
 		if (link.hasClass("internal-link")) {
