@@ -335,7 +335,7 @@ class Session {
 	private events: RecordedEvent[] = [];
 	private readonly cleanups: (() => void)[] = [];
 	private panel!: HTMLElement;
-	private highlight: HTMLElement | null = null;
+	private highlights: HTMLElement[] = [];
 	private advanceTimer = 0;
 	private evalFrame = 0;
 	private demoRunning = false;
@@ -670,25 +670,26 @@ class Session {
 			this.clearHighlight();
 			return;
 		}
-		let target: HTMLElement | null | undefined;
+		let found: HTMLElement | readonly (HTMLElement | null | undefined)[] | null | undefined;
 		try {
-			target = typeof spec === "function" ? spec(this.rt) : (this.canvas.wrapperEl.querySelector<HTMLElement>(spec) ?? activeDocument.querySelector<HTMLElement>(spec));
+			found = typeof spec === "function" ? spec(this.rt) : (this.canvas.wrapperEl.querySelector<HTMLElement>(spec) ?? activeDocument.querySelector<HTMLElement>(spec));
 		} catch {
-			target = null;
+			found = null;
 		}
-		if (!target || !target.isShown() || target.closest(".opc-tutorial")) {
-			this.clearHighlight();
-			return;
-		}
-		const r = target.getBoundingClientRect();
+		const list: readonly (HTMLElement | null | undefined)[] = found instanceof HTMLElement || !found ? [found] : found;
+		const targets = list.filter((el): el is HTMLElement => !!el && el.isShown() && !el.closest(".opc-tutorial"));
+		while (this.highlights.length > targets.length) this.highlights.pop()?.remove();
 		const pad = 5;
-		if (!this.highlight) this.highlight = activeDocument.body.createDiv({ cls: "opc-tutorial-highlight" });
-		this.highlight.setCssStyles({ left: `${r.left - pad}px`, top: `${r.top - pad}px`, width: `${r.width + 2 * pad}px`, height: `${r.height + 2 * pad}px` });
+		targets.forEach((target, i) => {
+			const r = target.getBoundingClientRect();
+			const box = (this.highlights[i] ??= activeDocument.body.createDiv({ cls: "opc-tutorial-highlight" }));
+			box.setCssStyles({ left: `${r.left - pad}px`, top: `${r.top - pad}px`, width: `${r.width + 2 * pad}px`, height: `${r.height + 2 * pad}px` });
+		});
 	}
 
 	private clearHighlight(): void {
-		this.highlight?.remove();
-		this.highlight = null;
+		for (const box of this.highlights) box.remove();
+		this.highlights = [];
 	}
 
 	// ---------- runtime ----------

@@ -52,6 +52,8 @@ export const MAX_SEEN = 200;
 export interface BarButtonsSettings {
 	/** `<bar>:<button key>` of the buttons taken off the bars. */
 	hidden: string[];
+	/** `<bar>:<button key>` of buttons that are off until turned on (OFF_BY_DEFAULT) and were turned on. */
+	shown: string[];
 	custom: CustomButton[];
 	/** Per bar, the order chosen: button keys and `custom:<id>` of added buttons. Absent: as it comes. */
 	order: Partial<Record<Bar, string[]>>;
@@ -150,11 +152,32 @@ export function hiddenKey(bar: Bar, key: string): string {
 	return `${bar}:${key}`;
 }
 
+/** Buttons a bar starts without: they show once turned on in Customize the bars. */
+export const OFF_BY_DEFAULT: readonly string[] = ["bottom:opc-card-flowchart-review"];
+
+/** The `<bar>:<key>` of the buttons taken off: those taken off by hand and those off by default. */
+export function hiddenKeys(settings: Pick<BarButtonsSettings, "hidden" | "shown">): Set<string> {
+	const out = new Set(settings.hidden);
+	for (const key of OFF_BY_DEFAULT) if (!settings.shown.includes(key)) out.add(key);
+	return out;
+}
+
+/** The settings change that shows or hides one button. */
+export function showButton(settings: Pick<BarButtonsSettings, "hidden" | "shown">, key: string, show: boolean): Pick<BarButtonsSettings, "hidden" | "shown"> {
+	const hidden = settings.hidden.filter((k) => k !== key);
+	const shown = settings.shown.filter((k) => k !== key);
+	if (!show) hidden.push(key);
+	else if (OFF_BY_DEFAULT.includes(key)) shown.push(key);
+	return { hidden, shown };
+}
+
 const text = (v: unknown): string => (typeof v === "string" ? v.trim() : "");
 
 export function sanitizeBarSettings(raw: unknown): BarButtonsSettings {
-	const r = (raw ?? {}) as { hidden?: unknown; custom?: unknown; order?: unknown };
-	const hidden = Array.isArray(r.hidden) ? [...new Set(r.hidden.filter((k): k is string => typeof k === "string" && k.length > 0))] : [];
+	const r = (raw ?? {}) as { hidden?: unknown; shown?: unknown; custom?: unknown; order?: unknown };
+	const keys = (v: unknown) => (Array.isArray(v) ? [...new Set(v.filter((k): k is string => typeof k === "string" && k.length > 0))] : []);
+	const hidden = keys(r.hidden);
+	const shown = keys(r.shown);
 	const ids = new Set<string>();
 	const custom: CustomButton[] = [];
 	for (const item of Array.isArray(r.custom) ? (r.custom as Partial<CustomButton>[]) : []) {
@@ -171,5 +194,5 @@ export function sanitizeBarSettings(raw: unknown): BarButtonsSettings {
 		if (Array.isArray(list)) order[bar] = [...new Set(list.filter((k): k is string => typeof k === "string" && k.length > 0))];
 	}
 	const menus = (r as { menus?: Partial<Record<MenuKey, unknown>> }).menus ?? {};
-	return { hidden, custom, order, menus: { context: sanitizeMenuChoice(menus.context), more: sanitizeMenuChoice(menus.more) } };
+	return { hidden, shown, custom, order, menus: { context: sanitizeMenuChoice(menus.context), more: sanitizeMenuChoice(menus.more) } };
 }
