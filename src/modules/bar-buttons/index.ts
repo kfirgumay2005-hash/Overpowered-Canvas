@@ -6,7 +6,7 @@ import { BARS_TUTORIAL, TUTORIAL_KEY } from "../../tutorials/runner";
 import { IconPickerModal } from "../../ui/icon-picker";
 import { isImageCard, randomId } from "../shared";
 import { isNode } from "../../core/canvas-ui";
-import { addSeen, BARS, buttonKeys, buttonLabel, customKey, emptyMenus, hiddenKey, isPopupBar, itemTitle, MENU_KEYS, orderOf, popupFor, sanitizeBarSettings, sortKeys, type Bar, type BarButtonsSettings, type CustomButton, type MenuChoice, type MenuKey } from "./logic";
+import { addSeen, BARS, buttonKeys, buttonLabel, customKey, emptyMenus, hiddenKey, hiddenKeys, isPopupBar, itemTitle, MENU_KEYS, orderOf, popupFor, sanitizeBarSettings, showButton, sortKeys, type Bar, type BarButtonsSettings, type CustomButton, type MenuChoice, type MenuKey } from "./logic";
 
 type Ctx = ModuleContext<BarButtonsSettings>;
 
@@ -76,7 +76,7 @@ function run(ctx: Ctx, canvas: CanvasLike, button: CustomButton): void {
 /** Hidden keys that apply on this canvas: tutorials point at the buttons, so their boards keep all of them (but the one about this module). */
 function hiddenOn(ctx: Ctx, canvas: CanvasLike): Set<string> {
 	const tutorial = canvas.view.file ? (canvas.getData() as unknown as Record<string, unknown>)[TUTORIAL_KEY] : undefined;
-	return new Set(tutorial !== undefined && tutorial !== BARS_TUTORIAL ? [] : ctx.settings.hidden);
+	return tutorial !== undefined && tutorial !== BARS_TUTORIAL ? new Set() : hiddenKeys(ctx.settings);
 }
 
 /**
@@ -264,7 +264,7 @@ class BarsModal extends Modal {
 					.setDestructive()
 					.onClick(() => {
 						const menus = ctx.settings.menus;
-						void this.save({ hidden: [], custom: [], order: {}, menus: { context: { ...menus.context, hidden: [], allVault: false }, more: { ...menus.more, hidden: [], allVault: false } } });
+						void this.save({ hidden: [], shown: [], custom: [], order: {}, menus: { context: { ...menus.context, hidden: [], allVault: false }, more: { ...menus.more, hidden: [], allVault: false } } });
 					}),
 			)
 			.settingEl.addClass("opc-bars-extra");
@@ -494,8 +494,8 @@ class BarsModal extends Modal {
 		row.addToggle((toggle) =>
 			toggle
 				.setTooltip(ctx.t("barButtons.show"))
-				.setValue(!ctx.settings.hidden.includes(key))
-				.onChange((shown) => void ctx.updateSettings({ hidden: shown ? ctx.settings.hidden.filter((k) => k !== key) : [...ctx.settings.hidden, key] })),
+				.setValue(!hiddenKeys(ctx.settings).has(key))
+				.onChange((shown) => void ctx.updateSettings(showButton(ctx.settings, key, shown))),
 		);
 	}
 
@@ -569,7 +569,7 @@ export const barButtonsModule = defineModule<BarButtonsSettings>({
 	description: "barButtons.desc",
 	group: "interaction",
 	defaultEnabled: true,
-	defaultSettings: { hidden: [], custom: [], order: {}, menus: emptyMenus() },
+	defaultSettings: { hidden: [], shown: [], custom: [], order: {}, menus: emptyMenus() },
 	sanitizeSettings: (raw) => sanitizeBarSettings(raw),
 
 	enable(ctx) {

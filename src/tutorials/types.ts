@@ -64,8 +64,11 @@ export interface TutorialStep {
 	check?(rt: TutorialRuntime): boolean;
 	/** "Show me": does the task live on the board. */
 	demo?: (rt: TutorialRuntime) => void | Promise<void>;
-	/** Control to point at: a selector searched in the canvas first, then the whole window, or a function finding it. */
-	target?: string | ((rt: TutorialRuntime) => HTMLElement | null | undefined);
+	/**
+	 * What to point at: a selector searched in the canvas first, then the whole window, or a
+	 * function finding it (or several things, each marked on its own, e.g. the cards a step is about).
+	 */
+	target?: string | ((rt: TutorialRuntime) => HTMLElement | readonly (HTMLElement | null | undefined)[] | null | undefined);
 	/** Items to frame when the step starts. */
 	focus?: string[];
 	/** Runs once when the step starts (e.g. selecting the card the step is about). */

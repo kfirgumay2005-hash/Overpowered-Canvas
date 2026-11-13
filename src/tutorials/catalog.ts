@@ -3,13 +3,14 @@
  * checked on the live board; "Show me" does the task for the user, on the same board.
  */
 import type { CanvasFileData, CanvasNodeData } from "../data/json-canvas";
-import { SCHEMA_KEY, type LayerInfo, type OpcRoot } from "../data/schema";
+import { SCHEMA_KEY, type LayerInfo, type OpcRoot, type ShapeName } from "../data/schema";
 import { builtinTemplate } from "../modules/board-templates/builtins";
 import { reid, translate as shiftData } from "../modules/board-templates/logic";
 import { STICKY_COLORS } from "../modules/sticky-notes/logic";
 import { relayoutMap } from "../modules/auto-layout/arrange";
 import { recordChild } from "../modules/mindmap/order-store";
 import { parseFontSize } from "../modules/note-font-size/logic";
+import { reviewSnapshot } from "../modules/flowchart-review";
 import { BARS_TUTORIAL } from "./runner";
 import { added, addedEdges, arrow, card, count, edge, edgesOf, ellipsePoints, extraOf, findNode, group, ink, kindOf, nodesOf, practicePdf, randomId, shape, sticky, strokeCount, title } from "./board";
 import type { Translate } from "../i18n";
@@ -104,6 +105,15 @@ const lastSelectedSticky = (rt: TutorialRuntime) => {
 
 // ---------- 1. First steps ----------
 
+const TUTORIALS_DIALOG = ".opc-tutorials-modal";
+const tutorialsSearch = () => activeDocument.querySelector<HTMLInputElement>(`${TUTORIALS_DIALOG} .opc-tutorials-search input`);
+/** Done once the tutorial list was searched and closed again, so the panel isn't behind it. */
+let listSearched = false;
+const searchedList = () => {
+	listSearched ||= !!tutorialsSearch()?.value.trim();
+	return listSearched && !dialogOpen(TUTORIALS_DIALOG);
+};
+
 const basics: TutorialDefinition = {
 	id: "basics",
 	icon: "mouse-pointer-click",
@@ -191,6 +201,25 @@ const basics: TutorialDefinition = {
 			touch: "tut.basics.s8.touch",
 			check: (rt) => rt.seen("undo"),
 			demo: (rt) => rt.canvas.undo(),
+		},
+		{
+			title: "tut.basics.s9.title",
+			body: "tut.basics.s9.body",
+			task: "tut.basics.s9.task",
+			target: ".opc-tutorials-control",
+			enter: () => void (listSearched = false),
+			check: () => searchedList(),
+			demo: async (rt) => {
+				if (!dialogOpen(TUTORIALS_DIALOG)) rt.canvas.canvasControlsEl.querySelector<HTMLElement>(".opc-tutorials-control .canvas-control-item")?.click();
+				await rt.wait(600);
+				const search = tutorialsSearch();
+				if (search) {
+					search.value = rt.t("tut.basics.s9.query");
+					search.dispatchEvent(new Event("input"));
+				}
+				await rt.wait(1500);
+				closeDialog(TUTORIALS_DIALOG);
+			},
 		},
 	],
 };
@@ -4311,4 +4340,274 @@ const shortcuts: TutorialDefinition = {
 	],
 };
 
-export const TUTORIALS: readonly TutorialDefinition[] = [basics, notes, shapes, edges, drawing, layers, present, mindmap, navigate, organize, markdown, select, blocks, vault, style, big, direction, pdf, pages, arrows, bars, images, file, columns, columnsDown, toc, autoHeaders, handwriting, paper, smartGroups, indent, fontSize, shortcuts];
+// ---------- Flowchart shapes ----------
+
+const fsCard = (id: string, text: string, x: number, y: number, w: number, h: number, shape?: ShapeName) => card(id, text, x, y, w, h, shape ? { [SCHEMA_KEY]: { shape } } : {});
+
+/** Marks these cards on the board (one box each). */
+const markCards = (...ids: string[]) => (rt: TutorialRuntime) => ids.map((id) => rt.node(id)?.nodeEl);
+const FS_CARDS = ["fs-start", "fs-in", "fs-proc", "fs-dec", "fs-sub", "fs-ref", "fs-doc", "fs-db", "fs-end", "fs-pill"];
+
+const flowShapes: TutorialDefinition = {
+	id: "flowshapes",
+	icon: "workflow",
+	title: "tut.flowshapes.title",
+	summary: "tut.flowshapes.summary",
+	modules: ["node-shapes"],
+	board: (t) => ({
+		nodes: [
+			title("fs-title", t("tut.flowshapes.board.title"), -60, -140, 640, 80),
+			fsCard("fs-start", t("tut.flowshapes.board.start"), 20, 0, 200, 70, "terminal"),
+			fsCard("fs-pill", t("tut.flowshapes.board.pill"), 300, 10, 180, 50, "pill"),
+			fsCard("fs-in", t("tut.flowshapes.board.in"), 0, 130, 240, 80, "input-output"),
+			fsCard("fs-proc", t("tut.flowshapes.board.proc"), 0, 270, 240, 80, "process"),
+			fsCard("fs-dec", t("tut.flowshapes.board.dec"), 10, 410, 220, 130),
+			fsCard("fs-sub", t("tut.flowshapes.board.sub"), 340, 430, 260, 90, "predefined-process"),
+			fsCard("fs-ref", "A", 425, 600, 90, 90, "on-page-reference"),
+			fsCard("fs-doc", t("tut.flowshapes.board.doc"), 0, 610, 240, 90, "document"),
+			fsCard("fs-db", t("tut.flowshapes.board.db"), 0, 770, 240, 110, "database"),
+			fsCard("fs-end", t("tut.flowshapes.board.end"), 20, 950, 200, 70, "terminal"),
+		],
+		edges: [
+			edge("fs-e1", "fs-start", "bottom", "fs-in", "top"),
+			edge("fs-e2", "fs-in", "bottom", "fs-proc", "top"),
+			edge("fs-e3", "fs-proc", "bottom", "fs-dec", "top"),
+			edge("fs-e4", "fs-dec", "bottom", "fs-doc", "top", { label: t("tut.flowshapes.board.yes") }),
+			edge("fs-e5", "fs-dec", "right", "fs-sub", "left", { label: t("tut.flowshapes.board.no") }),
+			edge("fs-e6", "fs-sub", "bottom", "fs-ref", "top"),
+			edge("fs-e7", "fs-doc", "bottom", "fs-db", "top"),
+			edge("fs-e8", "fs-db", "bottom", "fs-end", "top"),
+		],
+	}),
+	steps: [
+		{ title: "tut.flowshapes.s1.title", body: "tut.flowshapes.s1.body", target: markCards(...FS_CARDS) },
+		{ title: "tut.flowshapes.s2.title", body: "tut.flowshapes.s2.body", focus: ["fs-start", "fs-end", "fs-pill"], target: markCards("fs-start", "fs-end", "fs-pill") },
+		{ title: "tut.flowshapes.s3.title", body: "tut.flowshapes.s3.body", focus: ["fs-proc", "fs-sub"], target: markCards("fs-proc", "fs-sub") },
+		{
+			title: "tut.flowshapes.s4.title",
+			body: "tut.flowshapes.s4.body",
+			task: "tut.flowshapes.s4.task",
+			touch: "tut.flowshapes.s4.touch",
+			focus: ["fs-dec", "fs-sub", "fs-doc"],
+			// The card, and the button that gives it its shape.
+			target: (rt) => [rt.node("fs-dec")?.nodeEl, rt.canvas.menu.menuEl.querySelector<HTMLElement>(".opc-menu-shape")],
+			enter: (rt) => rt.select(["fs-dec"]),
+			check: (rt) => rt.extra("fs-dec").shape === "decision",
+			demo: (rt) => setExtra(rt, "fs-dec", { shape: "decision" }),
+		},
+		{ title: "tut.flowshapes.s5.title", body: "tut.flowshapes.s5.body", focus: ["fs-in"], target: markCards("fs-in") },
+		{ title: "tut.flowshapes.s6.title", body: "tut.flowshapes.s6.body", focus: ["fs-doc", "fs-db"], target: markCards("fs-doc", "fs-db") },
+		{ title: "tut.flowshapes.s7.title", body: "tut.flowshapes.s7.body", focus: ["fs-sub", "fs-ref"], target: markCards("fs-ref") },
+		{ title: "tut.flowshapes.s8.title", body: "tut.flowshapes.s8.body", target: markCards(...FS_CARDS) },
+	],
+};
+
+// ---------- Review flowchart ----------
+
+const REVIEW_DIALOG = ".opc-review-modal";
+const reviewVisit = visitedDialog(REVIEW_DIALOG);
+/** The review data of this board's charts (keys start with its path). */
+const boardEntries = (rt: TutorialRuntime) => {
+	const path = rt.canvas.view.file?.path ?? "";
+	return Object.entries(reviewSnapshot()?.charts ?? {})
+		.filter(([key]) => key.startsWith(`${path}::`))
+		.map(([, entry]) => entry);
+};
+const reviewDone = (rt: TutorialRuntime, test: (e: ReturnType<typeof boardEntries>[number]) => boolean) => reviewVisit.check() && boardEntries(rt).some(test);
+const openReview = async (rt: TutorialRuntime) => {
+	if (!dialogOpen(REVIEW_DIALOG)) rt.canvas.canvasControlsEl.querySelector<HTMLElement>(".opc-flowchart-review-control .canvas-control-item")?.click();
+	for (let i = 0; i < 30 && !activeDocument.querySelector(`${REVIEW_DIALOG} .opc-review-row`); i++) await rt.wait(100);
+};
+const reviewRow = (rt: TutorialRuntime) => activeDocument.querySelector<HTMLElement>(`${REVIEW_DIALOG} .opc-review-row[data-key="${rt.canvas.view.file?.path ?? ""}::rv-1"]`);
+const reviewButton = (rt: TutorialRuntime) => rt.canvas.canvasControlsEl.querySelector<HTMLElement>(".opc-flowchart-review-control");
+const typeInto = (input: HTMLInputElement | HTMLTextAreaElement | null | undefined, text: string) => {
+	if (!input) return;
+	input.value = text;
+	input.dispatchEvent(new Event("input"));
+};
+/** The review group name set in the settings. */
+const reviewGroupName = (rt: TutorialRuntime) => {
+	const name = rt.setting("flowchart-review", "groupName");
+	return typeof name === "string" && name.trim() ? name : "toreview";
+};
+/** The most reviews of this board's charts when the step started. */
+let repsAtStart = 0;
+/** Whether the review window showed squares when the step started. */
+let squaresAtStart = false;
+
+const review: TutorialDefinition = {
+	id: "review",
+	icon: "list-checks",
+	title: "tut.review.title",
+	summary: "tut.review.summary",
+	modules: ["flowchart-review", "node-shapes"],
+	restoreSettings: [
+		{ module: "flowchart-review", key: "squares" },
+		{ module: "flowchart-review", key: "answerMode" },
+	],
+	board: (t) => ({
+		nodes: [
+			title("rv-title", t("tut.review.board.title"), -40, -200, 640, 80),
+			group("rv-group", t("tut.review.board.group"), -40, -60, 660, 520),
+			fsCard("rv-1", t("tut.review.board.c1"), 20, 0, 220, 70, "terminal"),
+			fsCard("rv-2", t("tut.review.board.c2"), 0, 120, 260, 130, "decision"),
+			fsCard("rv-3", t("tut.review.board.c3"), 20, 330, 220, 80, "process"),
+			fsCard("rv-4", t("tut.review.board.c4"), 350, 145, 220, 80, "process"),
+		],
+		edges: [
+			edge("rv-e1", "rv-1", "bottom", "rv-2", "top"),
+			edge("rv-e2", "rv-2", "bottom", "rv-3", "top", { label: t("tut.review.board.yes") }),
+			edge("rv-e3", "rv-2", "right", "rv-4", "left", { label: t("tut.review.board.no") }),
+		],
+	}),
+	steps: [
+		{
+			title: "tut.review.s1.title",
+			body: "tut.review.s1.body",
+			task: "tut.review.s1.task",
+			touch: "tut.review.s1.touch",
+			focus: ["rv-group"],
+			check: (rt) => {
+				const label = rt.node("rv-group")?.getData().label;
+				const name = reviewGroupName(rt);
+				return typeof label === "string" && label.trim().toLowerCase() === name.trim().toLowerCase();
+			},
+			demo: (rt) => {
+				const node = rt.node("rv-group");
+				if (node) rt.change(() => node.setData({ ...node.getData(), label: reviewGroupName(rt) }));
+			},
+		},
+		{
+			title: "tut.review.s2.title",
+			body: "tut.review.s2.body",
+			task: "tut.review.s2.task",
+			touch: "tut.review.s2.touch",
+			target: reviewButton,
+			enter: () => reviewVisit.reset(),
+			check: () => reviewVisit.check(),
+			demo: async (rt) => {
+				await openReview(rt);
+				await rt.wait(1500);
+				closeDialog(REVIEW_DIALOG);
+			},
+		},
+		{
+			title: "tut.review.s3.title",
+			body: "tut.review.s3.body",
+			task: "tut.review.s3.task",
+			touch: "tut.review.s3.touch",
+			target: reviewButton,
+			enter: () => reviewVisit.reset(),
+			check: (rt) => reviewDone(rt, (e) => !!e.name),
+			demo: async (rt) => {
+				await openReview(rt);
+				reviewRow(rt)?.querySelector<HTMLElement>(".opc-review-rename")?.click();
+				await rt.wait(500);
+				const input = activeDocument.querySelector<HTMLInputElement>(".opc-text-prompt-input");
+				typeInto(input, rt.t("tut.review.name"));
+				input?.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+				await rt.wait(1200);
+				closeDialog(REVIEW_DIALOG);
+			},
+		},
+		{
+			title: "tut.review.s4.title",
+			body: "tut.review.s4.body",
+			task: "tut.review.s4.task",
+			touch: "tut.review.s4.touch",
+			target: reviewButton,
+			enter: (rt) => {
+				reviewVisit.reset();
+				squaresAtStart = rt.setting("flowchart-review", "squares") === true;
+			},
+			check: (rt) => reviewVisit.check() && (rt.setting("flowchart-review", "squares") === true) !== squaresAtStart,
+			demo: async (rt) => {
+				await openReview(rt);
+				activeDocument.querySelector<HTMLElement>(`${REVIEW_DIALOG} .opc-review-shape-choice[data-squares="${String(!squaresAtStart)}"]`)?.click();
+				await rt.wait(1200);
+				closeDialog(REVIEW_DIALOG);
+			},
+		},
+		{
+			title: "tut.review.s5.title",
+			body: "tut.review.s5.body",
+			task: "tut.review.s5.task",
+			touch: "tut.review.s5.touch",
+			target: reviewButton,
+			enter: () => reviewVisit.reset(),
+			check: (rt) => reviewDone(rt, (e) => (e.state?.reps ?? 0) > 0),
+			demo: async (rt) => {
+				await openReview(rt);
+				reviewRow(rt)?.querySelector<HTMLElement>(".opc-review-start")?.click();
+				await rt.wait(800);
+				// Two right answers, one almost right, one left out.
+				const almost = rt.t("tut.review.board.c3");
+				const answers: Record<string, string> = { "rv-1": rt.t("tut.review.board.c1"), "rv-2": rt.t("tut.review.board.c2"), "rv-3": almost.slice(0, Math.max(1, almost.length - 2)) };
+				for (const [id, text] of Object.entries(answers)) {
+					typeInto(activeDocument.querySelector<HTMLTextAreaElement>(`${REVIEW_DIALOG} .opc-review-card[data-id="${id}"] textarea`), text);
+					await rt.wait(400);
+				}
+				activeDocument.querySelector<HTMLElement>(`${REVIEW_DIALOG} .opc-review-submit`)?.click();
+				await rt.wait(2500);
+				activeDocument.querySelector<HTMLElement>(`${REVIEW_DIALOG} .opc-review-rate[data-rating="3"]`)?.click();
+				await rt.wait(1500);
+				closeDialog(REVIEW_DIALOG);
+			},
+		},
+		{
+			title: "tut.review.drag.title",
+			body: "tut.review.drag.body",
+			task: "tut.review.drag.task",
+			touch: "tut.review.drag.touch",
+			target: reviewButton,
+			enter: (rt) => {
+				reviewVisit.reset();
+				repsAtStart = Math.max(0, ...boardEntries(rt).map((e) => e.state?.reps ?? 0));
+			},
+			check: (rt) => rt.setting("flowchart-review", "answerMode") === "drag" && reviewDone(rt, (e) => (e.state?.reps ?? 0) > repsAtStart),
+			demo: async (rt) => {
+				await openReview(rt);
+				activeDocument.querySelector<HTMLElement>(`${REVIEW_DIALOG} .opc-review-mode-choice[data-mode="drag"]`)?.click();
+				await rt.wait(600);
+				reviewRow(rt)?.querySelector<HTMLElement>(".opc-review-start")?.click();
+				await rt.wait(900);
+				// Tap an answer, then the card it belongs to.
+				for (const chip of Array.from(activeDocument.querySelectorAll<HTMLElement>(`${REVIEW_DIALOG} .opc-review-bank .opc-review-chip`))) {
+					const id = ["rv-1", "rv-2", "rv-3", "rv-4"].find((n) => rt.node(n)?.getData().text === chip.textContent);
+					const r = chip.getBoundingClientRect();
+					const at = { bubbles: true, cancelable: true, pointerId: 41, pointerType: "mouse", isPrimary: true, clientX: r.left + 4, clientY: r.top + 4, button: 0 };
+					chip.dispatchEvent(new PointerEvent("pointerdown", { ...at, buttons: 1 }));
+					activeWindow.dispatchEvent(new PointerEvent("pointerup", { ...at, buttons: 0 }));
+					await rt.wait(350);
+					activeDocument.querySelector<HTMLElement>(`${REVIEW_DIALOG} .opc-review-card[data-id="${id}"]`)?.click();
+					await rt.wait(450);
+				}
+				activeDocument.querySelector<HTMLElement>(`${REVIEW_DIALOG} .opc-review-submit`)?.click();
+				await rt.wait(2500);
+				activeDocument.querySelector<HTMLElement>(`${REVIEW_DIALOG} .opc-review-rate[data-rating="4"]`)?.click();
+				await rt.wait(1500);
+				closeDialog(REVIEW_DIALOG);
+			},
+		},
+		{
+			title: "tut.review.s6.title",
+			body: "tut.review.s6.body",
+			task: "tut.review.s6.task",
+			touch: "tut.review.s6.touch",
+			focus: ["rv-3"],
+			enter: () => reviewVisit.reset(),
+			check: (rt) => rt.node("rv-3")?.getData().text !== rt.t("tut.review.board.c3") && reviewDone(rt, (e) => !e.state),
+			demo: async (rt) => {
+				const node = rt.node("rv-3");
+				if (node) rt.change(() => node.setData({ ...node.getData(), text: rt.t("tut.review.board.c3new") }));
+				await rt.wait(800);
+				await openReview(rt);
+				await rt.wait(1500);
+				closeDialog(REVIEW_DIALOG);
+			},
+		},
+		{ title: "tut.review.s7.title", body: "tut.review.s7.body", target: reviewButton },
+	],
+};
+
+export const TUTORIALS: readonly TutorialDefinition[] = [basics, notes, shapes, edges, drawing, layers, present, mindmap, navigate, organize, markdown, select, blocks, vault, style, big, direction, pdf, pages, arrows, bars, images, file, columns, columnsDown, toc, autoHeaders, handwriting, paper, smartGroups, indent, fontSize, shortcuts, flowShapes, review];

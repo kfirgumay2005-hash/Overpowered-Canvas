@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addSeen, buttonKeys, buttonLabel, emptyMenus, hiddenKey, isPopupBar, orderOf, popupFor, sanitizeBarSettings, sortKeys, type ButtonFacts } from "./logic";
+import { addSeen, buttonKeys, buttonLabel, emptyMenus, hiddenKey, hiddenKeys, isPopupBar, orderOf, popupFor, sanitizeBarSettings, showButton, sortKeys, type ButtonFacts } from "./logic";
 
 const button = (over: Partial<ButtonFacts>): ButtonFacts => ({ classes: [], groupClasses: [], iconClasses: [], label: "", ...over });
 
@@ -34,8 +34,8 @@ describe("buttonLabel", () => {
 
 describe("sanitizeBarSettings", () => {
 	it("starts empty", () => {
-		expect(sanitizeBarSettings(undefined)).toEqual({ hidden: [], custom: [], order: {}, menus: emptyMenus() });
-		expect(sanitizeBarSettings({ hidden: "x", custom: 3 })).toEqual({ hidden: [], custom: [], order: {}, menus: emptyMenus() });
+		expect(sanitizeBarSettings(undefined)).toEqual({ hidden: [], shown: [], custom: [], order: {}, menus: emptyMenus() });
+		expect(sanitizeBarSettings({ hidden: "x", custom: 3 })).toEqual({ hidden: [], shown: [], custom: [], order: {}, menus: emptyMenus() });
 	});
 	it("keeps good entries and drops the rest", () => {
 		const s = sanitizeBarSettings({
@@ -109,5 +109,20 @@ describe("menu choices", () => {
 		const seen = [{ title: "Copy", icon: "" }];
 		expect(addSeen(seen, [{ title: "Copy", icon: "" }])).toBeNull();
 		expect(addSeen(seen, [{ title: "Delete", icon: "x" }, { title: "Delete", icon: "x" }])).toEqual([...seen, { title: "Delete", icon: "x" }]);
+	});
+});
+
+describe("buttons off by default", () => {
+	it("stay off until turned on, and can be taken off again", () => {
+		const key = "bottom:opc-card-flowchart-review";
+		const none = { hidden: [], shown: [] };
+		expect(hiddenKeys(none).has(key)).toBe(true);
+		const on = showButton(none, key, true);
+		expect(on).toEqual({ hidden: [], shown: [key] });
+		expect(hiddenKeys(on).has(key)).toBe(false);
+		const off = showButton(on, key, false);
+		expect(hiddenKeys(off).has(key)).toBe(true);
+		expect(showButton(none, "side:x", false)).toEqual({ hidden: ["side:x"], shown: [] });
+		expect(showButton({ hidden: ["side:x"], shown: [] }, "side:x", true)).toEqual({ hidden: [], shown: [] });
 	});
 });

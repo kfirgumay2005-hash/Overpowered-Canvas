@@ -1,0 +1,483 @@
+/* Review flowchart window (a modal, so it is scoped by the body class only). */
+
+body.opc-mod-flowchart-review .opc-review-modal {
+	width: min(900px, 96vw);
+	max-height: 92vh;
+}
+
+body.opc-mod-flowchart-review .opc-review-modal.is-quiz {
+	width: 96vw;
+	height: 92vh;
+}
+
+body.opc-mod-flowchart-review .opc-review-modal .modal-content {
+	display: flex;
+	flex-direction: column;
+	gap: var(--size-4-2);
+	min-height: 0;
+	flex: 1 1 auto;
+}
+
+body.opc-mod-flowchart-review .opc-review-modal.is-quiz .modal-content {
+	height: 100%;
+}
+
+body.opc-mod-flowchart-review .opc-review-toolbar {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--size-4-2);
+}
+
+body.opc-mod-flowchart-review .opc-review-search {
+	flex: 1 1 220px;
+}
+
+body.opc-mod-flowchart-review .opc-review-search .search-input-container {
+	width: 100%;
+}
+
+body.opc-mod-flowchart-review .opc-review-shapes {
+	display: flex;
+	align-items: center;
+	gap: var(--size-4-1);
+}
+
+body.opc-mod-flowchart-review .opc-review-shapes-label {
+	color: var(--text-muted);
+	font-size: var(--font-ui-small);
+}
+
+body.opc-mod-flowchart-review .opc-review-shape-choice.is-active {
+	background-color: var(--interactive-accent);
+	color: var(--text-on-accent);
+}
+
+body.opc-mod-flowchart-review .opc-review-rows {
+	display: flex;
+	flex-direction: column;
+	gap: var(--size-4-2);
+	overflow-y: auto;
+	min-height: 0;
+}
+
+body.opc-mod-flowchart-review .opc-review-row {
+	display: flex;
+	align-items: center;
+	gap: var(--size-4-3);
+	padding: var(--size-4-2) var(--size-4-3);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-m);
+	background: var(--background-secondary);
+}
+
+body.opc-mod-flowchart-review .opc-review-row-main {
+	flex: 1 1 auto;
+	min-width: 0;
+}
+
+body.opc-mod-flowchart-review .opc-review-row-head {
+	display: flex;
+	align-items: center;
+	gap: var(--size-4-1);
+}
+
+body.opc-mod-flowchart-review .opc-review-name {
+	font-weight: var(--font-semibold);
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	unicode-bidi: plaintext;
+}
+
+body.opc-mod-flowchart-review .opc-review-where {
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
+	unicode-bidi: plaintext;
+}
+
+body.opc-mod-flowchart-review .opc-review-stats {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--size-4-1) var(--size-4-3);
+	margin-top: var(--size-4-1);
+	font-size: var(--font-ui-small);
+	color: var(--text-normal);
+}
+
+body.opc-mod-flowchart-review .opc-review-next.is-due {
+	color: var(--text-accent);
+	font-weight: var(--font-semibold);
+}
+
+body.opc-mod-flowchart-review .opc-review-row-actions {
+	display: flex;
+	align-items: center;
+	gap: var(--size-4-1);
+	flex-shrink: 0;
+}
+
+body.opc-mod-flowchart-review .opc-review-empty p {
+	margin: var(--size-4-2) 0;
+}
+
+body.opc-mod-flowchart-review .opc-review-loading {
+	color: var(--text-muted);
+}
+
+/* ---------- quiz ---------- */
+
+body.opc-mod-flowchart-review .opc-review-quiz-bar {
+	display: flex;
+	align-items: center;
+	gap: var(--size-4-3);
+	flex-wrap: wrap;
+}
+
+body.opc-mod-flowchart-review .opc-review-back {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--size-4-1);
+}
+
+body.mod-rtl.opc-mod-flowchart-review .opc-review-back-icon svg {
+	transform: scaleX(-1);
+}
+
+body.opc-mod-flowchart-review .opc-review-hint {
+	flex: 1 1 auto;
+	color: var(--text-muted);
+	font-size: var(--font-ui-small);
+}
+
+body.opc-mod-flowchart-review .opc-review-zoom {
+	display: flex;
+	gap: var(--size-2-1);
+}
+
+body.opc-mod-flowchart-review .opc-review-board {
+	flex: 1 1 auto;
+	min-height: 200px;
+	overflow: auto;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-m);
+	background-color: var(--canvas-background, var(--background-primary));
+	background-image: radial-gradient(var(--canvas-dot-pattern, var(--background-modifier-border)) 1px, transparent 1px);
+	background-size: 20px 20px;
+	/* The chart keeps its own layout whatever the text direction. */
+	direction: ltr;
+}
+
+body.opc-mod-flowchart-review .opc-review-stage {
+	--opc-review-zoom: 1;
+	position: relative;
+	width: calc(var(--opc-review-w) * var(--opc-review-zoom));
+	height: calc(var(--opc-review-h) * var(--opc-review-zoom));
+	margin: auto;
+}
+
+body.opc-mod-flowchart-review .opc-review-stage > * {
+	transform-origin: 0 0;
+}
+
+body.opc-mod-flowchart-review .opc-review-edges {
+	position: absolute;
+	inset-block-start: 0;
+	inset-inline-start: 0;
+	transform: scale(var(--opc-review-zoom));
+	overflow: visible;
+	pointer-events: none;
+}
+
+body.opc-mod-flowchart-review .opc-review-edges path {
+	fill: none;
+	stroke: var(--text-muted);
+	stroke-width: 2;
+}
+
+body.opc-mod-flowchart-review .opc-review-edges marker path {
+	fill: var(--text-muted);
+	stroke: none;
+}
+
+body.opc-mod-flowchart-review .opc-review-edge-label {
+	position: absolute;
+	left: 0;
+	top: 0;
+	transform: scale(var(--opc-review-zoom)) translate(var(--opc-review-x), var(--opc-review-y)) translate(-50%, -50%);
+	padding: 0 var(--size-4-1);
+	border-radius: var(--radius-s);
+	background: var(--background-primary);
+	color: var(--text-muted);
+	font-size: var(--font-ui-small);
+	white-space: nowrap;
+	unicode-bidi: plaintext;
+}
+
+body.opc-mod-flowchart-review .opc-review-card {
+	--opc-review-color: var(--background-modifier-border-focus);
+	position: absolute;
+	left: 0;
+	top: 0;
+	width: var(--opc-review-cw);
+	height: var(--opc-review-ch);
+	transform: scale(var(--opc-review-zoom)) translate(var(--opc-review-x), var(--opc-review-y));
+	border: 2px solid var(--opc-review-color);
+	border-radius: var(--radius-m);
+	background: var(--background-primary);
+}
+
+body.opc-mod-flowchart-review .opc-review-card.has-shape {
+	border: none;
+	background: transparent;
+}
+
+body.opc-mod-flowchart-review .opc-review-outline {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+	overflow: visible;
+}
+
+body.opc-mod-flowchart-review .opc-review-outline path {
+	fill: var(--background-primary);
+	stroke: var(--opc-review-color);
+	stroke-width: 2;
+	vector-effect: non-scaling-stroke;
+}
+
+body.opc-mod-flowchart-review .opc-review-outline path.opc-review-decoration {
+	fill: none;
+}
+
+body.opc-mod-flowchart-review .opc-review-card-inner {
+	position: absolute;
+	inset: var(--opc-inset-top, 0) var(--opc-inset-right, 0) var(--opc-inset-bottom, 0) var(--opc-inset-left, 0);
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	gap: var(--size-2-1);
+	padding: var(--size-4-1) var(--size-4-2);
+	overflow: auto;
+	text-align: center;
+}
+
+body.opc-mod-flowchart-review .opc-review-input {
+	flex: 1 1 auto;
+	width: 100%;
+	min-height: 0;
+	resize: none;
+	border: none;
+	background: transparent;
+	text-align: center;
+	font-size: var(--font-ui-medium);
+	unicode-bidi: plaintext;
+}
+
+body.opc-mod-flowchart-review .opc-review-input:focus {
+	box-shadow: none;
+	background: var(--background-modifier-hover);
+}
+
+body.opc-mod-flowchart-review .opc-review-given,
+body.opc-mod-flowchart-review .opc-review-correct,
+body.opc-mod-flowchart-review .opc-review-yours {
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+	unicode-bidi: plaintext;
+}
+
+body.opc-mod-flowchart-review .opc-review-given {
+	color: var(--text-muted);
+}
+
+body.opc-mod-flowchart-review .opc-review-yours {
+	color: var(--text-error);
+	text-decoration: line-through;
+	font-size: var(--font-ui-small);
+}
+
+body.opc-mod-flowchart-review .opc-review-card.is-close .opc-review-yours {
+	color: var(--color-orange);
+	text-decoration: none;
+}
+
+body.opc-mod-flowchart-review .opc-review-card.is-correct {
+	--opc-review-color: var(--color-green);
+}
+
+body.opc-mod-flowchart-review .opc-review-card.is-close {
+	--opc-review-color: var(--color-orange);
+}
+
+body.opc-mod-flowchart-review .opc-review-card.is-wrong {
+	--opc-review-color: var(--color-red);
+}
+
+body.opc-mod-flowchart-review .opc-review-card.is-correct .opc-review-correct {
+	color: var(--color-green);
+	font-weight: var(--font-semibold);
+}
+
+body.opc-mod-flowchart-review .opc-review-foot {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: flex-end;
+	gap: var(--size-4-2);
+}
+
+body.opc-mod-flowchart-review .opc-review-score {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: baseline;
+	gap: var(--size-4-1) var(--size-4-3);
+	flex: 1 1 auto;
+}
+
+body.opc-mod-flowchart-review .opc-review-score-main {
+	font-weight: var(--font-semibold);
+}
+
+body.opc-mod-flowchart-review .opc-review-score-close {
+	color: var(--color-orange);
+}
+
+body.opc-mod-flowchart-review .opc-review-score-ask {
+	color: var(--text-muted);
+}
+
+body.opc-mod-flowchart-review .opc-review-rates {
+	display: flex;
+	gap: var(--size-4-1);
+}
+
+body.opc-mod-flowchart-review .opc-review-rate {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	height: auto;
+	min-width: 72px;
+	padding: var(--size-4-1) var(--size-4-2);
+	line-height: 1.2;
+}
+
+body.opc-mod-flowchart-review .opc-review-rate-when {
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+}
+
+body.opc-mod-flowchart-review .opc-review-rate.is-suggested {
+	outline: 2px solid var(--interactive-accent);
+}
+
+body.opc-mod-flowchart-review .opc-review-rate-1 .opc-review-rate-name {
+	color: var(--color-red);
+}
+
+body.opc-mod-flowchart-review .opc-review-rate-2 .opc-review-rate-name {
+	color: var(--color-orange);
+}
+
+body.opc-mod-flowchart-review .opc-review-rate-3 .opc-review-rate-name {
+	color: var(--color-green);
+}
+
+body.opc-mod-flowchart-review .opc-review-rate-4 .opc-review-rate-name {
+	color: var(--color-blue);
+}
+
+@media (max-width: 600px) {
+	body.opc-mod-flowchart-review .opc-review-row {
+		flex-direction: column;
+		align-items: stretch;
+	}
+
+	body.opc-mod-flowchart-review .opc-review-row-actions {
+		justify-content: flex-end;
+	}
+
+	body.opc-mod-flowchart-review .opc-review-rates {
+		width: 100%;
+	}
+
+	body.opc-mod-flowchart-review .opc-review-rate {
+		flex: 1 1 0;
+		min-width: 0;
+	}
+}
+
+/* ---------- drag the answers ---------- */
+
+body.opc-mod-flowchart-review .opc-review-bank {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--size-4-2);
+	min-height: 44px;
+	max-height: 30%;
+	overflow-y: auto;
+	padding: var(--size-4-2);
+	border: 1px dashed var(--background-modifier-border-hover);
+	border-radius: var(--radius-m);
+	flex-shrink: 0;
+}
+
+body.opc-mod-flowchart-review .opc-review-chip {
+	padding: var(--size-4-1) var(--size-4-3);
+	border: 1px solid var(--background-modifier-border-hover);
+	border-radius: var(--radius-m);
+	background: var(--background-secondary-alt);
+	cursor: grab;
+	user-select: none;
+	touch-action: none;
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+	unicode-bidi: plaintext;
+	max-width: 100%;
+}
+
+body.opc-mod-flowchart-review .opc-review-chip.is-picked {
+	outline: 2px solid var(--interactive-accent);
+	background: var(--interactive-accent-hover);
+	color: var(--text-on-accent);
+}
+
+body.opc-mod-flowchart-review .opc-review-chip.is-dragging {
+	opacity: 0.35;
+}
+
+body.opc-mod-flowchart-review .opc-review-ghost {
+	position: fixed;
+	z-index: var(--layer-notice);
+	transform: translate(-50%, -50%);
+	pointer-events: none;
+	box-shadow: var(--shadow-s);
+	max-width: 260px;
+}
+
+body.opc-mod-flowchart-review .opc-review-slot {
+	flex: 1 1 auto;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	min-height: 0;
+	border-radius: var(--radius-s);
+	outline: 1px dashed var(--background-modifier-border-hover);
+	outline-offset: -2px;
+}
+
+body.opc-mod-flowchart-review .opc-review-slot .opc-review-chip {
+	background: transparent;
+	border-color: transparent;
+}
+
+body.opc-mod-flowchart-review .opc-review-stage.is-picking .opc-review-card.is-asked,
+body.opc-mod-flowchart-review .opc-review-card.is-drop {
+	cursor: pointer;
+	--opc-review-color: var(--interactive-accent);
+}
+
+body.opc-mod-flowchart-review .opc-review-card.is-filled .opc-review-slot {
+	outline-color: transparent;
+}

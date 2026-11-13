@@ -204,6 +204,17 @@ Reading mode and never becomes a code block; lists, tables and code keep their T
 turn it on). Give one note its own font size with a `font-size` property or the Set / Increase /
 Decrease / Reset commands; the size is identical in editing and reading, on desktop and mobile.
 
+**Review flowchart** — learn flowcharts by heart. Put a chart in a group named `toreview` (or tag a
+canvas `#toreview`; both names are settings), open the Review flowchart window from the side bar
+and fill the chart in from memory, with its own shapes or as plain squares. Or choose **Answers:
+Drag**: the texts of all the cards are shown mixed up below the chart, and each one is dragged
+(mouse, finger or pen, or tap an answer and then a card) onto the card where it belongs. Submit
+shows what was right next to the right answers, then Again / Hard / Good / Easy schedules the next review (FSRS).
+Every chart shows how many reviews it had, the last one and when the next one is due; it can be
+renamed and searched. A chart that changes starts over. The data is kept in a note in the plugin's
+files folder, so sync plugins carry it between devices. A tutorial also explains what every
+flowchart shape means.
+
 **Large canvases** — below a zoom threshold, canvases with hundreds of cards switch to a
 level-of-detail renderer: ~90 fps instead of ~9 fps on a 1,000-card stress canvas, with cards
 still clickable ([docs/BENCHMARKS.md](docs/BENCHMARKS.md)).

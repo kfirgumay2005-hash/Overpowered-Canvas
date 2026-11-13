@@ -67,6 +67,7 @@ import { paragraphIndentModule } from "./paragraph-indent";
 import { noteFontSizeModule } from "./note-font-size";
 import { emojiPickerModule } from "./emoji-picker";
 import { menuStyleModule } from "./menu-style";
+import { flowchartReviewModule } from "./flowchart-review";
 
 /** Every feature module, in display order within its settings group. */
 export const MODULES: readonly AnyModule[] = [
@@ -137,5 +138,6 @@ export const MODULES: readonly AnyModule[] = [
 	noteBlocksModule,
 	kanbanModule,
 	queryGroupsModule,
+	flowchartReviewModule,
 	diagnosticsModule,
 ];

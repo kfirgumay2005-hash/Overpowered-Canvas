@@ -2,9 +2,12 @@
  * The list of tutorials: cards with an icon, a summary, the step count and whether it's done.
  * Shown at the top of the settings tab and in a modal (command, canvas controls).
  */
-import { Modal, setIcon, type App } from "obsidian";
+import { Modal, SearchComponent, setIcon, type App } from "obsidian";
 import type { ModuleManager } from "../core/module-manager";
-import type { Translate } from "../i18n";
+import type { I18nKey, Translate } from "../i18n";
+import { en } from "../i18n/locales/en";
+import { matches, normalize, queryWords } from "../settings/search";
+import { plainText } from "./rich";
 import type { TutorialDefinition } from "./types";
 
 export interface TutorialListHost {
@@ -19,7 +22,25 @@ export interface TutorialListHost {
 	stop(): Promise<void>;
 }
 
-export function renderTutorialList(el: HTMLElement, host: TutorialListHost, beforeStart: () => void = () => {}): void {
+/**
+ * What a tutorial is found by: its number, title, summary, step titles and the names of its
+ * features, in the current language and in English.
+ */
+function searchTextOf(def: TutorialDefinition, index: number, host: TutorialListHost): string {
+	const t = host.t();
+	const keys: I18nKey[] = [def.title, def.summary, ...def.steps.map((s) => s.title)];
+	for (const id of def.modules) {
+		const name = host.modules.get(id)?.name;
+		if (name) keys.push(name as I18nKey);
+	}
+	return normalize([String(index + 1), ...keys.flatMap((k) => [plainText(t(k)), plainText(en[k] ?? "")])].join(" | "));
+}
+
+/**
+ * Renders the list; the returned function filters the cards (an empty query shows them all).
+ * With `search`, a search box above the cards calls it.
+ */
+export function renderTutorialList(el: HTMLElement, host: TutorialListHost, beforeStart: () => void = () => {}, search = false): (query: string) => number {
 	const t = host.t();
 	const done = host.catalog.filter((d) => host.isDone(d.id)).length;
 	const head = el.createDiv({ cls: "opc-tutorials-progress" });
@@ -27,10 +48,27 @@ export function renderTutorialList(el: HTMLElement, host: TutorialListHost, befo
 	const bar = head.createDiv({ cls: "opc-tutorials-progress-bar" });
 	bar.createDiv().setCssProps({ "--opc-progress": `${(done / host.catalog.length) * 100}%` });
 
+	const box = search ? new SearchComponent(el.createDiv({ cls: "opc-tutorials-search" })).setPlaceholder(t("tutorial.search")) : null;
 	const grid = el.createDiv({ cls: "opc-tutorials-grid" });
+	const empty = el.createDiv({ cls: "opc-tutorials-empty", text: t("tutorial.noMatch") });
+	empty.hide();
+	const cards: { el: HTMLElement; text: string }[] = [];
+	const filter = (query: string) => {
+		const words = queryWords(query);
+		let shown = 0;
+		for (const card of cards) {
+			const match = matches(words, card.text);
+			card.el.toggle(match);
+			if (match) shown++;
+		}
+		empty.toggle(shown === 0);
+		return shown;
+	};
+	box?.onChange(filter);
 	host.catalog.forEach((def, i) => {
 		const finished = host.isDone(def.id);
 		const item = grid.createEl("button", { cls: "opc-tutorials-card", attr: { "aria-label": t(def.title) } });
+		cards.push({ el: item, text: searchTextOf(def, i, host) });
 		item.toggleClass("is-done", finished);
 		const top = item.createDiv({ cls: "opc-tutorials-card-top" });
 		const icon = top.createDiv({ cls: "opc-tutorials-card-icon" });
@@ -58,6 +96,8 @@ export function renderTutorialList(el: HTMLElement, host: TutorialListHost, befo
 			host.start(def);
 		});
 	});
+	if (box) window.setTimeout(() => box.inputEl.focus());
+	return filter;
 }
 
 export class TutorialListModal extends Modal {
@@ -73,7 +113,7 @@ export class TutorialListModal extends Modal {
 		this.modalEl.addClass("opc-tutorials-modal");
 		this.setTitle(t("tutorial.heading"));
 		this.contentEl.createDiv({ cls: "opc-tutorials-intro", text: t("tutorial.intro") });
-		renderTutorialList(this.contentEl, this.host, () => this.close());
+		renderTutorialList(this.contentEl, this.host, () => this.close(), true);
 	}
 
 	override onClose(): void {

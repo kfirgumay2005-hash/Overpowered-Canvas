@@ -434,3 +434,17 @@ body.mod-rtl .opc-tutorials-card-go svg {
 	flex-shrink: 0;
 	--icon-size: var(--icon-xs);
 }
+
+/* The search box of the tutorials window. */
+.opc-tutorials-search {
+	margin-bottom: var(--size-4-3);
+}
+.opc-tutorials-search .search-input-container {
+	width: 100%;
+}
+.opc-tutorials-empty {
+	color: var(--text-muted);
+	font-size: var(--font-ui-small);
+	padding: var(--size-4-4) 0;
+	text-align: center;
+}
