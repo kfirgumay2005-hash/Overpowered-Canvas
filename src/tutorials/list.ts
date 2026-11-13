@@ -31,7 +31,7 @@ function searchTextOf(def: TutorialDefinition, index: number, host: TutorialList
 	const keys: I18nKey[] = [def.title, def.summary, ...def.steps.map((s) => s.title)];
 	for (const id of def.modules) {
 		const name = host.modules.get(id)?.name;
-		if (name) keys.push(name as I18nKey);
+		if (name) keys.push(name);
 	}
 	return normalize([String(index + 1), ...keys.flatMap((k) => [plainText(t(k)), plainText(en[k] ?? "")])].join(" | "));
 }
