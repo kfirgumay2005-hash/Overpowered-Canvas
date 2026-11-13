@@ -33,6 +33,8 @@ export const tutorialsEn = {
 	"tutorial.finished.next": "Next: {name}",
 	"tutorial.finished.all": "All tutorials",
 	"tutorial.finished.close": "Close",
+	"tutorial.search": "Search tutorials…",
+	"tutorial.noMatch": "No tutorial matches your search.",
 
 	// ---------- 1. First steps ----------
 	"tut.basics.title": "First steps",
@@ -65,6 +67,10 @@ export const tutorialsEn = {
 	"tut.basics.s8.title": "Undo is your friend",
 	"tut.basics.s8.body": "Every change can be undone with `Ctrl/Cmd+Z` and redone with `Ctrl/Cmd+Shift+Z`. Each action of the plugin is exactly one undo step.",
 	"tut.basics.s8.task": "Press `Ctrl/Cmd+Z` once.",
+	"tut.basics.s9.title": "Find a tutorial",
+	"tut.basics.s9.body": "The **graduation cap** at the side of every canvas opens the list of tutorials (also in the command palette: **Tutorials**). Type in the search box at its top to find a tutorial by its name, its description, the names of its steps or its number; the search box of the plugin's settings finds them as well.",
+	"tut.basics.s9.task": "Open the tutorials with the graduation cap, type a word (for example *link*), then close the list.",
+	"tut.basics.s9.query": "link",
 
 	// ---------- 2. Sticky notes and text ----------
 	"tut.notes.title": "Sticky notes and text",

@@ -40,6 +40,8 @@ function searchText(t: Translate, keys: readonly I18nKey[]): string {
 export class OpcSettingTab extends PluginSettingTab {
 	/** Text in our search box; survives re-renders (module toggles call update()). */
 	private query = "";
+	/** Filters the tutorial cards; returns how many are shown. */
+	private filterTutorials: ((query: string) => number) | null = null;
 	/** Collapsed group ids ("core", "nodes"…, "general"), remembered per vault. */
 	private readonly collapsed: Set<string>;
 
@@ -280,7 +282,7 @@ export class OpcSettingTab extends PluginSettingTab {
 		s.settingEl.addClass("opc-settings-tutorials-row");
 		s.nameEl.remove();
 		const list = s.settingEl.createDiv({ cls: "opc-tutorials-in-settings" });
-		renderTutorialList(list, this.host.tutorials, () => (this.app as unknown as { setting?: { close(): void } }).setting?.close());
+		this.filterTutorials = renderTutorialList(list, this.host.tutorials, () => (this.app as unknown as { setting?: { close(): void } }).setting?.close());
 	}
 
 	/** Search box and collapse / expand all, below the tutorials and above everything else. */
@@ -328,6 +330,12 @@ export class OpcSettingTab extends PluginSettingTab {
 		this.containerEl.toggleClass("opc-settings-searching", words.length > 0);
 		for (const groupEl of Array.from(this.containerEl.querySelectorAll<HTMLElement>(".setting-group"))) {
 			if (groupEl.hasClass("opc-settings-search-group")) continue;
+			// The tutorial cards are found by their titles, summaries and steps.
+			if (groupEl.hasClass("opc-settings-tutorials")) {
+				const shown = this.filterTutorials?.(this.query) ?? 0;
+				groupEl.toggleClass(SEARCH_HIDDEN, words.length > 0 && shown === 0);
+				continue;
+			}
 			let any = false;
 			for (const row of Array.from(groupEl.querySelectorAll<HTMLElement>(".setting-items > .setting-item[data-opc-search]"))) {
 				const shownOptions = filterOptions(row, words);

@@ -32,6 +32,8 @@ export const tutorialsJa: Record<keyof typeof tutorialsEn, string> = {
 	"tutorial.finished.next": "次へ：{name}",
 	"tutorial.finished.all": "すべてのチュートリアル",
 	"tutorial.finished.close": "閉じる",
+	"tutorial.search": "チュートリアルを検索…",
+	"tutorial.noMatch": "検索に一致するチュートリアルはありません。",
 
 	// ---------- 1. First steps ----------
 	"tut.basics.title": "はじめの一歩",
@@ -64,6 +66,10 @@ export const tutorialsJa: Record<keyof typeof tutorialsEn, string> = {
 	"tut.basics.s8.title": "元に戻すは強い味方",
 	"tut.basics.s8.body": "どの変更も `Ctrl/Cmd+Z` で元に戻し、`Ctrl/Cmd+Shift+Z` でやり直せます。プラグインの操作はどれもちょうど 1 回分の取り消し単位です。",
 	"tut.basics.s8.task": "`Ctrl/Cmd+Z` を 1 回押してください。",
+	"tut.basics.s9.title": "チュートリアルを探す",
+	"tut.basics.s9.body": "各キャンバスの横にある **卒業帽** でチュートリアルの一覧が開きます（コマンドパレットの **チュートリアル** からも）。上部の検索ボックスに入力すると、名前、説明、ステップ名、番号でチュートリアルを探せます。プラグイン設定の検索ボックスでも見つかります。",
+	"tut.basics.s9.task": "卒業帽でチュートリアル一覧を開き、言葉を入力して（例：*リンク*）、一覧を閉じます。",
+	"tut.basics.s9.query": "リンク",
 
 	// ---------- 2. Sticky notes and text ----------
 	"tut.notes.title": "付箋とテキスト",

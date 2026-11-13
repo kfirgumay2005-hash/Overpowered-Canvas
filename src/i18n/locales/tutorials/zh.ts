@@ -32,6 +32,8 @@ export const tutorialsZh: Record<keyof typeof tutorialsEn, string> = {
 	"tutorial.finished.next": "下一个：{name}",
 	"tutorial.finished.all": "全部教程",
 	"tutorial.finished.close": "关闭",
+	"tutorial.search": "搜索教程…",
+	"tutorial.noMatch": "没有与搜索匹配的教程。",
 
 	// ---------- 1. First steps ----------
 	"tut.basics.title": "入门",
@@ -64,6 +66,10 @@ export const tutorialsZh: Record<keyof typeof tutorialsEn, string> = {
 	"tut.basics.s8.title": "撤销是你的好朋友",
 	"tut.basics.s8.body": "任何修改都可以用 `Ctrl/Cmd+Z` 撤销，用 `Ctrl/Cmd+Shift+Z` 重做。插件的每个操作正好是一个撤销步骤。",
 	"tut.basics.s8.task": "按一次 `Ctrl/Cmd+Z`。",
+	"tut.basics.s9.title": "查找教程",
+	"tut.basics.s9.body": "每个画布侧边的 **学位帽** 会打开教程列表（命令面板中也有：**教程**）。在顶部的搜索框中输入，可按名称、说明、步骤名称或编号查找教程；插件设置中的搜索框也能找到它们。",
+	"tut.basics.s9.task": "用学位帽打开教程列表，输入一个词（例如 *链接*），然后关闭列表。",
+	"tut.basics.s9.query": "链接",
 
 	// ---------- 2. Sticky notes and text ----------
 	"tut.notes.title": "便签和文本",

@@ -32,6 +32,8 @@ export const tutorialsHi: Record<keyof typeof tutorialsEn, string> = {
 	"tutorial.finished.next": "अगला: {name}",
 	"tutorial.finished.all": "सभी ट्यूटोरियल",
 	"tutorial.finished.close": "बंद करें",
+	"tutorial.search": "ट्यूटोरियल खोजें…",
+	"tutorial.noMatch": "आपकी खोज से कोई ट्यूटोरियल मेल नहीं खाता।",
 
 	// ---------- 1. First steps ----------
 	"tut.basics.title": "पहले कदम",
@@ -64,6 +66,10 @@ export const tutorialsHi: Record<keyof typeof tutorialsEn, string> = {
 	"tut.basics.s8.title": "पूर्ववत करना आपका दोस्त है",
 	"tut.basics.s8.body": "हर बदलाव `Ctrl/Cmd+Z` से पूर्ववत और `Ctrl/Cmd+Shift+Z` से दोबारा किया जा सकता है। प्लगइन की हर क्रिया ठीक एक पूर्ववत चरण होती है।",
 	"tut.basics.s8.task": "एक बार `Ctrl/Cmd+Z` दबाएँ।",
+	"tut.basics.s9.title": "ट्यूटोरियल ढूँढें",
+	"tut.basics.s9.body": "हर कैनवास के किनारे पर **ग्रेजुएशन कैप** ट्यूटोरियल की सूची खोलता है (कमांड पैलेट में भी: **ट्यूटोरियल**)। ऊपर के खोज बॉक्स में लिखें और ट्यूटोरियल को उसके नाम, विवरण, चरणों के नाम या नंबर से ढूँढें; प्लगइन की सेटिंग्स का खोज बॉक्स भी उन्हें ढूँढता है।",
+	"tut.basics.s9.task": "ग्रेजुएशन कैप से ट्यूटोरियल खोलें, कोई शब्द लिखें (जैसे *लिंक*), फिर सूची बंद करें।",
+	"tut.basics.s9.query": "लिंक",
 
 	// ---------- 2. Sticky notes and text ----------
 	"tut.notes.title": "स्टिकी नोट्स और टेक्स्ट",

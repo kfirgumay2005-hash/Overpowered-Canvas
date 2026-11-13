@@ -32,6 +32,8 @@ export const tutorialsRu: Record<keyof typeof tutorialsEn, string> = {
 	"tutorial.finished.next": "Дальше: {name}",
 	"tutorial.finished.all": "Все уроки",
 	"tutorial.finished.close": "Закрыть",
+	"tutorial.search": "Поиск уроков…",
+	"tutorial.noMatch": "Нет уроков по вашему запросу.",
 
 	// ---------- 1. First steps ----------
 	"tut.basics.title": "Первые шаги",
@@ -64,6 +66,10 @@ export const tutorialsRu: Record<keyof typeof tutorialsEn, string> = {
 	"tut.basics.s8.title": "Отмена ваш друг",
 	"tut.basics.s8.body": "Любое изменение можно отменить через `Ctrl/Cmd+Z` и вернуть через `Ctrl/Cmd+Shift+Z`. Каждое действие плагина это ровно один шаг отмены.",
 	"tut.basics.s8.task": "Нажмите `Ctrl/Cmd+Z` один раз.",
+	"tut.basics.s9.title": "Найти урок",
+	"tut.basics.s9.body": "**Шапка выпускника** сбоку каждого холста открывает список уроков (также в палитре команд: **Обучение**). Введите текст в поле поиска вверху, чтобы найти урок по названию, описанию, названиям шагов или номеру; поле поиска в настройках плагина тоже их находит.",
+	"tut.basics.s9.task": "Откройте уроки шапкой выпускника, введите слово (например, *ссылк*) и закройте список.",
+	"tut.basics.s9.query": "ссылк",
 
 	// ---------- 2. Sticky notes and text ----------
 	"tut.notes.title": "Стикеры и текст",

@@ -105,6 +105,15 @@ const lastSelectedSticky = (rt: TutorialRuntime) => {
 // ---------- 1. First steps ----------
 
 const basics: TutorialDefinition = {
+const TUTORIALS_DIALOG = ".opc-tutorials-modal";
+const tutorialsSearch = () => activeDocument.querySelector<HTMLInputElement>(`${TUTORIALS_DIALOG} .opc-tutorials-search input`);
+/** Done once the tutorial list was searched and closed again, so the panel isn't behind it. */
+let listSearched = false;
+const searchedList = () => {
+	listSearched ||= !!tutorialsSearch()?.value.trim();
+	return listSearched && !dialogOpen(TUTORIALS_DIALOG);
+};
+
 	id: "basics",
 	icon: "mouse-pointer-click",
 	title: "tut.basics.title",
@@ -193,6 +202,25 @@ const basics: TutorialDefinition = {
 			demo: (rt) => rt.canvas.undo(),
 		},
 	],
+		{
+			title: "tut.basics.s9.title",
+			body: "tut.basics.s9.body",
+			task: "tut.basics.s9.task",
+			target: ".opc-tutorials-control",
+			enter: () => void (listSearched = false),
+			check: () => searchedList(),
+			demo: async (rt) => {
+				if (!dialogOpen(TUTORIALS_DIALOG)) rt.canvas.canvasControlsEl.querySelector<HTMLElement>(".opc-tutorials-control .canvas-control-item")?.click();
+				await rt.wait(600);
+				const search = tutorialsSearch();
+				if (search) {
+					search.value = rt.t("tut.basics.s9.query");
+					search.dispatchEvent(new Event("input"));
+				}
+				await rt.wait(1500);
+				closeDialog(TUTORIALS_DIALOG);
+			},
+		},
 };
 
 // ---------- 2. Sticky notes and text ----------
