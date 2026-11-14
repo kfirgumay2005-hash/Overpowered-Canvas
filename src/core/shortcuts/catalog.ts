@@ -40,6 +40,10 @@ const DIRS = ["up", "down", "left", "right"] as const;
 export type Dir = (typeof DIRS)[number];
 export const ARROW_OF: Record<Dir, string> = { up: "ArrowUp", down: "ArrowDown", left: "ArrowLeft", right: "ArrowRight" };
 
+/** The modifiers that pick the shape of a new child card (the arrow picks the direction). */
+type ChildShape = "process" | "terminal" | "decision" | "input-output";
+const SHAPE_MODIFIERS: Record<ChildShape, string> = { process: "Alt+Shift+", terminal: "Mod+Alt+", decision: "Mod+Alt+Shift+", "input-output": "Shift+" };
+
 const def = (id: string, category: ShortcutCategory, context: ShortcutContext, defaults: Combo[], module?: string, extra: Partial<ShortcutDef> = {}): ShortcutDef => ({ id, category, context, defaults, module, ...extra });
 
 export const SHORTCUTS: readonly ShortcutDef[] = [
@@ -64,6 +68,8 @@ export const SHORTCUTS: readonly ShortcutDef[] = [
 	...DIRS.map((d) => def(`mindmap.go.${d}`, "mindmap", "card", [`Alt+${ARROW_OF[d]}`], "mindmap")),
 	...DIRS.map((d) => def(`mindmap.floating.${d}`, "mindmap", "card", [`Mod+${ARROW_OF[d]}`], "mindmap", { shares: [`sticky.${d}`] })),
 	...DIRS.map((d) => def(`mindmap.childAt.${d}`, "mindmap", "card", [`Mod+Shift+${ARROW_OF[d]}`], "mindmap")),
+	// A child in a flowchart shape, in that direction.
+	...(Object.entries(SHAPE_MODIFIERS) as [ChildShape, string][]).flatMap(([shape, mods]) => DIRS.map((d) => def(`mindmap.shape.${shape}.${d}`, "mindmap", "card", [`${mods}${ARROW_OF[d]}`], "mindmap"))),
 
 	// Sticky notes: one sticky selected (they come before the mind map keys on stickies).
 	def("sticky.next", "stickies", "sticky", ["Tab"], "sticky-notes", { shares: ["mindmap.child"] }),

@@ -245,3 +245,40 @@ export function shapeGeometry(shape: ShapeName, width: number, height: number): 
 export function pathNumbers(d: string): number[] {
 	return (d.match(/-?\d+(\.\d+)?/g) ?? []).map(Number);
 }
+
+/**
+ * The smallest a card with this shape should be, given the canvas's size for new cards: big
+ * enough that its text fits inside the outline (a diamond keeps only the middle half free).
+ * Auto-resize never shrinks a shaped card below it, and new shaped cards start at it.
+ */
+export function shapeMinSize(shape: ShapeName, card: { width: number; height: number }): { width: number; height: number } {
+	if (shape === "decision") return { width: Math.max(card.width, Math.min(card.width * 2, 320), 200), height: Math.max(card.height, Math.min(card.height * 3, 180), 120) };
+	return { width: card.width, height: card.height };
+}
+
+/** The width and height a card of this size keeps free for text inside the shape's outline. */
+export function textRoom(shape: ShapeName | null | undefined, width: number, height: number): { x: number; y: number } {
+	if (!shape) return { x: width, y: height };
+	const i = shapeGeometry(shape, width, height).insets;
+	return { x: width * (1 - i.left - i.right), y: height * (1 - i.top - i.bottom) };
+}
+
+/**
+ * The smallest card width (axis "x", at the given height) or height (axis "y", at the given
+ * width) that keeps at least `room` free for text, between `min` and `max`. Solved from the
+ * outline, not by trying: some insets change with the size (a parallelogram's slant), and
+ * correcting the size step by step from what the card shows now made such cards tremble.
+ */
+export function sizeForTextRoom(shape: ShapeName | null | undefined, axis: "x" | "y", other: number, room: number, min: number, max: number): number {
+	const free = (s: number) => (axis === "x" ? textRoom(shape, s, other).x : textRoom(shape, other, s).y);
+	if (free(min) >= room) return min;
+	if (free(max) < room) return max;
+	let lo = min;
+	let hi = max;
+	while (hi - lo > 1) {
+		const mid = Math.floor((lo + hi) / 2);
+		if (free(mid) >= room) hi = mid;
+		else lo = mid;
+	}
+	return hi;
+}

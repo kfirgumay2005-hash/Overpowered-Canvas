@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { SHAPES } from "../data/schema";
-import { pathNumbers, shapeGeometry } from "./shapes";
+import { pathNumbers, shapeGeometry, shapeMinSize, sizeForTextRoom, textRoom } from "./shapes";
 
 /** x/y pairs of M/L/C commands; arc flags make A commands noisy, so those are checked loosely. */
 function coordinates(d: string): number[] {
@@ -37,5 +37,38 @@ describe("shapeGeometry", () => {
 
 	it("draws a diamond through the edge midpoints", () => {
 		expect(shapeGeometry("decision", 100, 60).d).toBe("M50,0 L100,30 L50,60 L0,30 Z");
+	});
+});
+
+describe("shapeMinSize", () => {
+	it("gives a diamond room for its text and keeps other shapes at the card size", () => {
+		expect(shapeMinSize("decision", { width: 120, height: 40 })).toEqual({ width: 240, height: 120 });
+		expect(shapeMinSize("decision", { width: 250, height: 60 })).toEqual({ width: 320, height: 180 });
+		expect(shapeMinSize("process", { width: 120, height: 40 })).toEqual({ width: 120, height: 40 });
+	});
+});
+
+describe("sizeForTextRoom", () => {
+	it("is the plain size without a shape", () => {
+		expect(textRoom(null, 200, 80)).toEqual({ x: 200, y: 80 });
+		expect(sizeForTextRoom(null, "x", 80, 150, 1, 2400)).toBe(150);
+	});
+
+	it("solves a parallelogram's width in one step, whose slant changes with the width", () => {
+		// A short, tall card: guessing from the current share swung wider and narrower each step.
+		const height = 120;
+		for (const room of [40, 60, 150, 400]) {
+			const w = sizeForTextRoom("parallelogram", "x", height, room, 1, 2400);
+			expect(textRoom("parallelogram", w, height).x).toBeGreaterThanOrEqual(room);
+			expect(textRoom("parallelogram", w - 1, height).x).toBeLessThan(room);
+			// Asking again at the solved size for the same text gives the same width.
+			const shortfall = room - textRoom("parallelogram", w, height).x;
+			expect(sizeForTextRoom("parallelogram", "x", height, textRoom("parallelogram", w, height).x + shortfall, 1, 2400)).toBe(w);
+		}
+	});
+
+	it("stays within its bounds", () => {
+		expect(sizeForTextRoom("decision", "x", 100, 10, 50, 2400)).toBe(50);
+		expect(sizeForTextRoom("decision", "x", 100, 99999, 50, 2400)).toBe(2400);
 	});
 });

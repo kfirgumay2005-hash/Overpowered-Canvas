@@ -98,7 +98,7 @@ export const tutorialsEn = {
 	"tut.notes.s5.body": "The alignment button puts text at the start, center or end, and at the top, middle or bottom of a card.",
 	"tut.notes.s5.task": "Center the text of the long card (or any other card).",
 	"tut.notes.s6.title": "Grow to fit",
-	"tut.notes.s6.body": "Normally a card scrolls when its text is too long. Pick a size mode in **Grow to fit text**: the card grows downwards or sideways as the text gets longer.\n\nNew cards fit their text by themselves (as wide as the text up to a maximum width, then the lines wrap); for older cards, run **Fit cards to their text** from the command palette (settings: Auto-resize cards).",
+	"tut.notes.s6.body": "Normally a card scrolls when its text is too long. Pick a size mode in **Grow to fit text**: the card grows downwards or sideways as the text gets longer.\n\nNew cards grow sideways by themselves (settings: Auto-resize cards → **Size of new cards**); to fit older cards to their text, run **Fit cards to their text** from the command palette.",
 	"tut.notes.s6.task": "With the long card selected, pick a grow mode in **Grow to fit text**.",
 
 	// ---------- 3. Shapes ----------
@@ -258,6 +258,10 @@ export const tutorialsEn = {
 	"tut.mindmap.s2.title": "A sibling with Enter",
 	"tut.mindmap.s2.body": "`Enter` on a selected card adds a **sibling**: another child of the same parent. `Alt+arrows` move between cards, `Ctrl/Cmd+arrows` add a floating card in that direction. Change any of these keys in the **Shortcuts** window (the **?** button in the side bar).",
 	"tut.mindmap.s2.task": "Select a card (not the center) and press `Enter`.",
+	"tut.mindmap.shapes.title": "A child in a flowchart shape",
+	"tut.mindmap.shapes.body": "Building a flowchart? Add the child straight in its shape, in the direction of the arrow key:\n\n- `Alt+Shift+arrow`: rectangle (process)\n- `Ctrl/Cmd+Alt+arrow`: rounded (terminal)\n- `Ctrl/Cmd+Alt+Shift+arrow`: diamond (decision)\n- `Shift+arrow`: parallelogram (input / output)\n\n`Ctrl/Cmd+Shift+arrow` adds a plain child card in that direction. Change any of these keys in the **Shortcuts** window (the **?** button in the side bar).",
+	"tut.mindmap.shapes.task": "Select a card and add a child in a shape, for example `Alt+Shift+↓` for a rectangle below it.",
+	"tut.mindmap.shapes.touch": "No keyboard? Long-press a card → **Add child card as a shape** → pick a shape.",
 	"tut.mindmap.s3.title": "Fold a branch",
 	"tut.mindmap.s3.body": "A small **badge** beside a card with children folds its whole branch away and shows how many cards are hidden. Nothing is deleted.",
 	"tut.mindmap.s3.task": "Fold the **Tokyo** branch with the badge next to it.",

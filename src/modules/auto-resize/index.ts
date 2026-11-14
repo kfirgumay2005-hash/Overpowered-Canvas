@@ -1,18 +1,19 @@
 import { type Menu, Setting } from "obsidian";
 import { defineModule, type ModuleContext } from "../../core/module";
-import type { OpcNode } from "../../data/schema";
+import type { OpcNode, ShapeName } from "../../data/schema";
 import type { I18nKey } from "../../i18n";
 import type { CanvasLike, CanvasNodeLike } from "../../internals/types";
 import { mergeWithDefaults } from "../../settings/settings";
 import { showPicker } from "../../ui/picker";
-import { common, isTextBox, mutate, nodeType, onlyNodes, selectedNodes, textCardsIn } from "../shared";
+import { canvasDirection, common, isTextBox, mutate, nodeType, onlyNodes, selectedNodes, textCardsIn } from "../shared";
 import { logError } from "../../core/log";
+import { shapeMinSize, sizeForTextRoom, textRoom } from "../../geometry/shapes";
 
 interface AutoResizeSettings {
 	/** "Fit text" cards grow up to this width (canvas units), then their lines wrap. */
 	maxWidth: number;
-	/** New text cards start in "Fit text" mode. */
-	newCards: boolean;
+	/** The size mode new text cards start in. */
+	newCards: Mode;
 }
 
 interface Watch {
@@ -30,6 +31,8 @@ const PICKER_MODES: readonly Mode[] = MODES.filter((m) => m !== "fit");
 const ICONS: Record<Mode, string> = { off: "square", fit: "wrap-text", height: "fold-vertical", width: "fold-horizontal" };
 /** Widest a card grows to by itself. */
 const MAX_WIDTH = 2400;
+/** Only a bound for solving heights: cards never get near it. */
+const MAX_HEIGHT = 100000;
 /** Narrowest a "Fit text" card shrinks to. */
 const FIT_MIN_WIDTH = 80;
 
@@ -43,6 +46,41 @@ const PATCH: Record<Mode, Partial<OpcNode>> = {
 	height: { autoResize: true, autoWidth: undefined, autoFit: undefined },
 	width: { autoResize: undefined, autoWidth: true, autoFit: undefined },
 };
+
+/** The shape drawn on the card, if any (set by the shape renderer). */
+function shapeOf(node: CanvasNodeLike): ShapeName | null {
+	return node.nodeEl.getAttribute("data-opc-shape") as ShapeName | null;
+}
+
+/**
+ * The card width or height at which its text gets `shortfall` more room than it has now. A
+ * shape keeps text inside its outline (a diamond only uses the middle half), so the card grows
+ * more than its text does; the size is solved from the outline in one step, since some shapes
+ * give text a share that changes with the size (a parallelogram's slant).
+ */
+function sizeFor(node: CanvasNodeLike, axis: "x" | "y", shortfall: number): number {
+	const shape = shapeOf(node);
+	const room = textRoom(shape, node.width, node.height)[axis] + shortfall;
+	return sizeForTextRoom(shape, axis, axis === "x" ? node.height : node.width, room, 1, axis === "x" ? MAX_WIDTH : MAX_HEIGHT);
+}
+
+/** The reading-mode width the text has now, and the width its longest line needs. */
+function previewWidths(content: HTMLElement): { available: number; needed: number } | null {
+	const sizer = content.querySelector<HTMLElement>(".markdown-embed-content > .markdown-preview-view > .markdown-preview-sizer");
+	const view = sizer?.parentElement;
+	if (!sizer || !view || !sizer.isShown()) return null;
+	// In shapes the sizer (and the view around it) can be wider than the card, so the room is
+	// the card's content box less the view's padding.
+	const win = view.win;
+	const outer = win.getComputedStyle(content);
+	const inner = win.getComputedStyle(view);
+	const room = content.clientWidth - parseFloat(outer.paddingLeft) - parseFloat(outer.paddingRight) - parseFloat(inner.paddingLeft) - parseFloat(inner.paddingRight);
+	const available = Math.min(sizer.offsetWidth, room);
+	sizer.setCssStyles({ width: "max-content" });
+	const needed = sizer.offsetWidth;
+	sizer.setCssStyles({ width: "" });
+	return { available, needed };
+}
 
 /**
  * Measures how tall the node must be to show all of its text, in reading or editing mode.
@@ -59,7 +97,7 @@ function neededHeight(node: CanvasNodeLike): number | null {
 		if (!scroller || !cm) return null;
 		const style = scroller.win.getComputedStyle(scroller);
 		const inner = cm.offsetHeight + parseFloat(style.paddingTop) + parseFloat(style.paddingBottom);
-		return node.height + (inner - scroller.clientHeight);
+		return sizeFor(node, "y", inner - scroller.clientHeight);
 	}
 	const preview = content.querySelector<HTMLElement>(".markdown-embed-content > .markdown-preview-view");
 	if (!preview || !preview.isShown()) return null;
@@ -67,7 +105,7 @@ function neededHeight(node: CanvasNodeLike): number | null {
 	preview.setCssStyles({ height: "1px" });
 	const needed = preview.scrollHeight;
 	preview.setCssStyles({ height: "" });
-	return node.height + (needed - available) + 1;
+	return sizeFor(node, "y", needed - available + 1);
 }
 
 /**
@@ -93,15 +131,10 @@ function neededWidth(node: CanvasNodeLike): number | null {
 		}
 		if (!lineBox) return null;
 		// A little room for the caret.
-		return node.width + (Math.ceil(widest) + 4 - lineBox);
+		return sizeFor(node, "x", Math.ceil(widest) + 4 - lineBox);
 	}
-	const sizer = content.querySelector<HTMLElement>(".markdown-embed-content > .markdown-preview-view > .markdown-preview-sizer");
-	if (!sizer || !sizer.isShown()) return null;
-	const available = sizer.offsetWidth;
-	sizer.setCssStyles({ width: "max-content" });
-	const needed = sizer.offsetWidth;
-	sizer.setCssStyles({ width: "" });
-	return node.width + (needed - available) + 1;
+	const w = previewWidths(content);
+	return w ? sizeFor(node, "x", w.needed - w.available + 1) : null;
 }
 
 /**
@@ -111,14 +144,37 @@ function neededWidth(node: CanvasNodeLike): number | null {
 function fittedWidth(node: CanvasNodeLike, max: number): number | null {
 	const content = node.contentEl;
 	if (!content || !content.isConnected || node.isEditing) return null;
-	const sizer = content.querySelector<HTMLElement>(".markdown-embed-content > .markdown-preview-view > .markdown-preview-sizer");
-	if (!sizer || !sizer.isShown()) return null;
-	const available = sizer.offsetWidth;
-	sizer.setCssStyles({ width: "max-content" });
-	const needed = sizer.offsetWidth;
-	sizer.setCssStyles({ width: "" });
-	return Math.min(max, node.width + (needed - available) + 2);
+	const w = previewWidths(content);
+	return w ? Math.min(max, sizeFor(node, "x", w.needed - w.available + 2)) : null;
 }
+
+/**
+ * Gives the card a new width without bending its arrows: a card linked only on its left keeps
+ * its left edge, only on its right its right edge, and one linked from above or below (or on
+ * both sides) grows evenly around its center. A card without arrows grows away from the side
+ * text starts on.
+ */
+function setWidth(node: CanvasNodeLike, width: number): void {
+	// The core rounds positions: centering from the rounded box each time would drift a
+	// half pixel per change, so the exact center is kept while nothing else moved the card.
+	const last = centers.get(node);
+	const center = last && last.x === node.x && last.width === node.width ? last.center : node.x + node.width / 2;
+	const sides = new Set<string>();
+	for (const e of node.canvas.getEdgesForNode(node)) {
+		if (e.from.node === node) sides.add(e.from.side);
+		if (e.to.node === node) sides.add(e.to.side);
+	}
+	const left = sides.has("left");
+	const right = sides.has("right");
+	const keepRight = right && !left ? true : left && !right ? false : sides.size ? null : canvasDirection(node.canvas) === "rtl";
+	const x = keepRight === null ? Math.round(center - width / 2) : keepRight ? node.x + node.width - width : node.x;
+	if (x === node.x) node.resize({ width, height: node.height });
+	else node.moveAndResize({ x, y: node.y, width, height: node.height });
+	if (keepRight === null) centers.set(node, { x: node.x, width: node.width, center });
+	else centers.delete(node);
+}
+/** Exact centers of cards that grow around their center (see setWidth). */
+const centers = new WeakMap<CanvasNodeLike, { x: number; width: number; center: number }>();
 
 /** Per-node choice: the card grows and shrinks to fit its text, downwards or sideways. */
 export const autoResizeModule = defineModule<AutoResizeSettings>({
@@ -127,18 +183,24 @@ export const autoResizeModule = defineModule<AutoResizeSettings>({
 	description: "autoResize.desc",
 	group: "nodes",
 	defaultEnabled: true,
-	defaultSettings: { maxWidth: 400, newCards: true },
+	defaultSettings: { maxWidth: 400, newCards: "width" },
 	sanitizeSettings: (raw, defaults) => {
 		const s = mergeWithDefaults(raw, defaults);
 		return {
 			maxWidth: typeof s.maxWidth === "number" && s.maxWidth >= 100 && s.maxWidth <= MAX_WIDTH ? Math.round(s.maxWidth) : defaults.maxWidth,
-			newCards: typeof s.newCards === "boolean" ? s.newCards : defaults.newCards,
+			// Older versions had an on/off switch for "Fit text": off stays off, on takes the new default.
+			newCards: (MODES as readonly unknown[]).includes(s.newCards) ? (s.newCards as Mode) : (s.newCards as unknown) === false ? "off" : defaults.newCards,
 		};
 	},
 	overlapsWith: ["advanced-canvas"],
 
 	enable(ctx) {
 		const watches = new Map<CanvasNodeLike, Watch>();
+		/**
+		 * "Grow sideways" cards never get narrower than this: the width they had when watching
+		 * began, at most a new card's width (an empty new card or shape keeps its size).
+		 */
+		const floors = new Map<CanvasNodeLike, number>();
 		/** Cards being resized by hand: fitting them now would undo the drag. */
 		const resizing = new Set<CanvasNodeLike>();
 
@@ -146,26 +208,29 @@ export const autoResizeModule = defineModule<AutoResizeSettings>({
 			if (resizing.has(node)) return;
 			const min = node.canvas.config.minContainerDimension;
 			let width = node.width;
-			const mode = modeOf(ctx.data.node(node).get());
+			const extra = ctx.data.node(node).get();
+			const mode = modeOf(extra);
+			// A shaped card keeps room for its text inside the outline.
+			const shapeMin = extra.kind === undefined && extra.shape ? shapeMinSize(extra.shape, node.canvas.config.defaultTextNodeDimensions) : null;
 			if (mode === "fit") {
 				// While editing the width stays; it fits again once the text is shown.
 				const target = fittedWidth(node, ctx.settings.maxWidth);
-				if (target !== null) width = Math.max(Math.min(FIT_MIN_WIDTH, ctx.settings.maxWidth), min, Math.round(target));
+				if (target !== null) width = Math.max(Math.min(FIT_MIN_WIDTH, ctx.settings.maxWidth), min, shapeMin?.width ?? 0, Math.round(target));
 				if (Math.abs(width - node.width) > 1) {
-					node.resize({ width, height: node.height });
+					setWidth(node, width);
 					node.render();
 				}
 			} else if (mode === "width") {
 				const target = neededWidth(node);
-				if (target !== null) width = Math.min(MAX_WIDTH, Math.max(min, Math.round(target)));
+				if (target !== null) width = Math.min(MAX_WIDTH, Math.max(min, floors.get(node) ?? 0, shapeMin?.width ?? 0, Math.round(target)));
 				if (Math.abs(width - node.width) > 1) {
-					node.resize({ width, height: node.height });
+					setWidth(node, width);
 					node.render();
 				}
 			}
 			const target = neededHeight(node);
 			if (target === null) return;
-			const height = Math.max(min, Math.round(target));
+			const height = Math.max(min, shapeMin?.height ?? 0, Math.round(target));
 			if (Math.abs(height - node.height) <= 1 && width === node.width) return;
 			node.resize({ width: node.width, height });
 			node.render();
@@ -198,6 +263,7 @@ export const autoResizeModule = defineModule<AutoResizeSettings>({
 
 		const watch = (node: CanvasNodeLike) => {
 			if (watches.has(node)) return schedule(node);
+			floors.set(node, Math.min(node.width, node.canvas.config.defaultTextNodeDimensions.width));
 			const w: Watch = { observer: new ResizeObserver(() => schedule(node)), mutations: new MutationObserver(() => schedule(node)), onInput: () => schedule(node), frame: 0 };
 			watches.set(node, w);
 			node.nodeEl.addEventListener("input", w.onInput, true);
@@ -213,6 +279,7 @@ export const autoResizeModule = defineModule<AutoResizeSettings>({
 			if (w.frame) cancelAnimationFrame(w.frame);
 			node.nodeEl.removeEventListener("input", w.onInput, true);
 			watches.delete(node);
+			floors.delete(node);
 		};
 
 		ctx.decorateNodes({
@@ -319,7 +386,7 @@ export const autoResizeModule = defineModule<AutoResizeSettings>({
 			},
 		});
 
-		// New text cards fit their text.
+		// New text cards start in the chosen size mode.
 		const patched = new WeakSet<object>();
 		ctx.onCanvas((canvas) => {
 			const proto = Object.getPrototypeOf(canvas) as CanvasLike;
@@ -329,9 +396,9 @@ export const autoResizeModule = defineModule<AutoResizeSettings>({
 				createTextNode: (next) =>
 					function (this: CanvasLike, ...args: Parameters<CanvasLike["createTextNode"]>) {
 						const node = next.apply(this, args);
-						if (ctx.settings.newCards && node && !this.readonly)
+						if (ctx.settings.newCards !== "off" && node && !this.readonly)
 							try {
-								ctx.data.node(node).set(PATCH.fit, { history: false });
+								ctx.data.node(node).set(PATCH[ctx.settings.newCards], { history: false });
 							} catch (error) {
 								logError("[overpowered-canvas] auto-resize: fitting a new card failed", error);
 							}
@@ -440,6 +507,11 @@ export const autoResizeModule = defineModule<AutoResizeSettings>({
 		new Setting(el)
 			.setName(ctx.t("autoResize.newCards.name"))
 			.setDesc(ctx.t("autoResize.newCards.desc"))
-			.addToggle((t) => t.setValue(ctx.settings.newCards).onChange((v) => ctx.updateSettings({ newCards: v })));
+			.addDropdown((d) =>
+				d
+					.addOptions(Object.fromEntries(MODES.map((m) => [m, ctx.t(`autoResize.mode.${m}` as I18nKey)])))
+					.setValue(ctx.settings.newCards)
+					.onChange((v) => ctx.updateSettings({ newCards: v as Mode })),
+			);
 	},
 });

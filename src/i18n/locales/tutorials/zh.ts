@@ -97,7 +97,7 @@ export const tutorialsZh: Record<keyof typeof tutorialsEn, string> = {
 	"tut.notes.s5.body": "对齐按钮可以把文字放在卡片的开头、居中或末尾，以及顶部、中部或底部。",
 	"tut.notes.s5.task": "让长卡片（或任意卡片）的文字居中。",
 	"tut.notes.s6.title": "随文本扩展",
-	"tut.notes.s6.body": "通常文本太长时卡片会滚动。在**随文本扩展**中选择尺寸模式：文本变长时卡片向下或向侧面增长。\n\n新卡片会自动适应文本（宽度随文本增加到最大宽度，之后换行）；对已有卡片，在命令面板中运行**让卡片适应其文本**（设置：自动调整卡片大小）。",
+	"tut.notes.s6.body": "通常文本太长时卡片会滚动。在**随文本扩展**中选择尺寸模式：文本变长时卡片向下或向侧面增长。\n\n新卡片会自动向侧面扩展（设置：自动调整卡片大小 → **新卡片的大小**）；要让已有卡片适应其文本，在命令面板中运行**让卡片适应其文本**。",
 	"tut.notes.s6.task": "选中长卡片，在**随文本扩展**中选择一种增长模式。",
 
 	// ---------- 3. Shapes ----------
@@ -257,6 +257,10 @@ export const tutorialsZh: Record<keyof typeof tutorialsEn, string> = {
 	"tut.mindmap.s2.title": "用 Enter 添加同级",
 	"tut.mindmap.s2.body": "选中卡片按 `Enter` 会添加一个**同级**卡片：同一个父卡片下的另一个子卡片。`Alt+方向键` 在卡片间移动，`Ctrl/Cmd+方向键` 在该方向添加一张浮动卡片。这些按键都可以在 **快捷键** 窗口（侧边栏的 **?** 按钮）中更改。",
 	"tut.mindmap.s2.task": "选中一张卡片（不是中心卡片），按 `Enter`。",
+	"tut.mindmap.shapes.title": "以流程图形状添加子卡片",
+	"tut.mindmap.shapes.body": "在画流程图？可以直接以所需形状、沿方向键的方向添加子卡片：\n\n- `Alt+Shift+方向键`：矩形（处理）\n- `Ctrl/Cmd+Alt+方向键`：圆角（起止）\n- `Ctrl/Cmd+Alt+Shift+方向键`：菱形（判断）\n- `Shift+方向键`：平行四边形（输入 / 输出）\n\n`Ctrl/Cmd+Shift+方向键` 在该方向添加普通子卡片。这些按键都可以在 **快捷键** 窗口（侧边栏的 **?** 按钮）中更改。",
+	"tut.mindmap.shapes.task": "选中一张卡片并添加一个形状子卡片，例如按 `Alt+Shift+↓` 在其下方添加矩形。",
+	"tut.mindmap.shapes.touch": "没有键盘？长按一张卡片 → **添加形状子卡片** → 选择形状。",
 	"tut.mindmap.s3.title": "折叠分支",
 	"tut.mindmap.s3.body": "有子卡片的卡片旁边会有一个小**徽标**，点击它会把整个分支折叠起来，并显示隐藏了多少张卡片。什么都不会被删除。",
 	"tut.mindmap.s3.task": "用 **东京** 旁边的徽标折叠这个分支。",

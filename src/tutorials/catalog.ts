@@ -9,6 +9,7 @@ import { reid, translate as shiftData } from "../modules/board-templates/logic";
 import { STICKY_COLORS } from "../modules/sticky-notes/logic";
 import { relayoutMap } from "../modules/auto-layout/arrange";
 import { recordChild } from "../modules/mindmap/order-store";
+import { CHILD_SHAPES } from "../modules/mindmap";
 import { parseFontSize } from "../modules/note-font-size/logic";
 import { reviewSnapshot } from "../modules/flowchart-review";
 import { BARS_TUTORIAL } from "./runner";
@@ -981,6 +982,26 @@ const mindmap: TutorialDefinition = {
 				if (!node) return;
 				rt.command("mindmap:stop-editing");
 				rt.change(() => node.setData({ ...node.getData(), text: rt.t("tut.mindmap.board.ramen") }));
+			},
+		},
+		{
+			title: "tut.mindmap.shapes.title",
+			body: "tut.mindmap.shapes.body",
+			task: "tut.mindmap.shapes.task",
+			touch: "tut.mindmap.shapes.touch",
+			enter: (rt) => {
+				if (rt.selected().length !== 1) rt.select(["m-kyoto"]);
+			},
+			// A new card in one of the flowchart shapes, linked to the card it came from.
+			check: (rt) => {
+				const shaped = added(rt.before, rt.now()).filter((n) => (CHILD_SHAPES as readonly unknown[]).includes(extraOf(n).shape));
+				return shaped.some((n) => addedEdges(rt.before, rt.now()).some((e) => e.toNode === n.id));
+			},
+			demo: async (rt) => {
+				if (rt.selected().length !== 1) rt.select(["m-kyoto"]);
+				rt.command("mindmap:add-child-process");
+				await rt.wait(350);
+				rt.command("mindmap:stop-editing");
 			},
 		},
 		{

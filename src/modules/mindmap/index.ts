@@ -1,6 +1,9 @@
-import { Setting } from "obsidian";
+import { type Menu, Setting } from "obsidian";
 import { defineModule, type ModuleContext } from "../../core/module";
 import type { EdgeSide } from "../../data/json-canvas";
+import type { ShapeName } from "../../data/schema";
+import { shapeMinSize } from "../../geometry/shapes";
+import type { I18nKey } from "../../i18n";
 import type { CanvasItemLike, CanvasLike, CanvasNodeLike } from "../../internals/types";
 import { canvasDirection, mutate, nodeType, randomId, selectedNodes } from "../shared";
 import { makeSiblingRoom } from "./room";
@@ -15,6 +18,9 @@ interface MindmapSettings {
 const SIDE: Record<Dir, EdgeSide> = { right: "right", left: "left", down: "bottom", up: "top" };
 const OPPOSITE: Record<Dir, EdgeSide> = { right: "left", left: "right", down: "top", up: "bottom" };
 const ARROW: Record<string, Dir> = { ArrowRight: "right", ArrowLeft: "left", ArrowDown: "down", ArrowUp: "up" };
+/** The shapes a flowchart is made of: a child card can be added straight in one of them. */
+export const CHILD_SHAPES = ["process", "terminal", "decision", "input-output"] as const satisfies readonly ShapeName[];
+const SHAPE_ICONS: Record<(typeof CHILD_SHAPES)[number], string> = { process: "square", terminal: "pill", decision: "diamond", "input-output": "rectangle-horizontal" };
 
 function edgesOf(canvas: CanvasLike): TEdge[] {
 	return [...canvas.edges.values()].map((e) => ({ from: e.from.node.id, to: e.to.node.id }));
@@ -27,7 +33,8 @@ function visible(n: CanvasNodeLike): boolean {
 /**
  * Mind-map editing (Canvas MindMap parity): Tab adds a child, Enter a sibling, Alt+Arrows move
  * between cards, Ctrl/Cmd+Arrows add a floating card and Ctrl/Cmd+Shift+Arrows a child in that
- * direction. Right and left are mirrored in right-to-left canvases (setting).
+ * direction, and other modifiers a child in a flowchart shape (rectangle, rounded, diamond,
+ * parallelogram). Right and left are mirrored in right-to-left canvases (setting).
  */
 export const mindmapModule = defineModule<MindmapSettings>({
 	id: "mindmap",
@@ -53,13 +60,20 @@ export const mindmapModule = defineModule<MindmapSettings>({
 			window.setTimeout(() => node.startEditing(), 20);
 		};
 
+		/** A new card's size: the canvas's own, or what its shape needs to hold text. */
+		const sizeFor = (canvas: CanvasLike, shape?: ShapeName) => (shape ? shapeMinSize(shape, canvas.config.defaultTextNodeDimensions) : canvas.config.defaultTextNodeDimensions);
+
 		/** `pos` may be computed inside the change (when making room moves other cards). */
 		/** `link.after`: the sibling the new card comes right after (absent: after all of them). */
-		const create = (canvas: CanvasLike, pos: { x: number; y: number } | (() => { x: number; y: number }), link: { from: CanvasNodeLike; dir: Dir; after?: string } | null): CanvasNodeLike | null => {
+		const create = (canvas: CanvasLike, pos: { x: number; y: number } | (() => { x: number; y: number }), link: { from: CanvasNodeLike; dir: Dir; after?: string } | null, shape?: ShapeName): CanvasNodeLike | null => {
 			let created: CanvasNodeLike | null = null;
 			mutate(ctx, canvas, () => {
-				const size = canvas.config.defaultTextNodeDimensions;
-				created = canvas.createTextNode({ pos: typeof pos === "function" ? pos() : pos, size, save: false, focus: false });
+				const size = sizeFor(canvas, shape);
+				const at = typeof pos === "function" ? pos() : pos;
+				created = canvas.createTextNode({ pos: at, size, save: false, focus: false });
+				// Grid snapping would pull the card off its parent's center line.
+				if (created.x !== at.x || created.y !== at.y) created.moveAndResize({ ...at, width: created.width, height: created.height });
+				if (shape) ctx.data.node(created).set({ shape });
 				if (link) {
 					const color = link.from.color;
 					canvas.importData({ nodes: [], edges: [{ id: randomId(), fromNode: link.from.id, fromSide: SIDE[link.dir], toNode: created.id, toSide: OPPOSITE[link.dir], ...(color ? { color } : {}) }] }, false);
@@ -70,10 +84,10 @@ export const mindmapModule = defineModule<MindmapSettings>({
 			return created;
 		};
 
-		const addChild = (canvas: CanvasLike, parent: CanvasNodeLike, physicalDir?: Dir) => {
+		const addChild = (canvas: CanvasLike, parent: CanvasNodeLike, physicalDir?: Dir, shape?: ShapeName) => {
 			const dir = physicalDir ?? dirFor(canvas, ctx.settings.direction);
 			const kids = childrenOf(edgesOf(canvas), parent.id).map((id) => canvas.nodes.get(id)).filter((n): n is CanvasNodeLike => !!n);
-			return create(canvas, childPosition(parent, kids, canvas.config.defaultTextNodeDimensions, dir), { from: parent, dir });
+			return create(canvas, childPosition(parent, kids, sizeFor(canvas, shape), dir), { from: parent, dir }, shape);
 		};
 
 		const addSibling = (canvas: CanvasLike, node: CanvasNodeLike) => {
@@ -130,7 +144,9 @@ export const mindmapModule = defineModule<MindmapSettings>({
 			key(`mindmap.go.${dir}`, (c, n) => navigate(c, n, dir));
 			key(`mindmap.floating.${dir}`, (c, n) => addFloating(c, n, dir));
 			key(`mindmap.childAt.${dir}`, (c, n) => addChild(c, n, dir));
+			for (const shape of CHILD_SHAPES) key(`mindmap.shape.${shape}.${dir}`, (c, n) => addChild(c, n, dir, shape));
 		}
+		const shapeName = (shape: ShapeName) => ctx.t(`shape.${shape}` as I18nKey);
 
 		const command = (id: string, name: string, icon: string, fn: (c: CanvasLike, n: CanvasNodeLike) => void, needsWrite = true) =>
 			ctx.addCommand({
@@ -147,6 +163,7 @@ export const mindmapModule = defineModule<MindmapSettings>({
 			});
 		command("add-child", ctx.t("mindmap.addChild"), "git-branch-plus", (c, n) => addChild(c, n));
 		command("add-sibling", ctx.t("mindmap.addSibling"), "list-plus", addSibling);
+		for (const shape of CHILD_SHAPES) command(`add-child-${shape}`, ctx.t("mindmap.addChildShape", { shape: shapeName(shape) }), SHAPE_ICONS[shape], (c, n) => addChild(c, n, undefined, shape));
 		command("add-floating", ctx.t("mindmap.addFloating"), "square-plus", (c, n) => addFloating(c, n, dirFor(c, "right")));
 		command("select-subtree", ctx.t("mindmap.selectSubtree"), "network", selectSubtree, false);
 		command("color-edges", ctx.t("mindmap.colorEdges"), "palette", (c, n) => colorEdges(c, [n]));
@@ -173,6 +190,16 @@ export const mindmapModule = defineModule<MindmapSettings>({
 			// Tab and Enter without a keyboard.
 			if (!canvas.readonly && nodeType(node) !== "group") {
 				menu.addItem((item) => item.setSection("action").setTitle(ctx.t("mindmap.addChild")).setIcon("git-branch-plus").onClick(() => addChild(canvas, node)));
+				// The shaped children without a keyboard.
+				menu.addItem((item) => {
+					item.setSection("action").setTitle(ctx.t("mindmap.addChildShapes")).setIcon("shapes");
+					const sub = (item as unknown as { setSubmenu?(): Menu }).setSubmenu?.();
+					for (const shape of CHILD_SHAPES) {
+						const add = () => addChild(canvas, node, undefined, shape);
+						if (sub) sub.addItem((i) => i.setTitle(shapeName(shape)).setIcon(SHAPE_ICONS[shape]).onClick(add));
+					}
+					if (!sub) item.onClick(() => addChild(canvas, node, undefined, CHILD_SHAPES[0]));
+				});
 				if (parentOf(edgesOf(canvas), node.id)) menu.addItem((item) => item.setSection("action").setTitle(ctx.t("mindmap.addSibling")).setIcon("list-plus").onClick(() => addSibling(canvas, node)));
 			}
 			if (childrenOf(edgesOf(canvas), node.id).length === 0) return;
