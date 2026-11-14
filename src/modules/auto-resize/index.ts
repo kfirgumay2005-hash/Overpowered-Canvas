@@ -186,10 +186,12 @@ export const autoResizeModule = defineModule<AutoResizeSettings>({
 	defaultSettings: { maxWidth: 400, newCards: "width" },
 	sanitizeSettings: (raw, defaults) => {
 		const s = mergeWithDefaults(raw, defaults);
+		// Older versions stored a boolean here, whatever the type says.
+		const stored: unknown = s.newCards;
 		return {
 			maxWidth: typeof s.maxWidth === "number" && s.maxWidth >= 100 && s.maxWidth <= MAX_WIDTH ? Math.round(s.maxWidth) : defaults.maxWidth,
 			// Older versions had an on/off switch for "Fit text": off stays off, on takes the new default.
-			newCards: (MODES as readonly unknown[]).includes(s.newCards) ? (s.newCards as Mode) : (s.newCards as unknown) === false ? "off" : defaults.newCards,
+			newCards: MODES.find((m) => m === stored) ?? (stored === false ? "off" : defaults.newCards),
 		};
 	},
 	overlapsWith: ["advanced-canvas"],
