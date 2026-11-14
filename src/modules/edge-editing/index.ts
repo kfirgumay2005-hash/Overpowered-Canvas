@@ -46,22 +46,23 @@ class EdgeHandles {
 		waypoints.forEach(([x, y], i) => {
 			const h = this.handle("opc-edge-bend", { x, y }, this.ctx.t("edgeEditing.bend"));
 			h.addEventListener("pointerdown", (e) => this.dragBend(e, i));
-			h.addEventListener("dblclick", (e) => {
-				e.stopPropagation();
-				this.removeBend(i);
-			});
 		});
 		// Pull a new bend out of the middle of each segment (one for a curve).
 		const full = curved ? [points[0]!, points[points.length - 1]!] : points;
 		const mids = curved ? [points[Math.floor(points.length / 2)]!] : midpoints(full);
 		mids.forEach((m, segment) => {
 			const h = this.handle("opc-edge-add", m, this.ctx.t("edgeEditing.add"));
+			// The bend appears once the pointer moves: a tap (or the first click of a double-click
+			// on the label under this dot) changes nothing.
 			h.addEventListener("pointerdown", (e) => {
-				if (e.button !== 0) return;
-				const next = insertBend(full, segment, m).map(round);
-				this.ctx.data.edge(this.edge).set({ waypoints: next }, { history: false });
-				this.edge.updatePath();
-				this.dragBend(e, segment);
+				let added = false;
+				this.gesture(e, (p) => {
+					const wps = added ? (this.ctx.data.edge(this.edge).get().waypoints ?? []).slice() : insertBend(full, segment, m).map(round);
+					added = true;
+					wps[segment] = round(p);
+					this.ctx.data.edge(this.edge).set({ waypoints: wps }, { history: false });
+					this.edge.updatePath();
+				});
 			});
 		});
 		// Label position along the path.
@@ -70,12 +71,28 @@ class EdgeHandles {
 			const at = curved ? cubicAt(t, this.edge.bezier!) : pointOnPolyline(points, t);
 			const h = this.handle("opc-edge-label-handle", at, this.ctx.t("edgeEditing.label"));
 			h.addEventListener("pointerdown", (e) => this.dragLabel(e));
-			h.addEventListener("dblclick", (e) => {
-				e.stopPropagation();
-				mutate(this.ctx, this.canvas, () => this.ctx.data.edge(this.edge).set({ labelT: undefined }));
-				this.edge.updatePath();
-			});
 		}
+	}
+
+	/**
+	 * Dots in the middle of the edge sit on its label. A double-click there edits the label, as it
+	 * would without the dots. The dots are hidden first so the core puts the caret in the label
+	 * text, not in a dot that the next render removes.
+	 */
+	private editLabelAt(evt: MouseEvent): boolean {
+		const label = this.edge.labelElement;
+		const text = label?.textareaEl;
+		if (!label?.focus || !text) return false;
+		const r = text.getBoundingClientRect();
+		if (evt.clientX < r.left || evt.clientX > r.right || evt.clientY < r.top || evt.clientY > r.bottom) return false;
+		evt.preventDefault();
+		this.el.hide();
+		try {
+			label.focus({ x: evt.clientX, y: evt.clientY });
+		} finally {
+			this.el.show();
+		}
+		return true;
 	}
 
 	private handle(cls: string, p: P, label: string): HTMLElement {
@@ -85,15 +102,36 @@ class EdgeHandles {
 		return h;
 	}
 
-	private gesture(evt: PointerEvent, onMove: (p: P) => void): void {
+	/**
+	 * A press on a dot: drags it once the pointer moves. Dots are drawn again after every press,
+	 * so the browser never sees two clicks on the same one and sends no dblclick: a second press
+	 * in the same spot is the double-click. On the label it edits the label (the first click
+	 * selected the edge and brought the dots up over it); elsewhere it runs `onDouble`.
+	 */
+	private gesture(evt: PointerEvent, onMove: (p: P) => void, onDouble?: () => void): void {
 		if (evt.button !== 0 || this.canvas.readonly) return;
+		if (secondPress.get(this.canvas)) {
+			if (this.editLabelAt(evt)) {
+				evt.stopPropagation();
+				return;
+			}
+			if (onDouble) {
+				evt.preventDefault();
+				evt.stopPropagation();
+				onDouble();
+				return;
+			}
+		}
 		evt.preventDefault();
 		evt.stopPropagation();
 		const target = evt.target as HTMLElement;
 		capturePointer(target, evt.pointerId);
 		this.dragging = true;
 		let changed = false;
+		const start = { x: evt.clientX, y: evt.clientY };
 		const move = (e: PointerEvent) => {
+			// A click is not a drag: ignore the jitter of a press.
+			if (!changed && Math.hypot(e.clientX - start.x, e.clientY - start.y) < 4) return;
 			const p = this.canvas.posFromEvt(e);
 			target.style.left = `${p.x}px`;
 			target.style.top = `${p.y}px`;
@@ -114,12 +152,16 @@ class EdgeHandles {
 	}
 
 	private dragBend(evt: PointerEvent, index: number): void {
-		this.gesture(evt, (p) => {
-			const wps = (this.ctx.data.edge(this.edge).get().waypoints ?? []).slice();
-			wps[index] = round(p);
-			this.ctx.data.edge(this.edge).set({ waypoints: wps }, { history: false });
-			this.edge.updatePath();
-		});
+		this.gesture(
+			evt,
+			(p) => {
+				const wps = (this.ctx.data.edge(this.edge).get().waypoints ?? []).slice();
+				wps[index] = round(p);
+				this.ctx.data.edge(this.edge).set({ waypoints: wps }, { history: false });
+				this.edge.updatePath();
+			},
+			() => this.removeBend(index),
+		);
 	}
 
 	private removeBend(index: number): void {
@@ -130,17 +172,30 @@ class EdgeHandles {
 	}
 
 	private dragLabel(evt: PointerEvent): void {
-		this.gesture(evt, (p) => {
-			const { points, curved } = pathOf(this.ctx, this.edge);
-			if (points.length < 2) return;
-			const near = nearestOnPolyline(points, p);
-			// Curves are sampled evenly by parameter, so the sample position is the parameter.
-			const t = curved ? (near.segment + nearestOnPolyline([points[near.segment]!, points[near.segment + 1]!], p).t) / (points.length - 1) : near.t;
-			this.ctx.data.edge(this.edge).set({ labelT: Math.round(Math.min(0.98, Math.max(0.02, t)) * 1000) / 1000 }, { history: false });
-			this.edge.updatePath();
-		});
+		this.gesture(
+			evt,
+			(p) => {
+				const { points, curved } = pathOf(this.ctx, this.edge);
+				if (points.length < 2) return;
+				const near = nearestOnPolyline(points, p);
+				// Curves are sampled evenly by parameter, so the sample position is the parameter.
+				const t = curved ? (near.segment + nearestOnPolyline([points[near.segment]!, points[near.segment + 1]!], p).t) / (points.length - 1) : near.t;
+				this.ctx.data.edge(this.edge).set({ labelT: Math.round(Math.min(0.98, Math.max(0.02, t)) * 1000) / 1000 }, { history: false });
+				this.edge.updatePath();
+			},
+			() => {
+				mutate(this.ctx, this.canvas, () => this.ctx.data.edge(this.edge).set({ labelT: undefined }));
+				this.edge.updatePath();
+				this.render();
+			},
+		);
 	}
 }
+
+/** Whether the latest press on a canvas came right after another one in the same spot. */
+const secondPress = new WeakMap<CanvasLike, boolean>();
+const DOUBLE_PRESS_MS = 500;
+const DOUBLE_PRESS_PX = 8;
 
 function pointOnPolyline(points: P[], t: number): P {
 	let total = 0;
@@ -191,6 +246,15 @@ export const edgeEditingModule = defineModule({
 		ctx.on("edge-path", (edge) => {
 			const h = active.get(edge.canvas);
 			if (h && h.edge === edge) h.render();
+		});
+		ctx.onCanvas((canvas) => {
+			let last = { t: -Infinity, x: 0, y: 0 };
+			const onDown = (e: PointerEvent) => {
+				secondPress.set(canvas, e.timeStamp - last.t < DOUBLE_PRESS_MS && Math.hypot(e.clientX - last.x, e.clientY - last.y) < DOUBLE_PRESS_PX);
+				last = { t: e.timeStamp, x: e.clientX, y: e.clientY };
+			};
+			canvas.wrapperEl.addEventListener("pointerdown", onDown, true);
+			return () => canvas.wrapperEl.removeEventListener("pointerdown", onDown, true);
 		});
 		ctx.onCanvas((canvas) => () => {
 			active.get(canvas)?.destroy();

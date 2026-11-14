@@ -121,7 +121,15 @@ export interface CanvasEdgeLike {
 	toLineEnd?: CanvasEdgeLineEndLike | null;
 	/** Bezier geometry of the last updatePath(); getCenter() reads it. */
 	bezier?: { from: Point; to: Point; cp1: Point; cp2: Point; path: string };
-	labelElement?: { wrapperEl: HTMLElement; render(): void } | null;
+	labelElement?: {
+		wrapperEl: HTMLElement;
+		/** The editable text (a contenteditable div despite its name). */
+		textareaEl?: HTMLElement;
+		isEditing?: boolean;
+		render(): void;
+		/** Starts editing; with a point, puts the caret under it (core: caretRangeFromPoint). */
+		focus?(at?: Point): void;
+	} | null;
 	readonly isAttached: boolean;
 	getData(): CanvasEdgeData;
 	setData(data: CanvasEdgeData): void;
