@@ -51,6 +51,31 @@ export function enableAnchors(ctx: Ctx): void {
 	};
 	const carriersOf = (card: CanvasNodeLike) => [...(byCard.get(card.id) ?? [])].filter((c) => c.canvas === card.canvas && c.canvas.nodes.get(c.id) === c);
 
+	// ---- Drawn just above the card -------------------------------------------------------------
+
+	const patchedProtos = new WeakSet<object>();
+	const restack = (node: CanvasNodeLike) => {
+		for (let proto = Object.getPrototypeOf(node) as object | null; proto && proto !== Object.prototype; proto = Object.getPrototypeOf(proto) as object | null) {
+			if (!Object.prototype.hasOwnProperty.call(proto, "renderZIndex") || patchedProtos.has(proto)) continue;
+			patchedProtos.add(proto);
+			ctx.patch("node.renderZIndex", proto as CanvasNodeLike, {
+				renderZIndex: (next) =>
+					function (this: CanvasNodeLike) {
+						next.call(this);
+						const anchor = anchorOf(ctx, this);
+						if (anchor) {
+							const card = this.canvas.nodes.get(anchor);
+							if (card) {
+								const z = renderedZ(card) + 1;
+								if (renderedZ(this) < z) this.nodeEl.style.zIndex = String(z);
+							}
+						} else if (byCard.has(this.id)) for (const c of carriersOf(this)) c.renderZIndex();
+					},
+			});
+		}
+		if (anchorOf(ctx, node)) node.renderZIndex();
+	};
+
 	ctx.decorateNodes({
 		apply: (node, extra) => {
 			if (extra.kind === "ink" && nodeType(node) === "text") index(node, extra.anchor);
@@ -140,31 +165,6 @@ export function enableAnchors(ctx: Ctx): void {
 			if (changed) canvas.requestSave();
 		});
 	});
-
-	// ---- Drawn just above the card -------------------------------------------------------------
-
-	const patchedProtos = new WeakSet<object>();
-	const restack = (node: CanvasNodeLike) => {
-		for (let proto = Object.getPrototypeOf(node) as object | null; proto && proto !== Object.prototype; proto = Object.getPrototypeOf(proto) as object | null) {
-			if (!Object.prototype.hasOwnProperty.call(proto, "renderZIndex") || patchedProtos.has(proto)) continue;
-			patchedProtos.add(proto);
-			ctx.patch("node.renderZIndex", proto as CanvasNodeLike, {
-				renderZIndex: (next) =>
-					function (this: CanvasNodeLike) {
-						next.call(this);
-						const anchor = anchorOf(ctx, this);
-						if (anchor) {
-							const card = this.canvas.nodes.get(anchor);
-							if (card) {
-								const z = renderedZ(card) + 1;
-								if (renderedZ(this) < z) this.nodeEl.style.zIndex = String(z);
-							}
-						} else if (byCard.has(this.id)) for (const c of carriersOf(this)) c.renderZIndex();
-					},
-			});
-		}
-		if (anchorOf(ctx, node)) node.renderZIndex();
-	};
 
 	// ---- Copy, cut, duplicate and paste ------------------------------------------------------
 

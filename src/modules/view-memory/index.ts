@@ -126,6 +126,7 @@ export const viewMemoryModule = defineModule<ViewMemorySettings>({
 				if (pending.has(canvas)) restore(canvas);
 			}, 0);
 		});
+		const patched = new WeakSet<object>();
 		// The core frames a board when its tab is first shown: the remembered place wins once.
 		ctx.onCanvas((canvas) => {
 			const proto = Object.getPrototypeOf(canvas) as CanvasLike;
@@ -155,7 +156,6 @@ export const viewMemoryModule = defineModule<ViewMemorySettings>({
 				// Not recorded here: a closing canvas is emptied first. Its last frame was kept.
 			};
 		});
-		const patched = new WeakSet<object>();
 		// Another page shown on purpose (the index, a link, a note switched back to its canvas) wins.
 		let restoring = false;
 		const workspace = app.workspace as unknown as { on(name: string, cb: (canvas: CanvasLike) => void): EventRef };

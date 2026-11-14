@@ -109,6 +109,12 @@ export const pagesModule = defineModule<PagesSettings>({
 
 		// ---------- showing one page ----------
 
+		const refreshViews = (canvas?: CanvasLike) => {
+			for (const leaf of ctx.app.workspace.getLeavesOfType(PAGES_VIEW)) {
+				const view = leaf.view;
+				if (view instanceof PagesView) view.refresh(canvas);
+			}
+		};
 		const decorate = (canvas: CanvasLike) => {
 			for (const n of canvas.nodes.values()) n.nodeEl.toggleClass(HIDDEN, offPage(n));
 			for (const e of canvas.edges.values()) {
@@ -644,12 +650,6 @@ export const pagesModule = defineModule<PagesSettings>({
 
 		// ---------- the index ----------
 
-		const refreshViews = (canvas?: CanvasLike) => {
-			for (const leaf of ctx.app.workspace.getLeavesOfType(PAGES_VIEW)) {
-				const view = leaf.view;
-				if (view instanceof PagesView) view.refresh(canvas);
-			}
-		};
 		ctx.registerView(PAGES_VIEW, (leaf) => new PagesView(leaf, ctx, sourceOf));
 		const openIndex = async () => {
 			const existing = ctx.app.workspace.getLeavesOfType(PAGES_VIEW)[0];
