@@ -78,6 +78,22 @@ Notes for working on Overpowered-Canvas (Obsidian plugin, id `overpoweredcanvas`
 - **Event order in the core:** a click reaches a link before the card that holds it. Follow
   links after the click is over. Obsidian menus scroll on every mouse move, and a tap fires one,
   so with touch or pen a menu must stay still. Cap long menus to the visible area.
+- **Our overlays must not steal the core's targets.** Edge dots sat on the edge label: the
+  first click of a double-click selected the edge and brought the dots up, the second hit a dot,
+  so the label never opened (and a press on the middle dot added a bend). Overlays that are
+  redrawn on every press never get a `dblclick` either: detect a second press in the same spot.
+- **"addRange(): The given range isn't in document"** means the core focused a label or editor
+  whose element was removed before its (often delayed) focus ran. Two causes so far: the core
+  placed the caret under the pointer in one of our elements that is then redrawn, or something
+  redrew the edge right after the core opened a new, still empty label (see next point).
+- **A resize to the same size is not free.** `node.resize`/`moveAndResize` always marks the card
+  moved, so all its edges render again, and the core's `edge.render()` deletes a label that is
+  still empty. Clicking a selected edge creates an empty label and focuses it in a `setTimeout`:
+  auto-resize "resizing" an auto-width parallelogram to its own size (a width within the 1 px
+  tolerance was left alone, but then compared with `===`) killed the label in between. Call
+  `resize` only when the size really changes. The idle check (0 resizes per second) did not
+  catch it, because it only happened during clicks: also log resize calls whose arguments equal
+  the current size while interacting.
 - **z-index:** cards on real maps go past 300, and higher in upper layers. Overlays (live
   stroke, bars) must sit above every card.
 - **Text mapping:** to map rendered text back to Markdown, skip what is not shown (tags, link
@@ -105,6 +121,11 @@ Notes for working on Overpowered-Canvas (Obsidian plugin, id `overpoweredcanvas`
   afterwards.
 - Recreate the user's exact steps. A card made with "Add card" and then given a shape starts in
   a different size mode than a shape from the bottom bar, and only the first one had the bug.
+  Ask which canvas early and copy that file into the test vault: a freshly made shape did not
+  reproduce the label bug, the user's auto-width parallelograms did.
+- To find who breaks a core object, wrap its methods on the instance over CDP (`destroy`,
+  `markMoved`, `resize`…) and record `new Error().stack`. Frames like
+  `plugin:overpoweredcanvas:2:… s` are our pass-through patch wrappers: read further down.
 - CDP gotchas: call `Runtime.discardConsoleEntries` before `Page.reload`, or old errors replay.
   Set a large viewport with `Emulation.setDeviceMetricsOverride` (in a small window the card menu
   is off-screen and clicks can hit the window's close button). After a double-click to edit,

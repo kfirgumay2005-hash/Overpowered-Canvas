@@ -210,6 +210,7 @@ export const autoResizeModule = defineModule<AutoResizeSettings>({
 			if (resizing.has(node)) return;
 			const min = node.canvas.config.minContainerDimension;
 			let width = node.width;
+			let widthChanged = false;
 			const extra = ctx.data.node(node).get();
 			const mode = modeOf(extra);
 			// A shaped card keeps room for its text inside the outline.
@@ -221,6 +222,7 @@ export const autoResizeModule = defineModule<AutoResizeSettings>({
 				if (Math.abs(width - node.width) > 1) {
 					setWidth(node, width);
 					node.render();
+					widthChanged = true;
 				}
 			} else if (mode === "width") {
 				const target = neededWidth(node);
@@ -228,12 +230,15 @@ export const autoResizeModule = defineModule<AutoResizeSettings>({
 				if (Math.abs(width - node.width) > 1) {
 					setWidth(node, width);
 					node.render();
+					widthChanged = true;
 				}
 			}
 			const target = neededHeight(node);
 			if (target === null) return;
 			const height = Math.max(min, shapeMin?.height ?? 0, Math.round(target));
-			if (Math.abs(height - node.height) <= 1 && width === node.width) return;
+			// A width within a pixel was left alone above: resizing to the same size would still
+			// redraw the card's arrows (and drop a label the core has just opened for editing).
+			if (Math.abs(height - node.height) <= 1 && !widthChanged) return;
 			node.resize({ width: node.width, height });
 			node.render();
 			// An automatic fit is not a user action: fold it into the current undo step.
