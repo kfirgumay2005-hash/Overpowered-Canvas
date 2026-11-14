@@ -31,25 +31,6 @@ An Obsidian plugin that turns the core Canvas into a full whiteboard with ton of
 Every feature is a **module** you can switch off in the settings. A disabled module leaves no
 patches, listeners or styling behind.
 
-## Pages: a big map, or a long document, in parts
-
-![Moving a branch to a page, following the links, using the pages index and exporting to Markdown](https://raw.githubusercontent.com/kfirgumay2005-hash/Overpowered-Canvas/main/docs/media/pages.gif)
-
-Right-click a card and choose **Move branch to a new page**: everything below it gets a page of its
-own, inside the same canvas file.
-
-- **Follow the links** between a card and its page, in both directions.
-- **Jump around with the pages index**, a tree of every page on the board.
-- **Export to Markdown**: the pages become nested headings in one clean note.
-- **Read it as text**: the book button shows the same canvas as a paginated document, with the same
-  index and links. Edit cards from there, or export a PDF with one PDF page per page.
-- **Change your mind**: _Bring this page back into the map_ puts the branch back under its card
-  and removes the links.
-
-You don't need to study with mind maps to use this. Pages are an alternative to endless vertical
-scrolling in notes: build structured content page by page, then turn it into Markdown when you're
-done.
-
 ## Features
 
 **Right-click menu style** — text size, spacing, width, corners, icons, shadow and colors (light and
@@ -62,9 +43,11 @@ the cursor, at the end of the selected card, or into a new card.
 
 **Cards and edges** — flowchart and basic shapes on cards, border styles, start/center/end and
 top/middle/bottom text alignment (new cards can be centered automatically), a text size per card
-(also while editing and in the column view), cards that fit
-their text up to a maximum width (new cards do by default) or grow downwards or sideways as you
-type, layers like in image editors (a Layers panel to create,
+(also while editing and in the column view), cards that grow sideways or downwards as you type
+or fit their text up to a maximum width (you choose the mode new cards start in; a shaped card
+grows enough to keep its text inside the outline), new cards that snap to the grid, default and
+minimum card sizes, labels and line widths that keep their size at every zoom, a group made
+straight from the bottom bar (click or drag) without selecting cards first, layers like in image editors (a Layers panel to create,
 rename, reorder, hide, lock and delete them; new items go to the active layer; move the
 selection to a layer or one layer up or down), custom colors from CSS, card templates in the bottom bar, empty groups, card
 content at any zoom level (always, below your own zoom, or per card), text that doesn't jump between reading and editing; edge line styles and
@@ -94,6 +77,8 @@ select and move as one with no frame around them; double-click (or double-tap wi
 pen) a card to work on it alone, copies form their own group.
 
 **Mind maps** — Tab / Enter to add children and siblings (a sibling goes right after its card),
+a child straight in a flowchart shape (process, terminal, decision or input/output) with a
+modifier and an arrow key, or from the card menu (_Add child card as a shape_),
 drag a card onto another card's "Add as child" / "Add as sibling" targets to move it with its
 branch (the view follows dropped note blocks to the middle of the screen), Alt+arrows to move
 between cards, walk through a map with the arrow keys at your zoom (or with on-screen arrows on
@@ -122,6 +107,8 @@ animated undo step; groups move as rigid blocks (also when a dropped card re-arr
 group around the whole map grows to hold it, and every arrow gets the sides of its shortest path
 that passes under no card and crosses no other arrow (or bends around the cards when none does).
 
+![Moving a branch to a page, following the links, using the pages index and exporting to Markdown](https://raw.githubusercontent.com/kfirgumay2005-hash/Overpowered-Canvas/main/docs/media/pages.gif)
+
 **Pages** — split a huge map into pages of the same canvas: _Move branch to a new page_ takes
 everything below a card to a page of its own; the card stays in the map and it and the page's
 first card link to each other. One page shows at a time in each tab (two tabs can show two pages),
@@ -148,8 +135,12 @@ undone, and a setting links each card when you finish editing it.
 
 **Vault integration** — canvases get properties, tags, aliases and outgoing links in Obsidian's
 metadata cache; edges from frontmatter links; links and embeds to a single card
-(`[[file.canvas#card-id]]`); search inside a canvas (Ctrl/Cmd+F); read-only options; PNG/SVG
-export.
+(`[[file.canvas#card-id]]`); search inside a canvas (Ctrl/Cmd+F); read-only options; an info
+button that edits a canvas' properties (tags, aliases, `cssclasses`, which style the canvas view);
+PNG or SVG export of the whole canvas or the selection, with a transparent background, privacy
+mode or a watermark. Canvases and notes open again where you left them (a canvas on the same page,
+place and zoom, a note at the same place), after following a link and coming back, after closing
+the file and after restarting Obsidian; a link to a card or a heading still goes there.
 
 **Interaction and navigation** — a lasso that selects anything on the canvas (cards, groups,
 edges, ink strokes) and stays on: press inside the selection to move it, and once a pen has
@@ -161,13 +152,18 @@ other canvases, collapsible groups, focus mode, move a selection to a new canvas
 cards for annotation, custom style attributes from CSS snippets, a public events API, a minimap,
 a frames panel to search, reorder and present the groups of a canvas, a line grid behind the
 content (a line every N dots), an adjustable selection toolbar size (separately for computers
-and phones), and twenty-seven hands-on tutorials (at the top of the settings and in the canvas
+and phones; on phones the card bar joins the controls bar), every canvas action (create cards,
+select, delete, duplicate, group, nudge, zoom) as a command you can give a hotkey, and
+thirty-five hands-on tutorials (at the top of the settings and in the canvas
 controls). Each tutorial opens a temporary practice board with a coach panel: small tasks that
 tick themselves off as you do them, a "Show me" button that does each task live on the board, and
 highlights on the controls involved. The board (and any practice notes it uses) is deleted when the tutorial closes. At the top of the settings you choose the vault folder for the plugin's own files (note data and
 tutorial practice boards); Apply moves the files already there. **Debug mode** (off by default) shows
 an on-screen message for every press on a page-navigation control and every page change, for
-checking problems on tablets and phones. The settings page has its own search box and collapsible sections, a plain-language
+checking problems on tablets and phones. **Diagnostics** (also off by default) keeps a debug log of
+the plugin's errors and input that you can copy or save to a note on any device (optionally kept
+across restarts), and has a report of the canvas internals, the list of active patches and a
+pan/zoom benchmark. The settings page has its own search box and collapsible sections, a plain-language
 explanation under every setting, and every module and option also shows up in Obsidian's
 settings search. A double-click on the empty canvas creates a card at a speed you choose
 (fast, regular, slow or your own); dragging never creates one.
@@ -198,8 +194,8 @@ the text turns right-to-left and the canvas UI stays as it is. Card text takes i
 paragraph (also while typing), so right-to-left and left-to-right text mix naturally; it can also be fixed per
 card.
 
-**Writing in notes** — Tab writes a paragraph (first-line) indent at the cursor instead of
-indenting the whole line, made of em spaces so it looks the same in Live Preview, Source mode and
+**Writing in notes** — in notes and canvas text cards, Tab writes a paragraph (first-line) indent
+at the cursor instead of indenting the whole line (Shift+Tab removes it), made of em spaces so it looks the same in Live Preview, Source mode and
 Reading mode and never becomes a code block; lists, tables and code keep their Tab (off until you
 turn it on). Give one note its own font size with a `font-size` property or the Set / Increase /
 Decrease / Reset commands; the size is identical in editing and reading, on desktop and mobile.
@@ -234,6 +230,10 @@ still clickable ([docs/BENCHMARKS.md](docs/BENCHMARKS.md)).
 | Alt+Arrows                            | Move between connected cards                              |
 | Ctrl/Cmd+Arrows                       | Add a card (or sticky) in that direction                  |
 | Ctrl/Cmd+Shift+Arrows                 | Add a child in that direction                             |
+| Shift+Arrows                          | Add a child in that direction as input/output             |
+| Alt+Shift+Arrows                      | … as a process (rectangle)                                |
+| Ctrl/Cmd+Alt+Arrows                   | … as a terminal (rounded)                                 |
+| Ctrl/Cmd+Alt+Shift+Arrows             | … as a decision (diamond)                                 |
 | → / Space / PageDown, ← / PageUp, Esc | Presentations                                             |
 | Arrows, + / −, Home, Esc              | Walking through a map: child, parent, siblings; zoom      |
 
