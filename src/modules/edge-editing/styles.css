@@ -45,6 +45,6 @@ body.opc-mod-edge-editing .opc-edge-handle.opc-edge-label-handle {
 	}
 }
 /* While a label is being typed in, clicks in it place the caret: the dots step aside. */
-body.opc-mod-edge-editing .canvas:has(.canvas-path-label.is-editing) > .opc-edge-handles {
+body.opc-mod-edge-editing .canvas.opc-edge-label-editing > .opc-edge-handles {
 	display: none;
 }

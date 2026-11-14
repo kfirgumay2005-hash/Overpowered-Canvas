@@ -196,6 +196,8 @@ class EdgeHandles {
 const secondPress = new WeakMap<CanvasLike, boolean>();
 const DOUBLE_PRESS_MS = 500;
 const DOUBLE_PRESS_PX = 8;
+/** On the canvas element while an edge label has the focus. */
+const LABEL_EDITING = "opc-edge-label-editing";
 
 function pointOnPolyline(points: P[], t: number): P {
 	let total = 0;
@@ -255,6 +257,19 @@ export const edgeEditingModule = defineModule({
 			};
 			canvas.wrapperEl.addEventListener("pointerdown", onDown, true);
 			return () => canvas.wrapperEl.removeEventListener("pointerdown", onDown, true);
+		});
+		// While a label is being typed in, the dots step aside (a class, not a :has() selector).
+		ctx.onCanvas((canvas) => {
+			const isLabel = (el: EventTarget | null) => el instanceof HTMLElement && el.matches(".canvas-path-label");
+			const onIn = (e: FocusEvent) => canvas.canvasEl.toggleClass(LABEL_EDITING, isLabel(e.target));
+			const onOut = (e: FocusEvent) => canvas.canvasEl.toggleClass(LABEL_EDITING, isLabel(e.relatedTarget));
+			canvas.canvasEl.addEventListener("focusin", onIn);
+			canvas.canvasEl.addEventListener("focusout", onOut);
+			return () => {
+				canvas.canvasEl.removeEventListener("focusin", onIn);
+				canvas.canvasEl.removeEventListener("focusout", onOut);
+				canvas.canvasEl.removeClass(LABEL_EDITING);
+			};
 		});
 		ctx.onCanvas((canvas) => () => {
 			active.get(canvas)?.destroy();
