@@ -43,6 +43,9 @@ read-only unless you know the internals. Payloads are listed below; types are in
 | `presentation-started` | canvas, slide |
 | `presentation-slide-changed` | canvas, slide, index |
 | `presentation-ended` | canvas |
+| `layer-presentation-started` | canvas (a presentation by layers began) |
+| `layer-presentation-step` | canvas, index (0 = the first step), layers (ids the step reveals); also after going back |
+| `layer-presentation-ended` | canvas (the saved layer visibility is back) |
 | `map-walk-started` | canvas, node (walking through a map with the arrow keys began here) |
 | `map-walk-moved` | canvas, node (the card the walk is on now, also the first one), how (`"tap"` for a tap on the empty board or on an arrow beside the card, else absent) |
 | `map-walk-ended` | canvas |

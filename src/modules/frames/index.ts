@@ -4,6 +4,7 @@ import type { CanvasLike, CanvasNodeLike } from "../../internals/types";
 import { mergeWithDefaults } from "../../settings/settings";
 import { canvasDirection, mutate, nodeType } from "../shared";
 import { matches, move, orderFrames, type FrameInfo } from "./logic";
+import { layerPresentationHost, type SlideRevealer } from "../presentation/api";
 
 export const FRAMES_VIEW = "opc-frames";
 
@@ -165,6 +166,8 @@ interface FrameSession {
 	order: string[];
 	index: number;
 	wasReadonly: boolean;
+	/** Shows the layers the frames presented so far reveal (Presentation module). */
+	revealer: SlideRevealer | null;
 	cleanup(): void;
 }
 
@@ -193,6 +196,7 @@ export const framesModule = defineModule<FramesSettings>({
 			if (!node) return;
 			canvas.deselectAll();
 			zoomTo(canvas, node, ctx.settings.padding);
+			session.revealer?.show(session.order.slice(0, session.index + 1));
 			counter.setText(`${session.index + 1} / ${session.order.length}`);
 		};
 		const stop = (canvas: CanvasLike) => {
@@ -201,9 +205,11 @@ export const framesModule = defineModule<FramesSettings>({
 			sessions.delete(canvas);
 			s.cleanup();
 			canvas.setReadonly(s.wasReadonly);
+			s.revealer?.end();
 		};
 		const present = (canvas: CanvasLike, from?: string) => {
-			if (sessions.has(canvas)) return;
+			// One presentation at a time (the Presentation module's run in the same view).
+			if (sessions.has(canvas) || canvas.wrapperEl.hasClass("opc-presenting")) return;
 			const order = framesOf(ctx, canvas).map((f) => f.id);
 			if (order.length === 0) {
 				new Notice(ctx.t("frames.empty"));
@@ -211,7 +217,7 @@ export const framesModule = defineModule<FramesSettings>({
 			}
 			const wrapper = canvas.wrapperEl;
 			const counter = wrapper.createDiv({ cls: "opc-frames-counter", attr: { "aria-live": "polite", dir: "ltr" } });
-			const session: FrameSession = { order, index: Math.max(0, from ? order.indexOf(from) : 0), wasReadonly: canvas.readonly, cleanup: () => {} };
+			const session: FrameSession = { order, index: Math.max(0, from ? order.indexOf(from) : 0), wasReadonly: canvas.readonly, revealer: layerPresentationHost.api?.revealer(canvas, order) ?? null, cleanup: () => {} };
 			const step = (delta: number) => {
 				const next = Math.min(order.length - 1, Math.max(0, session.index + delta));
 				if (next === session.index) return;

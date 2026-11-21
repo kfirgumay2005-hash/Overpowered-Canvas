@@ -174,7 +174,7 @@ export interface OpcRoot {
 	v: number;
 	frontmatter?: Record<string, unknown>;
 	dir?: Direction;
-	presentation?: { start?: string; last?: string };
+	presentation?: PresentationInfo;
 	frameOrder?: string[];
 	/** Layers, bottom to top. Absent: one implicit layer holding everything. */
 	layers?: LayerInfo[];
@@ -266,6 +266,39 @@ export interface PageInfo {
 	parent?: string;
 }
 
+/** How a step of a presentation by layers changes what is shown. */
+export const LAYER_REVEALS = ["accumulate", "replace"] as const;
+export type LayerReveal = (typeof LAYER_REVEALS)[number];
+
+/** Where a step of a presentation by layers moves the view: nowhere, to the layer's cards, to everything presented. */
+export const LAYER_CAMERAS = ["keep", "layer", "canvas"] as const;
+export type LayerCamera = (typeof LAYER_CAMERAS)[number];
+
+/** One step of a presentation by layers: the layer it reveals; absent fields use the sequence's. */
+export interface LayerStepInfo {
+	layer: string;
+	reveal?: LayerReveal;
+	camera?: LayerCamera;
+}
+
+/** A presentation by layers: layers revealed one step at a time. */
+export interface LayerSequence {
+	/** In order; absent or empty: every layer, bottom to top. */
+	steps?: LayerStepInfo[];
+	/** Default "accumulate". */
+	reveal?: LayerReveal;
+	/** Default "canvas". */
+	camera?: LayerCamera;
+	/** Layers shown all the time (a background, a title). */
+	base?: string[];
+}
+
+export interface PresentationInfo {
+	start?: string;
+	last?: string;
+	layers?: LayerSequence;
+}
+
 export interface LayerInfo {
 	id: string;
 	name: string;
@@ -326,6 +359,8 @@ export interface OpcNode {
 	page?: string;
 	/** A presentation slide (a group made with "Add slide"). */
 	slide?: boolean;
+	/** Layer ids a presentation (along edges or through frames) reveals when it reaches this card. */
+	revealLayers?: string[];
 	/** Smart group id: cards with the same id are selected and moved as one (no frame). */
 	smartGroup?: string;
 }

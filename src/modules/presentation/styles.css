@@ -23,6 +23,133 @@ body.opc-mod-presentation .opc-presentation-counter {
 	color: var(--text-muted);
 	padding: 0 var(--size-2-2);
 	font-variant-numeric: tabular-nums;
+	/* A button (a tap folds the bar), drawn as plain text. */
+	background: none;
+	border: none;
+	box-shadow: none;
+	height: auto;
+	min-height: 28px;
+	cursor: pointer;
+}
+body.opc-mod-presentation .opc-presentation-counter:hover {
+	color: var(--text-normal);
+}
+/* Folded: only the counter, small and faint, still tappable to unfold. */
+body.opc-mod-presentation .opc-presentation-nav.is-minimized {
+	padding: 0;
+	opacity: 0.55;
+}
+body.opc-mod-presentation .opc-presentation-nav.is-minimized .opc-presentation-nav-button {
+	display: none;
+}
+
+/* Sequence editor of the presentation by layers. */
+body.opc-mod-presentation .opc-layer-sequence-modal {
+	width: min(640px, calc(100vw - 32px));
+}
+body.opc-mod-presentation .opc-seq-intro,
+body.opc-mod-presentation .opc-seq-help {
+	color: var(--text-muted);
+	font-size: var(--font-ui-small);
+	margin: var(--size-2-2) 0;
+}
+body.opc-mod-presentation .opc-seq-readonly {
+	color: var(--text-warning);
+	font-size: var(--font-ui-small);
+}
+body.opc-mod-presentation .opc-seq-defaults {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--size-4-2) var(--size-4-4);
+}
+body.opc-mod-presentation .opc-seq-field {
+	display: flex;
+	flex-direction: column;
+	gap: var(--size-2-1);
+	font-size: var(--font-ui-small);
+	color: var(--text-muted);
+}
+body.opc-mod-presentation .opc-seq-heading {
+	font-size: var(--font-ui-medium);
+	margin: var(--size-4-3) 0 var(--size-2-1);
+}
+body.opc-mod-presentation :is(.opc-seq-steps, .opc-seq-others) {
+	display: flex;
+	flex-direction: column;
+	gap: var(--size-2-1);
+}
+body.opc-mod-presentation :is(.opc-seq-step, .opc-seq-other) {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--size-2-2);
+	padding: var(--size-2-2) var(--size-2-3);
+	border-radius: var(--radius-s);
+	background: var(--background-secondary);
+	border-block: 2px solid transparent;
+}
+body.opc-mod-presentation .opc-seq-step.is-dragging {
+	opacity: 0.5;
+}
+body.opc-mod-presentation .opc-seq-step.drop-before {
+	border-top-color: var(--interactive-accent);
+}
+body.opc-mod-presentation .opc-seq-step.drop-after {
+	border-bottom-color: var(--interactive-accent);
+}
+body.opc-mod-presentation .opc-seq-grip {
+	color: var(--text-faint);
+	cursor: grab;
+	display: flex;
+}
+body.opc-mod-presentation .opc-seq-num {
+	min-width: 1.6em;
+	text-align: center;
+	font-variant-numeric: tabular-nums;
+	color: var(--text-on-accent);
+	background: var(--interactive-accent);
+	border-radius: var(--radius-l);
+	font-size: var(--font-ui-smaller);
+}
+body.opc-mod-presentation .opc-seq-name {
+	flex: 1;
+	min-width: 6em;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+body.opc-mod-presentation .opc-seq-step-options {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--size-2-1);
+}
+body.opc-mod-presentation .opc-seq-step-options select {
+	max-width: 14em;
+	font-size: var(--font-ui-smaller);
+}
+body.opc-mod-presentation .opc-seq-buttons {
+	display: flex;
+}
+body.opc-mod-presentation .opc-seq-state {
+	font-size: var(--font-ui-smaller);
+	color: var(--text-faint);
+}
+body.opc-mod-presentation .opc-seq-other.is-base .opc-seq-state {
+	color: var(--text-accent);
+}
+body.opc-mod-presentation .opc-seq-base.is-active {
+	color: var(--text-accent);
+	background: var(--background-modifier-hover);
+}
+body.opc-mod-presentation .opc-seq-empty {
+	color: var(--text-faint);
+	font-size: var(--font-ui-small);
+	padding: var(--size-2-2);
+}
+/* Touch: bigger targets for the step buttons. */
+body.is-mobile.opc-mod-presentation .opc-layer-sequence-modal .clickable-icon {
+	min-width: 36px;
+	min-height: 36px;
 }
 body.opc-mod-presentation .canvas-node.opc-start-slide::before {
 	content: "▶";

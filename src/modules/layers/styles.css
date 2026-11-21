@@ -92,3 +92,47 @@ body.opc-mod-layers .opc-layers-footer {
 	font-size: var(--font-ui-smaller);
 	color: var(--text-muted);
 }
+
+/* Presentations: layers that appear or disappear fade (the duration comes from the presentation). */
+@keyframes opc-layer-fade-in {
+	from {
+		opacity: 0;
+	}
+}
+@keyframes opc-layer-fade-out {
+	to {
+		opacity: 0;
+	}
+}
+body.opc-mod-layers .opc-layer-fade-in {
+	animation: opc-layer-fade-in var(--opc-layer-fade, 300ms) ease-out both;
+}
+body.opc-mod-layers .opc-layer-fade-out {
+	animation: opc-layer-fade-out var(--opc-layer-fade, 300ms) ease-in forwards;
+}
+/* The layer's part in the presentation by layers: its step number, or a pin for a base layer. */
+body.opc-mod-layers .opc-layers-step {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 1.5em;
+	height: 1.5em;
+	padding: 0 var(--size-2-1);
+	border-radius: var(--radius-l);
+	background: var(--interactive-accent);
+	color: var(--text-on-accent);
+	font-size: var(--font-ui-smaller);
+	font-variant-numeric: tabular-nums;
+}
+body.opc-mod-layers .opc-layers-step.is-base {
+	background: var(--background-modifier-hover);
+	color: var(--text-muted);
+}
+body.opc-mod-layers .opc-layers-step.is-base svg {
+	width: 0.9em;
+	height: 0.9em;
+}
+body.opc-mod-layers .opc-layers-toggle.is-presented {
+	cursor: default;
+	color: var(--text-accent);
+}

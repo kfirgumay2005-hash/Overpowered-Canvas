@@ -1,4 +1,4 @@
-import { Notice, Setting, setIcon, setTooltip } from "obsidian";
+import { Notice, Setting, setIcon, setTooltip, type Menu } from "obsidian";
 import { defineModule, type ModuleContext } from "../../core/module";
 import { TOC_LINES, type OpcNode, type TocLine } from "../../data/schema";
 import { LOCALES } from "../../i18n";
@@ -10,6 +10,13 @@ import { nextSlide, slideOrder, type SlideEdge } from "./path";
 import { enableWalk, type WalkKeys } from "./walker";
 import { enableToc, type TocMode } from "./toc";
 import { logError } from "../../core/log";
+import { ChoiceModal } from "../../ui/choice-modal";
+import { layersHost } from "../layers/api";
+import { pagesHost } from "../pages/api";
+import { layerPresentationHost, type SlideRevealer } from "./api";
+import { presentedVisibility, resolveSequence, shownAt, slideSteps, type ResolvedSequence } from "./layer-steps";
+import { cleanSequence, LayerSequenceModal, toggleBaseIn, toggleStepIn } from "./layer-sequence";
+import type { LayerSequence } from "../../data/schema";
 
 interface PresentationSettings {
 	slideWidth: number;
@@ -45,14 +52,30 @@ interface PresentationSettings {
 	tocGroupRadius: number;
 	/** Table of contents: the user's own outline colors ("#rrggbb"), offered in every group's menu. */
 	tocGroupColors: string[];
+	/** Layers that appear or disappear in a presentation fade over this long (ms); 0 = at once. */
+	layerFade: number;
+	/** The presenter's bar shows only the step counter. */
+	navMinimized: boolean;
 }
 
 interface Session {
+	/** Along edges (slides), or layer by layer. */
+	kind: "edges" | "layers";
+	/** Edges: the slides shown so far, the current one last. */
 	history: string[];
+	/** Layers: the step shown (0 = the first). */
+	index: number;
+	/** Layers: the sequence as it plays. */
+	sequence: ResolvedSequence | null;
+	/** Edges: reveals the layers the slides carry. */
+	revealer: SlideRevealer | null;
 	wasReadonly: boolean;
 	counterEl: HTMLElement;
 	cleanup: () => void;
 }
+
+/** Room around what a step of a presentation by layers zooms to (canvas units). */
+const LAYER_CAMERA_PADDING = 60;
 
 /** "Slide 3" in any UI language: slides made before the `slide` flag existed. */
 const escapeRegExp = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -87,7 +110,7 @@ export const presentationModule = defineModule<PresentationSettings>({
 	description: "presentation.desc",
 	group: "interaction",
 	defaultEnabled: true,
-	defaultSettings: { slideWidth: 1200, slideHeight: 675, fullscreen: true, walkKeys: "tree", walkTapZones: true, walkHints: true, columnFontSize: 0, columnWidth: 340, columnActualSize: false, columnVertical: false, tocMode: "free", tocPerRow: 3, tocCellWidth: 240, tocActualSize: false, tocGroupWidth: 2, tocGroupLine: "solid", tocGroupRadius: 12, tocGroupColors: [] },
+	defaultSettings: { slideWidth: 1200, slideHeight: 675, fullscreen: true, walkKeys: "tree", walkTapZones: true, walkHints: true, columnFontSize: 0, columnWidth: 340, columnActualSize: false, columnVertical: false, tocMode: "free", tocPerRow: 3, tocCellWidth: 240, tocActualSize: false, tocGroupWidth: 2, tocGroupLine: "solid", tocGroupRadius: 12, tocGroupColors: [], layerFade: 300, navMinimized: false },
 	sanitizeSettings: (raw, defaults) => {
 		const s = mergeWithDefaults(raw, defaults);
 		const num = (v: unknown, min: number, max: number, fallback: number) => (typeof v === "number" && Number.isFinite(v) && v >= min && v <= max ? Math.round(v) : fallback);
@@ -106,6 +129,8 @@ export const presentationModule = defineModule<PresentationSettings>({
 			tocGroupLine: (TOC_LINES as readonly string[]).includes(s.tocGroupLine) ? s.tocGroupLine : defaults.tocGroupLine,
 			tocGroupRadius: num(s.tocGroupRadius, 0, 48, defaults.tocGroupRadius),
 			tocGroupColors: Array.isArray(s.tocGroupColors) ? [...new Set(s.tocGroupColors.filter((c): c is string => typeof c === "string" && /^#[0-9a-f]{6}$/i.test(c)).map((c) => c.toLowerCase()))].slice(0, 24) : [],
+			layerFade: num(s.layerFade, 0, 3000, defaults.layerFade),
+			navMinimized: typeof s.navMinimized === "boolean" ? s.navMinimized : defaults.navMinimized,
 		};
 	},
 	overlapsWith: ["advanced-canvas"],
@@ -151,13 +176,84 @@ export const presentationModule = defineModule<PresentationSettings>({
 			if (tocKeys.some((k) => next[k] !== prev[k]) || next.tocGroupColors.join() !== prev.tocGroupColors.join()) toc.refresh();
 		});
 
+		// ---------- presentation by layers, and layers revealed by slides ----------
+
+		const fadeMs = () => ctx.settings.layerFade;
+		const layerSequence = (canvas: CanvasLike): LayerSequence | undefined => ctx.data.root(canvas).get().presentation?.layers;
+		/** On the page this view shows (every card when Pages is off). */
+		const onShownPage = (canvas: CanvasLike) => {
+			const pages = pagesHost.api;
+			if (!pages) return () => true;
+			const page = pages.current(canvas);
+			return (node: CanvasNodeLike) => pages.pageOf(node) === page;
+		};
+		/** Smoothly frames the cards on these layers (on the page shown); nothing when there are none. */
+		const frameLayers = (canvas: CanvasLike, layerIds: ReadonlySet<string>) => {
+			const api = layersHost.api;
+			if (!api) return;
+			const here = onShownPage(canvas);
+			let box: { minX: number; minY: number; maxX: number; maxY: number } | null = null;
+			for (const n of canvas.nodes.values()) {
+				if (!layerIds.has(api.layerOf(n)) || !here(n)) continue;
+				const b = n.getBBox();
+				box = box ? { minX: Math.min(box.minX, b.minX), minY: Math.min(box.minY, b.minY), maxX: Math.max(box.maxX, b.maxX), maxY: Math.max(box.maxY, b.maxY) } : { ...b };
+			}
+			if (!box) return;
+			const p = LAYER_CAMERA_PADDING;
+			canvas.zoomToBbox({ minX: box.minX - p, minY: box.minY - p, maxX: box.maxX + p, maxY: box.maxY + p });
+		};
+
+		/** Slides or frames that carry layers to reveal: null when none of the stops does. */
+		const revealerFor = (canvas: CanvasLike, stops: readonly string[]): SlideRevealer | null => {
+			const api = layersHost.api;
+			if (!api) return null;
+			const layers = api.layers(canvas);
+			const exists = new Set(layers.map((l) => l.id));
+			const revealOf = (id: string) => {
+				const n = canvas.nodes.get(id);
+				return n ? ctx.data.node(n).get().revealLayers?.filter((l) => exists.has(l)) : undefined;
+			};
+			const managed = new Set(stops.flatMap((id) => revealOf(id) ?? []));
+			if (managed.size === 0) return null;
+			const seq = resolveSequence(layerSequence(canvas), layers);
+			const base = new Set(seq.base);
+			return {
+				show: (path) => {
+					const steps = slideSteps(path, revealOf, seq.reveal);
+					api.present(canvas, presentedVisibility(api.layers(canvas), managed, shownAt(steps, steps.length - 1), base), fadeMs());
+				},
+				end: () => api.present(canvas, null, fadeMs()),
+			};
+		};
+
+		const showLayers = (canvas: CanvasLike, session: Session) => {
+			const api = layersHost.api;
+			const seq = session.sequence;
+			if (!api || !seq) return;
+			const step = seq.steps[session.index];
+			if (!step) return;
+			const layers = api.layers(canvas);
+			// Every layer is managed: shown as a base layer or by a step, else hidden.
+			const all = new Set(layers.map((l) => l.id));
+			api.present(canvas, presentedVisibility(layers, all, shownAt(seq.steps, session.index), new Set(seq.base)), fadeMs());
+			if (step.camera === "layer") frameLayers(canvas, new Set(step.layers));
+			else if (step.camera === "canvas") frameLayers(canvas, new Set([...seq.base, ...seq.steps.flatMap((s) => s.layers)]));
+			session.counterEl.setText(`${session.index + 1} / ${seq.steps.length}`);
+			ctx.events.emit("layer-presentation-step", canvas, session.index, step.layers);
+		};
+
 		const show = (canvas: CanvasLike, session: Session) => {
+			if (session.kind === "layers") {
+				showLayers(canvas, session);
+				return;
+			}
 			const id = session.history[session.history.length - 1]!;
 			const node = canvas.nodes.get(id);
 			if (!node) return;
 			canvas.deselectAll();
 			const b = node.getBBox();
 			canvas.zoomToBbox({ minX: b.minX, minY: b.minY, maxX: b.maxX, maxY: b.maxY });
+			session.revealer?.show(session.history);
 			const order = slideOrder(edgesOf(ctx, canvas), session.history[0]!);
 			const index = order.indexOf(id);
 			session.counterEl.setText(`${index + 1} / ${order.length}`);
@@ -170,6 +266,13 @@ export const presentationModule = defineModule<PresentationSettings>({
 			sessions.delete(canvas);
 			session.cleanup();
 			canvas.setReadonly(session.wasReadonly);
+			// The layers as they were before: the presentation never saved what it showed.
+			if (session.kind === "layers") {
+				layersHost.api?.present(canvas, null, fadeMs());
+				ctx.events.emit("layer-presentation-ended", canvas);
+				return;
+			}
+			session.revealer?.end();
 			const last = session.history[session.history.length - 1];
 			// Remember where we stopped, without an undo step.
 			if (last && ctx.data.isWritable(canvas)) {
@@ -183,20 +286,20 @@ export const presentationModule = defineModule<PresentationSettings>({
 			ctx.events.emit("presentation-ended", canvas);
 		};
 
-		const start = (canvas: CanvasLike, from: "start" | "last" | "selection") => {
-			if (sessions.has(canvas) || walker.walking(canvas)) return;
-			const root = ctx.data.root(canvas).get().presentation;
-			const id = from === "selection" ? selectedNodes(canvas)[0]?.id : from === "last" ? (root?.last ?? root?.start) : root?.start;
-			const node = id ? canvas.nodes.get(id) : undefined;
-			if (!node) {
-				new Notice(ctx.t("presentation.noStart"));
-				return;
-			}
+		/** Another presentation, a walk or the frames presentation already runs on this canvas. */
+		const busy = (canvas: CanvasLike) => sessions.has(canvas) || walker.walking(canvas) || canvas.wrapperEl.hasClass("opc-frames-presenting");
+
+		/**
+		 * What every presentation of this module shares: the presenter's bar (‹ counter › ✕, for touch
+		 * screens; a tap on the counter folds it to the counter alone), the keys, full screen and
+		 * read-only. Returns the session, already registered.
+		 */
+		const open = (canvas: CanvasLike, fields: Pick<Session, "kind" | "history" | "index" | "sequence" | "revealer">): Session => {
 			const wrapper = canvas.wrapperEl;
-			// Touch screens have no arrow keys: buttons to go back, forward and end.
 			const navEl = wrapper.createDiv({ cls: "opc-presentation-nav", attr: { dir: "ltr" } });
+			navEl.toggleClass("is-minimized", ctx.settings.navMinimized);
 			const navButton = (icon: string, label: string, run: () => void) => {
-				const btn = navEl.createEl("button", { cls: "clickable-icon", attr: { "aria-label": label } });
+				const btn = navEl.createEl("button", { cls: "clickable-icon opc-presentation-nav-button", attr: { "aria-label": label } });
 				setIcon(btn, icon);
 				btn.addEventListener("pointerdown", (e) => e.stopPropagation());
 				btn.addEventListener("click", (e) => {
@@ -205,19 +308,32 @@ export const presentationModule = defineModule<PresentationSettings>({
 				});
 				return btn;
 			};
-			navButton("chevron-left", ctx.t("presentation.previous"), () => step(canvas, -1));
-			const counterEl = navEl.createSpan({ cls: "opc-presentation-counter", attr: { "aria-live": "polite" } });
-			navButton("chevron-right", ctx.t("presentation.next"), () => step(canvas, 1));
+			const layered = fields.kind === "layers";
+			navButton("chevron-left", ctx.t(layered ? "presentation.layers.previous" : "presentation.previous"), () => step(canvas, -1));
+			const counterEl = navEl.createEl("button", { cls: "opc-presentation-counter", attr: { "aria-live": "polite", "aria-label": ctx.t("presentation.counterToggle") } });
+			setTooltip(counterEl, ctx.t("presentation.counterToggle"), { placement: "top" });
+			counterEl.addEventListener("pointerdown", (e) => e.stopPropagation());
+			counterEl.addEventListener("click", (e) => {
+				e.stopPropagation();
+				const minimized = !navEl.hasClass("is-minimized");
+				navEl.toggleClass("is-minimized", minimized);
+				void ctx.updateSettings({ navMinimized: minimized });
+			});
+			navButton("chevron-right", ctx.t(layered ? "presentation.layers.next" : "presentation.next"), () => step(canvas, 1));
 			navButton("x", ctx.t("presentation.end"), () => exit(canvas));
 			const onKey = (evt: KeyboardEvent) => {
-				if (!sessions.has(canvas)) return;
-				const action = ctx.shortcutOf(evt, ["slides.next", "slides.previous", "slides.end", "slides.first"] as const);
+				const s = sessions.get(canvas);
+				if (!s) return;
+				const action = ctx.shortcutOf(evt, ["slides.next", "slides.previous", "slides.end", "slides.first", "slides.last"] as const);
 				if (action === "slides.next") step(canvas, 1);
 				else if (action === "slides.previous") step(canvas, -1);
 				else if (action === "slides.end") exit(canvas);
 				else if (action === "slides.first") {
-					const s = sessions.get(canvas)!;
 					s.history = s.history.slice(0, 1);
+					s.index = 0;
+					show(canvas, s);
+				} else if (action === "slides.last" && s.kind === "layers" && s.sequence) {
+					s.index = s.sequence.steps.length - 1;
 					show(canvas, s);
 				} else return;
 				evt.preventDefault();
@@ -236,7 +352,7 @@ export const presentationModule = defineModule<PresentationSettings>({
 			}
 			wrapper.addClass("opc-presenting");
 			const session: Session = {
-				history: [node.id],
+				...fields,
 				wasReadonly: canvas.readonly,
 				counterEl,
 				cleanup: () => {
@@ -250,14 +366,50 @@ export const presentationModule = defineModule<PresentationSettings>({
 			sessions.set(canvas, session);
 			canvas.setReadonly(true);
 			// Fullscreen changes the size: wait a frame before zooming.
-			window.setTimeout(() => show(canvas, session), fullscreen ? 250 : 0);
+			window.setTimeout(() => sessions.get(canvas) === session && show(canvas, session), fullscreen ? 250 : 0);
+			return session;
+		};
+
+		const start = (canvas: CanvasLike, from: "start" | "last" | "selection") => {
+			if (busy(canvas)) return;
+			const root = ctx.data.root(canvas).get().presentation;
+			const id = from === "selection" ? selectedNodes(canvas)[0]?.id : from === "last" ? (root?.last ?? root?.start) : root?.start;
+			const node = id ? canvas.nodes.get(id) : undefined;
+			if (!node) {
+				new Notice(ctx.t("presentation.noStart"));
+				return;
+			}
+			open(canvas, { kind: "edges", history: [node.id], index: 0, sequence: null, revealer: revealerFor(canvas, [...canvas.nodes.keys()]) });
 			ctx.events.emit("presentation-started", canvas, node);
+		};
+
+		const startLayers = (canvas: CanvasLike) => {
+			if (busy(canvas)) return;
+			const api = layersHost.api;
+			if (!api) {
+				new Notice(ctx.t("presentation.layers.needsLayers"));
+				return;
+			}
+			const layers = api.layers(canvas);
+			const sequence = resolveSequence(layerSequence(canvas), layers);
+			if (layers.length < 2 || sequence.steps.length === 0) {
+				new Notice(ctx.t(layers.length < 2 ? "presentation.layers.tooFew" : "presentation.layers.noStepsNotice"));
+				return;
+			}
+			toc.close(canvas);
+			canvas.deselectAll();
+			open(canvas, { kind: "layers", history: [], index: 0, sequence, revealer: null });
+			ctx.events.emit("layer-presentation-started", canvas);
 		};
 
 		const step = (canvas: CanvasLike, delta: 1 | -1) => {
 			const session = sessions.get(canvas);
 			if (!session) return;
-			if (delta === 1) {
+			if (session.kind === "layers") {
+				const next = session.index + delta;
+				if (next < 0 || next >= (session.sequence?.steps.length ?? 0)) return;
+				session.index = next;
+			} else if (delta === 1) {
 				const next = nextSlide(edgesOf(ctx, canvas), session.history);
 				if (!next) return;
 				session.history.push(next);
@@ -267,6 +419,40 @@ export const presentationModule = defineModule<PresentationSettings>({
 			}
 			show(canvas, session);
 		};
+
+		// The sequence editor and the Layers panel's part in it.
+		const writeSequence = (canvas: CanvasLike, next: LayerSequence | undefined) =>
+			mutate(ctx, canvas, () => ctx.data.root(canvas).set({ presentation: { ...ctx.data.root(canvas).get().presentation, layers: next } }));
+		const editSequence = (canvas: CanvasLike) => {
+			const api = layersHost.api;
+			if (!api) {
+				new Notice(ctx.t("presentation.layers.needsLayers"));
+				return;
+			}
+			new LayerSequenceModal(ctx.app, ctx.t, {
+				layers: () => layersHost.api?.layers(canvas) ?? [],
+				read: () => layerSequence(canvas),
+				write: (next) => writeSequence(canvas, next),
+				editable: () => !canvas.readonly,
+				start: () => startLayers(canvas),
+			}).open();
+		};
+		layerPresentationHost.api = {
+			start: startLayers,
+			edit: editSequence,
+			stepOf: (canvas, layerId) => {
+				const api = layersHost.api;
+				if (!api) return 0;
+				const seq = resolveSequence(layerSequence(canvas), api.layers(canvas));
+				return seq.implicit ? 0 : seq.steps.findIndex((s) => s.layers.includes(layerId)) + 1;
+			},
+			isBase: (canvas, layerId) => layerSequence(canvas)?.base?.includes(layerId) ?? false,
+			toggleStep: (canvas, layerId) => void writeSequence(canvas, toggleStepIn(layerSequence(canvas), layerId)),
+			toggleBase: (canvas, layerId) => void writeSequence(canvas, toggleBaseIn(layerSequence(canvas), layerId)),
+			presenting: (canvas) => sessions.has(canvas),
+			revealer: revealerFor,
+		};
+		ctx.register(() => (layerPresentationHost.api = null));
 
 		ctx.register(() => {
 			for (const canvas of [...sessions.keys()]) exit(canvas);
@@ -291,6 +477,9 @@ export const presentationModule = defineModule<PresentationSettings>({
 		command("start", ctx.t("presentation.start"), "presentation", (c) => !sessions.has(c), (c) => start(c, "start"));
 		command("continue", ctx.t("presentation.continue"), "play", (c) => !sessions.has(c), (c) => start(c, "last"));
 		command("start-here", ctx.t("presentation.startHere"), "play-circle", (c) => !sessions.has(c) && selectedNodes(c).length === 1, (c) => start(c, "selection"));
+		const layered = (c: CanvasLike) => (layersHost.api?.layers(c).length ?? 0) > 1;
+		command("layers-start", ctx.t("presentation.layers.start"), "layers", (c) => !busy(c) && layered(c), startLayers);
+		command("layers-edit", ctx.t("presentation.layers.edit"), "list-ordered", (c) => !sessions.has(c) && !!layersHost.api, editSequence);
 		command("next", ctx.t("presentation.next"), "arrow-right", (c) => sessions.has(c), (c) => step(c, 1));
 		command("previous", ctx.t("presentation.previous"), "arrow-left", (c) => sessions.has(c), (c) => step(c, -1));
 		command("end", ctx.t("presentation.end"), "x", (c) => sessions.has(c), exit);
@@ -336,11 +525,31 @@ export const presentationModule = defineModule<PresentationSettings>({
 				mutate(ctx, canvas, () => ctx.data.edge(edge).set({ order: value })),
 			).open();
 
+		/** "Show layers at this slide": the layers a presentation along edges or frames reveals here. */
+		const toggleReveal = (node: CanvasNodeLike, layerId: string) => {
+			const now = ctx.data.node(node).get().revealLayers ?? [];
+			const next = now.includes(layerId) ? now.filter((l) => l !== layerId) : [...now, layerId];
+			mutate(ctx, node.canvas, () => ctx.data.node(node).set({ revealLayers: next.length ? next : undefined }));
+		};
+		const addRevealItem = (menu: Menu, node: CanvasNodeLike) => {
+			const layers = [...(layersHost.api?.layers(node.canvas) ?? [])].reverse();
+			const now = new Set(ctx.data.node(node).get().revealLayers ?? []);
+			menu.addItem((item) => {
+				item.setSection("canvas").setTitle(ctx.t("presentation.layers.revealHere")).setIcon("layers");
+				const sub = (item as unknown as { setSubmenu?(): Menu }).setSubmenu?.();
+				if (sub) for (const l of layers) sub.addItem((i) => i.setTitle(l.name).setChecked(now.has(l.id)).onClick(() => toggleReveal(node, l.id)));
+				else
+					item.onClick(() =>
+						new ChoiceModal(ctx.app, ctx.t("presentation.layers.revealHere"), layers.map((l) => ({ id: l.id, label: l.name, icon: "layers", active: now.has(l.id) })), (id) => toggleReveal(node, id)).open(),
+					);
+			});
+		};
 		ctx.onNodeMenu((menu, node) => {
 			if (idle(node.canvas)) menu.addItem((item) => item.setSection("canvas").setTitle(ctx.t("presentation.walk.fromHere")).setIcon("route").onClick(() => startWalk(node.canvas, node)));
 			if (node.canvas.readonly) return;
 			const isStart = ctx.data.root(node.canvas).get().presentation?.start === node.id;
 			menu.addItem((item) => item.setSection("canvas").setTitle(ctx.t("presentation.setStart")).setIcon("flag").setChecked(isStart).onClick(() => setStart(node.canvas, node)));
+			if (layered(node.canvas)) addRevealItem(menu, node);
 		});
 		ctx.onEdgeMenu((menu, edge) => {
 			if (!edge.canvas.readonly) menu.addItem((item) => item.setSection("canvas").setTitle(ctx.t("presentation.edgeOrder")).setIcon("list-ordered").onClick(() => promptOrder(edge.canvas, edge)));
@@ -451,6 +660,10 @@ export const presentationModule = defineModule<PresentationSettings>({
 		new Setting(el)
 			.setName(ctx.t("presentation.fullscreen.name"))
 			.addToggle((t) => t.setValue(ctx.settings.fullscreen).onChange((v) => ctx.updateSettings({ fullscreen: v })));
+		new Setting(el)
+			.setName(ctx.t("presentation.layerFade.name"))
+			.setDesc(ctx.t("presentation.layerFade.desc"))
+			.addSlider((s) => s.setLimits(0, 1500, 50).setDynamicTooltip().setValue(ctx.settings.layerFade).onChange((v) => ctx.updateSettings({ layerFade: v })));
 		new Setting(el)
 			.setName(ctx.t("presentation.walkKeys.name"))
 			.setDesc(ctx.t("presentation.walkKeys.desc"))

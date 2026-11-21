@@ -49,7 +49,7 @@ grows enough to keep its text inside the outline), new cards that snap to the gr
 minimum card sizes, labels and line widths that keep their size at every zoom, a group made
 straight from the bottom bar (click or drag) without selecting cards first, layers like in image editors (a Layers panel to create,
 rename, reorder, hide, lock and delete them; new items go to the active layer; move the
-selection to a layer or one layer up or down), custom colors from CSS, card templates in the bottom bar, empty groups, card
+selection to a layer or one layer up or down; present a canvas layer by layer), custom colors from CSS, card templates in the bottom bar, empty groups, card
 content at any zoom level (always, below your own zoom, or per card), text that doesn't jump between reading and editing; edge line styles and
 arrowheads, routing (curved, straight, right-angle, A\* around cards), floating edge ends, flip /
 highlight / select connected edges, draggable bend points and labels.
@@ -147,14 +147,18 @@ edges, ink strokes) and stays on: press inside the selection to move it, and onc
 been used, fingers move and zoom the board; on touch screens a selection moves right away,
 without a long press; cut in one undo step and paste under the pointer, with Cut / Copy / Paste
 buttons on tablets; coloring several cards colors the edges between them; presentations along edges or through frames
-(click a slide's name to hide or show its frame), portals into
+(click a slide's name to hide or show its frame), presentations by layers (each step reveals a layer, building up or
+replacing the one before; base layers stay visible; per step the view stays, fits the layer or fits the whole canvas;
+layers fade in and out; the order is set in a sequence editor or from the Layers panel and saved in the canvas; the layers
+come back exactly as they were when it ends), slides and frames that reveal layers when a presentation reaches them, a
+presenter's bar (‹ counter › ✕) for touch screens that folds down to the counter, portals into
 other canvases, collapsible groups, focus mode, move a selection to a new canvas, PDF pages as
 cards for annotation, custom style attributes from CSS snippets, a public events API, a minimap,
 a frames panel to search, reorder and present the groups of a canvas, a line grid behind the
 content (a line every N dots), an adjustable selection toolbar size (separately for computers
 and phones; on phones the card bar joins the controls bar), every canvas action (create cards,
 select, delete, duplicate, group, nudge, zoom) as a command you can give a hotkey, and
-thirty-five hands-on tutorials (at the top of the settings and in the canvas
+thirty-six hands-on tutorials (at the top of the settings and in the canvas
 controls). Each tutorial opens a temporary practice board with a coach panel: small tasks that
 tick themselves off as you do them, a "Show me" button that does each task live on the board, and
 highlights on the controls involved. The board (and any practice notes it uses) is deleted when the tutorial closes. At the top of the settings you choose the vault folder for the plugin's own files (note data and
@@ -234,7 +238,7 @@ still clickable ([docs/BENCHMARKS.md](docs/BENCHMARKS.md)).
 | Alt+Shift+Arrows                      | … as a process (rectangle)                                |
 | Ctrl/Cmd+Alt+Arrows                   | … as a terminal (rounded)                                 |
 | Ctrl/Cmd+Alt+Shift+Arrows             | … as a decision (diamond)                                 |
-| → / Space / PageDown, ← / PageUp, Esc | Presentations                                             |
+| → / Space / PageDown, ← / PageUp, Esc | Presentations (slides, frames, layer by layer)            |
 | Arrows, + / −, Home, Esc              | Walking through a map: child, parent, siblings; zoom      |
 
 These are the defaults. Every key can be changed, switched off or given a second key in the

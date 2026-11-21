@@ -716,3 +716,21 @@ Automated runtime checks of every item below were run in an isolated Obsidian 1.
   moves there in its bar right away, on every canvas; added commands can be dragged among the
   bar's own buttons; on the side bar, grouped buttons (zoom, undo/redo) move together. Restore
   the bars resets the order too. After the "Your own bars" tutorial, the bars are as before.
+
+## Presentation by layers (issue #44)
+
+1. Canvas with layers Bottom, Background, A, B, C and a hidden Notes layer. Layers panel →
+   presentation button → *Start presentation by layers*: the default plays the shown layers bottom
+   to top (Notes stays hidden), counter `1 / 5`. → / Space / PageDown build up; ← / PageUp undo the
+   last step exactly; Home / End jump; Esc ends: every layer is as before and the file is unchanged.
+2. *Edit presentation by layers…*: pin Background (base), take Bottom out, move C first (↑ or drag),
+   B → *Replace*, A → *Fit the revealed layer*, view → *Keep the view*. Play: C, then C + A zoomed to
+   A, then only B (+ Background). The panel shows step numbers and a pin; during the show its eyes
+   show the live state and can't be clicked.
+3. Fade (Settings → Presentations, default 300 ms): layers fade in, Replace cross-fades; fast key
+   presses leave no half-faded cards. 0 switches at once.
+4. Right-click slide 2 → *Show layers at this slide* → B (slide 3 → C). *Start presentation*: B and
+   C hidden on slide 1, B appears on slide 2, back hides it again; *Present frames* does the same.
+   A canvas without such slides presents exactly as before (no layer changes).
+5. Touch: ‹ › ✕ in the corner; a tap on the counter folds the bar to the counter, another unfolds it.
+6. Only one presentation at a time: starting frames while presenting by layers does nothing.

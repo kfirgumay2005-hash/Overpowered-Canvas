@@ -43,6 +43,9 @@ export interface PublicEventMap {
 	"presentation-started": [canvas: CanvasLike, slide: CanvasNodeLike];
 	"presentation-slide-changed": [canvas: CanvasLike, slide: CanvasNodeLike, index: number];
 	"presentation-ended": [canvas: CanvasLike];
+	"layer-presentation-started": [canvas: CanvasLike];
+	"layer-presentation-step": [canvas: CanvasLike, index: number, layers: readonly string[]];
+	"layer-presentation-ended": [canvas: CanvasLike];
 	"map-walk-started": [canvas: CanvasLike, node: CanvasNodeLike];
 	"map-walk-moved": [canvas: CanvasLike, node: CanvasNodeLike, how?: "tap"];
 	"map-walk-ended": [canvas: CanvasLike];

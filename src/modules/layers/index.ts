@@ -8,6 +8,8 @@ import { CONNECTOR, CONNECTOR_Z } from "../free-lines/render";
 import { mutate, nodeType, onlyNodes, randomId, renderedZ, selectedNodes } from "../shared";
 import { BASE_LAYER, cardZ, groupZ, heirOf, layerIndex, layersOf, MAX_LAYERS, moveLayer, neighborLayer, nextLayerName } from "./logic";
 import { logError } from "../../core/log";
+import { layersHost } from "./api";
+import { layerPresentationHost } from "../presentation/api";
 
 export const LAYERS_VIEW = "opc-layers";
 
@@ -40,6 +42,8 @@ class LayerState {
 	private readonly cache = new WeakMap<CanvasLike, LayerInfo[]>();
 	/** New items until their layer is stored: they already count as on the active layer. */
 	readonly pending = new WeakSet<CanvasNodeLike>();
+	/** Visibility a presentation shows for a while (layer id → hidden), never saved. */
+	readonly override = new WeakMap<CanvasLike, ReadonlyMap<string, boolean>>();
 
 	constructor(private readonly ctx: Ctx) {}
 
@@ -74,6 +78,11 @@ class LayerState {
 		return layers.find((l) => l.id === id) ?? layers[layers.length - 1]!;
 	}
 
+	/** Hidden right now: as saved, unless a presentation shows or hides it. */
+	isHidden(canvas: CanvasLike, layer: LayerInfo): boolean {
+		return this.override.get(canvas)?.get(layer.id) ?? !!layer.hidden;
+	}
+
 	/** True when the canvas has more than its single implicit layer. */
 	layered(canvas: CanvasLike): boolean {
 		return this.layers(canvas).length > 1;
@@ -91,6 +100,7 @@ class LayersView extends ItemView {
 	private canvas: CanvasLike | null = null;
 	private listEl!: HTMLElement;
 	private footerEl!: HTMLElement;
+	private presentEl: HTMLElement | null = null;
 	private timer = 0;
 
 	constructor(
@@ -128,6 +138,21 @@ class LayersView extends ItemView {
 		setIcon(addWith, "copy-plus");
 		setTooltip(addWith, this.ctx.t("layers.newFromSelection"));
 		addWith.addEventListener("click", () => this.canvas && this.actions.create(this.canvas, true));
+		// Presentation by layers (shown while the Presentation module is on).
+		const present = header.createEl("button", { cls: "clickable-icon opc-layers-present", attr: { "aria-label": this.ctx.t("layers.present") } });
+		this.presentEl = present;
+		setIcon(present, "presentation");
+		setTooltip(present, this.ctx.t("layers.present"));
+		present.addEventListener("click", () => {
+			const canvas = this.canvas;
+			const api = layerPresentationHost.api;
+			if (!canvas || !api) return;
+			const menu = new Menu();
+			menu.addItem((i) => i.setTitle(this.ctx.t("presentation.layers.start")).setIcon("play").setDisabled(api.presenting(canvas)).onClick(() => api.start(canvas)));
+			menu.addItem((i) => i.setTitle(this.ctx.t("presentation.layers.edit")).setIcon("list-ordered").onClick(() => api.edit(canvas)));
+			const r = present.getBoundingClientRect();
+			menu.showAtPosition({ x: r.left, y: r.bottom + 4 });
+		});
 		this.listEl = root.createDiv({ cls: "opc-layers-list", attr: { role: "list" } });
 		this.footerEl = root.createDiv({ cls: "opc-layers-footer" });
 		this.registerEvent(this.app.workspace.on("active-leaf-change", () => this.track()));
@@ -159,6 +184,7 @@ class LayersView extends ItemView {
 		if (!this.listEl) return;
 		this.listEl.empty();
 		this.footerEl.empty();
+		this.presentEl?.toggle(!!layerPresentationHost.api);
 		const canvas = this.canvas;
 		if (!canvas) {
 			this.listEl.createDiv({ cls: "pane-empty", text: this.ctx.t("layers.noCanvas") });
@@ -175,19 +201,24 @@ class LayersView extends ItemView {
 			if (canvas.selection.has(n)) selected.add(id);
 		}
 		const editable = !canvas.readonly;
+		const presented = state.override.has(canvas);
+		const show = layerPresentationHost.api;
 		// Top layer first, like Photoshop.
 		for (let index = layers.length - 1; index >= 0; index--) {
 			const layer = layers[index]!;
 			const row = this.listEl.createDiv({ cls: "opc-layers-item tree-item-self is-clickable", attr: { role: "listitem", draggable: String(editable), tabindex: "0", "data-layer": layer.id } });
 			row.toggleClass("is-active", layer.id === active.id);
 			row.toggleClass("has-selection", selected.has(layer.id));
-			row.toggleClass("is-hidden-layer", !!layer.hidden);
+			const isHidden = state.isHidden(canvas, layer);
+			row.toggleClass("is-hidden-layer", isHidden);
 
-			const eye = row.createDiv({ cls: "clickable-icon opc-layers-toggle", attr: { "aria-label": ctx.t(layer.hidden ? "layers.show" : "layers.hide") } });
-			setIcon(eye, layer.hidden ? "eye-off" : "eye");
+			// While a presentation shows and hides layers, the eyes show what it shows and can't be used.
+			const eye = row.createDiv({ cls: "clickable-icon opc-layers-toggle", attr: { "aria-label": ctx.t(presented ? "layers.presented" : isHidden ? "layers.show" : "layers.hide") } });
+			setIcon(eye, isHidden ? "eye-off" : "eye");
+			eye.toggleClass("is-presented", presented);
 			eye.addEventListener("click", (e) => {
 				e.stopPropagation();
-				actions.update(canvas, layer.id, { hidden: !layer.hidden || undefined });
+				if (!presented) actions.update(canvas, layer.id, { hidden: !layer.hidden || undefined });
 			});
 			const lock = row.createDiv({ cls: "clickable-icon opc-layers-toggle", attr: { "aria-label": ctx.t(layer.locked ? "layers.unlock" : "layers.lock") } });
 			setIcon(lock, layer.locked ? "lock" : "lock-open");
@@ -198,6 +229,16 @@ class LayersView extends ItemView {
 			});
 
 			row.createSpan({ cls: "opc-layers-name", text: layer.name });
+			// Its part in the presentation by layers: the step number, or a pin for a base layer.
+			const step = show?.stepOf(canvas, layer.id) ?? 0;
+			if (step > 0) {
+				const badge = row.createSpan({ cls: "opc-layers-step", text: String(step), attr: { "aria-label": ctx.t("layers.stepBadge", { n: step }) } });
+				setTooltip(badge, ctx.t("layers.stepBadge", { n: step }));
+			} else if (show?.isBase(canvas, layer.id)) {
+				const badge = row.createSpan({ cls: "opc-layers-step is-base", attr: { "aria-label": ctx.t("layers.baseBadge") } });
+				setIcon(badge, "pin");
+				setTooltip(badge, ctx.t("layers.baseBadge"));
+			}
 			row.createSpan({ cls: "opc-layers-count", text: String(counts.get(layer.id) ?? 0) });
 
 			const here = row.createDiv({ cls: "clickable-icon opc-layers-here", attr: { "aria-label": ctx.t("layers.moveHere") } });
@@ -300,9 +341,9 @@ export const layersModule = defineModule({
 			// A card being built (the core sizes and places it before adding it) is on no layer yet.
 			if (node.canvas.nodes.get(node.id) !== node) return false;
 			const layer = state.layerOf(node);
-			return !!layer.locked || !!layer.hidden;
+			return !!layer.locked || state.isHidden(node.canvas, layer);
 		};
-		const hidden = (node: CanvasNodeLike) => node.canvas.nodes.get(node.id) === node && !!state.layerOf(node).hidden;
+		const hidden = (node: CanvasNodeLike) => node.canvas.nodes.get(node.id) === node && state.isHidden(node.canvas, state.layerOf(node));
 		ctx.intercept("node-pointerdown", (node) => (blocked(node) ? true : undefined));
 		ctx.intercept("node-move", (node) => (blocked(node) ? true : undefined));
 		ctx.intercept("node-start-editing", (node) => (blocked(node) ? true : undefined));
@@ -321,7 +362,7 @@ export const layersModule = defineModule({
 		/** Classes for hidden / locked layers; edges of hidden cards hide with them. */
 		const decorate = (node: CanvasNodeLike) => {
 			const layer = state.layerOf(node);
-			node.nodeEl.toggleClass("opc-layer-hidden", !!layer.hidden);
+			node.nodeEl.toggleClass("opc-layer-hidden", state.isHidden(node.canvas, layer));
 			node.nodeEl.toggleAttribute("data-opc-layer-locked", !!layer.locked);
 		};
 		const decorateEdges = (canvas: CanvasLike) => {
@@ -605,6 +646,13 @@ export const layersModule = defineModule({
 						.onClick(() => actions.moveTo(canvas, selectedNodes(canvas), id)),
 				);
 				menu.addItem((i) => i.setTitle(ctx.t("layers.selectItems")).setIcon("mouse-pointer-2").onClick(() => selectLayer(canvas, id)));
+				const show = layerPresentationHost.api;
+				if (show) {
+					menu.addSeparator();
+					menu.addItem((i) => i.setTitle(ctx.t("layers.inSequence")).setIcon("list-ordered").setChecked(show.stepOf(canvas, id) > 0).setDisabled(!editable).onClick(() => show.toggleStep(canvas, id)));
+					menu.addItem((i) => i.setTitle(ctx.t("layers.baseLayer")).setIcon("pin").setChecked(show.isBase(canvas, id)).setDisabled(!editable).onClick(() => show.toggleBase(canvas, id)));
+					menu.addItem((i) => i.setTitle(ctx.t("presentation.layers.edit")).setIcon("presentation").onClick(() => show.edit(canvas)));
+				}
 				menu.addSeparator();
 				menu.addItem((i) => i.setTitle(ctx.t("layers.raise")).setIcon("arrow-up").setDisabled(!editable || index >= layers.length - 1).onClick(() => actions.reorder(canvas, index, index + 1)));
 				menu.addItem((i) => i.setTitle(ctx.t("layers.lower")).setIcon("arrow-down").setDisabled(!editable || index <= 0).onClick(() => actions.reorder(canvas, index, index - 1)));
@@ -623,7 +671,7 @@ export const layersModule = defineModule({
 
 		const selectLayer = (canvas: CanvasLike, id: string) => {
 			const layer = state.layers(canvas).find((l) => l.id === id);
-			if (!layer || layer.hidden || layer.locked) {
+			if (!layer || state.isHidden(canvas, layer) || layer.locked) {
 				new Notice(ctx.t("layers.cantSelect"));
 				return;
 			}
@@ -647,6 +695,18 @@ export const layersModule = defineModule({
 					ctx.data.root(canvas).set({ layers: undefined, activeLayer: undefined });
 					for (const n of canvas.nodes.values()) if (storedLayer(n)) ctx.data.node(n).set({ layer: undefined });
 				} else ctx.data.root(canvas).set({ layers: rest, activeLayer: activeLayer === id ? heir.id : activeLayer });
+				// The presentation by layers and the slides that revealed it forget it.
+				const presentation = ctx.data.root(canvas).get().presentation;
+				const seq = presentation?.layers;
+				if (seq && (seq.steps?.some((s) => s.layer === id) || seq.base?.includes(id))) {
+					const steps = seq.steps?.filter((s) => s.layer !== id);
+					const base = seq.base?.filter((b) => b !== id);
+					ctx.data.root(canvas).set({ presentation: { ...presentation, layers: { ...seq, steps, base: base?.length ? base : undefined } } });
+				}
+				for (const n of canvas.nodes.values()) {
+					const reveal = ctx.data.node(n).get().revealLayers;
+					if (reveal?.includes(id)) ctx.data.node(n).set({ revealLayers: reveal.length > 1 ? reveal.filter((r) => r !== id) : undefined });
+				}
 			});
 		};
 
@@ -730,6 +790,74 @@ export const layersModule = defineModule({
 		};
 		ctx.onNodeMenu((menu, node) => addContextItems(menu, node.canvas, node.canvas.selection.has(node) ? selectedNodes(node.canvas) : [node]));
 		ctx.onSelectionMenu((menu, canvas) => addContextItems(menu, canvas, selectedNodes(canvas)));
+
+		// ---------- presentations: visibility for a while, never saved ----------
+
+		const FADE_IN = "opc-layer-fade-in";
+		const FADE_OUT = "opc-layer-fade-out";
+		const fades = new Map<CanvasLike, () => void>();
+		/** The card elements of these layers, and the elements of edges with an end on them. */
+		const elementsOn = (canvas: CanvasLike, ids: ReadonlySet<string>): Element[] => {
+			const nodes = new Set([...canvas.nodes.values()].filter((n) => ids.has(state.layerOf(n).id)));
+			const out: Element[] = [...nodes].map((n) => n.nodeEl);
+			for (const e of canvas.edges.values()) {
+				if (!nodes.has(e.from.node) && !nodes.has(e.to.node)) continue;
+				out.push(e.lineGroupEl, e.lineEndGroupEl);
+				if (e.labelElement) out.push(e.labelElement.wrapperEl);
+			}
+			return out;
+		};
+		const present = (canvas: CanvasLike, target: ReadonlyMap<string, boolean> | null, fadeMs: number) => {
+			fades.get(canvas)?.();
+			const layers = state.layers(canvas);
+			const was = new Map(layers.map((l) => [l.id, state.isHidden(canvas, l)]));
+			const will = (l: LayerInfo) => target?.get(l.id) ?? !!l.hidden;
+			const appearing = new Set(layers.filter((l) => was.get(l.id) && !will(l)).map((l) => l.id));
+			const leaving = new Set(layers.filter((l) => !was.get(l.id) && will(l)).map((l) => l.id));
+			const apply = (map: ReadonlyMap<string, boolean> | null) => {
+				if (map) state.override.set(canvas, map);
+				else state.override.delete(canvas);
+				refreshCanvas(canvas);
+			};
+			// The fade is the user's own setting (0 turns it off), so it doesn't follow the system's reduced motion.
+			if (fadeMs <= 0 || !state.layered(canvas) || appearing.size + leaving.size === 0) {
+				apply(target);
+				return;
+			}
+			// Layers on their way out stay shown until they have faded.
+			const interim = new Map(layers.map((l) => [l.id, will(l)]));
+			for (const id of leaving) interim.set(id, false);
+			apply(interim);
+			canvas.wrapperEl.style.setProperty("--opc-layer-fade", `${Math.round(fadeMs)}ms`);
+			const fadingIn = elementsOn(canvas, appearing);
+			const fadingOut = elementsOn(canvas, leaving);
+			fadingIn.forEach((el) => el.classList.add(FADE_IN));
+			fadingOut.forEach((el) => el.classList.add(FADE_OUT));
+			let timer = 0;
+			const finish = () => {
+				window.clearTimeout(timer);
+				fades.delete(canvas);
+				fadingIn.forEach((el) => el.classList.remove(FADE_IN));
+				fadingOut.forEach((el) => el.classList.remove(FADE_OUT));
+				if (leaving.size > 0) apply(target);
+			};
+			timer = window.setTimeout(finish, fadeMs);
+			fades.set(canvas, finish);
+		};
+		ctx.onCanvas((canvas) => () => {
+			fades.get(canvas)?.();
+			state.override.delete(canvas);
+		});
+		layersHost.api = {
+			layers: (canvas) => state.layers(canvas),
+			layerOf: (node) => state.layerOf(node).id,
+			present,
+			presenting: (canvas) => state.override.has(canvas),
+		};
+		ctx.register(() => {
+			layersHost.api = null;
+			for (const finish of [...fades.values()]) finish();
+		});
 
 		// ---------- panel and commands ----------
 

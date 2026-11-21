@@ -819,6 +819,7 @@ const layers: TutorialDefinition = {
 			check: (rt) => (rootOf(rt.now()).layers?.length ?? 0) > (rootOf(rt.before).layers?.length ?? 0),
 			demo: (rt) => void rt.command("layers:new"),
 		},
+		{ title: "tut.layers.s7.title", body: "tut.layers.s7.body", target: ".opc-layers-present" },
 	],
 };
 
@@ -907,6 +908,181 @@ const present: TutorialDefinition = {
 			check: (rt) => rt.seen("presentation-ended"),
 			demo: (rt) => void rt.command("presentation:end"),
 		},
+		{ title: "tut.present.s7.title", body: "tut.present.s7.body" },
+	],
+};
+
+// ---------- 7b. Presentation by layers ----------
+
+const SEQ_DIALOG = ".opc-layer-sequence-modal";
+const sequenceOf = (rt: TutorialRuntime) => rt.root().presentation?.layers;
+const sequenceStep = (rt: TutorialRuntime, layer: string) => sequenceOf(rt)?.steps?.find((s) => s.layer === layer);
+/** Done once the editor is closed again, so the next step isn't behind it. */
+const editorClosed = () => !activeDocument.querySelector(SEQ_DIALOG);
+/** "Show me" in the sequence editor: open it, do `act` there, close it again. */
+async function inSequenceEditor(rt: TutorialRuntime, act: (modal: HTMLElement) => void): Promise<void> {
+	if (editorClosed()) rt.command("presentation:layers-edit");
+	await rt.wait(700);
+	const modal = activeDocument.querySelector<HTMLElement>(SEQ_DIALOG);
+	if (modal) act(modal);
+	await rt.wait(1000);
+	if (!editorClosed()) activeDocument.body.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", code: "Escape", keyCode: 27, bubbles: true, cancelable: true }));
+}
+const choose = (modal: HTMLElement, selector: string, value: string) => {
+	const sel = modal.querySelector<HTMLSelectElement>(selector);
+	if (!sel) return;
+	sel.value = value;
+	sel.dispatchEvent(new Event("change"));
+};
+/** The step the presenter's counter shows (0 = the first), or -1. */
+const presentedStep = (rt: TutorialRuntime) => {
+	const m = /^(\d+)\s*\//.exec(rt.canvas.wrapperEl.querySelector(".opc-presentation-counter")?.textContent ?? "");
+	return m ? Number(m[1]) - 1 : -1;
+};
+let stepBackFrom = -1;
+const editorVisit = { opened: false };
+
+const presentLayers: TutorialDefinition = {
+	id: "present-layers",
+	icon: "layers",
+	title: "tut.plyr.title",
+	summary: "tut.plyr.summary",
+	modules: ["presentation", "layers", "sticky-notes", "shapes"],
+	restoreSettings: [{ module: "presentation", key: "navMinimized" }],
+	board: (t) => {
+		const on = (layer: string, node: CanvasNodeData): CanvasNodeData => ({ ...node, [SCHEMA_KEY]: { ...extraOf(node), layer } });
+		return {
+			nodes: [
+				on("bg", group("pl-frame", t("tut.plyr.board.frame"), -60, -220, 1160, 820, { color: "4" })),
+				on("bg", title("pl-title", t("tut.plyr.board.title"), 0, -180)),
+				on("bg", shape("pl-ground", "rectangle", 0, 440, 1040, 100, { color: "2" })),
+				on("seed", sticky("pl-seed", t("tut.plyr.board.seed"), 60, 220, "orange")),
+				on("sprout", sticky("pl-sprout", t("tut.plyr.board.sprout"), 420, 160, "green")),
+				on("tree", shape("pl-tree", "cloud", 420, -60, 420, 440, { color: "4", text: t("tut.plyr.board.tree") })),
+				on("notes", sticky("pl-note", t("tut.plyr.board.note"), 860, 220, "pink")),
+			],
+			edges: [],
+			root: {
+				layers: [
+					{ id: "bg", name: t("tut.plyr.board.bg") },
+					{ id: "seed", name: t("tut.plyr.board.seed") },
+					{ id: "sprout", name: t("tut.plyr.board.sprout") },
+					{ id: "tree", name: t("tut.plyr.board.tree") },
+					{ id: "notes", name: t("tut.plyr.board.notes") },
+				],
+				activeLayer: "notes",
+				// Out of order on purpose: the first task puts the seed first.
+				presentation: { layers: { steps: [{ layer: "sprout" }, { layer: "seed" }, { layer: "tree" }] } },
+			},
+		};
+	},
+	steps: [
+		{ title: "tut.plyr.s1.title", body: "tut.plyr.s1.body", target: ".opc-layers-control" },
+		{
+			title: "tut.plyr.s2.title",
+			body: "tut.plyr.s2.body",
+			task: "tut.plyr.s2.task",
+			touch: "tut.plyr.s2.touch",
+			target: (rt) => activeDocument.querySelector<HTMLElement>(".opc-layers-present") ?? rt.canvas.wrapperEl.querySelector<HTMLElement>(".opc-layers-control"),
+			enter: () => (editorVisit.opened = false),
+			check: () => (editorVisit.opened ||= !editorClosed()),
+			demo: (rt) => void rt.command("presentation:layers-edit"),
+		},
+		{
+			title: "tut.plyr.s3.title",
+			body: "tut.plyr.s3.body",
+			task: "tut.plyr.s3.task",
+			check: (rt) => sequenceOf(rt)?.steps?.[0]?.layer === "seed" && editorClosed(),
+			demo: (rt) => inSequenceEditor(rt, (modal) => modal.querySelector<HTMLElement>('.opc-seq-step[data-layer="seed"] .opc-seq-up')?.click()),
+		},
+		{
+			title: "tut.plyr.s4.title",
+			body: "tut.plyr.s4.body",
+			task: "tut.plyr.s4.task",
+			check: (rt) => !!sequenceOf(rt)?.base?.includes("bg") && editorClosed(),
+			demo: (rt) => inSequenceEditor(rt, (modal) => modal.querySelector<HTMLElement>('.opc-seq-other[data-layer="bg"] .opc-seq-base')?.click()),
+		},
+		{
+			title: "tut.plyr.s5.title",
+			body: "tut.plyr.s5.body",
+			task: "tut.plyr.s5.task",
+			check: (rt) => sequenceStep(rt, "tree")?.reveal === "replace" && editorClosed(),
+			demo: (rt) => inSequenceEditor(rt, (modal) => choose(modal, '.opc-seq-step[data-layer="tree"] .opc-seq-step-reveal', "replace")),
+		},
+		{
+			title: "tut.plyr.s6.title",
+			body: "tut.plyr.s6.body",
+			task: "tut.plyr.s6.task",
+			check: (rt) => sequenceStep(rt, "seed")?.camera === "layer" && editorClosed(),
+			demo: (rt) => inSequenceEditor(rt, (modal) => choose(modal, '.opc-seq-step[data-layer="seed"] .opc-seq-step-camera', "layer")),
+		},
+		{
+			title: "tut.plyr.s7.title",
+			body: "tut.plyr.s7.body",
+			task: "tut.plyr.s7.task",
+			touch: "tut.plyr.s7.touch",
+			check: (rt) => rt.seen("layer-presentation-started"),
+			demo: async (rt) => {
+				await inSequenceEditor(rt, () => {});
+				rt.command("presentation:layers-start");
+			},
+		},
+		{
+			title: "tut.plyr.s8.title",
+			body: "tut.plyr.s8.body",
+			task: "tut.plyr.s8.task",
+			touch: "tut.plyr.s8.touch",
+			target: ".opc-presentation-nav",
+			check: (rt) => rt.seen("layer-presentation-step", (_c, index) => typeof index === "number" && index >= 1),
+			demo: async (rt) => {
+				if (!rt.canvas.wrapperEl.hasClass("opc-presenting")) {
+					rt.command("presentation:layers-start");
+					await rt.wait(900);
+				}
+				rt.command("presentation:next");
+			},
+		},
+		{
+			title: "tut.plyr.s9.title",
+			body: "tut.plyr.s9.body",
+			task: "tut.plyr.s9.task",
+			touch: "tut.plyr.s9.touch",
+			target: ".opc-presentation-nav",
+			enter: (rt) => (stepBackFrom = presentedStep(rt)),
+			check: (rt) => rt.seen("layer-presentation-step", (_c, index) => typeof index === "number" && index < Math.max(1, stepBackFrom)),
+			demo: async (rt) => {
+				if (!rt.canvas.wrapperEl.hasClass("opc-presenting")) {
+					rt.command("presentation:layers-start");
+					await rt.wait(900);
+				}
+				if (presentedStep(rt) <= 0) {
+					rt.command("presentation:next");
+					await rt.wait(900);
+				}
+				stepBackFrom = presentedStep(rt);
+				rt.command("presentation:previous");
+			},
+		},
+		{
+			title: "tut.plyr.s10.title",
+			body: "tut.plyr.s10.body",
+			task: "tut.plyr.s10.task",
+			touch: "tut.plyr.s10.touch",
+			target: ".opc-presentation-nav",
+			check: (rt) => rt.seen("layer-presentation-ended") && !rt.canvas.wrapperEl.hasClass("opc-presenting"),
+			demo: (rt) => void rt.command("presentation:end"),
+		},
+		{
+			title: "tut.plyr.s11.title",
+			body: "tut.plyr.s11.body",
+			task: "tut.plyr.s11.task",
+			touch: "tut.plyr.s11.touch",
+			focus: ["pl-frame"],
+			target: (rt) => rt.node("pl-frame")?.labelEl,
+			check: (rt) => !!rt.extra("pl-frame").revealLayers?.includes("tree"),
+			demo: (rt) => setExtra(rt, "pl-frame", { revealLayers: ["tree"] }),
+		},
+		{ title: "tut.plyr.s12.title", body: "tut.plyr.s12.body" },
 	],
 };
 
@@ -4631,4 +4807,4 @@ const review: TutorialDefinition = {
 	],
 };
 
-export const TUTORIALS: readonly TutorialDefinition[] = [basics, notes, shapes, edges, drawing, layers, present, mindmap, navigate, organize, markdown, select, blocks, vault, style, big, direction, pdf, pages, arrows, bars, images, file, columns, columnsDown, toc, autoHeaders, handwriting, paper, smartGroups, indent, fontSize, shortcuts, flowShapes, review];
+export const TUTORIALS: readonly TutorialDefinition[] = [basics, notes, shapes, edges, drawing, layers, present, presentLayers, mindmap, navigate, organize, markdown, select, blocks, vault, style, big, direction, pdf, pages, arrows, bars, images, file, columns, columnsDown, toc, autoHeaders, handwriting, paper, smartGroups, indent, fontSize, shortcuts, flowShapes, review];

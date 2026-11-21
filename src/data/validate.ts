@@ -23,6 +23,11 @@ import {
 	type CropRect,
 	type GuideData,
 	type LayerInfo,
+	type LayerSequence,
+	type LayerStepInfo,
+	type PresentationInfo,
+	LAYER_CAMERAS,
+	LAYER_REVEALS,
 	type PageInfo,
 	type LineData,
 	type OpcEdge,
@@ -224,6 +229,9 @@ const paperSpec = objectOf<PaperSpec>(
 	{ required: ["format"] },
 );
 
+const layerStep = objectOf<LayerStepInfo>({ layer: nonEmptyStr, reveal: oneOf(LAYER_REVEALS), camera: oneOf(LAYER_CAMERAS) }, { required: ["layer"] });
+const layerSequence = objectOf<LayerSequence>({ steps: arrayOf(layerStep), reveal: oneOf(LAYER_REVEALS), camera: oneOf(LAYER_CAMERAS), base: arrayOf(nonEmptyStr) });
+
 export const ROOT_SHAPE: Shape<OpcRoot> = {
 	v: (raw) => {
 		const n = finite(raw);
@@ -231,7 +239,7 @@ export const ROOT_SHAPE: Shape<OpcRoot> = {
 	},
 	frontmatter: jsonRecord,
 	dir: oneOf(DIRECTIONS),
-	presentation: objectOf<{ start?: string; last?: string }>({ start: nonEmptyStr, last: nonEmptyStr }),
+	presentation: objectOf<PresentationInfo>({ start: nonEmptyStr, last: nonEmptyStr, layers: layerSequence }),
 	frameOrder: arrayOf(nonEmptyStr),
 	layers: arrayOf(objectOf<LayerInfo>({ id: nonEmptyStr, name: str, hidden: bool, locked: bool }, { required: ["id", "name"] }), { min: 1 }),
 	activeLayer: nonEmptyStr,
@@ -288,6 +296,7 @@ export const NODE_SHAPE: Shape<OpcNode> = {
 	layer: nonEmptyStr,
 	page: nonEmptyStr,
 	slide: bool,
+	revealLayers: arrayOf(nonEmptyStr, { min: 1 }),
 	smartGroup: nonEmptyStr,
 };
 

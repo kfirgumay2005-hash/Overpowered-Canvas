@@ -38,7 +38,15 @@ interface OpcRoot {                       // file root "x-opc"
   v: 1;
   frontmatter?: Record<string, unknown>;  // canvas properties (tags, aliases, cssclasses, …)
   dir?: "ltr" | "rtl" | "auto";           // overrides the global direction
-  presentation?: { start?: string; last?: string };
+  presentation?: {
+    start?: string; last?: string;        // slides along edges: start slide, where it last stopped
+    layers?: {                            // presentation by layers (absent: every layer shown, bottom to top)
+      steps?: { layer: string; reveal?: "accumulate" | "replace"; camera?: "keep" | "layer" | "canvas" }[];
+      reveal?: "accumulate" | "replace";  // default for steps without their own; default "accumulate"
+      camera?: "keep" | "layer" | "canvas"; // default "canvas"
+      base?: string[];                    // layer ids shown throughout (never also a step)
+    };
+  };
   frameOrder?: string[];                  // group ids, Frames panel order
   layers?: { id: string; name: string; hidden?: boolean; locked?: boolean }[];  // bottom to top
   activeLayer?: string;                   // layer id that new items go to
@@ -113,6 +121,7 @@ interface OpcNode {
   layer?: string;                         // layer id; absent or unknown = bottom layer
   page?: string;                          // page id (root `pages`); absent = the main page
   slide?: boolean;                        // a presentation slide (group)
+  revealLayers?: string[];                // layer ids revealed when a presentation (edges, frames) reaches this card
   smartGroup?: string;                    // smart group id: cards sharing it select and move as one
                                           // (no frame); copies get a fresh id, a lone copy none
 }

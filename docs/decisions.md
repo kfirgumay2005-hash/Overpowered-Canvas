@@ -168,3 +168,17 @@ Choices made where the spec left room. Newest section first.
     the list doesn't name (arrows drawn by hand, pastes), read along the axis of the map's recorded
     layout. A note's outline wins on Markdown → canvas, and is stored only where the board alone
     would read it differently, so untouched round trips stay byte for byte.
+26. **Presentation by layers is a third kind of presentation in the Presentation module**, not a
+    module of its own (issue #44). It shares the presenter's bar, the keys (the Shortcuts window's
+    `slides.*`), full screen and read-only with the presentation along edges: one code path
+    (`open()` in `src/modules/presentation/index.ts`). The Layers module only lends a temporary
+    visibility override (`layersHost.api.present`, never saved, no undo step) and the fades; the
+    saved `hidden` flags are never touched, so ending the presentation, closing the canvas or
+    turning a module off always gives the user's layers back. Visibility at a step is folded from
+    the first step (`shownAt`), so going back is exact. The sequence lives in the canvas
+    (`x-opc.presentation.layers`); without a stored step list every layer shown at the start plays,
+    bottom to top (a hidden layer is the presenter's notes, not a step). Slides and frames combine
+    with it through `revealLayers` on the card: the same fold runs over the path presented so far,
+    and only the layers some stop reveals are managed, so presentations of canvases that never use
+    it behave as before. The fade follows its own setting (0 = off), not the system's reduced
+    motion, because it is an explicit choice of the presenter.
