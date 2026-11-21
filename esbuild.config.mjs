@@ -5,12 +5,19 @@ import { emojiDataPlugin } from "./scripts/emoji-data.mjs";
 
 const require = createRequire(import.meta.url);
 
-/** `import source from "elk-worker-source"` → the elkjs worker script as a string (run as a Blob worker). */
+/**
+ * `import source from "elk-worker-source"` → the elkjs worker script, base64 encoded (decoded and
+ * run as a Blob worker on first use).
+ *
+ * Base64, not plain text: Windows Defender analyzes a 1.5 MB script found inside a string as code
+ * the first time it sees main.js (after every reboot), which took ~1.7 s of Obsidian's start-up and
+ * made Obsidian report the plugin as slow to load. Encoded, the whole file scans in ~0.25 s.
+ */
 const elkWorkerText = {
 	name: "elk-worker-source",
 	setup(build) {
 		build.onResolve({ filter: /^elk-worker-source$/ }, () => ({ path: require.resolve("elkjs/lib/elk-worker.min.js"), namespace: "elk-text" }));
-		build.onLoad({ filter: /.*/, namespace: "elk-text" }, async (args) => ({ contents: await readFile(args.path, "utf8"), loader: "text" }));
+		build.onLoad({ filter: /.*/, namespace: "elk-text" }, async (args) => ({ contents: `export default ${JSON.stringify((await readFile(args.path)).toString("base64"))};`, loader: "js" }));
 	},
 };
 

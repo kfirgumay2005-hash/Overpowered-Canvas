@@ -103,6 +103,14 @@ Notes for working on Overpowered-Canvas (Obsidian plugin, id `overpoweredcanvas`
   color the user had just added.
 - **Navigation keeps the user's zoom** when the view is already in use. Only move to the target.
 
+### Start-up time
+- **"Taking long to load" only after a reboot = Windows Defender scanning `main.js`.** Our own
+  load takes ~45 ms warm. Obsidian's per-plugin time is wall clock, so a cold first scan counts.
+  Defender analyzes scripts it finds inside strings: the plain-text elkjs worker cost ~1.7 s, and
+  base64 brought the whole file down to ~0.25 s. Measure with
+  `MpCmdRun.exe -Scan -ScanType 3 -File <copy of main.js> -DisableRemediation`, using a fresh copy
+  with a changed byte each run (results are cached per hash). Never embed code as plain text.
+
 ### Tablets and touch
 - A pen or finger release may never arrive. A new press must drop or finish a gesture that lost
   its release, and tools must be exclusive (starting one ends the other), or a tool stays stuck.

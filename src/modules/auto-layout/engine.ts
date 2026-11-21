@@ -11,7 +11,9 @@ let url: string | null = null;
 
 export function getElk(): ElkLike {
 	if (!elk) {
-		url = URL.createObjectURL(new Blob([workerSource], { type: "text/javascript" }));
+		// The build ships the worker base64 encoded (see esbuild.config.mjs).
+		const bytes = Uint8Array.from(atob(workerSource), (c) => c.charCodeAt(0));
+		url = URL.createObjectURL(new Blob([bytes], { type: "text/javascript" }));
 		const workerUrl = url;
 		elk = new ELK({ workerFactory: () => new Worker(workerUrl) });
 	}
