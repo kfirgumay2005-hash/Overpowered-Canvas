@@ -1,23 +1,25 @@
 import esbuild from "esbuild";
 import { readFile } from "node:fs/promises";
 import { builtinModules, createRequire } from "node:module";
+import { deflateRawSync } from "node:zlib";
 import { emojiDataPlugin } from "./scripts/emoji-data.mjs";
 
 const require = createRequire(import.meta.url);
 
 /**
- * `import source from "elk-worker-source"` → the elkjs worker script, base64 encoded (decoded and
- * run as a Blob worker on first use).
+ * `import source from "elk-worker-source"` → the elkjs worker script, deflate-raw compressed and
+ * base64 encoded (unpacked and run as a Blob worker on first use).
  *
- * Base64, not plain text: Windows Defender analyzes a 1.5 MB script found inside a string as code
- * the first time it sees main.js (after every reboot), which took ~1.7 s of Obsidian's start-up and
- * made Obsidian report the plugin as slow to load. Encoded, the whole file scans in ~0.25 s.
+ * Not plain text: Windows Defender analyzes a 1.5 MB script found inside a string as code the
+ * first time it sees main.js (after every reboot), which took ~1.7 s of Obsidian's start-up and
+ * made Obsidian report the plugin as slow to load. Packed, the whole file scans in ~0.3 s.
+ * Compressed rather than only encoded so main.js stays under 5 MB.
  */
 const elkWorkerText = {
 	name: "elk-worker-source",
 	setup(build) {
 		build.onResolve({ filter: /^elk-worker-source$/ }, () => ({ path: require.resolve("elkjs/lib/elk-worker.min.js"), namespace: "elk-text" }));
-		build.onLoad({ filter: /.*/, namespace: "elk-text" }, async (args) => ({ contents: `export default ${JSON.stringify((await readFile(args.path)).toString("base64"))};`, loader: "js" }));
+		build.onLoad({ filter: /.*/, namespace: "elk-text" }, async (args) => ({ contents: `export default ${JSON.stringify(deflateRawSync(await readFile(args.path), { level: 9 }).toString("base64"))};`, loader: "js" }));
 	},
 };
 

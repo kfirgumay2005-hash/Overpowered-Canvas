@@ -106,8 +106,9 @@ Notes for working on Overpowered-Canvas (Obsidian plugin, id `overpoweredcanvas`
 ### Start-up time
 - **"Taking long to load" only after a reboot = Windows Defender scanning `main.js`.** Our own
   load takes ~45 ms warm. Obsidian's per-plugin time is wall clock, so a cold first scan counts.
-  Defender analyzes scripts it finds inside strings: the plain-text elkjs worker cost ~1.7 s, and
-  base64 brought the whole file down to ~0.25 s. Measure with
+  Defender analyzes scripts it finds inside strings: the plain-text elkjs worker cost ~1.7 s; packed
+  (deflate + base64, unpacked on first layout) the whole file scans in ~0.3 s. Keep `main.js` under
+  5 MB. Measure with
   `MpCmdRun.exe -Scan -ScanType 3 -File <copy of main.js> -DisableRemediation`, using a fresh copy
   with a changed byte each run (results are cached per hash). Never embed code as plain text.
 

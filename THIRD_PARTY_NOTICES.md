@@ -2,7 +2,7 @@
 
 Overpowered Canvas bundles the following packages, unmodified, into `main.js`. (emojibase-data is
 not bundled as-is: the build reads it and bundles a compact copy of its emoji, names and keywords.
-elkjs's worker script is stored base64 encoded and decoded unchanged when it runs.)
+elkjs's worker script is stored compressed (deflate, base64) and unpacked unchanged when it runs.)
 
 ## elkjs 0.12.0
 
